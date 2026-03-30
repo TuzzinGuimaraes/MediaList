@@ -5,7 +5,17 @@ from __future__ import annotations
 
 from importacao.anilist import importar_do_anilist
 from importacao.db import get_connection, inserir_midia_genero, inserir_ou_atualizar_manga, upsert_genero
-from importacao.utils import formatar_data_anilist, logger, remover_html, truncar
+from importacao.utils import (
+    ERROR_LOG_PATH,
+    ImportStats,
+    RateLimiter,
+    criar_sessao_http,
+    formatar_data_anilist,
+    logger,
+    registrar_falha_importacao,
+    remover_html,
+    truncar,
+)
 
 GENERO_MAP = {
     'Action': 'Ação',
@@ -57,9 +67,8 @@ def _extrair_autoria(staff: dict | None) -> tuple[str | None, str | None]:
     return autor, artista or autor
 
 
-def processar_e_inserir_manga(manga: dict):
+def processar_e_inserir_manga(manga: dict, conn, genero_cache: dict[str, int] | None = None):
     """Processa um item do AniList e persiste no banco."""
-    conn = get_connection()
     try:
         autor, artista = _extrair_autoria(manga.get('staff'))
         demografia = None
@@ -91,20 +100,59 @@ def processar_e_inserir_manga(manga: dict):
 
         result = inserir_ou_atualizar_manga(conn, dados)
         for genero in generos:
-            genero_id = upsert_genero(conn, genero, 'anime,manga,jogo')
+            genero_id = upsert_genero(conn, genero, 'anime,manga,jogo', genero_cache=genero_cache)
             inserir_midia_genero(conn, result['id_midia'], genero_id)
 
+        conn.commit()
         logger.info("Mangá importado: %s (%s)", dados['titulo_original'], result['id_midia'])
         return result
-    finally:
-        conn.close()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def importar_mangas(paginas: int = 20):
     """Executa a importação em lote de mangás."""
-    total = 0
-    for item in importar_do_anilist('MANGA', paginas):
-        processar_e_inserir_manga(item)
-        total += 1
-    logger.info('Importação de mangás concluída. %s registros processados.', total)
-    return total
+    stats = ImportStats(tipo_midia='manga', origem='AniList')
+    conn = get_connection()
+    genero_cache: dict[str, int] = {}
+    session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
+    rate_limiter = RateLimiter(0.35)
+
+    try:
+        for pagina in importar_do_anilist('MANGA', paginas, session=session, rate_limiter=rate_limiter):
+            if pagina.get('erro'):
+                stats.registrar_falha()
+                registrar_falha_importacao(
+                    tipo_midia='manga',
+                    origem='AniList',
+                    exc=pagina['erro'],
+                    identificador=f"pagina-{pagina['pagina']}",
+                    payload=pagina.get('payload'),
+                    extra={'pagina': pagina['pagina'], 'etapa': 'listar_pagina'},
+                )
+                continue
+
+            for item in pagina['itens']:
+                try:
+                    result = processar_e_inserir_manga(item, conn, genero_cache)
+                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
+                except Exception as exc:
+                    stats.registrar_falha()
+                    registrar_falha_importacao(
+                        tipo_midia='manga',
+                        origem='AniList',
+                        exc=exc,
+                        identificador=item.get('id'),
+                        titulo=(item.get('title') or {}).get('romaji'),
+                        payload=item,
+                        extra={'pagina': pagina['pagina']},
+                    )
+
+        logger.info('Importação de mangás concluída. %s', stats.to_dict())
+        if stats.falhas:
+            logger.warning('Falhas de importação registradas em %s', ERROR_LOG_PATH)
+        return stats
+    finally:
+        session.close()
+        conn.close()

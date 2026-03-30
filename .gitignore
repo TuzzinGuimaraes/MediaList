@@ -62,6 +62,7 @@ celerybeat.pid
 # Ambientes e segredos
 .env
 .env.*
+!.env.example
 .venv
 env/
 venv/
@@ -101,6 +102,8 @@ yarn-error.log*
 
 # Artefatos locais
 collected_static/
+Backend/importacao_logs/*
+!Backend/importacao_logs/.gitkeep
 
 # Documentação local
 **/*.md

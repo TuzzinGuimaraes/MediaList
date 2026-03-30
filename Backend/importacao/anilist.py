@@ -5,10 +5,8 @@ from __future__ import annotations
 
 import time
 
-import requests
-
 from importacao.config import ANILIST_URL
-from importacao.utils import logger
+from importacao.utils import RateLimiter, criar_sessao_http, logger
 
 QUERY_ANILIST = """
 query ($page: Int, $perPage: Int, $tipo: MediaType) {
@@ -54,33 +52,43 @@ query ($page: Int, $perPage: Int, $tipo: MediaType) {
 """
 
 
-def importar_do_anilist(tipo: str, paginas: int = 20):
-    """
-    Retorna um gerador com itens do AniList.
-
-    tipo: ANIME ou MANGA
-    """
+def importar_do_anilist(tipo: str, paginas: int = 20, session=None, rate_limiter: RateLimiter | None = None):
+    """Retorna páginas do AniList com tratamento tolerante a falhas."""
+    own_session = session is None
+    session = session or criar_sessao_http(total_retries=3, backoff_factor=1.0)
+    rate_limiter = rate_limiter or RateLimiter(0.35)
     pagina = 1
-    while pagina <= paginas:
-        payload = {
-            'query': QUERY_ANILIST,
-            'variables': {'page': pagina, 'perPage': 50, 'tipo': tipo},
-        }
-        response = requests.post(ANILIST_URL, json=payload, timeout=30)
+    try:
+        while pagina <= paginas:
+            payload = {
+                'query': QUERY_ANILIST,
+                'variables': {'page': pagina, 'perPage': 50, 'tipo': tipo},
+            }
 
-        if response.status_code == 429:
-            retry_after = int(response.headers.get('Retry-After', 60))
-            logger.warning('Rate limit do AniList atingido. Aguardando %ss.', retry_after)
-            time.sleep(retry_after)
-            continue
+            try:
+                rate_limiter.wait()
+                response = session.post(ANILIST_URL, json=payload, timeout=30)
 
-        response.raise_for_status()
-        data = response.json()['data']['Page']
-        for item in data['media']:
-            yield item
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    logger.warning('Rate limit do AniList atingido. Aguardando %ss.', retry_after)
+                    time.sleep(retry_after)
+                    continue
 
-        if not data['pageInfo']['hasNextPage']:
-            break
+                response.raise_for_status()
+                data = response.json()['data']['Page']
+            except Exception as exc:
+                logger.warning('Falha ao buscar página %s do AniList (%s): %s', pagina, tipo, exc)
+                yield {'pagina': pagina, 'itens': [], 'erro': exc, 'payload': payload}
+                pagina += 1
+                continue
 
-        pagina += 1
-        time.sleep(0.7)
+            yield {'pagina': pagina, 'itens': data['media'], 'erro': None}
+
+            if not data['pageInfo']['hasNextPage']:
+                break
+
+            pagina += 1
+    finally:
+        if own_session:
+            session.close()

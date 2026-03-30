@@ -20,8 +20,14 @@ def main():
     args = parser.parse_args()
 
     paginas = max(1, math.ceil(args.limit / 50))
-    total = importar_animes(paginas=paginas)
-    print(f'Importação concluída. {total} registros processados.')
+    stats = importar_animes(paginas=paginas)
+    print(
+        'Importação concluída. '
+        f'processados={stats.processados} '
+        f'sucessos={stats.sucessos} '
+        f'falhas={stats.falhas} '
+        f'ja_existia={stats.ja_existia}'
+    )
 
 
 if __name__ == '__main__':

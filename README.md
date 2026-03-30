@@ -7,15 +7,11 @@ Sistema full stack para catálogo, listas pessoais, avaliações e notícias de 
 - jogos
 - músicas
 
-O projeto combina:
-
-- backend Flask com MySQL e MongoDB
-- frontend React com Create React App
-- scripts de importação para AniList, RAWG e MusicBrainz
+O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, MySQL e MongoDB orquestrados a partir de um único [docker-compose.yml](/home/artur/anilist/Projeto_LabBancoDados/docker-compose.yml).
 
 ## Visão geral
 
-O MediaList começou como um sistema de animes e foi expandido para um modelo multimídia. A base relacional agora usa uma tabela central de `midias` com tabelas filhas específicas por tipo:
+O MediaList começou como um sistema de animes e foi expandido para um modelo multimídia. A base relacional usa uma tabela central de `midias` com tabelas filhas específicas por tipo:
 
 - `animes`
 - `mangas`
@@ -37,6 +33,7 @@ Além disso, o sistema oferece:
 
 - Python 3
 - Flask
+- Gunicorn
 - `mysql-connector-python`
 - `flask-jwt-extended`
 - PyMongo
@@ -46,53 +43,119 @@ Além disso, o sistema oferece:
 - React 19
 - Create React App
 - `lucide-react`
-- React Testing Library
+- Nginx para servir o build em produção
 
 ### Banco e serviços
 
-- MySQL
+- MySQL 8
 - MongoDB
-- mongo-express
-- Docker Compose para MySQL, MongoDB e mongo-express
+- mongo-express opcional via profile de desenvolvimento
+- Docker Compose na raiz para toda a stack
 
 ## Estrutura do projeto
 
 ```text
 .
 ├── Backend/
+│   ├── Dockerfile
 │   ├── app.py
 │   ├── config.py
 │   ├── database.py
-│   ├── docker-compose.yml
 │   ├── importacao/
 │   ├── repositories/
 │   ├── routes/
 │   ├── schemas/
 │   └── test_*.py
 ├── Frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   ├── public/
 │   ├── src/
 │   └── package.json
+├── .env.example
 ├── Banco DDL.sql
+├── docker-compose.yml
 ├── Makefile
 └── README.md
 ```
 
 ## Requisitos
 
-Antes de rodar o projeto, garanta:
+Para usar o stack completo com Docker, você só precisa de:
 
-- Python 3.10+ instalado
-- Node.js 18+ e npm instalados
-- Docker e Docker Compose instalados
+- Docker
+- Docker Compose
 
-## Banco de dados
+Para desenvolvimento local sem containerizar frontend/backend:
 
-### MySQL
+- Python 3.10+
+- Node.js 18+ e npm
 
-O schema principal está em [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql).
+## Distribuição via Docker
 
-O arquivo cria:
+### 1. Ajuste o ambiente, se necessário
+
+Os defaults do projeto já funcionam sem arquivo adicional. Se quiser customizar portas, credenciais ou chaves, crie um `.env` a partir de [.env.example](/home/artur/anilist/Projeto_LabBancoDados/.env.example).
+
+Exemplo:
+
+```bash
+cp .env.example .env
+```
+
+### 2. Suba o stack principal
+
+```bash
+make services-up
+```
+
+Isso sobe:
+
+- `frontend` em `http://localhost:3005`
+- `backend` em `http://localhost:5000`
+- `mysql` em `localhost:3308`
+- `mongodb` em `localhost:27017`
+
+Na primeira subida com volume vazio, o MySQL aplica automaticamente o schema de [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql).
+
+### 3. Suba ferramentas auxiliares de desenvolvimento, se quiser
+
+```bash
+make services-up-dev
+```
+
+Esse comando habilita também:
+
+- `mongo-express` em `http://localhost:8081`
+
+### 4. Rebuild de imagens, quando necessário
+
+```bash
+make compose-build
+```
+
+Ou, de forma direta:
+
+```bash
+docker compose up --build -d
+```
+
+## Arquitetura de deploy
+
+### Frontend
+
+O frontend é buildado em [Frontend/Dockerfile](/home/artur/anilist/Projeto_LabBancoDados/Frontend/Dockerfile) e servido por Nginx. O proxy reverso configurado em [Frontend/nginx.conf](/home/artur/anilist/Projeto_LabBancoDados/Frontend/nginx.conf) encaminha `/api` para o backend, então a versão distribuída não depende de `localhost` hardcoded.
+
+### Backend
+
+O backend é empacotado em [Backend/Dockerfile](/home/artur/anilist/Projeto_LabBancoDados/Backend/Dockerfile) e executado com Gunicorn. No Compose, ele conversa com:
+
+- MySQL em `mysql:3306`
+- MongoDB em `mongodb:27017`
+
+### Banco de dados
+
+O schema principal está em [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql). Ele cria:
 
 - database `medialist_db`
 - usuário `media_app_user`
@@ -102,72 +165,29 @@ O arquivo cria:
 - views
 - dados iniciais
 
-Padrões locais usados no projeto:
+## Desenvolvimento local
 
-- host: `localhost`
-- porta: `3308`
-- database: `medialist_db`
-- usuário: `media_app_user`
-- container: `mysql-medialist`
+Se preferir rodar frontend e backend no host, mantendo apenas os bancos no Docker:
 
-O `docker compose` do backend agora também sobe o MySQL. Na primeira inicialização com volume vazio, o container aplica automaticamente o schema de `Banco DDL.sql` usando `/docker-entrypoint-initdb.d/`.
-
-### MongoDB
-
-O MongoDB é usado para:
-
-- notícias
-- notificações
-- preferências
-- atualizações de mídia
-
-O Docker Compose do backend sobe:
-
-- `mysql` em `localhost:3308`
-- `mongodb` em `localhost:27017`
-- `mongo-express` em `http://localhost:8081`
-
-## Setup rápido
-
-### 1. Instale as dependências
+### 1. Instale as dependências locais
 
 ```bash
 make install
 ```
 
-### 2. Suba os serviços de banco
+### 2. Suba MySQL e MongoDB
 
 ```bash
-make services-up
+docker compose up -d mysql mongodb
 ```
 
-Na primeira subida, o MySQL já inicializa o schema automaticamente.
-
-### 3. Reaplique o schema se precisar recriar a base
-
-```bash
-make db-schema
-```
-
-Esse comando usa o cliente MySQL dentro do próprio container, então não depende de instalação local do servidor nem do binário `mysql`.
-
-Se quiser abrir um shell SQL no banco do Docker:
-
-```bash
-make db-shell
-```
-
-### 4. Rode o backend
+### 3. Rode o backend
 
 ```bash
 make backend-dev
 ```
 
-Backend disponível em:
-
-- `http://localhost:5000`
-
-### 5. Rode o frontend
+### 4. Rode o frontend
 
 Em outro terminal:
 
@@ -175,9 +195,10 @@ Em outro terminal:
 make frontend-dev
 ```
 
-Frontend disponível em:
+Nesse modo:
 
-- `http://localhost:3005`
+- o backend local usa `localhost:3308` e `localhost:27017`
+- o frontend local usa `http://localhost:5000/api` no modo desenvolvimento
 
 ## Comandos principais
 
@@ -185,48 +206,26 @@ O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os f
 
 | Comando | O que faz |
 |---|---|
-| `make help` | Lista os comandos disponíveis |
-| `make install` | Instala backend e frontend |
-| `make services-up` | Sobe MySQL, MongoDB e mongo-express |
-| `make services-down` | Derruba os serviços Docker |
+| `make services-up` | Sobe frontend, backend, MySQL e MongoDB |
+| `make services-up-dev` | Sobe o stack completo e habilita `mongo-express` |
+| `make compose-build` | Rebuilda as imagens Docker de backend e frontend |
+| `make services-down` | Derruba os containers do stack |
 | `make services-logs` | Mostra logs do Docker Compose |
 | `make db-schema` | Reaplica `Banco DDL.sql` no MySQL do Docker |
 | `make db-shell` | Abre o cliente MySQL dentro do container |
-| `make backend-dev` | Inicia a API Flask |
-| `make frontend-dev` | Inicia o frontend React |
-| `make smoke-mysql` | Testa conexão e tabelas do MySQL |
-| `make smoke-mongo` | Testa conexão com o MongoDB |
-| `make smoke-permissions` | Testa a lógica de permissões |
-| `make test-frontend` | Executa os testes do frontend |
-| `make build-frontend` | Gera a build do frontend |
-| `make import-animes` | Importa animes do AniList |
-| `make import-mangas` | Importa mangás do AniList |
-| `make import-jogos` | Importa jogos do RAWG |
-| `make import-musicas` | Importa músicas do MusicBrainz |
-| `make import-all` | Roda todos os importadores |
-
-## Execução manual
-
-Se preferir rodar sem `make`:
-
-### Backend
-
-```bash
-cd Backend
-python3 -m pip install -r requirements.txt
-docker compose up -d
-python3 app.py
-```
-
-Por padrão, o backend local acessa o MySQL do Docker em `localhost:3308`. Se no futuro o backend também for containerizado, basta sobrescrever `DB_HOST=mysql`.
-
-### Frontend
-
-```bash
-cd Frontend
-npm install
-PORT=3005 npm start
-```
+| `make smoke-mysql` | Executa o smoke test de MySQL no container backend |
+| `make smoke-mongo` | Executa o smoke test de MongoDB no container backend |
+| `make smoke-permissions` | Executa o smoke test de permissões no container backend |
+| `make import-animes` | Importa animes no container backend |
+| `make import-mangas` | Importa mangás no container backend |
+| `make import-jogos` | Importa jogos no container backend |
+| `make import-musicas` | Importa músicas no container backend |
+| `make import-all` | Executa todos os importadores no container backend |
+| `make install` | Instala dependências locais para desenvolvimento sem Docker |
+| `make backend-dev` | Inicia a API Flask no host |
+| `make frontend-dev` | Inicia o frontend React no host |
+| `make test-frontend` | Executa os testes do frontend no host |
+| `make build-frontend` | Gera a build do frontend no host |
 
 ## Importação de dados externos
 
@@ -242,32 +241,40 @@ Os importadores ficam em [Backend/importacao](/home/artur/anilist/Projeto_LabBan
 - MusicBrainz + Cover Art Archive
   - músicas
 
-### Entrypoint
+### Entrypoints
+
+Via `make`:
 
 ```bash
-cd Backend
-python3 -m importacao.run_import --tipo anime --paginas 10
-python3 -m importacao.run_import --tipo manga --paginas 10
-python3 -m importacao.run_import --tipo jogo --paginas 10
-python3 -m importacao.run_import --tipo musica
-python3 -m importacao.run_import --tipo todos --paginas 10
+make import-animes
+make import-mangas
+make import-jogos
+make import-musicas
+make import-all
+```
+
+Via execução direta no container:
+
+```bash
+docker compose run --rm backend python -m importacao.run_import --tipo anime --paginas 10
+docker compose run --rm backend python -m importacao.run_import --tipo manga --paginas 10
+docker compose run --rm backend python -m importacao.run_import --tipo jogo --paginas 10
+docker compose run --rm backend python -m importacao.run_import --tipo musica
+docker compose run --rm backend python -m importacao.run_import --tipo todos --paginas 10
 ```
 
 ### Variáveis importantes
 
-As configurações são lidas de `Backend/config.py` e `Backend/importacao/config.py`.
+As configurações são lidas de [Backend/config.py](/home/artur/anilist/Projeto_LabBancoDados/Backend/config.py) e [Backend/importacao/config.py](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao/config.py).
 
-Você pode sobrescrever por ambiente:
+Você pode sobrescrever por ambiente no Compose:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=3308
-export DB_NAME=medialist_db
-export DB_USER=media_app_user
-export DB_PASSWORD='MediaList@2025!Secure'
-
-export RAWG_API_KEY='sua-chave'
-export MB_USER_AGENT='MediaListApp/1.0 (seu_email@exemplo.com)'
+DB_NAME=medialist_db
+DB_USER=media_app_user
+DB_PASSWORD='MediaList@2025!Secure'
+RAWG_API_KEY='sua-chave'
+MB_USER_AGENT='MediaListApp/1.0 (seu_email@exemplo.com)'
 ```
 
 Observações:
@@ -327,76 +334,3 @@ Observações:
 - `PUT /api/notificacoes/marcar-todas-lidas`
 - `GET /api/health`
 - `GET /api/midias/populares`
-- `GET /api/animes/temporada`
-
-## Frontend
-
-O frontend já foi adaptado para:
-
-- alternar entre animes, mangás, jogos e músicas
-- listar o catálogo por tipo
-- exibir detalhes polimórficos de mídia
-- manter lista pessoal por tipo
-- avaliar qualquer mídia
-- mostrar estatísticas por tipo
-
-Principais arquivos:
-
-- [Frontend/src/App.js](/home/artur/anilist/Projeto_LabBancoDados/Frontend/src/App.js)
-- [Frontend/src/components/Header.js](/home/artur/anilist/Projeto_LabBancoDados/Frontend/src/components/Header.js)
-- [Frontend/src/components/MinhaListaTab.js](/home/artur/anilist/Projeto_LabBancoDados/Frontend/src/components/MinhaListaTab.js)
-- [Frontend/src/components/AnimeDetalhesModal.js](/home/artur/anilist/Projeto_LabBancoDados/Frontend/src/components/AnimeDetalhesModal.js)
-
-## Testes e validação
-
-### Backend
-
-Smoke scripts disponíveis:
-
-```bash
-make smoke-mysql
-make smoke-mongo
-make smoke-permissions
-```
-
-### Frontend
-
-```bash
-make test-frontend
-make build-frontend
-```
-
-## Fluxo recomendado para desenvolvimento
-
-1. Instale dependências com `make install`
-2. Suba Mongo com `make services-up`
-3. Aplique schema com `make db-schema`
-4. Inicie backend com `make backend-dev`
-5. Inicie frontend com `make frontend-dev`
-6. Valide UI com `make test-frontend` e `make build-frontend`
-7. Use os importadores quando quiser popular catálogo
-
-## Documentação complementar local
-
-Existem documentos de apoio no workspace com o detalhamento da expansão multimídia e do plano de importação. Eles estão ignorados pelo Git, mas podem ser usados localmente como referência:
-
-- `ESPECIFICACAO_EXPANSAO_MULTIMIDIA.md`
-- `PLANO_APIS_IMPORTACAO.md`
-- `AnimeList.docx`
-
-## Estado atual
-
-O repositório já contém:
-
-- DDL multimídia
-- backend com rotas unificadas
-- frontend adaptado para quatro tipos de mídia
-- importadores externos
-- `Makefile` para o fluxo principal
-
-O que ainda depende do ambiente local:
-
-- MySQL realmente inicializado com o schema
-- serviços Mongo em execução
-- chaves de API para RAWG
-- `MB_USER_AGENT` configurado para importação de músicas

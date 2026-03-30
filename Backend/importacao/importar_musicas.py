@@ -4,21 +4,29 @@ Importador de músicas via MusicBrainz + Cover Art Archive.
 from __future__ import annotations
 
 import os
-import time
-
-import requests
+from threading import local
 
 from importacao.config import CAA_BASE_URL, MB_BASE_URL, MB_USER_AGENT
 from importacao.db import get_connection, inserir_midia_genero, inserir_ou_atualizar_musica, upsert_genero
-from importacao.utils import RateLimiter, formatar_data_parcial, logger
+from importacao.utils import (
+    ERROR_LOG_PATH,
+    ImportStats,
+    RateLimiter,
+    criar_sessao_http,
+    executar_em_paralelo,
+    formatar_data_parcial,
+    logger,
+    registrar_falha_importacao,
+)
 
 HEADERS = {'User-Agent': MB_USER_AGENT}
-RATE_LIMITER = RateLimiter(1.0)
+MB_RATE_LIMITER = RateLimiter(1.05)
+CAA_THREAD_LOCAL = local()
 
 
-def buscar_artista(nome: str) -> dict | None:
-    RATE_LIMITER.wait()
-    response = requests.get(
+def buscar_artista(nome: str, session) -> dict | None:
+    MB_RATE_LIMITER.wait()
+    response = session.get(
         f'{MB_BASE_URL}/artist',
         headers=HEADERS,
         params={'query': nome, 'fmt': 'json', 'limit': 1},
@@ -29,9 +37,9 @@ def buscar_artista(nome: str) -> dict | None:
     return artistas[0] if artistas else None
 
 
-def buscar_capa_album(release_group_mbid: str) -> str | None:
+def buscar_capa_album(release_group_mbid: str, session) -> str | None:
     try:
-        response = requests.get(
+        response = session.head(
             f'{CAA_BASE_URL}/release-group/{release_group_mbid}/front-500',
             headers=HEADERS,
             allow_redirects=True,
@@ -44,9 +52,22 @@ def buscar_capa_album(release_group_mbid: str) -> str | None:
     return None
 
 
-def processar_e_inserir_musica(release_group: dict, artista_nome: str):
+def _obter_sessao_caa_worker():
+    session = getattr(CAA_THREAD_LOCAL, 'session', None)
+    if session is None:
+        session = criar_sessao_http(total_retries=2, backoff_factor=0.5)
+        CAA_THREAD_LOCAL.session = session
+    return session
+
+
+def processar_e_inserir_musica(
+    release_group: dict,
+    artista_nome: str,
+    conn,
+    poster_url: str | None,
+    genero_cache: dict[str, int] | None = None,
+):
     """Processa um release-group do MusicBrainz e persiste no banco."""
-    conn = get_connection()
     try:
         tipo_map = {'Album': 'album', 'EP': 'ep', 'Single': 'single'}
         tipo = tipo_map.get(release_group.get('primary-type', ''), 'album')
@@ -64,7 +85,7 @@ def processar_e_inserir_musica(release_group: dict, artista_nome: str):
             'titulo_portugues': release_group['title'],
             'sinopse': None,
             'data_lancamento': formatar_data_parcial(release_group.get('first-release-date')),
-            'poster_url': buscar_capa_album(release_group['id']),
+            'poster_url': poster_url,
             'banner_url': None,
             'artista': artista_nome,
             'album': release_group['title'],
@@ -81,67 +102,160 @@ def processar_e_inserir_musica(release_group: dict, artista_nome: str):
             nome_genero = tag.get('name', '').title()
             if not nome_genero:
                 continue
-            genero_id = upsert_genero(conn, nome_genero, 'musica')
+            genero_id = upsert_genero(conn, nome_genero, 'musica', genero_cache=genero_cache)
             inserir_midia_genero(conn, result['id_midia'], genero_id)
 
+        conn.commit()
         logger.info("Música importada: %s - %s", artista_nome, dados['titulo_original'])
         return result
-    finally:
-        conn.close()
+    except Exception:
+        conn.rollback()
+        raise
 
 
-def importar_musicas_por_artista(nome_artista: str):
+def importar_musicas_por_artista(
+    nome_artista: str,
+    *,
+    conn=None,
+    session=None,
+    genero_cache: dict[str, int] | None = None,
+    workers: int = 4,
+):
     """Importa todos os álbuns/release-groups de um artista."""
-    artista = buscar_artista(nome_artista)
-    if not artista:
-        logger.warning('Artista não encontrado: %s', nome_artista)
-        return 0
+    own_conn = conn is None
+    own_session = session is None
+    conn = conn or get_connection()
+    session = session or criar_sessao_http(total_retries=3, backoff_factor=1.0)
+    genero_cache = genero_cache if genero_cache is not None else {}
+    stats = ImportStats(tipo_midia='musica', origem='MusicBrainz')
 
-    total = 0
-    offset = 0
-    while True:
-        RATE_LIMITER.wait()
-        response = requests.get(
-            f'{MB_BASE_URL}/release-group',
-            headers=HEADERS,
-            params={
-                'artist': artista['id'],
-                'type': 'album|ep|single',
-                'fmt': 'json',
-                'limit': 25,
-                'offset': offset,
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-        release_groups = data.get('release-groups', [])
+    try:
+        artista = buscar_artista(nome_artista, session)
+        if not artista:
+            exc = LookupError(f'Artista não encontrado: {nome_artista}')
+            stats.registrar_falha()
+            registrar_falha_importacao(
+                tipo_midia='musica',
+                origem='MusicBrainz',
+                exc=exc,
+                identificador=nome_artista,
+                titulo=nome_artista,
+                extra={'etapa': 'buscar_artista'},
+            )
+            return stats
 
-        for release_group in release_groups:
-            processar_e_inserir_musica(release_group, artista['name'])
-            total += 1
-            time.sleep(1)
+        offset = 0
+        while True:
+            try:
+                MB_RATE_LIMITER.wait()
+                response = session.get(
+                    f'{MB_BASE_URL}/release-group',
+                    headers=HEADERS,
+                    params={
+                        'artist': artista['id'],
+                        'type': 'album|ep|single',
+                        'fmt': 'json',
+                        'limit': 25,
+                        'offset': offset,
+                    },
+                    timeout=30,
+                )
+                response.raise_for_status()
+                data = response.json()
+                release_groups = data.get('release-groups', [])
+            except Exception as exc:
+                stats.registrar_falha()
+                registrar_falha_importacao(
+                    tipo_midia='musica',
+                    origem='MusicBrainz',
+                    exc=exc,
+                    identificador=artista.get('id'),
+                    titulo=artista.get('name'),
+                    payload={'offset': offset},
+                    extra={'etapa': 'listar_release_groups', 'offset': offset},
+                )
+                break
 
-        if offset + 25 >= data.get('release-group-count', 0):
-            break
-        offset += 25
+            def carregar_capa(release_group: dict):
+                worker_session = _obter_sessao_caa_worker()
+                return {'poster_url': buscar_capa_album(release_group['id'], worker_session)}
 
-    return total
+            capas_por_release_group = {}
+            for release_group, capa_result, capa_exc in executar_em_paralelo(
+                release_groups,
+                carregar_capa,
+                max_workers=workers,
+            ):
+                if capa_exc:
+                    logger.warning('Falha ao buscar capa de %s: %s', release_group.get('title'), capa_exc)
+                    capas_por_release_group[release_group['id']] = None
+                else:
+                    capas_por_release_group[release_group['id']] = (capa_result or {}).get('poster_url')
+
+            for release_group in release_groups:
+                try:
+                    result = processar_e_inserir_musica(
+                        release_group,
+                        artista['name'],
+                        conn,
+                        capas_por_release_group.get(release_group['id']),
+                        genero_cache,
+                    )
+                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
+                except Exception as exc:
+                    stats.registrar_falha()
+                    registrar_falha_importacao(
+                        tipo_midia='musica',
+                        origem='MusicBrainz',
+                        exc=exc,
+                        identificador=release_group.get('id'),
+                        titulo=release_group.get('title'),
+                        payload=release_group,
+                        extra={'artista': artista['name'], 'offset': offset},
+                    )
+
+            if offset + 25 >= data.get('release-group-count', 0):
+                break
+            offset += 25
+
+        return stats
+    finally:
+        if own_session:
+            session.close()
+        if own_conn:
+            conn.close()
 
 
-def importar_musicas_por_lista(seed_file: str = 'artistas_seed.txt'):
+def importar_musicas_por_lista(seed_file: str = 'artistas_seed.txt', workers: int = 4):
     """Importa músicas a partir de um arquivo de artistas."""
     caminho_seed = seed_file
     if not os.path.isabs(seed_file):
         caminho_seed = os.path.join(os.path.dirname(__file__), seed_file)
 
-    total = 0
-    with open(caminho_seed, 'r', encoding='utf-8') as handle:
-        for linha in handle:
-            artista = linha.strip()
-            if not artista:
-                continue
-            total += importar_musicas_por_artista(artista)
+    stats = ImportStats(tipo_midia='musica', origem='MusicBrainz')
+    conn = get_connection()
+    session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
+    genero_cache: dict[str, int] = {}
 
-    logger.info('Importação de músicas concluída. %s registros processados.', total)
-    return total
+    try:
+        with open(caminho_seed, 'r', encoding='utf-8') as handle:
+            for linha in handle:
+                artista = linha.strip()
+                if not artista:
+                    continue
+                artista_stats = importar_musicas_por_artista(
+                    artista,
+                    conn=conn,
+                    session=session,
+                    genero_cache=genero_cache,
+                    workers=workers,
+                )
+                stats.merge(artista_stats)
+
+        logger.info('Importação de músicas concluída. %s', stats.to_dict())
+        if stats.falhas:
+            logger.warning('Falhas de importação registradas em %s', ERROR_LOG_PATH)
+        return stats
+    finally:
+        session.close()
+        conn.close()

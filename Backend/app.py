@@ -1,6 +1,8 @@
 """
 MediaList API.
 """
+import os
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -87,11 +89,15 @@ def forbidden(_error):
 
 
 if __name__ == '__main__':
+    host = os.getenv('APP_HOST', '0.0.0.0')
+    port = int(os.getenv('APP_PORT', '5000'))
+    debug = os.getenv('APP_DEBUG', 'true').lower() == 'true'
+
     print("=" * 70)
     print("🚀 MediaList API")
     print("=" * 70)
-    print("🌐 Servidor: http://localhost:5000")
+    print(f"🌐 Servidor: http://localhost:{port}")
     print("💾 Banco relacional: medialist_db")
     print("🎬 Tipos suportados: animes, mangás, jogos e músicas")
     print("=" * 70)
-    app.run(debug=True, port=5000)
+    app.run(host=host, debug=debug, port=port)
