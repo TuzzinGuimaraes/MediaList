@@ -27,6 +27,7 @@ def listar_animes():
             'busca': request.args.get('busca'),
             'genero': request.args.get('genero'),
             'status': request.args.get('status'),
+            'estudio': request.args.get('estudio'),
             'ordem': request.args.get('ordem', 'nota_media'),
         }
         animes = anime_repository.buscar_por_tipo('anime', pagina=pagina, limite=por_pagina, filtros=filtros)

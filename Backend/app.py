@@ -18,7 +18,6 @@ from routes import (
     mangas_bp,
     midias_bp,
     moderacao_bp,
-    musicas_bp,
     noticias_bp,
     preferencias_bp,
     usuario_bp,
@@ -52,7 +51,6 @@ app.register_blueprint(midias_bp, url_prefix='/api/midias')
 app.register_blueprint(animes_bp, url_prefix='/api/animes')
 app.register_blueprint(mangas_bp, url_prefix='/api/mangas')
 app.register_blueprint(jogos_bp, url_prefix='/api/jogos')
-app.register_blueprint(musicas_bp, url_prefix='/api/musicas')
 
 app.register_blueprint(lista_bp, url_prefix='/api/lista')
 app.register_blueprint(avaliacoes_bp, url_prefix='/api/avaliacoes')
@@ -98,6 +96,6 @@ if __name__ == '__main__':
     print("=" * 70)
     print(f"🌐 Servidor: http://localhost:{port}")
     print("💾 Banco relacional: medialist_db")
-    print("🎬 Tipos suportados: animes, mangás, jogos e músicas")
+    print("🎬 Tipos suportados: animes, mangás e jogos")
     print("=" * 70)
     app.run(host=host, debug=debug, port=port)

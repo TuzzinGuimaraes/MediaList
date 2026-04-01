@@ -31,9 +31,6 @@ MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'medialist_updates_db')
 ANILIST_API_URL = os.getenv('ANILIST_API_URL', 'https://graphql.anilist.co')
 RAWG_API_KEY = os.getenv('RAWG_API_KEY', '')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
-MB_USER_AGENT = os.getenv('MB_USER_AGENT', 'MediaListApp/1.0 (dev@exemplo.com)')
-MB_API_URL = os.getenv('MB_API_URL', 'https://musicbrainz.org/ws/2')
-CAA_API_URL = os.getenv('CAA_API_URL', 'https://coverartarchive.org')
 
 # Token Blocklist
 token_blocklist = set()

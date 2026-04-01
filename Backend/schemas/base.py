@@ -110,6 +110,8 @@ class ListaSchema(BaseSchema):
         'comentario': str,
         'data_inicio': str,
         'data_conclusao': str,
+        'total_rewatches': int,
+        'privado': bool,
     }
     cast_fields = {
         'progresso_atual': int,
@@ -117,4 +119,6 @@ class ListaSchema(BaseSchema):
         'progresso_total': int,
         'nota_usuario': float,
         'favorito': _coerce_bool,
+        'total_rewatches': int,
+        'privado': _coerce_bool,
     }

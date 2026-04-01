@@ -1,11 +1,10 @@
 # MediaList
 
-Sistema full stack para catálogo, listas pessoais, avaliações e notícias de quatro tipos de mídia:
+Sistema full stack para catálogo, listas pessoais, avaliações e notícias de três tipos de mídia:
 
 - animes
 - mangás
 - jogos
-- músicas
 
 O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, MySQL e MongoDB orquestrados a partir de um único [docker-compose.yml](/home/artur/anilist/Projeto_LabBancoDados/docker-compose.yml).
 
@@ -16,7 +15,6 @@ O MediaList começou como um sistema de animes e foi expandido para um modelo mu
 - `animes`
 - `mangas`
 - `jogos`
-- `musicas`
 
 Além disso, o sistema oferece:
 
@@ -26,6 +24,7 @@ Além disso, o sistema oferece:
 - avaliações e nota média agregada
 - notificações e notícias com MongoDB
 - importação automática de catálogos externos
+- alternância de sessão entre `animanga` e `jogos`
 
 ## Stack
 
@@ -117,6 +116,7 @@ Isso sobe:
 - `mongodb` em `localhost:27017`
 
 Na primeira subida com volume vazio, o MySQL aplica automaticamente o schema de [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql).
+Esse bootstrap cria apenas a estrutura do banco e os dados estruturais minimos do sistema, sem catalogo pre-populado de midias.
 
 ### 3. Suba ferramentas auxiliares de desenvolvimento, se quiser
 
@@ -163,7 +163,9 @@ O schema principal está em [Banco DDL.sql](/home/artur/anilist/Projeto_LabBanco
 - triggers
 - procedures
 - views
-- dados iniciais
+- dados estruturais iniciais, como grupos de usuarios e generos
+
+O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser populado pelos importadores em [Backend/importacao](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao).
 
 ## Desenvolvimento local
 
@@ -213,13 +215,14 @@ O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os f
 | `make services-logs` | Mostra logs do Docker Compose |
 | `make db-schema` | Reaplica `Banco DDL.sql` no MySQL do Docker |
 | `make db-shell` | Abre o cliente MySQL dentro do container |
+| `make db-dump` | Gera um dump SQL completo em `./dumps` |
+| `make db-restore DUMP_FILE=...` | Restaura um dump SQL no MySQL do Docker |
 | `make smoke-mysql` | Executa o smoke test de MySQL no container backend |
 | `make smoke-mongo` | Executa o smoke test de MongoDB no container backend |
 | `make smoke-permissions` | Executa o smoke test de permissões no container backend |
 | `make import-animes` | Importa animes no container backend |
 | `make import-mangas` | Importa mangás no container backend |
 | `make import-jogos` | Importa jogos no container backend |
-| `make import-musicas` | Importa músicas no container backend |
 | `make import-all` | Executa todos os importadores no container backend |
 | `make install` | Instala dependências locais para desenvolvimento sem Docker |
 | `make backend-dev` | Inicia a API Flask no host |
@@ -231,6 +234,8 @@ O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os f
 
 Os importadores ficam em [Backend/importacao](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao).
 
+Depois de subir o projeto com banco vazio, rode a importacao para popular o catalogo. Sem esse passo, o sistema inicia corretamente, mas sem midias cadastradas.
+
 ### Fontes
 
 - AniList GraphQL
@@ -238,9 +243,33 @@ Os importadores ficam em [Backend/importacao](/home/artur/anilist/Projeto_LabBan
   - mangás
 - RAWG
   - jogos
-- MusicBrainz + Cover Art Archive
-  - músicas
 
+## Backup e restore do MySQL
+
+### Gerar dump
+
+```bash
+make db-dump
+```
+
+Por padrão, o arquivo é salvo em `./dumps/medialist_YYYYMMDD_HHMMSS.sql`.
+
+Se quiser definir o nome manualmente:
+
+```bash
+make db-dump DUMP_FILE=$(pwd)/dumps/meu_dump.sql
+```
+
+### Restaurar dump
+
+```bash
+make db-restore DUMP_FILE=$(pwd)/dumps/meu_dump.sql
+```
+
+Observação:
+
+- o restore recria o banco configurado em `DB_NAME` antes de importar o dump;
+- isso sobrescreve completamente o conteúdo atual do banco MySQL do projeto.
 ### Entrypoints
 
 Via `make`:
@@ -249,7 +278,6 @@ Via `make`:
 make import-animes
 make import-mangas
 make import-jogos
-make import-musicas
 make import-all
 ```
 
@@ -259,7 +287,6 @@ Via execução direta no container:
 docker compose run --rm backend python -m importacao.run_import --tipo anime --paginas 10
 docker compose run --rm backend python -m importacao.run_import --tipo manga --paginas 10
 docker compose run --rm backend python -m importacao.run_import --tipo jogo --paginas 10
-docker compose run --rm backend python -m importacao.run_import --tipo musica
 docker compose run --rm backend python -m importacao.run_import --tipo todos --paginas 10
 ```
 
@@ -274,14 +301,12 @@ DB_NAME=medialist_db
 DB_USER=media_app_user
 DB_PASSWORD='MediaList@2025!Secure'
 RAWG_API_KEY='sua-chave'
-MB_USER_AGENT='MediaListApp/1.0 (seu_email@exemplo.com)'
 ```
 
 Observações:
 
 - AniList não exige chave
 - RAWG exige `RAWG_API_KEY`
-- MusicBrainz exige `MB_USER_AGENT` descritivo
 
 ## API
 
@@ -297,11 +322,12 @@ Observações:
 - `GET /api/midias?tipo=anime`
 - `GET /api/midias?tipo=manga`
 - `GET /api/midias?tipo=jogo`
-- `GET /api/midias?tipo=musica`
 - `GET /api/midias/<id_midia>`
 - `PUT /api/midias/<id_midia>`
 - `DELETE /api/midias/<id_midia>`
 - `POST /api/midias/<id_midia>/atualizacoes`
+- `GET /api/midias/<id_midia>/distribuicao`
+- `GET /api/midias/trending`
 
 ### Rotas específicas por tipo
 
@@ -312,12 +338,11 @@ Observações:
 - `GET /api/mangas/demografia/<demografia>`
 - `GET|POST /api/jogos`
 - `GET /api/jogos/plataforma/<plataforma>`
-- `GET|POST /api/musicas`
-- `GET /api/musicas/artista/<artista>`
 
 ### Lista e avaliações
 
 - `GET /api/lista`
+- `POST /api/lista`
 - `POST /api/lista/adicionar`
 - `PUT /api/lista/<id_lista>`
 - `PUT /api/lista/<id_lista>/progresso`

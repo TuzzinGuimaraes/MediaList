@@ -104,8 +104,13 @@ yarn-error.log*
 collected_static/
 Backend/importacao_logs/*
 !Backend/importacao_logs/.gitkeep
+dumps/*
+!dumps/.gitkeep
 
 # Documentação local
 **/*.md
 !README.md
 !**/README.md
+
+
+Previews/

@@ -8,7 +8,6 @@ STATUS_CONSUMO_VALIDOS = {
     'assistindo', 'completo', 'planejado', 'pausado', 'abandonado',
     'lendo', 'lido',
     'jogando', 'zerado', 'platinado', 'na_fila',
-    'ouvindo', 'ouvido',
 }
 
 

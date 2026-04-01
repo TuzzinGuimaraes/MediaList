@@ -25,6 +25,10 @@ def _normalizar_payload_lista(data: dict) -> dict:
         payload['progresso_atual'] = payload['episodios_assistidos']
     if 'status_consumo' in payload and 'status' not in payload:
         payload['status'] = payload['status_consumo']
+    if 'data_fim' in payload and 'data_conclusao' not in payload:
+        payload['data_conclusao'] = payload['data_fim']
+    if 'notas_pessoais' in payload and 'comentario' not in payload:
+        payload['comentario'] = payload['notas_pessoais']
     return payload
 
 
@@ -72,6 +76,33 @@ def adicionar_midia_lista():
             mensagem = result[0]['mensagem']
             if 'já está na lista' in mensagem:
                 return jsonify({'erro': mensagem}), 400
+
+            item = lista_repository.obter_item_usuario(user_id, id_midia)
+            if item:
+                if 'progresso_atual' in payload and payload['progresso_atual'] not in (None, 0):
+                    lista_repository.atualizar_progresso(item['id_lista'], int(payload['progresso_atual']), status)
+
+                update_payload = {}
+                if 'nota_usuario' in payload:
+                    update_payload['nota_usuario'] = payload['nota_usuario']
+                if 'favorito' in payload:
+                    update_payload['favorito'] = payload['favorito']
+                if 'comentario' in payload:
+                    update_payload['comentario'] = payload['comentario']
+                if 'data_inicio' in payload:
+                    update_payload['data_inicio'] = payload['data_inicio']
+                if 'data_conclusao' in payload:
+                    update_payload['data_conclusao'] = payload['data_conclusao']
+                if 'progresso_total' in payload:
+                    update_payload['progresso_total'] = payload['progresso_total']
+                if 'total_rewatches' in payload:
+                    update_payload['total_rewatches'] = payload['total_rewatches']
+                if 'privado' in payload:
+                    update_payload['privado'] = payload['privado']
+
+                if update_payload:
+                    lista_repository.atualizar_item(item['id_lista'], update_payload)
+
             return jsonify({'mensagem': mensagem}), 201
 
         return jsonify({'mensagem': 'Mídia adicionada à lista!'}), 201
@@ -147,6 +178,10 @@ def atualizar_item_lista(lista_id):
             update_payload['data_inicio'] = payload['data_inicio']
         if 'data_conclusao' in payload:
             update_payload['data_conclusao'] = payload['data_conclusao']
+        if 'total_rewatches' in payload:
+            update_payload['total_rewatches'] = payload['total_rewatches']
+        if 'privado' in payload:
+            update_payload['privado'] = payload['privado']
         if 'progresso_total' in payload:
             update_payload['progresso_total'] = payload['progresso_total']
 

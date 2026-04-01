@@ -9,7 +9,6 @@ import sys
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
 from importacao.importar_mangas import importar_mangas
-from importacao.importar_musicas import importar_musicas_por_lista
 from importacao.utils import ImportStats, logger, registrar_falha_importacao
 
 
@@ -35,9 +34,8 @@ def executar_importacao(tipo_midia: str, origem: str, funcao, *args, **kwargs) -
 
 def main():
     parser = argparse.ArgumentParser(description='Importador de mídias para MediaList DB')
-    parser.add_argument('--tipo', choices=['anime', 'manga', 'jogo', 'musica', 'todos'], default='todos')
+    parser.add_argument('--tipo', choices=['anime', 'manga', 'jogo', 'todos'], default='todos')
     parser.add_argument('--paginas', type=int, default=20, help='Número de páginas a importar')
-    parser.add_argument('--seed-file', default='artistas_seed.txt', help='Arquivo de artistas para músicas')
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
     args = parser.parse_args()
 
@@ -59,18 +57,6 @@ def main():
     if args.tipo in ('jogo', 'todos'):
         print('=== Importando Jogos (RAWG) ===')
         stats, erro_fatal = executar_importacao('jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers)
-        resumo.append(stats)
-        houve_erro_fatal = houve_erro_fatal or erro_fatal
-
-    if args.tipo in ('musica', 'todos'):
-        print('=== Importando Músicas (MusicBrainz) ===')
-        stats, erro_fatal = executar_importacao(
-            'musica',
-            'MusicBrainz',
-            importar_musicas_por_lista,
-            args.seed_file,
-            workers=args.workers,
-        )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
 

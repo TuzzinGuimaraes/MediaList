@@ -11,7 +11,7 @@ from flask_jwt_extended import jwt_required
 
 from decorators import permission_required
 from repositories import MidiaRepository
-from schemas import AnimeSchema, JogoSchema, MangaSchema, MusicaSchema, ValidationError
+from schemas import AnimeSchema, JogoSchema, MangaSchema, ValidationError
 
 midias_bp = Blueprint('midias', __name__)
 
@@ -21,14 +21,12 @@ SCHEMA_BY_TYPE = {
     'anime': AnimeSchema(),
     'manga': MangaSchema(),
     'jogo': JogoSchema(),
-    'musica': MusicaSchema(),
 }
 
 NOTIFY_STATUSES = {
     'anime': {'assistindo', 'planejado'},
     'manga': {'lendo', 'planejado'},
     'jogo': {'jogando', 'na_fila', 'planejado'},
-    'musica': {'ouvindo', 'planejado'},
 }
 
 
@@ -141,12 +139,12 @@ def listar_midias():
             'genero': request.args.get('genero'),
             'status': request.args.get('status'),
             'autor': request.args.get('autor'),
+            'estudio': request.args.get('estudio'),
             'demografia': request.args.get('demografia'),
             'plataforma': request.args.get('plataforma'),
+            'desenvolvedor': request.args.get('desenvolvedor'),
             'modo_jogo': request.args.get('modo_jogo'),
             'artista': request.args.get('artista'),
-            'tipo_lancamento': request.args.get('tipo_lancamento'),
-            'genero_musical': request.args.get('genero_musical'),
             'ordem': request.args.get('ordem', 'nota_media'),
         }
 
@@ -221,3 +219,43 @@ def deletar_midia(id_midia):
 def criar_atualizacao_midia(id_midia):
     """Criar atualização/notificação de mídia."""
     return _criar_atualizacao_midia(id_midia)
+
+
+@midias_bp.route('/<string:id_midia>/distribuicao', methods=['GET'])
+def distribuicao_midia(id_midia):
+    """Distribuição de status dos usuários para uma mídia."""
+    try:
+        conn = database.get_db_connection()
+        if not conn:
+            return jsonify({'distribuicao': []}), 200
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT status_consumo, COUNT(*) AS total
+            FROM lista_usuarios
+            WHERE id_midia = %s
+            GROUP BY status_consumo
+            ORDER BY total DESC
+            """,
+            (id_midia,),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify({'distribuicao': rows}), 200
+    except Exception as exc:
+        print(f"Erro ao buscar distribuição: {exc}")
+        return jsonify({'erro': 'Erro ao buscar distribuição'}), 500
+
+
+@midias_bp.route('/trending', methods=['GET'])
+def trending_midias():
+    """Mídias mais bem avaliadas de um tipo."""
+    try:
+        tipo = request.args.get('tipo', 'anime')
+        limite = min(int(request.args.get('limite', 10)), 50)
+        midias = midia_repository.buscar_por_tipo(tipo, pagina=1, limite=limite, filtros={'ordem': 'nota_media'})
+        return jsonify({'midias': midias}), 200
+    except Exception as exc:
+        print(f"Erro ao buscar trending: {exc}")
+        return jsonify({'erro': 'Erro ao buscar trending'}), 500

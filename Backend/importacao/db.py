@@ -27,7 +27,7 @@ def _callproc(cursor, proc_name, params):
 def upsert_genero(
     conn,
     nome_genero: str,
-    aplicavel_a: str = 'anime,manga,jogo,musica',
+    aplicavel_a: str = 'anime,manga,jogo',
     genero_cache: dict[str, int] | None = None,
 ) -> int:
     nome_genero = nome_genero.strip()
@@ -158,33 +158,3 @@ def inserir_ou_atualizar_jogo(conn, dados: dict) -> dict:
     finally:
         cursor.close()
     return {'id_midia': result[15], 'ja_existia': bool(result[16])}
-
-
-def inserir_ou_atualizar_musica(conn, dados: dict) -> dict:
-    cursor = conn.cursor()
-    try:
-        result = _callproc(
-            cursor,
-            'inserir_ou_atualizar_musica',
-            [
-                dados['titulo_original'],
-                dados.get('titulo_portugues'),
-                dados.get('sinopse'),
-                dados.get('data_lancamento'),
-                dados.get('poster_url'),
-                dados.get('banner_url'),
-                dados['artista'],
-                dados.get('album'),
-                dados.get('tipo_lancamento'),
-                dados.get('gravadora'),
-                dados.get('duracao_total'),
-                dados.get('numero_faixas'),
-                dados.get('genero_musical'),
-                dados.get('musicbrainz_mbid'),
-                '',
-                False,
-            ],
-        )
-    finally:
-        cursor.close()
-    return {'id_midia': result[14], 'ja_existia': bool(result[15])}

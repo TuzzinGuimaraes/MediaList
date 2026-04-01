@@ -74,33 +74,22 @@ class MidiaRepository:
             j.classificacao,
             j.trailer_url AS jogo_trailer_url,
             j.rawg_slug,
-            mu.artista AS musica_artista,
-            mu.album,
-            mu.tipo_lancamento,
-            mu.gravadora,
-            mu.duracao_total,
-            mu.numero_faixas,
-            mu.genero_musical,
-            mu.musicbrainz_mbid,
             COALESCE(a.trailer_url, j.trailer_url) AS trailer_url,
             CASE tm.nome_tipo
                 WHEN 'anime' THEN a.status_anime
                 WHEN 'manga' THEN ma.status_manga
                 WHEN 'jogo' THEN j.status_jogo
-                WHEN 'musica' THEN mu.tipo_lancamento
                 ELSE NULL
             END AS status_catalogo,
             CASE tm.nome_tipo
                 WHEN 'anime' THEN a.numero_episodios
                 WHEN 'manga' THEN ma.numero_capitulos
-                WHEN 'musica' THEN mu.numero_faixas
                 ELSE NULL
             END AS progresso_total_padrao,
             CASE tm.nome_tipo
                 WHEN 'anime' THEN 'episodios'
                 WHEN 'manga' THEN 'capitulos'
                 WHEN 'jogo' THEN 'horas'
-                WHEN 'musica' THEN 'faixas'
                 ELSE NULL
             END AS unidade_progresso,
             (
@@ -122,7 +111,6 @@ class MidiaRepository:
         LEFT JOIN animes a ON a.id_midia = m.id_midia
         LEFT JOIN mangas ma ON ma.id_midia = m.id_midia
         LEFT JOIN jogos j ON j.id_midia = m.id_midia
-        LEFT JOIN musicas mu ON mu.id_midia = m.id_midia
     """
 
     BASE_FIELDS = {
@@ -175,19 +163,6 @@ class MidiaRepository:
                 'classificacao': 'classificacao',
                 'trailer_url': 'trailer_url',
                 'rawg_slug': 'rawg_slug',
-            },
-        },
-        'musica': {
-            'table': 'musicas',
-            'fields': {
-                'artista': 'artista',
-                'album': 'album',
-                'tipo_lancamento': 'tipo_lancamento',
-                'gravadora': 'gravadora',
-                'duracao_total': 'duracao_total',
-                'numero_faixas': 'numero_faixas',
-                'genero_musical': 'genero_musical',
-                'musicbrainz_mbid': 'musicbrainz_mbid',
             },
         },
     }
@@ -256,18 +231,15 @@ class MidiaRepository:
                 clauses.append("ma.status_manga = %s")
             elif tipo == 'jogo':
                 clauses.append("j.status_jogo = %s")
-            elif tipo == 'musica':
-                clauses.append("mu.tipo_lancamento = %s")
             else:
                 clauses.append("""
                     (
                         a.status_anime = %s
                         OR ma.status_manga = %s
                         OR j.status_jogo = %s
-                        OR mu.tipo_lancamento = %s
                     )
                 """)
-                params.extend([status, status, status, status])
+                params.extend([status, status, status])
                 status = None
             if status is not None:
                 params.append(status)
@@ -275,6 +247,10 @@ class MidiaRepository:
         if filtros.get('autor'):
             clauses.append("ma.autor LIKE %s")
             params.append(f"%{filtros['autor']}%")
+
+        if filtros.get('estudio'):
+            clauses.append("a.estudio LIKE %s")
+            params.append(f"%{filtros['estudio']}%")
 
         if filtros.get('demografia'):
             clauses.append("ma.demografia = %s")
@@ -284,24 +260,17 @@ class MidiaRepository:
             clauses.append("j.plataformas LIKE %s")
             params.append(f"%{filtros['plataforma']}%")
 
+        if filtros.get('desenvolvedor'):
+            clauses.append("j.desenvolvedor LIKE %s")
+            params.append(f"%{filtros['desenvolvedor']}%")
+
         if filtros.get('modo_jogo'):
             clauses.append("j.modo_jogo = %s")
             params.append(filtros['modo_jogo'])
 
         if filtros.get('artista'):
-            if tipo == 'manga':
-                clauses.append("ma.artista LIKE %s")
-            else:
-                clauses.append("mu.artista LIKE %s")
+            clauses.append("ma.artista LIKE %s")
             params.append(f"%{filtros['artista']}%")
-
-        if filtros.get('tipo_lancamento'):
-            clauses.append("mu.tipo_lancamento = %s")
-            params.append(filtros['tipo_lancamento'])
-
-        if filtros.get('genero_musical'):
-            clauses.append("mu.genero_musical LIKE %s")
-            params.append(f"%{filtros['genero_musical']}%")
 
         return (" WHERE " + " AND ".join(clauses)) if clauses else "", params
 
@@ -548,20 +517,6 @@ class JogoRepository(MidiaRepository):
         return self.buscar_por_tipo('jogo', pagina=1, limite=50, filtros={'plataforma': plataforma})
 
 
-class MusicaRepository(MidiaRepository):
-    def inserir_musica(self, dados_base: dict[str, Any], dados_musica: dict[str, Any]) -> str:
-        return self.inserir_midia_base('musica', {**dados_base, **dados_musica})
-
-    def atualizar_musica(self, id_midia: str, dados: dict[str, Any]) -> bool:
-        return self.atualizar_midia_base(id_midia, dados)
-
-    def buscar_musica_completa(self, id_midia: str) -> dict[str, Any] | None:
-        return self.buscar_por_id(id_midia, expected_type='musica')
-
-    def buscar_por_artista(self, artista: str) -> list[dict[str, Any]]:
-        return self.buscar_por_tipo('musica', pagina=1, limite=50, filtros={'artista': artista, 'ordem': 'titulo'})
-
-
 class ListaRepository(MidiaRepository):
     """Operações da lista do usuário."""
 
@@ -580,6 +535,8 @@ class ListaRepository(MidiaRepository):
             lu.data_inicio,
             lu.data_conclusao,
             lu.comentario,
+            lu.total_rewatches,
+            lu.privado,
             lu.data_adicao,
             lu.data_atualizacao
             {self.BASE_FROM}
@@ -622,6 +579,8 @@ class ListaRepository(MidiaRepository):
                 'comentario': 'comentario',
                 'data_inicio': 'data_inicio',
                 'data_conclusao': 'data_conclusao',
+                'total_rewatches': 'total_rewatches',
+                'privado': 'privado',
                 'progresso_total': 'progresso_total',
             }
 
@@ -633,7 +592,7 @@ class ListaRepository(MidiaRepository):
                     fields.append("nota_usuario = NULL")
                     continue
 
-                value = bool(dados[field]) if field == 'favorito' else dados[field]
+                value = bool(dados[field]) if field in {'favorito', 'privado'} else dados[field]
                 fields.append(f"{column} = %s")
                 params.append(value)
 
@@ -662,3 +621,13 @@ class ListaRepository(MidiaRepository):
     def obter_owner(self, id_lista: str) -> str | None:
         row = self._fetch_one("SELECT id_usuario FROM lista_usuarios WHERE id_lista = %s", (id_lista,))
         return row['id_usuario'] if row else None
+
+    def obter_item_usuario(self, id_usuario: str, id_midia: str) -> dict[str, Any] | None:
+        return self._fetch_one(
+            """
+            SELECT id_lista, id_usuario, id_midia
+            FROM lista_usuarios
+            WHERE id_usuario = %s AND id_midia = %s
+            """,
+            (id_usuario, id_midia),
+        )

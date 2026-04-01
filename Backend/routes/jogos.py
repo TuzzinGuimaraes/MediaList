@@ -25,6 +25,7 @@ def listar_jogos():
             'genero': request.args.get('genero'),
             'status': request.args.get('status'),
             'plataforma': request.args.get('plataforma'),
+            'desenvolvedor': request.args.get('desenvolvedor'),
             'modo_jogo': request.args.get('modo_jogo'),
             'ordem': request.args.get('ordem', 'nota_media'),
         }

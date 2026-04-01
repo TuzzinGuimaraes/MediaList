@@ -7,7 +7,6 @@ from .midia_repository import (
     ListaRepository,
     MangaRepository,
     MidiaRepository,
-    MusicaRepository,
 )
 
 __all__ = [
@@ -15,6 +14,5 @@ __all__ = [
     'AnimeRepository',
     'MangaRepository',
     'JogoRepository',
-    'MusicaRepository',
     'ListaRepository',
 ]

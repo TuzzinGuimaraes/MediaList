@@ -9,7 +9,6 @@ from .lista import lista_bp
 from .mangas import mangas_bp
 from .midias import midias_bp
 from .moderacao import moderacao_bp
-from .musicas import musicas_bp
 from .noticias import noticias_bp
 from .preferencias import preferencias_bp
 from .usuario import usuario_bp
@@ -21,7 +20,6 @@ __all__ = [
     'animes_bp',
     'mangas_bp',
     'jogos_bp',
-    'musicas_bp',
     'midias_bp',
     'lista_bp',
     'avaliacoes_bp',

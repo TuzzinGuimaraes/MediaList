@@ -26,7 +26,6 @@ INSERT INTO sequences (seq_name, seq_value, prefix, description) VALUES
     ('avaliacao_seq', 1, 'AVL', 'Sequência para avaliações'),
     ('midia_seq', 20000, 'MID', 'Sequência para IDs de mídias (central)'),
     ('jogo_seq', 30000, 'JOG', 'Sequência para IDs de jogos'),
-    ('musica_seq', 40000, 'MUS', 'Sequência para IDs de músicas'),
     ('manga_seq', 50000, 'MNG', 'Sequência para IDs de mangás');
 
 -- ============================================
@@ -143,8 +142,7 @@ CREATE TABLE tipo_midia (
 INSERT INTO tipo_midia (nome_tipo, label) VALUES
     ('anime', 'Anime'),
     ('manga', 'Mangá'),
-    ('jogo', 'Jogo'),
-    ('musica', 'Música');
+    ('jogo', 'Jogo');
 
 CREATE TABLE usuarios (
     id_usuario VARCHAR(50) NOT NULL,
@@ -253,25 +251,11 @@ CREATE TABLE mangas (
     FOREIGN KEY (id_midia) REFERENCES midias(id_midia) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-CREATE TABLE musicas (
-    id_midia VARCHAR(50) NOT NULL,
-    artista VARCHAR(200) NOT NULL,
-    album VARCHAR(200),
-    tipo_lancamento ENUM('album', 'ep', 'single', 'compilacao') DEFAULT 'album',
-    gravadora VARCHAR(100),
-    duracao_total INT COMMENT 'Duração total em segundos',
-    numero_faixas INT,
-    genero_musical VARCHAR(100),
-    musicbrainz_mbid CHAR(36) NULL UNIQUE,
-    PRIMARY KEY (id_midia),
-    FOREIGN KEY (id_midia) REFERENCES midias(id_midia) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
 CREATE TABLE generos (
     id_genero INT NOT NULL AUTO_INCREMENT,
     nome_genero VARCHAR(50) NOT NULL UNIQUE,
     descricao TEXT,
-    aplicavel_a SET('anime', 'manga', 'jogo', 'musica') DEFAULT 'anime,manga,jogo,musica',
+    aplicavel_a SET('anime', 'manga', 'jogo') DEFAULT 'anime,manga,jogo',
     PRIMARY KEY (id_genero),
     INDEX idx_nome (nome_genero)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
@@ -292,8 +276,7 @@ CREATE TABLE lista_usuarios (
     status_consumo ENUM(
         'assistindo', 'completo', 'planejado', 'pausado', 'abandonado',
         'lendo', 'lido',
-        'jogando', 'zerado', 'platinado', 'na_fila',
-        'ouvindo', 'ouvido'
+        'jogando', 'zerado', 'platinado', 'na_fila'
     ) NOT NULL,
     progresso_atual INT DEFAULT 0,
     progresso_total INT,
@@ -302,6 +285,8 @@ CREATE TABLE lista_usuarios (
     data_inicio DATE,
     data_conclusao DATE,
     comentario TEXT,
+    total_rewatches INT DEFAULT 0,
+    privado BOOLEAN DEFAULT FALSE,
     data_adicao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id_lista),
@@ -380,7 +365,6 @@ BEGIN
         WHEN 'anime' THEN 'ANM'
         WHEN 'manga' THEN 'MNG'
         WHEN 'jogo' THEN 'JOG'
-        WHEN 'musica' THEN 'MUS'
         ELSE 'MID'
     END;
 
@@ -429,14 +413,12 @@ BEGIN
             SELECT CASE tm.nome_tipo
                 WHEN 'anime' THEN a.numero_episodios
                 WHEN 'manga' THEN ma.numero_capitulos
-                WHEN 'musica' THEN mu.numero_faixas
                 ELSE NULL
             END
             FROM midias m
             JOIN tipo_midia tm ON m.id_tipo = tm.id_tipo
             LEFT JOIN animes a ON a.id_midia = m.id_midia
             LEFT JOIN mangas ma ON ma.id_midia = m.id_midia
-            LEFT JOIN musicas mu ON mu.id_midia = m.id_midia
             WHERE m.id_midia = NEW.id_midia
         );
     END IF;
@@ -471,15 +453,6 @@ BEGIN
         IF v_total IS NOT NULL AND NEW.progresso_atual > v_total THEN
             SIGNAL SQLSTATE '45000'
                 SET MESSAGE_TEXT = 'Capítulos lidos não pode ser maior que o total de capítulos.';
-        END IF;
-    ELSEIF v_tipo = 'musica' THEN
-        SELECT numero_faixas INTO v_total
-        FROM musicas
-        WHERE id_midia = NEW.id_midia;
-
-        IF v_total IS NOT NULL AND NEW.progresso_atual > v_total THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Faixas ouvidas não pode ser maior que o total de faixas.';
         END IF;
     END IF;
 END$$
@@ -612,8 +585,6 @@ BEGIN
         SELECT numero_episodios INTO v_total FROM animes WHERE id_midia = v_id_midia;
     ELSEIF v_tipo = 'manga' THEN
         SELECT numero_capitulos INTO v_total FROM mangas WHERE id_midia = v_id_midia;
-    ELSEIF v_tipo = 'musica' THEN
-        SELECT numero_faixas INTO v_total FROM musicas WHERE id_midia = v_id_midia;
     ELSE
         SET v_total = NULL;
     END IF;
@@ -626,7 +597,6 @@ BEGIN
                 CASE v_tipo
                     WHEN 'anime' THEN 'completo'
                     WHEN 'manga' THEN 'lido'
-                    WHEN 'musica' THEN 'ouvido'
                     ELSE p_novo_status
                 END
             ELSE p_novo_status
@@ -646,8 +616,8 @@ BEGIN
         tm.nome_tipo AS tipo,
         tm.label AS label,
         COUNT(DISTINCT lu.id_midia) AS total_midias,
-        SUM(CASE WHEN lu.status_consumo IN ('completo', 'lido', 'zerado', 'platinado', 'ouvido') THEN 1 ELSE 0 END) AS concluidos,
-        SUM(CASE WHEN lu.status_consumo IN ('assistindo', 'lendo', 'jogando', 'ouvindo') THEN 1 ELSE 0 END) AS em_andamento,
+        SUM(CASE WHEN lu.status_consumo IN ('completo', 'lido', 'zerado', 'platinado') THEN 1 ELSE 0 END) AS concluidos,
+        SUM(CASE WHEN lu.status_consumo IN ('assistindo', 'lendo', 'jogando') THEN 1 ELSE 0 END) AS em_andamento,
         SUM(COALESCE(lu.progresso_atual, 0)) AS progresso_total_consumido,
         ROUND(AVG(lu.nota_usuario), 2) AS nota_media,
         COUNT(DISTINCT CASE WHEN lu.favorito = TRUE THEN lu.id_midia END) AS favoritos
@@ -943,97 +913,6 @@ BEGIN
     END IF;
 END$$
 
-CREATE PROCEDURE inserir_ou_atualizar_musica(
-    IN p_titulo_original VARCHAR(200),
-    IN p_titulo_portugues VARCHAR(200),
-    IN p_sinopse TEXT,
-    IN p_data_lancamento DATE,
-    IN p_poster_url VARCHAR(255),
-    IN p_banner_url VARCHAR(255),
-    IN p_artista VARCHAR(200),
-    IN p_album VARCHAR(200),
-    IN p_tipo_lancamento VARCHAR(20),
-    IN p_gravadora VARCHAR(100),
-    IN p_duracao_total INT,
-    IN p_numero_faixas INT,
-    IN p_genero_musical VARCHAR(100),
-    IN p_musicbrainz_mbid CHAR(36),
-    OUT p_id_midia VARCHAR(50),
-    OUT p_ja_existia BOOLEAN
-)
-BEGIN
-    DECLARE v_id_tipo TINYINT;
-    DECLARE v_id_midia_encontrada VARCHAR(50);
-
-    SELECT id_tipo INTO v_id_tipo FROM tipo_midia WHERE nome_tipo = 'musica';
-
-    IF p_musicbrainz_mbid IS NOT NULL AND p_musicbrainz_mbid <> '' THEN
-        SELECT id_midia INTO v_id_midia_encontrada
-        FROM musicas
-        WHERE musicbrainz_mbid = p_musicbrainz_mbid
-        LIMIT 1;
-    END IF;
-
-    IF v_id_midia_encontrada IS NULL THEN
-        SELECT m.id_midia INTO v_id_midia_encontrada
-        FROM midias m
-        JOIN musicas mu ON mu.id_midia = m.id_midia
-        WHERE m.titulo_original = p_titulo_original
-          AND mu.artista = p_artista
-        LIMIT 1;
-    END IF;
-
-    IF v_id_midia_encontrada IS NOT NULL THEN
-        UPDATE midias
-        SET titulo_portugues = COALESCE(p_titulo_portugues, titulo_portugues),
-            sinopse = COALESCE(p_sinopse, sinopse),
-            data_lancamento = COALESCE(p_data_lancamento, data_lancamento),
-            poster_url = COALESCE(p_poster_url, poster_url),
-            banner_url = COALESCE(p_banner_url, banner_url)
-        WHERE id_midia = v_id_midia_encontrada;
-
-        UPDATE musicas
-        SET album = COALESCE(p_album, album),
-            tipo_lancamento = COALESCE(p_tipo_lancamento, tipo_lancamento),
-            gravadora = COALESCE(p_gravadora, gravadora),
-            duracao_total = COALESCE(p_duracao_total, duracao_total),
-            numero_faixas = COALESCE(p_numero_faixas, numero_faixas),
-            genero_musical = COALESCE(p_genero_musical, genero_musical),
-            musicbrainz_mbid = COALESCE(p_musicbrainz_mbid, musicbrainz_mbid)
-        WHERE id_midia = v_id_midia_encontrada;
-
-        SET p_id_midia = v_id_midia_encontrada;
-        SET p_ja_existia = TRUE;
-    ELSE
-        INSERT INTO midias (
-            id_tipo, titulo_original, titulo_portugues, sinopse, data_lancamento,
-            poster_url, banner_url
-        ) VALUES (
-            v_id_tipo, p_titulo_original, COALESCE(p_titulo_portugues, p_titulo_original), p_sinopse, p_data_lancamento,
-            p_poster_url, p_banner_url
-        );
-
-        SET p_id_midia = (
-            SELECT id_midia
-            FROM midias
-            WHERE titulo_original = p_titulo_original
-              AND id_tipo = v_id_tipo
-            ORDER BY data_criacao DESC
-            LIMIT 1
-        );
-
-        INSERT INTO musicas (
-            id_midia, artista, album, tipo_lancamento, gravadora,
-            duracao_total, numero_faixas, genero_musical, musicbrainz_mbid
-        ) VALUES (
-            p_id_midia, p_artista, p_album, COALESCE(p_tipo_lancamento, 'album'), p_gravadora,
-            p_duracao_total, p_numero_faixas, p_genero_musical, p_musicbrainz_mbid
-        );
-
-        SET p_ja_existia = FALSE;
-    END IF;
-END$$
-
 DELIMITER ;
 
 -- ============================================
@@ -1051,7 +930,7 @@ SELECT
     m.poster_url,
     m.nota_media,
     COUNT(DISTINCT lu.id_usuario) AS total_usuarios,
-    SUM(CASE WHEN lu.status_consumo IN ('completo', 'lido', 'zerado', 'platinado', 'ouvido') THEN 1 ELSE 0 END) AS usuarios_concluiram,
+    SUM(CASE WHEN lu.status_consumo IN ('completo', 'lido', 'zerado', 'platinado') THEN 1 ELSE 0 END) AS usuarios_concluiram,
     SUM(CASE WHEN lu.favorito = TRUE THEN 1 ELSE 0 END) AS total_favoritos,
     GROUP_CONCAT(DISTINCT g.nome_genero ORDER BY g.nome_genero SEPARATOR ', ') AS generos
 FROM midias m
@@ -1102,7 +981,6 @@ SELECT
     COUNT(DISTINCT CASE WHEN tm.nome_tipo = 'anime' THEN lu.id_midia END) AS total_animes,
     COUNT(DISTINCT CASE WHEN tm.nome_tipo = 'manga' THEN lu.id_midia END) AS total_mangas,
     COUNT(DISTINCT CASE WHEN tm.nome_tipo = 'jogo' THEN lu.id_midia END) AS total_jogos,
-    COUNT(DISTINCT CASE WHEN tm.nome_tipo = 'musica' THEN lu.id_midia END) AS total_musicas,
     ROUND(AVG(lu.nota_usuario), 2) AS nota_media_usuario,
     COUNT(DISTINCT CASE WHEN lu.favorito = TRUE THEN lu.id_midia END) AS total_favoritos,
     GROUP_CONCAT(DISTINCT gu.nome_grupo SEPARATOR ', ') AS grupos
@@ -1123,7 +1001,6 @@ CREATE INDEX idx_avaliacoes_midia_nota ON avaliacoes(id_midia, nota);
 CREATE INDEX idx_midias_data_lancamento ON midias(data_lancamento);
 CREATE INDEX idx_jogos_plataformas ON jogos(plataformas);
 CREATE INDEX idx_mangas_autor ON mangas(autor);
-CREATE INDEX idx_musicas_artista ON musicas(artista);
 
 -- ============================================
 -- DADOS INICIAIS
@@ -1138,9 +1015,9 @@ INSERT INTO generos (nome_genero, descricao, aplicavel_a) VALUES
     ('Ação', 'Cenas de ação e combate', 'anime,manga,jogo'),
     ('Aventura', 'Jornadas e explorações', 'anime,manga,jogo'),
     ('Comédia', 'Obras humorísticas', 'anime,manga,jogo'),
-    ('Drama', 'Histórias dramáticas', 'anime,manga,jogo,musica'),
+    ('Drama', 'Histórias dramáticas', 'anime,manga,jogo'),
     ('Fantasia', 'Elementos fantásticos e mágicos', 'anime,manga,jogo'),
-    ('Ficção Científica', 'Tecnologia e futurismo', 'anime,manga,jogo,musica'),
+    ('Ficção Científica', 'Tecnologia e futurismo', 'anime,manga,jogo'),
     ('Romance', 'Histórias de amor', 'anime,manga'),
     ('Slice of Life', 'Cotidiano e vida real', 'anime,manga'),
     ('Sobrenatural', 'Elementos sobrenaturais', 'anime,manga'),
@@ -1163,101 +1040,7 @@ INSERT INTO generos (nome_genero, descricao, aplicavel_a) VALUES
     ('Simulação', 'Simuladores de vida, corrida e afins', 'jogo'),
     ('Puzzle', 'Quebra-cabeças e raciocínio', 'jogo'),
     ('Survival', 'Sobrevivência em mundo aberto', 'jogo'),
-    ('MOBA', 'Multiplayer Online Battle Arena', 'jogo'),
-    ('Rock', 'Gênero musical rock', 'musica'),
-    ('Pop', 'Música pop', 'musica'),
-    ('Hip-Hop', 'Hip-Hop e Rap', 'musica'),
-    ('Metal', 'Heavy Metal e subgêneros', 'musica'),
-    ('Jazz', 'Jazz e Blues', 'musica'),
-    ('Eletrônica', 'Música eletrônica e EDM', 'musica'),
-    ('Clássica', 'Música clássica e erudita', 'musica'),
-    ('Indie', 'Música independente', 'musica'),
-    ('Samba', 'Samba brasileiro', 'musica'),
-    ('Forró', 'Forró e música nordestina', 'musica');
-
-INSERT INTO midias (id_tipo, titulo_original, titulo_ingles, titulo_portugues, sinopse, data_lancamento, nota_media, poster_url, banner_url)
-VALUES (
-    (SELECT id_tipo FROM tipo_midia WHERE nome_tipo = 'anime'),
-    'Shingeki no Kyojin',
-    'Attack on Titan',
-    'Attack on Titan',
-    'A humanidade vive protegida por muralhas gigantes, defendendo-se de titãs comedores de humanos.',
-    '2013-04-07',
-    9.10,
-    'https://example.com/shingeki.jpg',
-    'https://example.com/shingeki-banner.jpg'
-);
-
-INSERT INTO animes (id_midia, status_anime, numero_episodios, duracao_episodio, classificacao_etaria, trailer_url, estudio, fonte_original)
-SELECT id_midia, 'finalizado', 75, 24, '16', 'https://youtube.com/watch?v=MGRm4IzK1SQ', 'Wit Studio', 'Manga'
-FROM midias
-WHERE titulo_original = 'Shingeki no Kyojin'
-ORDER BY data_criacao DESC
-LIMIT 1;
-
-INSERT INTO midias (id_tipo, titulo_original, titulo_portugues, sinopse, data_lancamento, nota_media, poster_url)
-VALUES (
-    (SELECT id_tipo FROM tipo_midia WHERE nome_tipo = 'jogo'),
-    'The Last of Us Part II',
-    'The Last of Us Part II',
-    'Ellie embarca em uma jornada brutal de vingança num mundo pós-apocalíptico.',
-    '2020-06-19',
-    9.30,
-    'https://example.com/tlou2.jpg'
-);
-
-INSERT INTO jogos (id_midia, desenvolvedor, publicadora, plataformas, status_jogo, modo_jogo, classificacao, rawg_slug)
-SELECT id_midia, 'Naughty Dog', 'Sony Interactive Entertainment', 'PS4, PS5', 'lancado', 'single', 'ESRB: M', 'the-last-of-us-part-ii'
-FROM midias
-WHERE titulo_original = 'The Last of Us Part II'
-ORDER BY data_criacao DESC
-LIMIT 1;
-
-INSERT INTO midias (id_tipo, titulo_original, titulo_portugues, sinopse, data_lancamento, nota_media, poster_url)
-VALUES (
-    (SELECT id_tipo FROM tipo_midia WHERE nome_tipo = 'musica'),
-    'Currents',
-    'Currents',
-    'Quinto álbum de estúdio da banda australiana Tame Impala.',
-    '2015-07-17',
-    8.70,
-    'https://example.com/currents.jpg'
-);
-
-INSERT INTO musicas (id_midia, artista, album, tipo_lancamento, gravadora, numero_faixas, duracao_total, genero_musical, musicbrainz_mbid)
-SELECT id_midia, 'Tame Impala', 'Currents', 'album', 'Modular Recordings', 13, 3109, 'Rock', '11111111-1111-1111-1111-111111111111'
-FROM midias
-WHERE titulo_original = 'Currents'
-ORDER BY data_criacao DESC
-LIMIT 1;
-
-INSERT INTO midias (id_tipo, titulo_original, titulo_ingles, titulo_portugues, sinopse, data_lancamento, nota_media, poster_url)
-VALUES (
-    (SELECT id_tipo FROM tipo_midia WHERE nome_tipo = 'manga'),
-    'Berserk',
-    'Berserk',
-    'Berserk',
-    'Guts, um mercenário solitário, busca vingança contra o deus demoníaco Griffith.',
-    '1989-08-25',
-    9.40,
-    'https://example.com/berserk.jpg'
-);
-
-INSERT INTO mangas (id_midia, status_manga, numero_capitulos, numero_volumes, autor, artista, publicadora_original, revista, demografia, anilist_id)
-SELECT id_midia, 'em_publicacao', 374, 41, 'Kentaro Miura', 'Kentaro Miura', 'Hakusensha', 'Young Animal', 'seinen', 5001
-FROM midias
-WHERE titulo_original = 'Berserk'
-ORDER BY data_criacao DESC
-LIMIT 1;
-
-INSERT INTO midias_generos (id_midia, id_genero)
-SELECT m.id_midia, g.id_genero
-FROM midias m
-JOIN generos g
-WHERE (m.titulo_original = 'Shingeki no Kyojin' AND g.nome_genero IN ('Ação', 'Drama', 'Fantasia'))
-   OR (m.titulo_original = 'Berserk' AND g.nome_genero IN ('Ação', 'Fantasia', 'Seinen'))
-   OR (m.titulo_original = 'The Last of Us Part II' AND g.nome_genero IN ('Ação', 'Aventura', 'Survival'))
-   OR (m.titulo_original = 'Currents' AND g.nome_genero IN ('Rock', 'Indie'));
+    ('MOBA', 'Multiplayer Online Battle Arena', 'jogo');
 
 -- ============================================
 -- SCRIPT DE MIGRAÇÃO (REFERÊNCIA)

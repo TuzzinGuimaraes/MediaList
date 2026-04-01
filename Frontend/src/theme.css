@@ -1,0 +1,41 @@
+:root {
+    --bg-primary: #0b1622;
+    --bg-secondary: #151f2e;
+    --bg-tertiary: #1a2634;
+    --bg-nav: #11161d;
+    --text-primary: #c7d5e0;
+    --text-secondary: #8899aa;
+    --text-bright: #edf1f5;
+    --accent-blue: #3db4f2;
+    --accent-blue-hover: #47bff5;
+    --accent-red: #e85d75;
+    --accent-green: #4caf50;
+    --accent-orange: #ef881a;
+    --accent-yellow: #f7c948;
+    --border: #253245;
+}
+
+/* Dark scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--bg-primary);
+}
