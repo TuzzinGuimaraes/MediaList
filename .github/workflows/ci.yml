@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config > /dev/null
+
+      - name: Build backend image
+        run: docker compose build backend
+
+      - name: Start backend dependencies
+        run: docker compose up -d mysql mongodb backend
+
+      - name: Run backend pytest suite
+        run: docker compose exec -T backend pytest -q
+
+      - name: Run backend smoke scripts
+        run: |
+          docker compose exec -T backend python test_mysql_connection.py
+          docker compose exec -T backend python test_mongo.py
+          docker compose exec -T backend python test_permissions.py
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v
+
+  frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Run frontend test suite
+        working-directory: Frontend
+        run: CI=true npm test -- --watchAll=false
+
+      - name: Build frontend bundle
+        working-directory: Frontend
+        run: npm run build
+
+      - name: Build frontend image
+        run: docker compose build frontend
