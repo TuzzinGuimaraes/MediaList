@@ -114,3 +114,11 @@ dumps/*
 
 
 Previews/
+# Documentação de domínio: exceção à regra **/*.md acima. Glossário e ADRs
+# registram decisões do projeto e servem a quem for mexer no repositório.
+!CONTEXT.md
+!docs/adr/*.md
+
+# Configuração de agente (CLAUDE.md, docs/agents/) fica de fora de propósito:
+# descreve o ferramental de desenvolvimento local, não o projeto. Não precisa de
+# regra própria — o **/*.md acima já cobre.
