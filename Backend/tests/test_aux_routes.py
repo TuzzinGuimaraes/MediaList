@@ -122,7 +122,9 @@ def test_utils_generos_filtra_por_tipo(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.get_json()['generos'][0]['nome_genero'] == 'Ação'
-    assert chamadas[0][1] == ('anime', '%anime%')
+    # O filtro é só FIND_IN_SET; o LIKE '%tipo%' que existia aqui era redundante
+    # e casava substrings ('nim' encontrava 'anime').
+    assert chamadas[0][1] == ('anime',)
 
 
 def test_utils_health_reporta_estado_conectado(client, monkeypatch):
@@ -213,3 +215,41 @@ def test_rotas_de_tipo_listam_e_validam_payload(client, admin_headers, monkeypat
     assert client.post('/api/animes', headers=admin_headers, json={}).status_code == 400
     assert client.post('/api/mangas', headers=admin_headers, json={'titulo_original': 'Teste'}).status_code == 400
     assert client.post('/api/jogos', headers=admin_headers, json={}).status_code == 400
+
+
+def test_generos_serializa_coluna_set_do_mysql(client, monkeypatch):
+    """`aplicavel_a` chega como set do conector; sem conversão o jsonify quebra."""
+    from routes import utils as utils_routes
+
+    monkeypatch.setattr(
+        utils_routes,
+        'execute_query',
+        lambda *_args, **_kwargs: [
+            {'id_genero': 1, 'nome_genero': 'Ação', 'aplicavel_a': {'jogo', 'anime', 'manga'}},
+        ],
+    )
+
+    response = client.get('/api/generos')
+
+    assert response.status_code == 200
+    assert response.get_json()['generos'][0]['aplicavel_a'] == ['anime', 'jogo', 'manga']
+
+
+def test_generos_filtra_por_tipo_sem_casar_substring(client, monkeypatch):
+    """'?tipo=nim' não pode casar com 'anime': o filtro é por elemento inteiro."""
+    from routes import utils as utils_routes
+
+    consultas = []
+
+    def fake_execute_query(query, params=None, fetch=True):
+        consultas.append((query, params))
+        return []
+
+    monkeypatch.setattr(utils_routes, 'execute_query', fake_execute_query)
+
+    client.get('/api/generos?tipo=anime')
+
+    query, params = consultas[0]
+    assert 'FIND_IN_SET' in query
+    assert 'LIKE' not in query
+    assert params == ('anime',)
