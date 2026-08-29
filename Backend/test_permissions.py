@@ -23,11 +23,17 @@ def run_checks() -> dict:
         if perms and perms.get('nivel_acesso') and perms.get('grupos'):
             report['usuarios_validos'] += 1
 
+    # Usuário inexistente não pode receber poder algum: a ausência de grupo
+    # nunca concede mais do que a presença de um.
     perms_fallback = get_user_permissions("USR-FAKE-00000")
     report['fallback_ok'] = bool(
         perms_fallback
         and perms_fallback.get('nivel_acesso') == 'usuario'
-        and perms_fallback.get('grupos') == 'Usuários'
+        and not perms_fallback.get('grupos')
+        and not perms_fallback.get('pode_criar')
+        and not perms_fallback.get('pode_editar')
+        and not perms_fallback.get('pode_deletar')
+        and not perms_fallback.get('pode_moderar')
     )
 
     return report

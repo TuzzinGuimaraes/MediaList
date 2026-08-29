@@ -10,19 +10,34 @@ from database import execute_query
 utils_bp = Blueprint('utils', __name__)
 
 
+def _serializar_genero(genero: dict) -> dict:
+    """Converte `aplicavel_a` de SET do MySQL para lista.
+
+    O conector devolve colunas SET como `set` do Python, que o jsonify não
+    serializa — sem esta conversão a rota inteira responde 500. A lista também
+    é a forma correta no JSON: um gênero se aplica a um conjunto de tipos.
+    """
+    aplicavel_a = genero.get('aplicavel_a')
+    if isinstance(aplicavel_a, (set, frozenset)):
+        genero = {**genero, 'aplicavel_a': sorted(aplicavel_a)}
+    return genero
+
+
 @utils_bp.route('/generos', methods=['GET'])
 def listar_generos():
     """Listar gêneros, opcionalmente filtrando por tipo."""
     try:
         tipo = request.args.get('tipo')
         if tipo:
+            # FIND_IN_SET casa o elemento inteiro. Um LIKE '%tipo%' aqui daria
+            # falso positivo — '?tipo=nim' casaria com 'anime'.
             generos = execute_query(
-                "SELECT * FROM generos WHERE FIND_IN_SET(%s, REPLACE(aplicavel_a, ',', ',')) OR aplicavel_a LIKE %s ORDER BY nome_genero",
-                (tipo, f"%{tipo}%"),
+                "SELECT * FROM generos WHERE FIND_IN_SET(%s, aplicavel_a) > 0 ORDER BY nome_genero",
+                (tipo,),
             )
         else:
             generos = execute_query("SELECT * FROM generos ORDER BY nome_genero")
-        return jsonify({'generos': generos or []}), 200
+        return jsonify({'generos': [_serializar_genero(g) for g in (generos or [])]}), 200
     except Exception as exc:
         print(f"Erro ao listar gêneros: {exc}")
         return jsonify({'erro': 'Erro ao buscar gêneros'}), 500

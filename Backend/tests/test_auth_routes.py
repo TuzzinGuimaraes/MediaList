@@ -7,17 +7,11 @@ from .helpers import FakeConnection, FakeCursor
 
 
 def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
-    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-0001'}])
+    # fetchone na ordem em que a rota consulta: id do usuário, depois id do grupo.
+    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-0001'}, {'id_grupo': 3}])
     connection = FakeConnection(cursor)
 
     monkeypatch.setattr(auth_routes, 'get_db_connection', lambda: connection)
-    chamadas_execute = []
-
-    def fake_execute_query(query, params=None, fetch=True):
-        chamadas_execute.append((query, params, fetch))
-        return None
-
-    monkeypatch.setattr(auth_routes, 'execute_query', fake_execute_query)
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste',
@@ -29,9 +23,40 @@ def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
     assert response.status_code == 201
     assert response.get_json()['id_usuario'] == 'USR-0001'
     assert connection.committed is True
+    assert connection.rolled_back is False
     assert any('INSERT INTO usuarios' in query for query, _params in cursor.executed)
-    assert chamadas_execute[0][0].startswith('INSERT INTO usuarios_grupos')
-    assert chamadas_execute[0][1] == ('USR-0001',)
+
+    # O grupo é localizado por nome, nunca por id fixo.
+    busca_grupo = [
+        (query, params) for query, params in cursor.executed
+        if 'FROM grupos_usuarios' in query
+    ]
+    assert busca_grupo and busca_grupo[0][1] == (auth_routes.GRUPO_PADRAO,)
+
+    # E o vínculo é criado na mesma transação, com o id que veio da busca.
+    vinculo = [
+        (query, params) for query, params in cursor.executed
+        if 'INSERT INTO usuarios_grupos' in query
+    ]
+    assert vinculo and vinculo[0][1] == ('USR-0001', 3)
+
+
+def test_registro_aborta_se_grupo_padrao_nao_existe(client, monkeypatch):
+    """Sem grupo padrão o usuário ficaria sem permissão alguma: melhor não criar."""
+    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-0002'}, None])
+    connection = FakeConnection(cursor)
+
+    monkeypatch.setattr(auth_routes, 'get_db_connection', lambda: connection)
+
+    response = client.post('/api/auth/registro', json={
+        'nome_completo': 'Teste',
+        'email': 'orfao@example.com',
+        'senha': '123456',
+    })
+
+    assert response.status_code == 500
+    assert connection.committed is False
+    assert connection.rolled_back is True
 
 
 def test_registro_rejeita_payload_incompleto(client):

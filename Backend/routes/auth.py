@@ -14,6 +14,11 @@ from config import token_blocklist
 
 auth_bp = Blueprint('auth', __name__)
 
+# Grupo atribuído a todo novo cadastro. Localizado por nome: a ordem em que o
+# schema semeia os grupos não é contrato, e um id fixo transforma qualquer
+# reordenação do seed em escalação de privilégio silenciosa.
+GRUPO_PADRAO = 'Usuários'
+
 # ============================================
 # AUTENTICAÇÃO
 # ============================================
@@ -48,28 +53,45 @@ def registro():
         if not connection:
             return jsonify({'erro': 'Erro ao conectar ao banco'}), 500
 
+        # Usuário e grupo padrão são criados na mesma transação: um usuário sem
+        # grupo não tem permissão alguma, então um cadastro pela metade é pior
+        # do que nenhum cadastro.
+        cursor = None
         try:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(query, params)
-            connection.commit()
+
             cursor.execute("SELECT id_usuario FROM usuarios WHERE email = %s", (data['email'],))
             result = cursor.fetchone()
-            cursor.close()
-            connection.close()
-
             if not result:
+                connection.rollback()
                 return jsonify({'erro': 'Email já cadastrado ou erro ao criar usuário'}), 400
 
             user_id = result['id_usuario']
+
+            cursor.execute(
+                "SELECT id_grupo FROM grupos_usuarios WHERE nome_grupo = %s",
+                (GRUPO_PADRAO,),
+            )
+            grupo = cursor.fetchone()
+            if not grupo:
+                connection.rollback()
+                print(f"Grupo padrão '{GRUPO_PADRAO}' ausente no banco; cadastro abortado")
+                return jsonify({'erro': 'Configuração de grupos inválida'}), 500
+
+            cursor.execute(
+                "INSERT INTO usuarios_grupos (id_usuario, id_grupo) VALUES (%s, %s)",
+                (user_id, grupo['id_grupo']),
+            )
+            connection.commit()
         except Exception as e:
-            if connection:
-                connection.close()
+            connection.rollback()
             print(f"Erro ao criar usuário: {e}")
             return jsonify({'erro': 'Email já cadastrado ou erro ao criar usuário'}), 400
-
-        # Adicionar ao grupo de usuários padrão
-        query_grupo = "INSERT INTO usuarios_grupos (id_usuario, id_grupo) VALUES (%s, 3)"
-        execute_query(query_grupo, (user_id,), fetch=False)
+        finally:
+            if cursor:
+                cursor.close()
+            connection.close()
 
         return jsonify({
             'mensagem': 'Usuário criado com sucesso!',
@@ -105,8 +127,10 @@ def login():
         permissions = get_user_permissions(usuario['id_usuario'])
         access_token = create_access_token(identity=usuario['id_usuario'])
 
-        # Atualizar último acesso
-        update_query = "UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s"
+        # Último acesso é escrito aqui, no único momento em que o usuário de fato
+        # acessou o sistema. Antes vinha de um trigger em qualquer UPDATE de
+        # `usuarios`, o que fazia editar a biografia contar como acesso.
+        update_query = "UPDATE usuarios SET ultimo_acesso = NOW() WHERE id_usuario = %s"
         execute_query(update_query, (usuario['id_usuario'],), fetch=False)
 
         return jsonify({

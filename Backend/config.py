@@ -2,9 +2,34 @@
 Configurações centrais da aplicação.
 """
 import os
+import sys
 from datetime import timedelta
 
 from dotenv import load_dotenv
+
+
+def _forcar_saida_utf8() -> None:
+    """Garante que stdout/stderr aceitem os emojis das mensagens de log.
+
+    No Windows, quando a saída não é um console — pipe, arquivo de log, um
+    serviço, o CI — o Python usa a codificação da localidade (cp1252), que não
+    codifica emoji. Um simples `print("✅ ...")` levanta UnicodeEncodeError e,
+    quando isso acontece dentro de um `except`, derruba a aplicação na
+    inicialização. Reconfigurar aqui cobre todos os pontos de entrada, porque
+    este módulo é importado por todos eles.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, 'reconfigure', None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding='utf-8', errors='replace')
+        except (ValueError, OSError):
+            # Fluxo já fechado ou não reconfigurável: não é motivo para abortar.
+            pass
+
+
+_forcar_saida_utf8()
 
 load_dotenv()
 

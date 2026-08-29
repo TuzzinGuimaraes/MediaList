@@ -1,15 +1,53 @@
 .DEFAULT_GOAL := help
 
-PYTHON ?= python3
+# Os diretórios são relativos de propósito, não derivados de $(CURDIR). O
+# caminho absoluto do projeto pode conter espaços — 'C:\...\Área de Trabalho\'
+# é o caso comum no Windows — e aí `cd /c/.../Área de Trabalho/MediaList/Backend`
+# falha com "cd: too many arguments", porque o shell parte o caminho nos
+# espaços. Caminho relativo não tem esse problema em lugar nenhum.
+ROOT_DIR := $(CURDIR)
+BACKEND_DIR := ./Backend
+FRONTEND_DIR := ./Frontend
+DUMP_DIR := ./dumps
+
+# Interpretador Python. Nem todo `python3` no PATH serve: no Windows com MSYS2
+# instalado, `python3` resolve para um Python sem pip. Por isso a escolha é por
+# capacidade (tem pip?) e não por nome, nesta ordem:
+#   1. venv do projeto, se existir      2. py -3 (launcher do Windows)
+#   3. python3                          4. python
+#
+# ATENÇÃO: as receitas que usam $(PYTHON)/$(PIP) fazem `cd "$(BACKEND_DIR)"`
+# antes, então o caminho do venv é relativo a Backend/, não à raiz.
+#
+# $(PYTHON), $(PIP) e $(NPM) NÃO levam aspas nas receitas: o valor pode ser
+# `py -3`, ou seja, comando mais argumento, e aspas o transformariam num nome de
+# executável inexistente. Aspas são para os diretórios, não para os comandos.
+# Sobrescreva quando precisar: make install PYTHON=/caminho/para/python
+ifeq ($(origin PYTHON), undefined)
+PYTHON := $(shell \
+	if [ -x "$(BACKEND_DIR)/.venv/Scripts/python.exe" ]; then echo "./.venv/Scripts/python.exe"; \
+	elif [ -x "$(BACKEND_DIR)/.venv/bin/python" ]; then echo "./.venv/bin/python"; \
+	elif command -v py >/dev/null 2>&1 && py -3 -c "import pip" >/dev/null 2>&1; then echo "py -3"; \
+	elif command -v python3 >/dev/null 2>&1 && python3 -c "import pip" >/dev/null 2>&1; then echo "python3"; \
+	elif command -v python >/dev/null 2>&1 && python -c "import pip" >/dev/null 2>&1; then echo "python"; \
+	else echo "python3"; fi)
+endif
+
 PIP ?= $(PYTHON) -m pip
-NPM ?= npm
+
+# No Windows existem dois "npm" no PATH: `npm.cmd` (nativo) e `npm`, um script
+# `#!/usr/bin/env bash`. Um shell POSIX escolhe o script, e se `bash` resolver
+# para o launcher do WSL o comando morre em `execvpe(/bin/bash) failed`.
+# Preferir `npm.cmd` quando ele existe evita esse desvio.
+#
+# A detecção é por execução, não por `command -v`: o shell do MSYS executa
+# arquivos .cmd mas não os encontra em `command -v`, que só considera .exe.
+ifeq ($(origin NPM), undefined)
+NPM := $(shell if npm.cmd --version >/dev/null 2>&1; then echo npm.cmd; else echo npm; fi)
+endif
+
 DOCKER_COMPOSE ?= docker compose
 IMPORT_WORKERS ?= 8
-
-ROOT_DIR := $(CURDIR)
-BACKEND_DIR := $(ROOT_DIR)/Backend
-FRONTEND_DIR := $(ROOT_DIR)/Frontend
-DUMP_DIR := $(ROOT_DIR)/dumps
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).sql
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
@@ -46,10 +84,10 @@ help:
 install: install-backend install-frontend
 
 install-backend:
-	cd $(BACKEND_DIR) && $(PIP) install -r requirements.txt
+	cd "$(BACKEND_DIR)" && $(PIP) install -r requirements.txt
 
 install-frontend:
-	cd $(FRONTEND_DIR) && $(NPM) install
+	cd "$(FRONTEND_DIR)" && $(NPM) install
 
 compose-build:
 	$(DOCKER_COMPOSE) build backend frontend
@@ -90,10 +128,10 @@ db-restore:
 
 backend-dev:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	cd $(BACKEND_DIR) && $(PYTHON) app.py
+	cd "$(BACKEND_DIR)" && $(PYTHON) app.py
 
 frontend-dev:
-	cd $(FRONTEND_DIR) && $(NPM) start
+	cd "$(FRONTEND_DIR)" && $(NPM) start
 
 smoke-mysql:
 	$(DOCKER_COMPOSE) up -d mysql
@@ -110,30 +148,30 @@ smoke-permissions:
 test-backend: smoke-mysql smoke-mongo smoke-permissions
 
 test-frontend:
-	cd $(FRONTEND_DIR) && $(NPM) test -- --watchAll=false
+	cd "$(FRONTEND_DIR)" && $(NPM) test -- --watchAll=false
 
 test: test-frontend
 
 build-frontend:
-	cd $(FRONTEND_DIR) && $(NPM) run build
+	cd "$(FRONTEND_DIR)" && $(NPM) run build
 
 build: build-frontend
 
 import-animes:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo anime --paginas 500 --workers $(IMPORT_WORKERS)
+	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo anime --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-mangas:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo manga --paginas 500 --workers $(IMPORT_WORKERS)
+	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo manga --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-jogos:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo jogo --paginas 500 --workers $(IMPORT_WORKERS)
+	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo jogo --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-all:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo todos --paginas 500 --workers $(IMPORT_WORKERS)
+	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo todos --paginas 100 --workers $(IMPORT_WORKERS)
 
 clean-frontend:
-	rm -rf $(FRONTEND_DIR)/build
+	rm -rf "$(FRONTEND_DIR)/build"

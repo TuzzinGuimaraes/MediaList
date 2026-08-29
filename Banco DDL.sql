@@ -4,6 +4,14 @@
 -- COM IDs CUSTOMIZADOS (SEM AUTO_INCREMENT NAS ENTIDADES PRINCIPAIS)
 -- ============================================
 
+-- Este arquivo é UTF-8 e contém acentos nos dados semeados ('Usuários',
+-- 'Mangá', 'Ação', 'Ficção Científica'). Sem esta linha, o cliente que aplica o
+-- script conecta em latin1 — é o padrão do entrypoint da imagem mysql:8.0 — e
+-- grava os bytes com dupla codificação: 'Usuários' vira 'Usuários'.
+-- O CHARACTER SET do banco não protege contra isso, porque o problema está na
+-- codificação da conexão, não na da tabela.
+SET NAMES utf8mb4;
+
 DROP DATABASE IF EXISTS medialist_db;
 CREATE DATABASE medialist_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE medialist_db;
@@ -457,6 +465,45 @@ BEGIN
     END IF;
 END$$
 
+-- Espelha validar_progresso_lista no caminho de UPDATE. Sem isto, a validação
+-- só existe no INSERT e a procedure atualizar_progresso_midia, que é como o
+-- app de fato grava progresso, passa por cima dela.
+CREATE TRIGGER validar_progresso_lista_update
+BEFORE UPDATE ON lista_usuarios
+FOR EACH ROW
+BEGIN
+    DECLARE v_total INT;
+    DECLARE v_tipo VARCHAR(20);
+
+    -- <=> é a comparação segura para NULL; só valida quando o progresso mudou.
+    IF NOT (NEW.progresso_atual <=> OLD.progresso_atual) AND NEW.progresso_atual IS NOT NULL THEN
+        SELECT tm.nome_tipo INTO v_tipo
+        FROM midias m
+        JOIN tipo_midia tm ON m.id_tipo = tm.id_tipo
+        WHERE m.id_midia = NEW.id_midia;
+
+        IF v_tipo = 'anime' THEN
+            SELECT numero_episodios INTO v_total
+            FROM animes
+            WHERE id_midia = NEW.id_midia;
+
+            IF v_total IS NOT NULL AND NEW.progresso_atual > v_total THEN
+                SIGNAL SQLSTATE '45000'
+                    SET MESSAGE_TEXT = 'Episódios assistidos não pode ser maior que o total de episódios.';
+            END IF;
+        ELSEIF v_tipo = 'manga' THEN
+            SELECT numero_capitulos INTO v_total
+            FROM mangas
+            WHERE id_midia = NEW.id_midia;
+
+            IF v_total IS NOT NULL AND NEW.progresso_atual > v_total THEN
+                SIGNAL SQLSTATE '45000'
+                    SET MESSAGE_TEXT = 'Capítulos lidos não pode ser maior que o total de capítulos.';
+            END IF;
+        END IF;
+    END IF;
+END$$
+
 CREATE TRIGGER before_insert_avaliacao
 BEFORE INSERT ON avaliacoes
 FOR EACH ROW
@@ -524,14 +571,9 @@ BEGIN
     WHERE id_midia = OLD.id_midia;
 END$$
 
-CREATE TRIGGER registrar_ultimo_acesso
-BEFORE UPDATE ON usuarios
-FOR EACH ROW
-BEGIN
-    IF NEW.ativo = TRUE AND OLD.ativo = TRUE THEN
-        SET NEW.ultimo_acesso = CURRENT_TIMESTAMP;
-    END IF;
-END$$
+-- `ultimo_acesso` é escrito explicitamente no login (routes/auth.py). Não existe
+-- trigger para isso: um BEFORE UPDATE em `usuarios` dispara em qualquer edição
+-- do cadastro, e editar a biografia não é um acesso.
 
 DELIMITER ;
 
