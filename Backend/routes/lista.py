@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from repositories import ListaRepository, MidiaRepository
-from schemas import AtualizacaoListaSchema, ListaMidiaSchema, ValidationError
+from schemas import AtualizacaoListaSchema, ListaMidiaSchema, ValidationError, erro_de_rotulo
 
 lista_bp = Blueprint('lista', __name__)
 
@@ -13,6 +13,22 @@ lista_repository = ListaRepository()
 midia_repository = MidiaRepository()
 lista_schema = ListaMidiaSchema()
 atualizacao_schema = AtualizacaoListaSchema()
+
+
+def _erro_de_progresso(progresso: int, item: dict) -> str | None:
+    """Mensagem de erro se o progresso é negativo ou passa do total, senão None.
+
+    O banco também barra isso por trigger; aqui é só para o cliente receber 400
+    com explicação em vez de um erro de banco.
+    """
+    if progresso < 0:
+        return 'Progresso não pode ser negativo'
+
+    total = item.get('progresso_total')
+    if total is not None and progresso > total:
+        return f'Progresso não pode ser maior que o total da mídia ({total})'
+
+    return None
 
 
 def _normalizar_payload_lista(data: dict) -> dict:
@@ -68,8 +84,13 @@ def adicionar_midia_lista():
         id_midia = payload['id_midia']
         status = payload['status']
 
-        if not midia_repository.buscar_por_id(id_midia):
+        midia = midia_repository.buscar_por_id(id_midia)
+        if not midia:
             return jsonify({'erro': 'Mídia não encontrada'}), 404
+
+        erro = erro_de_rotulo(status, midia.get('tipo'))
+        if erro:
+            return jsonify({'erro': erro}), 400
 
         result = lista_repository.adicionar_midia(user_id, id_midia, status)
         if result and 'mensagem' in result[0]:
@@ -126,8 +147,8 @@ def atualizar_progresso(lista_id):
     """Atualizar progresso de consumo."""
     try:
         user_id = get_jwt_identity()
-        owner = lista_repository.obter_owner(lista_id)
-        if owner != user_id:
+        item = lista_repository.obter_item_por_id(lista_id)
+        if not item or item['id_usuario'] != user_id:
             return jsonify({'erro': 'Item não encontrado ou sem permissão'}), 403
 
         payload = _normalizar_payload_lista(request.get_json() or {})
@@ -136,8 +157,20 @@ def atualizar_progresso(lista_id):
         if 'progresso_atual' not in payload:
             return jsonify({'erro': 'Progresso é obrigatório'}), 400
 
-        status = payload.get('status') or payload.get('status_consumo') or 'planejado'
-        lista_repository.atualizar_progresso(lista_id, int(payload['progresso_atual']), status)
+        # Sem status no payload, o estado atual do item é preservado: atualizar o
+        # progresso não é uma decisão sobre o estado de consumo.
+        status = payload.get('status') or payload.get('status_consumo') or item['status_consumo']
+
+        erro = erro_de_rotulo(status, item['tipo'])
+        if erro:
+            return jsonify({'erro': erro}), 400
+
+        progresso = int(payload['progresso_atual'])
+        erro = _erro_de_progresso(progresso, item)
+        if erro:
+            return jsonify({'erro': erro}), 400
+
+        lista_repository.atualizar_progresso(lista_id, progresso, status)
         return jsonify({'mensagem': 'Progresso atualizado com sucesso!'}), 200
     except ValidationError as exc:
         return jsonify({'erro': 'Payload inválido', 'detalhes': exc.errors}), 400
@@ -152,16 +185,26 @@ def atualizar_item_lista(lista_id):
     """Atualizar item da lista."""
     try:
         user_id = get_jwt_identity()
-        owner = lista_repository.obter_owner(lista_id)
-        if owner != user_id:
+        item = lista_repository.obter_item_por_id(lista_id)
+        if not item or item['id_usuario'] != user_id:
             return jsonify({'erro': 'Item não encontrado ou sem permissão'}), 403
 
         payload = _normalizar_payload_lista(request.get_json() or {})
         payload = atualizacao_schema.load(payload, partial=True)
 
+        status_enviado = payload.get('status') or payload.get('status_consumo')
+        erro = erro_de_rotulo(status_enviado, item['tipo'])
+        if erro:
+            return jsonify({'erro': erro}), 400
+
         if 'progresso_atual' in payload:
-            status = payload.get('status') or payload.get('status_consumo') or 'planejado'
-            lista_repository.atualizar_progresso(lista_id, int(payload['progresso_atual']), status)
+            progresso = int(payload['progresso_atual'])
+            erro = _erro_de_progresso(progresso, item)
+            if erro:
+                return jsonify({'erro': erro}), 400
+
+            status = status_enviado or item['status_consumo']
+            lista_repository.atualizar_progresso(lista_id, progresso, status)
 
         update_payload = {}
         if 'status' in payload:

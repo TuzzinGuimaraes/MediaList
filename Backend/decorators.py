@@ -7,10 +7,37 @@ from flask_jwt_extended import get_jwt_identity
 from database import execute_query
 
 
+# Permissões de quem não tem grupo nenhum. A ausência de grupo nunca concede
+# mais do que a presença de um: sem grupo, sem poder.
+SEM_PERMISSOES = {
+    'nivel_acesso': 'usuario',
+    'grupos': None,
+    'pode_criar': 0,
+    'pode_editar': 0,
+    'pode_deletar': 0,
+    'pode_moderar': 0,
+}
+
+
 def get_user_permissions(user_id):
-    """Obter permissões do usuário"""
+    """Permissões efetivas do usuário, compondo todos os seus grupos.
+
+    Vence o mais privilegiado: o usuário tem um poder se qualquer grupo seu o
+    concede, e o nível efetivo é o mais alto entre os grupos. O nível é
+    ordenado explicitamente porque MAX() sobre o ENUM ordena pelo índice de
+    declaração ('admin' = 1 ... 'usuario' = 3) e devolveria o menor privilégio.
+    """
     query = """
-        SELECT MAX(gu.nivel_acesso) as nivel_acesso,
+        SELECT CASE MAX(CASE gu.nivel_acesso
+                            WHEN 'admin' THEN 3
+                            WHEN 'moderador' THEN 2
+                            WHEN 'usuario' THEN 1
+                            ELSE 0
+                        END)
+                   WHEN 3 THEN 'admin'
+                   WHEN 2 THEN 'moderador'
+                   ELSE 'usuario'
+               END as nivel_acesso,
                GROUP_CONCAT(DISTINCT gu.nome_grupo SEPARATOR ', ') as grupos,
                MAX(CASE WHEN gu.pode_criar = TRUE THEN 1 ELSE 0 END) as pode_criar,
                MAX(CASE WHEN gu.pode_editar = TRUE THEN 1 ELSE 0 END) as pode_editar,
@@ -24,16 +51,9 @@ def get_user_permissions(user_id):
     """
     result = execute_query(query, (user_id,))
 
-    # Se não encontrar permissões (usuário sem grupo), retornar padrão
-    if not result or not result[0]['nivel_acesso']:
-        return {
-            'nivel_acesso': 'usuario',
-            'grupos': 'Usuários',
-            'pode_criar': 1,
-            'pode_editar': 1,
-            'pode_deletar': 0,
-            'pode_moderar': 0
-        }
+    # Usuário inexistente, sem grupo, ou banco indisponível: nada é concedido.
+    if not result or not result[0]['grupos']:
+        return dict(SEM_PERMISSOES)
 
     return result[0]
 

@@ -618,9 +618,24 @@ class ListaRepository(MidiaRepository):
         self._execute("DELETE FROM lista_usuarios WHERE id_lista = %s AND id_usuario = %s", (id_lista, id_usuario))
         return True
 
-    def obter_owner(self, id_lista: str) -> str | None:
-        row = self._fetch_one("SELECT id_usuario FROM lista_usuarios WHERE id_lista = %s", (id_lista,))
-        return row['id_usuario'] if row else None
+    def obter_item_por_id(self, id_lista: str) -> dict[str, Any] | None:
+        """Item de lista com o tipo da mídia, para dono, status atual e validação."""
+        return self._fetch_one(
+            """
+            SELECT lu.id_lista,
+                   lu.id_usuario,
+                   lu.id_midia,
+                   lu.status_consumo,
+                   lu.progresso_atual,
+                   lu.progresso_total,
+                   tm.nome_tipo AS tipo
+            FROM lista_usuarios lu
+            JOIN midias m ON m.id_midia = lu.id_midia
+            JOIN tipo_midia tm ON tm.id_tipo = m.id_tipo
+            WHERE lu.id_lista = %s
+            """,
+            (id_lista,),
+        )
 
     def obter_item_usuario(self, id_usuario: str, id_midia: str) -> dict[str, Any] | None:
         return self._fetch_one(
