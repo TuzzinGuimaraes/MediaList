@@ -4,6 +4,14 @@
 -- COM IDs CUSTOMIZADOS (SEM AUTO_INCREMENT NAS ENTIDADES PRINCIPAIS)
 -- ============================================
 
+-- Este arquivo é UTF-8 e contém acentos nos dados semeados ('Usuários',
+-- 'Mangá', 'Ação', 'Ficção Científica'). Sem esta linha, o cliente que aplica o
+-- script conecta em latin1 — é o padrão do entrypoint da imagem mysql:8.0 — e
+-- grava os bytes com dupla codificação: 'Usuários' vira 'Usuários'.
+-- O CHARACTER SET do banco não protege contra isso, porque o problema está na
+-- codificação da conexão, não na da tabela.
+SET NAMES utf8mb4;
+
 DROP DATABASE IF EXISTS medialist_db;
 CREATE DATABASE medialist_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE medialist_db;
