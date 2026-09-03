@@ -9,7 +9,7 @@ from typing import Any
 
 from mysql.connector import IntegrityError
 
-from database import call_procedure, get_db_connection
+from database import get_db_connection
 
 #: Código do MySQL para violação de chave única (ER_DUP_ENTRY).
 ENTRADA_DUPLICADA = 1062
@@ -534,12 +534,11 @@ class ListaRepository(MidiaRepository):
     """
 
     #: Colunas de `lista_usuarios` que a aplicação grava, na ordem do UPDATE.
-    #: `progresso_total` só continua aqui porque as rotas ainda gravam por
-    #: `atualizar_item`; quem decide o total é a Mídia, não o cliente.
+    #: `progresso_total` não está aqui: o total pertence à Mídia, e no Item ele é
+    #: denormalização que o trigger `before_insert_lista` preenche.
     COLUNAS_GRAVAVEIS = (
         'status_consumo',
         'progresso_atual',
-        'progresso_total',
         'nota_usuario',
         'favorito',
         'comentario',
@@ -587,12 +586,6 @@ class ListaRepository(MidiaRepository):
 
         query += " ORDER BY lu.data_atualizacao DESC"
         return self._fetch_all(query, params)
-
-    def adicionar_midia(self, id_usuario: str, id_midia: str, status: str) -> list[dict[str, Any]] | None:
-        return call_procedure('adicionar_midia_lista', [id_usuario, id_midia, status])
-
-    def atualizar_progresso(self, id_lista: str, progresso: int, status: str) -> list[dict[str, Any]] | None:
-        return call_procedure('atualizar_progresso_midia', [id_lista, progresso, status])
 
     def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
         """Insere o Item e devolve o `id_lista`, ou None se já existia.
@@ -677,9 +670,6 @@ class ListaRepository(MidiaRepository):
             raise
         finally:
             connection.close()
-
-    #: Nome antigo de `atualizar_campos`, ainda usado pelas rotas.
-    atualizar_item = atualizar_campos
 
     def _valor_de(self, campo: str, valor: Any) -> Any:
         return bool(valor) if campo in self.CAMPOS_BOOLEANOS else valor

@@ -14,17 +14,6 @@ class ValidationError(ValueError):
         self.errors = errors
 
 
-def _coerce_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        if value.lower() in {'true', '1', 'sim', 'yes'}:
-            return True
-        if value.lower() in {'false', '0', 'nao', 'não', 'no'}:
-            return False
-    return bool(value)
-
-
 class BaseSchema:
     """Base simples para schemas declarativos."""
 
@@ -90,35 +79,4 @@ class BaseMediaSchema(BaseSchema):
     }
     cast_fields = {
         'nota_media': float,
-    }
-
-
-class ListaSchema(BaseSchema):
-    """Validação do payload de lista do usuário."""
-
-    field_types = {
-        'id_midia': str,
-        'id_anime': str,
-        'status': str,
-        'status_consumo': str,
-        'status_visualizacao': str,
-        'progresso_atual': int,
-        'episodios_assistidos': int,
-        'progresso_total': int,
-        'nota_usuario': (int, float),
-        'favorito': bool,
-        'comentario': str,
-        'data_inicio': str,
-        'data_conclusao': str,
-        'total_rewatches': int,
-        'privado': bool,
-    }
-    cast_fields = {
-        'progresso_atual': int,
-        'episodios_assistidos': int,
-        'progresso_total': int,
-        'nota_usuario': float,
-        'favorito': _coerce_bool,
-        'total_rewatches': int,
-        'privado': _coerce_bool,
     }

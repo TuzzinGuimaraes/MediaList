@@ -147,18 +147,19 @@ def test_remover_item_diz_se_apagou_alguma_linha(monkeypatch):
     assert repo.remover_item('LST-1', 'USR-1') is False
 
 
-def test_atualizar_item_persiste_apenas_colunas_permitidas(monkeypatch):
+def test_atualizar_campos_persiste_apenas_colunas_permitidas(monkeypatch):
     cursor = FakeCursor()
     connection = FakeConnection(cursor)
     monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
 
     repo = ListaRepository()
-    result = repo.atualizar_item('LST-1', {
+    result = repo.atualizar_campos('LST-1', {
         'status_consumo': 'assistindo',
         'nota_usuario': None,
         'favorito': 1,
         'comentario': 'Teste',
         'privado': 0,
+        'progresso_total': 24,
         'campo_invalido': 'ignorar',
     })
 
@@ -170,4 +171,6 @@ def test_atualizar_item_persiste_apenas_colunas_permitidas(monkeypatch):
     assert 'comentario = %s' in query
     assert 'privado = %s' in query
     assert 'campo_invalido' not in query
+    # O total pertence à Mídia: o Item não o recebe do cliente.
+    assert 'progresso_total' not in query
     assert params == ('assistindo', True, 'Teste', False, 'LST-1')
