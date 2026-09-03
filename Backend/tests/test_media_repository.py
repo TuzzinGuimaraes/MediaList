@@ -1,9 +1,29 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from repositories.midia_repository import ListaRepository, MidiaRepository, _serialize_row, _serialize_value
+from mysql.connector import IntegrityError
+
+from repositories.midia_repository import (
+    ENTRADA_DUPLICADA,
+    ListaRepository,
+    MidiaRepository,
+    _serialize_row,
+    _serialize_value,
+)
 
 from .helpers import FakeConnection, FakeCursor
+
+
+class CursorQueFalha(FakeCursor):
+    """Cursor que devolve o erro do driver na primeira escrita."""
+
+    def __init__(self, erro):
+        super().__init__()
+        self.erro = erro
+
+    def execute(self, query, params=()):
+        super().execute(query, params)
+        raise self.erro
 
 
 def test_serialize_value_converte_decimal_e_datas():
@@ -81,6 +101,50 @@ def test_obter_item_usuario_retorna_item(monkeypatch):
     result = repo.obter_item_usuario('USR-1', 'MID-1')
 
     assert result['id_lista'] == 'LST-1'
+
+
+def test_criar_item_insere_colunas_conhecidas_e_devolve_o_id(monkeypatch):
+    cursor = FakeCursor(fetchone_results=[('LST-9',)])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+
+    repo = ListaRepository()
+    id_lista = repo.criar_item('USR-1', 'MID-1', {
+        'status_consumo': 'assistindo',
+        'progresso_atual': 3,
+        'favorito': 1,
+        'campo_invalido': 'ignorar',
+    })
+
+    query, params = cursor.executed[0]
+    assert id_lista == 'LST-9'
+    assert 'INSERT INTO lista_usuarios' in query
+    assert 'campo_invalido' not in query
+    assert params == ('USR-1', 'MID-1', 'assistindo', 3, True)
+
+
+def test_criar_item_traduz_a_unique_key_em_none(monkeypatch):
+    """`uk_usuario_midia` barrando é conflito de domínio, não erro de MySQL."""
+    erro = IntegrityError('duplicate')
+    erro.errno = ENTRADA_DUPLICADA
+    connection = FakeConnection(CursorQueFalha(erro))
+    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+
+    repo = ListaRepository()
+
+    assert repo.criar_item('USR-1', 'MID-1', {'status_consumo': 'assistindo'}) is None
+    assert connection.rolled_back is True
+
+
+def test_remover_item_diz_se_apagou_alguma_linha(monkeypatch):
+    cursor = FakeCursor()
+    cursor.rowcount = 0
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+
+    repo = ListaRepository()
+
+    assert repo.remover_item('LST-1', 'USR-1') is False
 
 
 def test_atualizar_item_persiste_apenas_colunas_permitidas(monkeypatch):

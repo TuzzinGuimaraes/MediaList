@@ -7,7 +7,12 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
+from mysql.connector import IntegrityError
+
 from database import call_procedure, get_db_connection
+
+#: Código do MySQL para violação de chave única (ER_DUP_ENTRY).
+ENTRADA_DUPLICADA = 1062
 
 
 def _serialize_value(value: Any) -> Any:
@@ -185,7 +190,8 @@ class MidiaRepository:
         results = self._fetch_all(query, params)
         return results[0] if results else None
 
-    def _execute(self, query: str, params: tuple[Any, ...] | list[Any] | None = None) -> None:
+    def _execute(self, query: str, params: tuple[Any, ...] | list[Any] | None = None) -> int:
+        """Executa e comita um comando, devolvendo quantas linhas ele afetou."""
         connection = get_db_connection()
         if not connection:
             raise RuntimeError('Erro ao conectar ao banco')
@@ -194,7 +200,9 @@ class MidiaRepository:
             cursor = connection.cursor()
             cursor.execute(query, params or ())
             connection.commit()
+            afetadas = cursor.rowcount
             cursor.close()
+            return afetadas
         finally:
             connection.close()
 
@@ -518,7 +526,31 @@ class JogoRepository(MidiaRepository):
 
 
 class ListaRepository(MidiaRepository):
-    """Operações da lista do usuário."""
+    """CRUD dos itens da lista do usuário.
+
+    As regras do Item de lista vivem em `dominio.lista_pessoal`; aqui só há
+    persistência. `id_lista`, `codigo_lista` e o `progresso_total` inicial são
+    preenchidos pelo trigger `before_insert_lista`.
+    """
+
+    #: Colunas de `lista_usuarios` que a aplicação grava, na ordem do UPDATE.
+    #: `progresso_total` só continua aqui porque as rotas ainda gravam por
+    #: `atualizar_item`; quem decide o total é a Mídia, não o cliente.
+    COLUNAS_GRAVAVEIS = (
+        'status_consumo',
+        'progresso_atual',
+        'progresso_total',
+        'nota_usuario',
+        'favorito',
+        'comentario',
+        'data_inicio',
+        'data_conclusao',
+        'total_rewatches',
+        'privado',
+    )
+
+    #: Campos booleanos, que chegam do JSON como 0/1 com frequência.
+    CAMPOS_BOOLEANOS = frozenset({'favorito', 'privado'})
 
     def obter_lista_usuario(self, id_usuario: str, tipo: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
         query = f"""
@@ -562,7 +594,52 @@ class ListaRepository(MidiaRepository):
     def atualizar_progresso(self, id_lista: str, progresso: int, status: str) -> list[dict[str, Any]] | None:
         return call_procedure('atualizar_progresso_midia', [id_lista, progresso, status])
 
-    def atualizar_item(self, id_lista: str, dados: dict[str, Any]) -> bool:
+    def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
+        """Insere o Item e devolve o `id_lista`, ou None se já existia.
+
+        A unique key `uk_usuario_midia` é o que garante uma Mídia por Usuário;
+        o erro do driver é traduzido aqui para que o MySQL não vaze pela costura.
+        """
+        connection = get_db_connection()
+        if not connection:
+            raise RuntimeError('Erro ao conectar ao banco')
+
+        colunas = ['id_usuario', 'id_midia']
+        params: list[Any] = [id_usuario, id_midia]
+        for campo in self.COLUNAS_GRAVAVEIS:
+            if campo not in campos or campos[campo] is None:
+                continue
+            colunas.append(campo)
+            params.append(self._valor_de(campo, campos[campo]))
+
+        try:
+            cursor = connection.cursor()
+            cursor.execute(
+                f"INSERT INTO lista_usuarios ({', '.join(colunas)}) "
+                f"VALUES ({', '.join(['%s'] * len(colunas))})",
+                tuple(params),
+            )
+            cursor.execute(
+                "SELECT id_lista FROM lista_usuarios WHERE id_usuario = %s AND id_midia = %s",
+                (id_usuario, id_midia),
+            )
+            row = cursor.fetchone()
+            connection.commit()
+            cursor.close()
+            return row[0] if row else None
+        except IntegrityError as exc:
+            connection.rollback()
+            if getattr(exc, 'errno', None) == ENTRADA_DUPLICADA:
+                return None
+            raise
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def atualizar_campos(self, id_lista: str, campos: dict[str, Any]) -> bool:
+        """Grava os campos num Item. False quando não havia nada a gravar."""
         connection = get_db_connection()
         if not connection:
             raise RuntimeError('Erro ao conectar ao banco')
@@ -572,29 +649,16 @@ class ListaRepository(MidiaRepository):
             fields = []
             params = []
 
-            update_map = {
-                'status_consumo': 'status_consumo',
-                'nota_usuario': 'nota_usuario',
-                'favorito': 'favorito',
-                'comentario': 'comentario',
-                'data_inicio': 'data_inicio',
-                'data_conclusao': 'data_conclusao',
-                'total_rewatches': 'total_rewatches',
-                'privado': 'privado',
-                'progresso_total': 'progresso_total',
-            }
-
-            for field, column in update_map.items():
-                if field not in dados:
+            for campo in self.COLUNAS_GRAVAVEIS:
+                if campo not in campos:
                     continue
 
-                if field == 'nota_usuario' and dados[field] in (None, ''):
+                if campo == 'nota_usuario' and campos[campo] in (None, ''):
                     fields.append("nota_usuario = NULL")
                     continue
 
-                value = bool(dados[field]) if field in {'favorito', 'privado'} else dados[field]
-                fields.append(f"{column} = %s")
-                params.append(value)
+                fields.append(f"{campo} = %s")
+                params.append(self._valor_de(campo, campos[campo]))
 
             if not fields:
                 return False
@@ -607,19 +671,32 @@ class ListaRepository(MidiaRepository):
             )
             connection.commit()
             cursor.close()
-            return cursor.rowcount >= 0
+            return True
         except Exception:
             connection.rollback()
             raise
         finally:
             connection.close()
 
+    #: Nome antigo de `atualizar_campos`, ainda usado pelas rotas.
+    atualizar_item = atualizar_campos
+
+    def _valor_de(self, campo: str, valor: Any) -> Any:
+        return bool(valor) if campo in self.CAMPOS_BOOLEANOS else valor
+
     def remover_item(self, id_lista: str, id_usuario: str) -> bool:
-        self._execute("DELETE FROM lista_usuarios WHERE id_lista = %s AND id_usuario = %s", (id_lista, id_usuario))
-        return True
+        """Apaga o Item do usuário e diz se alguma linha saiu."""
+        return self._execute(
+            "DELETE FROM lista_usuarios WHERE id_lista = %s AND id_usuario = %s",
+            (id_lista, id_usuario),
+        ) > 0
 
     def obter_item_por_id(self, id_lista: str) -> dict[str, Any] | None:
-        """Item de lista com o tipo da mídia, para dono, status atual e validação."""
+        """Item de lista com o tipo e o total da Mídia, para dono e validação.
+
+        `progresso_total_padrao` vem da Mídia, não da coluna denormalizada do
+        Item: é ele que decide a promoção a Concluído.
+        """
         return self._fetch_one(
             """
             SELECT lu.id_lista,
@@ -628,10 +705,18 @@ class ListaRepository(MidiaRepository):
                    lu.status_consumo,
                    lu.progresso_atual,
                    lu.progresso_total,
-                   tm.nome_tipo AS tipo
+                   lu.data_conclusao,
+                   tm.nome_tipo AS tipo,
+                   CASE tm.nome_tipo
+                       WHEN 'anime' THEN a.numero_episodios
+                       WHEN 'manga' THEN ma.numero_capitulos
+                       ELSE NULL
+                   END AS progresso_total_padrao
             FROM lista_usuarios lu
             JOIN midias m ON m.id_midia = lu.id_midia
             JOIN tipo_midia tm ON tm.id_tipo = m.id_tipo
+            LEFT JOIN animes a ON a.id_midia = m.id_midia
+            LEFT JOIN mangas ma ON ma.id_midia = m.id_midia
             WHERE lu.id_lista = %s
             """,
             (id_lista,),
