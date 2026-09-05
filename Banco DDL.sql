@@ -466,8 +466,8 @@ BEGIN
 END$$
 
 -- Espelha validar_progresso_lista no caminho de UPDATE. Sem isto, a validação
--- só existe no INSERT e a procedure atualizar_progresso_midia, que é como o
--- app de fato grava progresso, passa por cima dela.
+-- só existe no INSERT, e o UPDATE com que a aplicação grava progresso
+-- (dominio/lista_pessoal.py) passa por cima dela.
 CREATE TRIGGER validar_progresso_lista_update
 BEFORE UPDATE ON lista_usuarios
 FOR EACH ROW
@@ -582,75 +582,6 @@ DELIMITER ;
 -- ============================================
 
 DELIMITER $$
-
-CREATE PROCEDURE adicionar_midia_lista(
-    IN p_id_usuario VARCHAR(50),
-    IN p_id_midia VARCHAR(50),
-    IN p_status VARCHAR(20)
-)
-BEGIN
-    DECLARE v_existe INT;
-
-    SELECT COUNT(*) INTO v_existe
-    FROM lista_usuarios
-    WHERE id_usuario = p_id_usuario
-      AND id_midia = p_id_midia;
-
-    IF v_existe = 0 THEN
-        INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo)
-        VALUES (p_id_usuario, p_id_midia, p_status);
-
-        SELECT 'Mídia adicionada com sucesso!' AS mensagem;
-    ELSE
-        SELECT 'Mídia já está na lista do usuário!' AS mensagem;
-    END IF;
-END$$
-
-CREATE PROCEDURE atualizar_progresso_midia(
-    IN p_id_lista VARCHAR(50),
-    IN p_progresso_atual INT,
-    IN p_novo_status VARCHAR(20)
-)
-BEGIN
-    DECLARE v_total INT;
-    DECLARE v_id_midia VARCHAR(50);
-    DECLARE v_tipo VARCHAR(20);
-
-    SELECT lu.id_midia, tm.nome_tipo
-    INTO v_id_midia, v_tipo
-    FROM lista_usuarios lu
-    JOIN midias m ON lu.id_midia = m.id_midia
-    JOIN tipo_midia tm ON m.id_tipo = tm.id_tipo
-    WHERE lu.id_lista = p_id_lista;
-
-    IF v_tipo = 'anime' THEN
-        SELECT numero_episodios INTO v_total FROM animes WHERE id_midia = v_id_midia;
-    ELSEIF v_tipo = 'manga' THEN
-        SELECT numero_capitulos INTO v_total FROM mangas WHERE id_midia = v_id_midia;
-    ELSE
-        SET v_total = NULL;
-    END IF;
-
-    UPDATE lista_usuarios
-    SET progresso_atual = p_progresso_atual,
-        progresso_total = COALESCE(v_total, progresso_total),
-        status_consumo = CASE
-            WHEN v_total IS NOT NULL AND p_progresso_atual >= v_total THEN
-                CASE v_tipo
-                    WHEN 'anime' THEN 'completo'
-                    WHEN 'manga' THEN 'lido'
-                    ELSE p_novo_status
-                END
-            ELSE p_novo_status
-        END,
-        data_conclusao = CASE
-            WHEN v_total IS NOT NULL AND p_progresso_atual >= v_total THEN CURDATE()
-            ELSE data_conclusao
-        END
-    WHERE id_lista = p_id_lista;
-
-    SELECT 'Progresso atualizado!' AS mensagem;
-END$$
 
 CREATE PROCEDURE obter_estatisticas_usuario(IN p_id_usuario VARCHAR(50))
 BEGIN

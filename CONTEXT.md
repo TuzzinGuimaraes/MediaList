@@ -149,7 +149,9 @@ Quanto da Mídia o Usuário já consumiu, em unidades do Tipo: episódios para a
 para mangá.
 
 **Jogos não têm Progresso mensurável** — não existe uma contagem total contra a qual medir,
-então um Item de jogo tem Estado de consumo mas não fração completada.
+então um Item de jogo tem Estado de consumo mas não fração completada. Um Item de jogo
+aceita o número de horas jogadas, mas **horas não medem Progresso**: nenhuma quantidade
+delas leva o Item a Concluído.
 
 O Progresso nunca excede o total da Mídia. Atingir o total leva o Item a **Concluído**.
 

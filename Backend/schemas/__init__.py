@@ -16,7 +16,6 @@ from .estado_consumo import (
     rotulos_do_tipo,
 )
 from .jogo_schema import JogoSchema
-from .lista_schema import AtualizacaoListaSchema, ListaMidiaSchema, STATUS_CONSUMO_VALIDOS
 from .manga_schema import MangaSchema
 
 __all__ = [
@@ -24,9 +23,6 @@ __all__ = [
     'AnimeSchema',
     'MangaSchema',
     'JogoSchema',
-    'ListaMidiaSchema',
-    'AtualizacaoListaSchema',
-    'STATUS_CONSUMO_VALIDOS',
     'ESTADOS',
     'ESTADOS_TERMINAIS',
     'ROTULOS_POR_TIPO',

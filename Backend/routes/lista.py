@@ -1,51 +1,82 @@
 """
-Blueprint de lista do usuário.
+Blueprint de lista do usuário: adaptador HTTP de `dominio.lista_pessoal`.
+
+Aqui não há regra de Item de lista. A rota faz três coisas: renomear os aliases
+legados do fio para o nome canônico do campo, chamar o módulo e traduzir o
+`Resultado` para um código HTTP. Escrever regra aqui é o que deixou a lógica
+duplicada em três lugares antes. A única exigência que sobra do lado HTTP é o
+que cada endpoint pede do corpo — `/progresso` sem progresso não é chamada —,
+que é contrato do endpoint, não do Item.
+
+A leitura é a exceção: `obter_lista_usuario` consulta o repositório direto,
+porque não decide nada.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
 from repositories import ListaRepository, MidiaRepository
-from schemas import AtualizacaoListaSchema, ListaMidiaSchema, ValidationError, erro_de_rotulo
 
 lista_bp = Blueprint('lista', __name__)
 
 lista_repository = ListaRepository()
 midia_repository = MidiaRepository()
-lista_schema = ListaMidiaSchema()
-atualizacao_schema = AtualizacaoListaSchema()
+lista_pessoal = ListaPessoal(lista_repository, midia_repository)
+
+#: Nomes antigos que os clientes ainda mandam -> nome canônico do campo. Só o
+#: adaptador os conhece: o módulo trabalha com um nome por campo.
+#:
+#: O nome canônico enviado junto vence o alias, e entre dois aliases do mesmo
+#: campo vence o primeiro desta lista — `status` antes de `status_visualizacao`.
+ALIASES_LEGADOS = {
+    'id_anime': 'id_midia',
+    'status': 'status_consumo',
+    'status_visualizacao': 'status_consumo',
+    'episodios_assistidos': 'progresso_atual',
+    'data_fim': 'data_conclusao',
+    'notas_pessoais': 'comentario',
+}
+
+#: Resposta única para `nao_encontrado` e `negado`: distinguir os dois revelaria
+#: quais Itens existem nas listas dos outros usuários.
+ERRO_SEM_ACESSO = 'Item não encontrado ou sem permissão'
 
 
-def _erro_de_progresso(progresso: int, item: dict) -> str | None:
-    """Mensagem de erro se o progresso é negativo ou passa do total, senão None.
+def _normalizar_payload_lista(data: dict | None) -> dict:
+    """Payload com os aliases legados reescritos no nome canônico."""
+    data = data if isinstance(data, dict) else {}
+    payload = {campo: valor for campo, valor in data.items() if campo not in ALIASES_LEGADOS}
 
-    O banco também barra isso por trigger; aqui é só para o cliente receber 400
-    com explicação em vez de um erro de banco.
-    """
-    if progresso < 0:
-        return 'Progresso não pode ser negativo'
+    for alias, canonico in ALIASES_LEGADOS.items():
+        if alias in data and canonico not in payload:
+            payload[canonico] = data[alias]
 
-    total = item.get('progresso_total')
-    if total is not None and progresso > total:
-        return f'Progresso não pode ser maior que o total da mídia ({total})'
-
-    return None
-
-
-def _normalizar_payload_lista(data: dict) -> dict:
-    payload = dict(data)
-    if 'id_anime' in payload and 'id_midia' not in payload:
-        payload['id_midia'] = payload['id_anime']
-    if 'status_visualizacao' in payload and 'status_consumo' not in payload:
-        payload['status_consumo'] = payload['status_visualizacao']
-    if 'episodios_assistidos' in payload and 'progresso_atual' not in payload:
-        payload['progresso_atual'] = payload['episodios_assistidos']
-    if 'status_consumo' in payload and 'status' not in payload:
-        payload['status'] = payload['status_consumo']
-    if 'data_fim' in payload and 'data_conclusao' not in payload:
-        payload['data_conclusao'] = payload['data_fim']
-    if 'notas_pessoais' in payload and 'comentario' not in payload:
-        payload['comentario'] = payload['notas_pessoais']
     return payload
+
+
+def _resposta(resultado, mensagem: str, status_ok: int = 200):
+    """Traduz o `Resultado` do módulo para (corpo, código HTTP)."""
+    if resultado.bem_sucedido:
+        corpo = {'mensagem': mensagem}
+        if resultado.id_lista:
+            corpo['id_lista'] = resultado.id_lista
+        return jsonify(corpo), status_ok
+
+    if resultado.codigo == INVALIDO:
+        return jsonify({'erro': _erro_legivel(resultado.detalhes), 'detalhes': resultado.detalhes}), 400
+
+    if resultado.codigo in (NAO_ENCONTRADO, NEGADO):
+        return jsonify({'erro': ERRO_SEM_ACESSO}), 403
+
+    # Código novo no módulo sem tradução aqui: melhor 500 do que virar 403 calado.
+    raise ValueError(f'Resultado sem tradução HTTP: {resultado.codigo}')
+
+
+def _erro_legivel(detalhes: dict) -> str:
+    """Com um único campo errado, a mensagem dele é melhor que um rótulo genérico."""
+    if len(detalhes) == 1:
+        return next(iter(detalhes.values()))
+    return 'Payload inválido'
 
 
 @lista_bp.route('', methods=['GET'])
@@ -79,56 +110,9 @@ def adicionar_midia_lista():
     """Adicionar mídia à lista do usuário."""
     try:
         user_id = get_jwt_identity()
-        payload = _normalizar_payload_lista(request.get_json() or {})
-        payload = lista_schema.load(payload)
-        id_midia = payload['id_midia']
-        status = payload['status']
-
-        midia = midia_repository.buscar_por_id(id_midia)
-        if not midia:
-            return jsonify({'erro': 'Mídia não encontrada'}), 404
-
-        erro = erro_de_rotulo(status, midia.get('tipo'))
-        if erro:
-            return jsonify({'erro': erro}), 400
-
-        result = lista_repository.adicionar_midia(user_id, id_midia, status)
-        if result and 'mensagem' in result[0]:
-            mensagem = result[0]['mensagem']
-            if 'já está na lista' in mensagem:
-                return jsonify({'erro': mensagem}), 400
-
-            item = lista_repository.obter_item_usuario(user_id, id_midia)
-            if item:
-                if 'progresso_atual' in payload and payload['progresso_atual'] not in (None, 0):
-                    lista_repository.atualizar_progresso(item['id_lista'], int(payload['progresso_atual']), status)
-
-                update_payload = {}
-                if 'nota_usuario' in payload:
-                    update_payload['nota_usuario'] = payload['nota_usuario']
-                if 'favorito' in payload:
-                    update_payload['favorito'] = payload['favorito']
-                if 'comentario' in payload:
-                    update_payload['comentario'] = payload['comentario']
-                if 'data_inicio' in payload:
-                    update_payload['data_inicio'] = payload['data_inicio']
-                if 'data_conclusao' in payload:
-                    update_payload['data_conclusao'] = payload['data_conclusao']
-                if 'progresso_total' in payload:
-                    update_payload['progresso_total'] = payload['progresso_total']
-                if 'total_rewatches' in payload:
-                    update_payload['total_rewatches'] = payload['total_rewatches']
-                if 'privado' in payload:
-                    update_payload['privado'] = payload['privado']
-
-                if update_payload:
-                    lista_repository.atualizar_item(item['id_lista'], update_payload)
-
-            return jsonify({'mensagem': mensagem}), 201
-
-        return jsonify({'mensagem': 'Mídia adicionada à lista!'}), 201
-    except ValidationError as exc:
-        return jsonify({'erro': 'Payload inválido', 'detalhes': exc.errors}), 400
+        payload = _normalizar_payload_lista(request.get_json(silent=True))
+        resultado = lista_pessoal.adicionar(user_id, payload)
+        return _resposta(resultado, 'Mídia adicionada à lista!', status_ok=201)
     except Exception as exc:
         print(f"Erro ao adicionar à lista: {exc}")
         return jsonify({'erro': f'Erro ao adicionar mídia: {exc}'}), 500
@@ -144,36 +128,22 @@ def adicionar_midia_lista_v2():
 @lista_bp.route('/<string:lista_id>/progresso', methods=['PUT'])
 @jwt_required()
 def atualizar_progresso(lista_id):
-    """Atualizar progresso de consumo."""
+    """Atualizar progresso de consumo.
+
+    O progresso é o motivo da chamada: sem ele não há o que fazer. O resto —
+    teto, promoção a Concluído, dono do Item — é decisão do módulo.
+    """
     try:
         user_id = get_jwt_identity()
-        item = lista_repository.obter_item_por_id(lista_id)
-        if not item or item['id_usuario'] != user_id:
-            return jsonify({'erro': 'Item não encontrado ou sem permissão'}), 403
-
-        payload = _normalizar_payload_lista(request.get_json() or {})
-        payload = atualizacao_schema.load(payload, partial=True)
-
+        payload = _normalizar_payload_lista(request.get_json(silent=True))
         if 'progresso_atual' not in payload:
-            return jsonify({'erro': 'Progresso é obrigatório'}), 400
+            return jsonify({
+                'erro': 'Progresso é obrigatório',
+                'detalhes': {'progresso_atual': 'Campo obrigatório'},
+            }), 400
 
-        # Sem status no payload, o estado atual do item é preservado: atualizar o
-        # progresso não é uma decisão sobre o estado de consumo.
-        status = payload.get('status') or payload.get('status_consumo') or item['status_consumo']
-
-        erro = erro_de_rotulo(status, item['tipo'])
-        if erro:
-            return jsonify({'erro': erro}), 400
-
-        progresso = int(payload['progresso_atual'])
-        erro = _erro_de_progresso(progresso, item)
-        if erro:
-            return jsonify({'erro': erro}), 400
-
-        lista_repository.atualizar_progresso(lista_id, progresso, status)
-        return jsonify({'mensagem': 'Progresso atualizado com sucesso!'}), 200
-    except ValidationError as exc:
-        return jsonify({'erro': 'Payload inválido', 'detalhes': exc.errors}), 400
+        resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+        return _resposta(resultado, 'Progresso atualizado com sucesso!')
     except Exception as exc:
         print(f"Erro ao atualizar progresso: {exc}")
         return jsonify({'erro': f'Erro ao atualizar: {exc}'}), 500
@@ -185,55 +155,9 @@ def atualizar_item_lista(lista_id):
     """Atualizar item da lista."""
     try:
         user_id = get_jwt_identity()
-        item = lista_repository.obter_item_por_id(lista_id)
-        if not item or item['id_usuario'] != user_id:
-            return jsonify({'erro': 'Item não encontrado ou sem permissão'}), 403
-
-        payload = _normalizar_payload_lista(request.get_json() or {})
-        payload = atualizacao_schema.load(payload, partial=True)
-
-        status_enviado = payload.get('status') or payload.get('status_consumo')
-        erro = erro_de_rotulo(status_enviado, item['tipo'])
-        if erro:
-            return jsonify({'erro': erro}), 400
-
-        if 'progresso_atual' in payload:
-            progresso = int(payload['progresso_atual'])
-            erro = _erro_de_progresso(progresso, item)
-            if erro:
-                return jsonify({'erro': erro}), 400
-
-            status = status_enviado or item['status_consumo']
-            lista_repository.atualizar_progresso(lista_id, progresso, status)
-
-        update_payload = {}
-        if 'status' in payload:
-            update_payload['status_consumo'] = payload['status']
-        if 'status_consumo' in payload:
-            update_payload['status_consumo'] = payload['status_consumo']
-        if 'nota_usuario' in payload:
-            update_payload['nota_usuario'] = payload['nota_usuario']
-        if 'favorito' in payload:
-            update_payload['favorito'] = payload['favorito']
-        if 'comentario' in payload:
-            update_payload['comentario'] = payload['comentario']
-        if 'data_inicio' in payload:
-            update_payload['data_inicio'] = payload['data_inicio']
-        if 'data_conclusao' in payload:
-            update_payload['data_conclusao'] = payload['data_conclusao']
-        if 'total_rewatches' in payload:
-            update_payload['total_rewatches'] = payload['total_rewatches']
-        if 'privado' in payload:
-            update_payload['privado'] = payload['privado']
-        if 'progresso_total' in payload:
-            update_payload['progresso_total'] = payload['progresso_total']
-
-        if update_payload:
-            lista_repository.atualizar_item(lista_id, update_payload)
-
-        return jsonify({'mensagem': 'Lista atualizada com sucesso!'}), 200
-    except ValidationError as exc:
-        return jsonify({'erro': 'Payload inválido', 'detalhes': exc.errors}), 400
+        payload = _normalizar_payload_lista(request.get_json(silent=True))
+        resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+        return _resposta(resultado, 'Lista atualizada com sucesso!')
     except Exception as exc:
         print(f"Erro ao atualizar lista: {exc}")
         return jsonify({'erro': f'Erro ao atualizar: {exc}'}), 500
@@ -245,8 +169,8 @@ def remover_item_lista(lista_id):
     """Remover item da lista."""
     try:
         user_id = get_jwt_identity()
-        lista_repository.remover_item(lista_id, user_id)
-        return jsonify({'mensagem': 'Mídia removida da lista'}), 200
+        resultado = lista_pessoal.remover(user_id, lista_id)
+        return _resposta(resultado, 'Mídia removida da lista')
     except Exception as exc:
         print(f"Erro ao remover da lista: {exc}")
         return jsonify({'erro': 'Erro ao remover mídia'}), 500

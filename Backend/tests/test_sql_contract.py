@@ -82,7 +82,6 @@ def test_procedures_e_views_essenciais_existem():
     )
     nomes = {row['routine_name'] for row in procedures}
     assert 'obter_estatisticas_usuario' in nomes
-    assert 'atualizar_progresso_midia' in nomes
 
     views = _query_all(
         """
@@ -94,6 +93,33 @@ def test_procedures_e_views_essenciais_existem():
     nomes_views = {row['table_name'] for row in views}
     assert 'vw_midias_populares' in nomes_views
     assert 'vw_perfil_usuario' in nomes_views
+
+
+def test_procedures_de_lista_sairam_do_schema():
+    """O Estado de consumo é escrito pela aplicação (ADR-0004): as procedures que
+    o banco usava para adicionar item e promover a Concluído não existem mais."""
+    procedures = _query_all(
+        """
+        SELECT routine_name
+        FROM information_schema.routines
+        WHERE routine_schema = DATABASE()
+          AND routine_type = 'PROCEDURE'
+        """
+    )
+    nomes = {row['routine_name'] for row in procedures}
+    assert 'adicionar_midia_lista' not in nomes
+    assert 'atualizar_progresso_midia' not in nomes
+
+    triggers = _query_all(
+        """
+        SELECT trigger_name
+        FROM information_schema.triggers
+        WHERE trigger_schema = DATABASE()
+        """
+    )
+    nomes_triggers = {row['trigger_name'] for row in triggers}
+    assert 'validar_progresso_lista' in nomes_triggers
+    assert 'validar_progresso_lista_update' in nomes_triggers
 
 
 def test_dados_estruturais_minimos_e_sem_seeds_exemplo():

@@ -1,3 +1,6 @@
+from repositories.midia_repository import ListaRepository
+
+
 class FakeCursor:
     def __init__(self, fetchone_results=None, fetchall_results=None):
         self.fetchone_results = list(fetchone_results or [])
@@ -41,6 +44,102 @@ class FakeConnection:
 
     def close(self):
         self.closed = True
+
+
+class FakeMidiaRepository:
+    """Catálogo em memória, na forma que `MidiaRepository.buscar_por_id` devolve."""
+
+    def __init__(self, midias=None):
+        #: id_midia -> dict com pelo menos `tipo` e `progresso_total_padrao`.
+        self.midias = midias if midias is not None else {}
+
+    def buscar_por_id(self, id_midia, expected_type=None):
+        midia = self.midias.get(id_midia)
+        if not midia:
+            return None
+        if expected_type and midia.get('tipo') != expected_type:
+            return None
+        return dict(midia, id_midia=id_midia)
+
+
+class FakeListaRepository:
+    """CRUD de Item de lista em memória, com a unique key (usuário, mídia).
+
+    Espelha a costura de `ListaRepository`: cinco métodos, uma escrita por
+    chamada, e o total da Mídia entrando em `obter_item_por_id` pelo catálogo.
+    """
+
+    def __init__(self, midias=None, itens=None):
+        self.midias = midias if midias is not None else {}
+        #: id_lista -> linha de lista_usuarios.
+        self.itens = dict(itens or {})
+        self.escritas = []
+        self._sequencia = len(self.itens)
+
+    def _proximo_id(self):
+        self._sequencia += 1
+        return f'LST-{self._sequencia}'
+
+    def _colunas(self, campos):
+        """Só as colunas que o repositório real sabe gravar, como ele faz."""
+        return {
+            campo: valor for campo, valor in campos.items()
+            if campo in ListaRepository.COLUNAS_GRAVAVEIS
+        }
+
+    def criar_item(self, id_usuario, id_midia, campos):
+        """Devolve o id do Item criado, ou None se a unique key barrou."""
+        if self.obter_item_usuario(id_usuario, id_midia):
+            return None
+
+        id_lista = self._proximo_id()
+        self.itens[id_lista] = {
+            'id_lista': id_lista,
+            'id_usuario': id_usuario,
+            'id_midia': id_midia,
+            'progresso_atual': 0,
+            'data_conclusao': None,
+            **self._colunas(campos),
+        }
+        self.escritas.append(('criar_item', id_usuario, id_midia, dict(campos)))
+        return id_lista
+
+    def atualizar_campos(self, id_lista, campos):
+        item = self.itens.get(id_lista)
+        if not item or not campos:
+            return False
+
+        item.update(self._colunas(campos))
+        self.escritas.append(('atualizar_campos', id_lista, dict(campos)))
+        return True
+
+    def obter_item_por_id(self, id_lista):
+        item = self.itens.get(id_lista)
+        if not item:
+            return None
+
+        midia = self.midias.get(item['id_midia'], {})
+        return {
+            **item,
+            'tipo': midia.get('tipo'),
+            'progresso_total_padrao': midia.get('progresso_total_padrao'),
+        }
+
+    def obter_item_usuario(self, id_usuario, id_midia):
+        for item in self.itens.values():
+            if item['id_usuario'] == id_usuario and item['id_midia'] == id_midia:
+                return dict(item)
+        return None
+
+    def remover_item(self, id_lista, id_usuario):
+        """Devolve se apagou alguma linha — item de terceiro não é apagado."""
+        item = self.itens.get(id_lista)
+        if not item or item['id_usuario'] != id_usuario:
+            return False
+
+        del self.itens[id_lista]
+        self.escritas.append(('remover_item', id_lista, id_usuario))
+        return True
 
 
 class FakeInsertResult:
