@@ -95,14 +95,6 @@ def test_procedures_e_views_essenciais_existem():
     assert 'vw_perfil_usuario' in nomes_views
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        'Aguarda a aplicação manual do schema: make db-dump, editar, make db-schema, '
-        'make db-restore. Passa (XPASS) assim que o banco local for recriado; remova '
-        'este marcador quando isso acontecer.'
-    ),
-)
 def test_procedures_de_lista_sairam_do_schema():
     """O Estado de consumo é escrito pela aplicação (ADR-0004): as procedures que
     o banco usava para adicionar item e promover a Concluído não existem mais."""
