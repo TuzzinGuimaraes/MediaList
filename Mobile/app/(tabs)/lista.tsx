@@ -8,10 +8,9 @@ import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { LinhaItem } from '@/components/LinhaItem';
 import { Opcoes } from '@/components/Opcoes';
-import { SeletorRecorte } from '@/components/SeletorRecorte';
 import { contarPorEstado, type EstadoConsumo, NOMES_ESTADO } from '@/dominio/estadoConsumo';
 import { estadosDaLista, itensDoEstado } from '@/dominio/itemLista';
-import { TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
+import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 import paleta from '@/tema/paleta';
 
 const textos = {
@@ -41,7 +40,7 @@ export default function Lista() {
 
     conteudo = (
       <>
-        <View className="pb-2">
+        <View className="pb-2 pt-3">
           <Opcoes
             rotulo={textos.abas}
             opcoes={estados.map((e) => ({ valor: e, titulo: `${NOMES_ESTADO[e]} (${contagem[e]})` }))}
@@ -88,11 +87,8 @@ export default function Lista() {
   }
 
   return (
-    <View className="flex-1 bg-dark-primary">
-      <View className="px-4 py-3">
-        <SeletorRecorte />
-      </View>
+    <ConteudoRecorte>
       {conteudo}
-    </View>
+    </ConteudoRecorte>
   );
 }

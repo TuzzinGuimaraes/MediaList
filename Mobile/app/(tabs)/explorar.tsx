@@ -7,9 +7,8 @@ import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { Opcoes } from '@/components/Opcoes';
-import { SeletorRecorte } from '@/components/SeletorRecorte';
 import { NOMES_TIPO } from '@/dominio/estadoConsumo';
-import { TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
+import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 import paleta from '@/tema/paleta';
 
 const textos = {
@@ -99,10 +98,9 @@ export default function Explorar() {
   }
 
   return (
-    <View className="flex-1 bg-dark-primary">
+    <ConteudoRecorte>
       <View className="gap-3 py-4">
         <View className="gap-3 px-4">
-          <SeletorRecorte />
           <TextInput
             accessibilityLabel={textos.busca}
             placeholder={textos.busca}
@@ -134,6 +132,6 @@ export default function Explorar() {
         <Opcoes rotulo={textos.ordem} opcoes={ORDENS} valor={ordem} escolher={setOrdem} />
       </View>
       {conteudo}
-    </View>
+    </ConteudoRecorte>
   );
 }

@@ -5,14 +5,16 @@ import type { ComponentProps } from 'react';
 import { useNaoLidas } from '@/api/noticias';
 import { useSessao } from '@/auth/SessaoContext';
 import { Carregando } from '@/components/EstadoTela';
+import { SeletorRecorte } from '@/components/SeletorRecorte';
 import paleta from '@/tema/paleta';
 
 type Icone = ComponentProps<typeof Ionicons>['name'];
 
-const abas: { nome: string; titulo: string; icone: Icone }[] = [
-  { nome: 'index', titulo: 'Início', icone: 'home-outline' },
-  { nome: 'explorar', titulo: 'Explorar', icone: 'search-outline' },
-  { nome: 'lista', titulo: 'Lista', icone: 'list-outline' },
+/** `recorte`: a aba mostra a pílula do Recorte de catálogo no cabeçalho. */
+const abas: { nome: string; titulo: string; icone: Icone; recorte?: boolean }[] = [
+  { nome: 'index', titulo: 'Início', icone: 'home-outline', recorte: true },
+  { nome: 'explorar', titulo: 'Explorar', icone: 'search-outline', recorte: true },
+  { nome: 'lista', titulo: 'Lista', icone: 'list-outline', recorte: true },
   { nome: 'noticias', titulo: 'Notícias', icone: 'newspaper-outline' },
   { nome: 'perfil', titulo: 'Perfil', icone: 'person-outline' },
 ];
@@ -29,6 +31,8 @@ export default function AbasLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: paleta.dark.nav },
         headerTintColor: paleta.text.bright,
+        headerTitleAlign: 'left',
+        headerTitleStyle: { fontWeight: 'bold' },
         tabBarStyle: { backgroundColor: paleta.dark.nav, borderTopColor: paleta.dark.border },
         tabBarActiveTintColor: paleta.accent.blue,
         tabBarInactiveTintColor: paleta.text.secondary,
@@ -40,6 +44,7 @@ export default function AbasLayout() {
           name={aba.nome}
           options={{
             title: aba.titulo,
+            headerRight: aba.recorte ? () => <SeletorRecorte /> : undefined,
             tabBarBadge: aba.nome === 'noticias' && naoLidas > 0 ? naoLidas : undefined,
             tabBarIcon: ({ color, size }) => <Ionicons name={aba.icone} color={color as string} size={size} />,
           }}

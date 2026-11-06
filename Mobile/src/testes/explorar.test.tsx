@@ -5,6 +5,7 @@ import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/te
 import { guardarSessao } from '../auth/armazenamento';
 import { usuarioAna, simularFetch } from './fetchSimulado';
 import { anime, manga } from './midias';
+import { trocarRecorte } from './recorte';
 
 const APP = path.resolve(__dirname, '../../app');
 
@@ -88,7 +89,7 @@ describe('Explorar', () => {
     await abrirExplorar();
     await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
 
     expect(await screen.findByText('Nenhuma Mídia com esses filtros.')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Anime' })).not.toBeOnTheScreen();
