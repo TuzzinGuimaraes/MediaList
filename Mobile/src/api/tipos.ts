@@ -200,3 +200,25 @@ export type Notificacao = {
 };
 
 export type RespostaNotificacoes = { notificacoes: Notificacao[] };
+
+
+/**
+ * Uma página de GET /midias. A API não manda total: uma página com menos de
+ * `por_pagina` Mídias é a última.
+ */
+export type PaginaMidias = {
+  midias: MidiaResumo[];
+  pagina: number;
+  por_pagina: number;
+  tipo: TipoMidia | null;
+};
+
+/** Item de GET /generos?tipo=. `aplicavel_a` é o SET do MySQL já como lista. */
+export type Genero = {
+  id_genero: number;
+  nome_genero: string;
+  descricao: string | null;
+  aplicavel_a: TipoMidia[];
+};
+
+export type RespostaGeneros = { generos: Genero[] };
