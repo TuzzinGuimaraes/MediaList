@@ -1,9 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { RespostaNotificacoes } from './tipos';
+import type { RespostaNoticias, RespostaNotificacoes } from './tipos';
 
 const chaveNotificacoes = ['notificacoes'] as const;
+
+export function useNoticias() {
+  const { cliente } = useSessao();
+  return useQuery({
+    queryKey: ['noticias'],
+    queryFn: () => cliente.requisitar<RespostaNoticias>('/noticias?limite=20'),
+    select: (r) => r.noticias,
+  });
+}
 
 /** As 50 Notificações mais recentes (limite da API). Badge e lista leem a mesma consulta. */
 function useConsultaNotificacoes<T>(select: (r: RespostaNotificacoes) => T) {
@@ -16,7 +25,28 @@ function useConsultaNotificacoes<T>(select: (r: RespostaNotificacoes) => T) {
   });
 }
 
+const todas = (r: RespostaNotificacoes) => r.notificacoes;
+const contarNaoLidas = (r: RespostaNotificacoes) => r.notificacoes.filter((n) => !n.lida).length;
+
+export function useNotificacoes() {
+  return useConsultaNotificacoes(todas);
+}
+
 export function useNaoLidas(): number {
-  const { data } = useConsultaNotificacoes((r) => r.notificacoes.filter((n) => !n.lida).length);
-  return data ?? 0;
+  return useConsultaNotificacoes(contarNaoLidas).data ?? 0;
+}
+
+export function useMarcarTodasLidas() {
+  const { cliente } = useSessao();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cliente.requisitar('/notificacoes/marcar-todas-lidas', { metodo: 'PUT' }),
+    onSuccess: async () => {
+      // Zera o badge na hora; a releitura confirma com o servidor.
+      queryClient.setQueryData<RespostaNotificacoes>(chaveNotificacoes, (atual) =>
+        atual && { notificacoes: atual.notificacoes.map((n) => ({ ...n, lida: true })) },
+      );
+      await queryClient.invalidateQueries({ queryKey: chaveNotificacoes });
+    },
+  });
 }
