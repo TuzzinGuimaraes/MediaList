@@ -339,6 +339,28 @@ CREATE TABLE comentarios_avaliacoes (
     INDEX idx_avaliacao (id_avaliacao)
 ) ENGINE=InnoDB;
 
+-- Refresh tokens rotativos (ADR-0006). Só o hash SHA-256 é guardado; o token
+-- em claro existe apenas na resposta ao cliente. Cada login abre uma `familia`;
+-- cada renovação revoga o token e aponta `substituido_por` para o sucessor.
+-- Datas em UTC (DATETIME, sem conversão de fuso), escritas pela aplicação.
+-- Aplicar em banco existente: `make db-migrate-refresh`.
+CREATE TABLE refresh_tokens (
+    id_refresh VARCHAR(50) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    id_usuario VARCHAR(50) NOT NULL,
+    familia VARCHAR(50) NOT NULL,
+    criado_em DATETIME NOT NULL,
+    expira_em DATETIME NOT NULL,
+    revogado BOOLEAN NOT NULL DEFAULT FALSE,
+    substituido_por VARCHAR(50) NULL,
+    PRIMARY KEY (id_refresh),
+    UNIQUE KEY uk_token_hash (token_hash),
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (substituido_por) REFERENCES refresh_tokens(id_refresh) ON DELETE SET NULL,
+    INDEX idx_familia (familia),
+    INDEX idx_usuario (id_usuario)
+) ENGINE=InnoDB;
+
 -- ============================================
 -- TRIGGERS
 -- ============================================

@@ -137,3 +137,22 @@ def test_dados_estruturais_minimos_e_sem_seeds_exemplo():
     assert grupos['total'] == 3
     assert generos['total'] >= 20
     assert placeholder_assets == []
+
+
+
+def test_refresh_tokens_guarda_so_o_hash():
+    """ADR-0006: a tabela tem a cadeia de rotação e nenhuma coluna para o token em claro."""
+    colunas = _query_all(
+        """
+        SELECT column_name, data_type, character_maximum_length
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'refresh_tokens'
+        """
+    )
+    por_nome = {row['column_name']: row for row in colunas}
+
+    assert set(por_nome) == {
+        'id_refresh', 'token_hash', 'id_usuario', 'familia',
+        'criado_em', 'expira_em', 'revogado', 'substituido_por',
+    }
+    assert por_nome['token_hash']['character_maximum_length'] == 64
