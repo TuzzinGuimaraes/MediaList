@@ -245,6 +245,15 @@ class FakeRefreshTokenRepository:
         self.tokens = {}
         self.usuarios_ativos = dict(usuarios_ativos or {})
         self._sequencia = 0
+        #: Métodos que levantam RefreshTokenIndisponivel, como banco fora do ar.
+        self.indisponivel = set()
+        #: Quando True, `rotacionar` perde a corrida para outra requisição.
+        self.perder_corrida = False
+
+    def _checar(self, metodo):
+        if metodo in self.indisponivel:
+            from repositories import RefreshTokenIndisponivel
+            raise RefreshTokenIndisponivel(f'{metodo}: banco indisponível')
 
     def _proximo_id(self):
         self._sequencia += 1
@@ -264,6 +273,7 @@ class FakeRefreshTokenRepository:
         return id_refresh
 
     def buscar_por_hash(self, token_hash):
+        self._checar('buscar_por_hash')
         for linha in self.tokens.values():
             if linha['token_hash'] == token_hash:
                 return {
@@ -273,8 +283,9 @@ class FakeRefreshTokenRepository:
         return None
 
     def rotacionar(self, id_refresh, novo_hash, expira_em):
+        self._checar('rotacionar')
         atual = self.tokens.get(id_refresh)
-        if not atual or atual['revogado']:
+        if not atual or atual['revogado'] or self.perder_corrida:
             return None
 
         novo_id = self.criar(atual['id_usuario'], atual['familia'], novo_hash, expira_em)

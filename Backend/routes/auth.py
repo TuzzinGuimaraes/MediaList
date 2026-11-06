@@ -13,8 +13,8 @@ import secrets
 import uuid
 from database import execute_query, get_db_connection
 from decorators import get_user_permissions
-from config import JWT_REFRESH_TOKEN_EXPIRES, token_blocklist
-from repositories import RefreshTokenRepository
+from config import REFRESH_TOKEN_EXPIRES, token_blocklist
+from repositories import RefreshTokenIndisponivel, RefreshTokenRepository
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -38,7 +38,7 @@ def _hash_refresh(token):
 def _novo_refresh():
     """Devolve (token em claro, hash, expiração em UTC sem fuso)."""
     token = secrets.token_urlsafe(32)
-    expira_em = datetime.now(timezone.utc).replace(tzinfo=None) + JWT_REFRESH_TOKEN_EXPIRES
+    expira_em = datetime.now(timezone.utc).replace(tzinfo=None) + REFRESH_TOKEN_EXPIRES
     return token, _hash_refresh(token), expira_em
 
 
@@ -227,7 +227,8 @@ def refresh():
         novo_token, novo_hash, expira_em = _novo_refresh()
         if not refresh_token_repository.rotacionar(atual['id_refresh'], novo_hash, expira_em):
             # Outra requisição rotacionou este token entre a leitura e a
-            # troca: é o mesmo caso do reuso.
+            # troca: é o mesmo caso do reuso. Falha de banco não chega aqui,
+            # levanta RefreshTokenIndisponivel.
             refresh_token_repository.revogar_familia(atual['familia'])
             return jsonify({'erro': 'Refresh token inválido'}), 401
 
@@ -235,6 +236,11 @@ def refresh():
             'access_token': create_access_token(identity=atual['id_usuario']),
             'refresh_token': novo_token,
         }), 200
+    except RefreshTokenIndisponivel as e:
+        # Banco fora do ar não diz nada sobre o token: nada é revogado, e o
+        # app pode tentar de novo com o mesmo refresh.
+        print(f"Refresh indisponível: {e}")
+        return jsonify({'erro': 'Erro interno no servidor'}), 500
     except Exception as e:
         print(f"Erro no refresh: {e}")
         return jsonify({'erro': 'Erro interno no servidor'}), 500
