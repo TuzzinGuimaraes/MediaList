@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 
 import { criarQueryClient, ligarFocoAoAppState } from '@/api/consulta';
 import { SessaoProvider } from '@/auth/SessaoContext';
+import { RecorteProvider } from '@/recorte/RecorteContext';
 import paleta from '@/tema/paleta';
 
 const tema = {
@@ -29,8 +30,10 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={tema}>
         <SessaoProvider>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false }} />
+          <RecorteProvider>
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false }} />
+          </RecorteProvider>
         </SessaoProvider>
       </ThemeProvider>
     </QueryClientProvider>
