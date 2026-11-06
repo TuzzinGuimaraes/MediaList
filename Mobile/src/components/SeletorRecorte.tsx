@@ -73,7 +73,9 @@ export function SeletorRecorte() {
             emTransicao ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border bg-dark-secondary'
           }`}
         >
-          <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold text-accent-blue">{NOMES_RECORTE[destino]}</Text>
+          <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold text-accent-blue">
+            {NOMES_RECORTE[destino]}
+          </Text>
           <Ionicons name="chevron-down" size={14} color={paleta.text.secondary} />
         </View>
       </Pressable>

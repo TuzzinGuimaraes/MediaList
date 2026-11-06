@@ -28,6 +28,15 @@ produção):
 EXPO_PUBLIC_API_URL=https://api.exemplo.com/api npx expo start
 ```
 
+## Tipografia
+
+Escala única em `src/tema/tipografia.js`, exposta como classes do Tailwind (tamanho/altura de linha):
+`text-titulo-tela` 28/36, `text-titulo-secao` 20/28, `text-corpo` 16/24, `text-legenda` 14/20 e
+`text-campo` 16 (só em `TextInput`, sem altura de linha). Todo `Text` usa um desses níveis; nada de
+`text-xs`/`text-sm`/`fontSize` solto. O ajuste de fonte do sistema vale em todo o app (nunca
+`allowFontScaling={false}`); só pílulas, selos e o stepper limitam o crescimento com
+`maxFontSizeMultiplier={1.3}`.
+
 ## Verificação
 
 ```bash
