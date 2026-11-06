@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { type Cliente, type Tokens, criarCliente } from '../api/cliente';
 import { urlApi } from '../api/config';
 import type { DadosRegistro, RespostaLogin, UsuarioSessao } from '../api/tipos';
-import { apagarSessao, carregarSessao, guardarSessao } from './armazenamento';
+import { apagarSessao, carregarSessao, guardarSessao, guardarTokens } from './armazenamento';
 
 type EstadoSessao =
   | { estado: 'carregando' }
@@ -25,14 +25,28 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [sessao, setSessao] = useState<EstadoSessao>({ estado: 'carregando' });
   // Os tokens vivem fora do estado do React: o cliente HTTP os lê a cada requisição.
-  const [{ cliente, definirTokens }] = useState(() => {
+  const [{ cliente, definirTokens, encerrar }] = useState(() => {
     let tokens: Tokens | null = null;
-    return {
-      cliente: criarCliente(urlApi(), { atuais: () => tokens }),
-      definirTokens: (novos: Tokens | null) => {
-        tokens = novos;
-      },
+    const definirTokens = (novos: Tokens | null) => {
+      tokens = novos;
     };
+    const encerrar = async () => {
+      definirTokens(null);
+      await apagarSessao();
+      queryClient.clear();
+      setSessao({ estado: 'anonima' });
+    };
+    const cliente = criarCliente(urlApi(), {
+      atuais: () => tokens,
+      renovados: async (novos) => {
+        definirTokens(novos);
+        await guardarTokens(novos);
+      },
+      expirada: () => {
+        encerrar();
+      },
+    });
+    return { cliente, definirTokens, encerrar };
   });
 
   useEffect(() => {
@@ -70,11 +84,16 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sair = useCallback(async () => {
-    definirTokens(null);
-    await apagarSessao();
-    queryClient.clear();
-    setSessao({ estado: 'anonima' });
-  }, [queryClient, definirTokens]);
+    // Revoga no servidor o refresh deste aparelho. Falhar aqui (sem rede, token já
+    // inválido) não impede sair: os tokens locais são apagados de qualquer jeito.
+    await cliente
+      .requisitar('/auth/logout', {
+        metodo: 'POST',
+        corpo: (atuais) => (atuais?.refresh ? { refresh_token: atuais.refresh } : undefined),
+      })
+      .catch(() => undefined);
+    await encerrar();
+  }, [cliente, encerrar]);
 
   const valor = useMemo(
     () => ({ sessao, cliente, entrar, registrar, sair }),
