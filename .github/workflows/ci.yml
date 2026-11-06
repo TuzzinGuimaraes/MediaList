@@ -74,3 +74,36 @@ jobs:
 
       - name: Build frontend image
         run: docker compose build frontend
+
+  mobile:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # RNTL 14 exige Node ^22.13 || >=24.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Mobile/package-lock.json
+
+      - name: Install mobile dependencies
+        working-directory: Mobile
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: Mobile
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: Mobile
+        run: npm run lint
+
+      - name: Run mobile test suite
+        working-directory: Mobile
+        run: npm test -- --ci
