@@ -69,8 +69,8 @@ export function rotuloPara(estado: EstadoConsumo, tipo: TipoMidia): string | nul
 }
 
 /** Estado de consumo por trás do rótulo, ou null se o rótulo não vale para o Tipo. */
-export function estadoDe(rotulo: string | null | undefined, tipo: string): EstadoConsumo | null {
-  const rotulos = ROTULOS_POR_TIPO[tipo as TipoMidia];
+export function estadoDe(rotulo: string | null | undefined, tipo: TipoMidia): EstadoConsumo | null {
+  const rotulos = ROTULOS_POR_TIPO[tipo];
   if (!rotulo || !rotulos) return null;
   return ESTADOS.find((estado) => rotulos[estado] === rotulo) ?? null;
 }
@@ -78,20 +78,30 @@ export function estadoDe(rotulo: string | null | undefined, tipo: string): Estad
 export type ContagemPorEstado = Record<EstadoConsumo, number>;
 
 /**
- * Conta Itens por Estado de consumo. Platinado é refinamento de Concluído:
- * cada Item platinado soma em `platinado` e também em `concluido`.
+ * Núcleo das contagens por Estado de consumo: soma `quantidade` no Estado de cada
+ * entrada; rótulo que não vale para o Tipo fica de fora. Platinado é refinamento de
+ * Concluído: soma em `platinado` e também em `concluido`.
  */
-export function contarPorEstado(
-  itens: readonly { tipo: string; status_consumo: string | null }[],
+function acumularPorEstado<T>(
+  entradas: readonly T[],
+  ler: (entrada: T) => { rotulo: string | null; tipo: TipoMidia; quantidade: number },
 ): ContagemPorEstado {
   const contagem = Object.fromEntries(ESTADOS.map((e) => [e, 0])) as ContagemPorEstado;
-  for (const item of itens) {
-    const estado = estadoDe(item.status_consumo, item.tipo);
+  for (const entrada of entradas) {
+    const { rotulo, tipo, quantidade } = ler(entrada);
+    const estado = estadoDe(rotulo, tipo);
     if (!estado) continue;
-    contagem[estado] += 1;
-    if (estado === 'platinado') contagem.concluido += 1;
+    contagem[estado] += quantidade;
+    if (estado === 'platinado') contagem.concluido += quantidade;
   }
   return contagem;
+}
+
+/** Conta Itens por Estado de consumo; cada Item platinado conta também em Concluído. */
+export function contarPorEstado(
+  itens: readonly { tipo: TipoMidia; status_consumo: string | null }[],
+): ContagemPorEstado {
+  return acumularPorEstado(itens, (item) => ({ rotulo: item.status_consumo, tipo: item.tipo, quantidade: 1 }));
 }
 
 /** Média das Notas pessoais dadas; null se nenhum Item tem nota. */
@@ -108,7 +118,7 @@ export function mediaNotasPessoais(
 
 
 /** Nome de apresentação do Estado por trás do rótulo; rótulo desconhecido passa como veio. */
-export function nomeDoRotulo(rotulo: string, tipo: string): string {
+export function nomeDoRotulo(rotulo: string, tipo: TipoMidia): string {
   const estado = estadoDe(rotulo, tipo);
   return estado ? NOMES_ESTADO[estado] : rotulo;
 }
@@ -119,15 +129,13 @@ export function nomeDoRotulo(rotulo: string, tipo: string): string {
  */
 export function somarPorEstado(
   linhas: readonly { status_consumo: string; total: number }[],
-  tipo: string,
+  tipo: TipoMidia,
 ): { estado: EstadoConsumo; nome: string; total: number }[] {
-  const contagem = Object.fromEntries(ESTADOS.map((e) => [e, 0])) as ContagemPorEstado;
-  for (const { status_consumo, total } of linhas) {
-    const estado = estadoDe(status_consumo, tipo);
-    if (!estado) continue;
-    contagem[estado] += total;
-    if (estado === 'platinado') contagem.concluido += total;
-  }
+  const contagem = acumularPorEstado(linhas, (linha) => ({
+    rotulo: linha.status_consumo,
+    tipo,
+    quantidade: linha.total,
+  }));
   return ESTADOS.filter((e) => contagem[e] > 0).map((estado) => ({
     estado,
     nome: NOMES_ESTADO[estado],

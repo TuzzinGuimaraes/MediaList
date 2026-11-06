@@ -12,12 +12,12 @@ import {
 } from './estadoConsumo';
 
 /** Jogos não têm Progresso mensurável: o campo guarda horas, que nunca concluem. */
-export function temProgresso(tipo: string): boolean {
+export function temProgresso(tipo: TipoMidia): boolean {
   return tipo === 'anime' || tipo === 'manga';
 }
 
 type ComTotal = {
-  tipo: string;
+  tipo: TipoMidia;
   progresso_total?: number | null;
   numero_episodios?: number | null;
   numero_capitulos?: number | null;
@@ -43,7 +43,7 @@ export function passoDeProgresso(
   return novo;
 }
 
-function eTerminal(rotulo: string, tipo: string): boolean {
+function eTerminal(rotulo: string, tipo: TipoMidia): boolean {
   const estado = estadoDe(rotulo, tipo);
   return estado === 'concluido' || estado === 'platinado';
 }
@@ -62,7 +62,7 @@ export function aplicarProgresso<
   }
   return {
     ...novo,
-    status_consumo: rotuloPara('concluido', item.tipo as TipoMidia) ?? item.status_consumo,
+    status_consumo: rotuloPara('concluido', item.tipo) ?? item.status_consumo,
     data_conclusao: item.data_conclusao || hoje,
   };
 }
@@ -88,7 +88,7 @@ export function estadosDaLista(tipos: readonly TipoMidia[]): EstadoConsumo[] {
 }
 
 /** Itens de uma aba. A aba Concluído inclui os platinados. */
-export function itensDoEstado<T extends { tipo: string; status_consumo: string }>(
+export function itensDoEstado<T extends { tipo: TipoMidia; status_consumo: string }>(
   itens: readonly T[],
   estado: EstadoConsumo,
 ): T[] {
