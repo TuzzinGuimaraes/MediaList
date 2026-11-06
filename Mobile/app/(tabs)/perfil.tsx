@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { usePermissoes, useUsuarioAtual } from '@/api/usuario';
 import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha } from '@/components/EstadoTela';
+import { EstatisticasPerfil } from '@/components/EstatisticasPerfil';
 import { rotuloNivelAcesso } from '@/dominio/conta';
 
 const textos = {
@@ -60,13 +61,14 @@ export default function Perfil() {
   }
 
   return (
-    <View className="flex-1 gap-6 bg-dark-primary p-6">
+    <ScrollView className="flex-1 bg-dark-primary" contentContainerClassName="gap-6 p-6">
       <View>
         <Linha rotulo={textos.nome} valor={usuario.data.nome_completo} />
         <Linha rotulo={textos.email} valor={usuario.data.email} />
         <Linha rotulo={textos.nivel} valor={rotuloNivelAcesso(permissoes.data.nivel_acesso)} />
       </View>
+      <EstatisticasPerfil />
       {botaoSair}
-    </View>
+    </ScrollView>
   );
 }
