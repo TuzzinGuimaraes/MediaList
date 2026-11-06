@@ -1,0 +1,111 @@
+import path from 'node:path';
+import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+
+import { guardarSessao } from '../auth/armazenamento';
+import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { anime } from './midias';
+
+const APP = path.resolve(__dirname, '../../app');
+
+/** Item de GET /avaliacoes/<id> no formato real (conferido contra o backend local). */
+function avaliacao(dados: Record<string, unknown> = {}) {
+  return {
+    id_avaliacao: 'AVL-1793977663-0000000001',
+    codigo_avaliacao: 'AVL20261106-00001',
+    id_midia: 'MID-ANM-2026-20053',
+    id_usuario: 'USR-20261106-00099',
+    nome_completo: 'Bruno Lima',
+    foto_perfil: null,
+    nota: 8.5,
+    titulo_avaliacao: 'Melancólico e bonito',
+    texto_avaliacao: 'O tempo passa diferente para uma elfa.',
+    data_avaliacao: '2026-11-05T10:00:00',
+    data_edicao: null,
+    likes: 0,
+    dislikes: 0,
+    generos_lista: [],
+    ...dados,
+  };
+}
+
+const minha = (dados: Record<string, unknown> = {}) =>
+  avaliacao({
+    id_avaliacao: 'AVL-MINHA',
+    id_usuario: usuarioAna.id,
+    nome_completo: usuarioAna.nome,
+    nota: 7,
+    titulo_avaliacao: 'Bom',
+    texto_avaliacao: 'Gostei.',
+    ...dados,
+  });
+
+const frieren = anime({ nota_media: 8.5, total_avaliacoes: 1 });
+const ID = frieren.id_midia;
+
+function rotas(avaliacoes: unknown[], extras: Record<string, Resposta | ((r: any) => Resposta)> = {}) {
+  return {
+    [`GET /midias/${ID}`]: { status: 200, corpo: frieren },
+    [`GET /midias/${ID}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+    [`GET /avaliacoes/${ID}`]: { status: 200, corpo: { avaliacoes } },
+    'GET /lista': { status: 200, corpo: { lista: [] } },
+    ...extras,
+  };
+}
+
+async function abrirDetalhe() {
+  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
+  return renderRouter(APP, { initialUrl: `/midia/${ID}` });
+}
+
+describe('Avaliações no detalhe da Mídia', () => {
+  it('lista as Avaliações com autor, nota, título e texto', async () => {
+    simularFetch(rotas([avaliacao()]));
+
+    await abrirDetalhe();
+
+    const item = await screen.findByLabelText('Avaliação de Bruno Lima');
+    expect(within(item).getByText('8.5')).toBeOnTheScreen();
+    expect(within(item).getByText('Melancólico e bonito')).toBeOnTheScreen();
+    expect(within(item).getByText('O tempo passa diferente para uma elfa.')).toBeOnTheScreen();
+    expect(within(item).getByText('05/11/2026')).toBeOnTheScreen();
+  });
+
+  it('criar envia o payload certo e atualiza Nota média e Total de avaliações', async () => {
+    let avaliacoes: unknown[] = [];
+    let midia = anime({ nota_media: 9.1, total_avaliacoes: 0 });
+    const api = simularFetch({
+      ...rotas([]),
+      [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
+      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      'POST /avaliacoes': (req) => {
+        avaliacoes = [minha({ nota: 9, titulo_avaliacao: 'Obra-prima', texto_avaliacao: 'Chorei.' })];
+        midia = { ...midia, nota_media: 9, total_avaliacoes: 1 };
+        return {
+          status: 201,
+          corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA', nota_media_atualizada: '9.00', total_avaliacoes: 1 },
+        };
+      },
+    });
+
+    await abrirDetalhe();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
+
+    expect(screen.getByText(/pública/)).toBeOnTheScreen();
+    expect(screen.getByText(/Nota pessoal/)).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '9');
+    await fireEvent.changeText(screen.getByLabelText('Título'), 'Obra-prima');
+    await fireEvent.changeText(screen.getByLabelText('Texto'), 'Chorei.');
+    await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
+
+    expect(await screen.findByLabelText('Avaliação de Ana Souza')).toBeOnTheScreen();
+    expect(api.para('POST /avaliacoes')).toHaveLength(1);
+    expect(api.para('POST /avaliacoes')[0].corpo).toEqual({
+      id_midia: ID,
+      nota: 9,
+      titulo_avaliacao: 'Obra-prima',
+      texto_avaliacao: 'Chorei.',
+    });
+    expect(await screen.findByLabelText('Total de avaliações: 1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota média: 9.0')).toBeOnTheScreen();
+  });
+});
