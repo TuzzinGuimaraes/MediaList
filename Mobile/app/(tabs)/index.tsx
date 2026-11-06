@@ -5,8 +5,7 @@ import { useEmAlta, usePopulares } from '@/api/midias';
 import type { CartaoMidia } from '@/api/tipos';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha } from '@/components/EstadoTela';
-import { SeletorRecorte } from '@/components/SeletorRecorte';
-import { useRecorte } from '@/recorte/RecorteContext';
+import { ConteudoRecorte, useRecorte } from '@/recorte/RecorteContext';
 import paleta from '@/tema/paleta';
 
 const textos = {
@@ -63,24 +62,23 @@ export default function Inicio() {
   }
 
   return (
-    <ScrollView
-      testID="inicio"
-      className="flex-1 bg-dark-primary"
-      contentContainerClassName="flex-grow gap-6 py-4"
-      refreshControl={
-        <RefreshControl
-          refreshing={atualizando}
-          onRefresh={atualizar}
-          tintColor={paleta.accent.blue}
-          colors={[paleta.accent.blue]}
-          progressBackgroundColor={paleta.dark.secondary}
-        />
-      }
-    >
-      <View className="px-4">
-        <SeletorRecorte />
-      </View>
-      {conteudo}
-    </ScrollView>
+    <ConteudoRecorte>
+      <ScrollView
+        testID="inicio"
+        className="flex-1 bg-dark-primary"
+        contentContainerClassName="flex-grow gap-6 py-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={atualizando}
+            onRefresh={atualizar}
+            tintColor={paleta.accent.blue}
+            colors={[paleta.accent.blue]}
+            progressBackgroundColor={paleta.dark.secondary}
+          />
+        }
+      >
+        {conteudo}
+      </ScrollView>
+    </ConteudoRecorte>
   );
 }
