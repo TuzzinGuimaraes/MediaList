@@ -25,7 +25,7 @@ export function Botao({ titulo, onPress, carregando = false, variante = 'primari
       {carregando ? (
         <ActivityIndicator color={primario ? paleta.dark.primary : paleta.text.primary} />
       ) : (
-        <Text className={`font-semibold ${primario ? 'text-dark-primary' : 'text-text-primary'}`}>
+        <Text className={`text-corpo font-semibold ${primario ? 'text-dark-primary' : 'text-text-primary'}`}>
           {titulo}
         </Text>
       )}

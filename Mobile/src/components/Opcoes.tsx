@@ -30,7 +30,7 @@ export function Opcoes<V>({ rotulo, opcoes, valor, escolher }: Props<V>) {
               ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border bg-dark-secondary'
             }`}
           >
-            <Text className={`text-xs font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
+            <Text className={`text-corpo font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
               {opcao.titulo}
             </Text>
           </Pressable>

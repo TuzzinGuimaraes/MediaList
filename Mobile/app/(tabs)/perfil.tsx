@@ -18,8 +18,8 @@ const textos = {
 function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <View className="gap-1 border-b border-dark-border py-3">
-      <Text className="text-sm text-text-secondary">{rotulo}</Text>
-      <Text className="text-base text-text-bright">{valor}</Text>
+      <Text className="text-legenda text-text-secondary">{rotulo}</Text>
+      <Text className="text-corpo text-text-bright">{valor}</Text>
     </View>
   );
 }

@@ -36,7 +36,7 @@ export function CardMidia({ midia, largura }: Props) {
             />
           ) : null}
         </View>
-        <Text numberOfLines={2} className="text-xs leading-tight text-text-primary">
+        <Text numberOfLines={2} className="text-legenda text-text-primary">
           {titulo}
         </Text>
         <SeloTipo tipo={midia.tipo} />

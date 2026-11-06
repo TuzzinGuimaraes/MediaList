@@ -19,8 +19,8 @@ export function nomeDoTipo(tipo: string): string {
 export function SeloTipo({ tipo }: { tipo: string }) {
   const cor = CORES_TIPO[tipo as TipoMidia] ?? paleta.text.secondary;
   return (
-    <View className="self-start rounded-sm border px-1" style={{ borderColor: cor }}>
-      <Text className="text-[10px] font-semibold" style={{ color: cor }}>
+    <View className="self-start rounded-sm border px-1.5" style={{ borderColor: cor }}>
+      <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold" style={{ color: cor }}>
         {nomeDoTipo(tipo)}
       </Text>
     </View>

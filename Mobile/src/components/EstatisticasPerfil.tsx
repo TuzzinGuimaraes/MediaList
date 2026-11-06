@@ -64,8 +64,8 @@ export function EstatisticasPerfil() {
         accessibilityLabel={`${textos.media}: ${media}`}
         className="items-center gap-1 rounded-md bg-dark-secondary p-4"
       >
-        <Text className="text-3xl font-bold text-text-bright">{media}</Text>
-        <Text className="text-sm text-text-secondary">{textos.media}</Text>
+        <Text className="text-titulo-tela font-bold text-text-bright">{media}</Text>
+        <Text className="text-center text-legenda text-text-secondary">{textos.media}</Text>
       </View>
       <Barras titulo={textos.porEstado} barras={barrasEstado} />
       <Barras titulo={textos.porTipo} barras={barrasTipo} />

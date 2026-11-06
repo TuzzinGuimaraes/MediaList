@@ -44,8 +44,8 @@ const textos = {
 function Info({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <View accessible accessibilityLabel={`${rotulo}: ${valor}`} className="gap-0.5">
-      <Text className="text-xs text-text-secondary">{rotulo}</Text>
-      <Text className="text-sm text-text-bright">{valor}</Text>
+      <Text className="text-legenda text-text-secondary">{rotulo}</Text>
+      <Text className="text-corpo text-text-bright">{valor}</Text>
     </View>
   );
 }
@@ -59,7 +59,7 @@ function textoProgresso(item: ItemLista): string {
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <View className="gap-3 rounded-md bg-dark-secondary p-4">
-      <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
+      <Text className="text-legenda font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
       {children}
     </View>
   );
@@ -68,14 +68,14 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
 function Barra({ rotulo, total, maximo, a11y }: { rotulo: string; total: number; maximo: number; a11y: string }) {
   return (
     <View accessible accessibilityLabel={a11y} className="flex-row items-center gap-2">
-      <Text className="w-24 text-xs text-text-primary">{rotulo}</Text>
+      <Text className="w-28 text-legenda text-text-primary">{rotulo}</Text>
       <View className="h-2 flex-1 overflow-hidden rounded-full bg-dark-tertiary">
         <View
           className="h-full rounded-full bg-accent-blue"
           style={{ width: `${maximo ? (total / maximo) * 100 : 0}%` }}
         />
       </View>
-      <Text className="w-6 text-right text-xs text-text-secondary">{total}</Text>
+      <Text className="w-9 text-right text-legenda text-text-secondary">{total}</Text>
     </View>
   );
 }
@@ -118,17 +118,17 @@ export default function DetalheMidia() {
             ) : null}
           </View>
           <View className="flex-1 gap-2">
-            <Text accessibilityRole="header" className="text-xl font-bold text-text-bright">
+            <Text accessibilityRole="header" className="text-titulo-secao font-bold text-text-bright">
               {titulo}
             </Text>
             {m.titulo_original !== titulo ? (
-              <Text className="text-sm text-text-secondary">{m.titulo_original}</Text>
+              <Text className="text-corpo text-text-secondary">{m.titulo_original}</Text>
             ) : null}
-            <Text className="text-xs text-text-secondary">{m.tipo_label}</Text>
+            <Text className="text-legenda text-text-secondary">{m.tipo_label}</Text>
             {nota ? (
               <View accessible accessibilityLabel={`${textos.notaMedia}: ${nota}`} className="flex-row items-center gap-1">
-                <Ionicons name="star" size={14} color={paleta.accent.yellow} />
-                <Text className="font-bold text-accent-yellow">{nota}</Text>
+                <Ionicons name="star" size={16} color={paleta.accent.yellow} />
+                <Text className="text-corpo font-bold text-accent-yellow">{nota}</Text>
               </View>
             ) : null}
             <Info rotulo={textos.totalAvaliacoes} valor={String(m.total_avaliacoes ?? 0)} />
@@ -147,7 +147,7 @@ export default function DetalheMidia() {
           </View>
         ) : item.data === null ? (
           <View className="flex-row items-center gap-4 rounded-md bg-dark-secondary p-4">
-            <Text className="flex-1 text-sm text-text-secondary">{textos.foraDaLista}</Text>
+            <Text className="flex-1 text-corpo text-text-secondary">{textos.foraDaLista}</Text>
             <Botao titulo={textos.adicionar} onPress={() => setEditor(true)} />
           </View>
         ) : null}
@@ -155,7 +155,7 @@ export default function DetalheMidia() {
           <EditorItem midia={m} item={item.data} aoFechar={() => setEditor(false)} />
         ) : null}
 
-        {m.sinopse ? <Text className="leading-5 text-text-primary">{m.sinopse}</Text> : null}
+        {m.sinopse ? <Text className="text-corpo text-text-primary">{m.sinopse}</Text> : null}
 
         <View className="flex-row flex-wrap gap-x-6 gap-y-3 rounded-md bg-dark-secondary p-4">
           {lancamento ? <Info rotulo={textos.lancamento} valor={lancamento} /> : null}
@@ -182,7 +182,7 @@ export default function DetalheMidia() {
                 />
               ))
           ) : (
-            <Text className="text-sm text-text-secondary">{textos.semAvaliacoes}</Text>
+            <Text className="text-corpo text-text-secondary">{textos.semAvaliacoes}</Text>
           )}
         </Secao>
 
@@ -220,7 +220,7 @@ export default function DetalheMidia() {
           className="flex-row items-center gap-1 p-2"
         >
           <Ionicons name="chevron-back" size={20} color={paleta.text.bright} />
-          <Text className="text-text-bright">{textos.voltar}</Text>
+          <Text className="text-corpo text-text-bright">{textos.voltar}</Text>
         </Pressable>
       </View>
       {corpo}
