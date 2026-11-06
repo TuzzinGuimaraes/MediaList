@@ -108,4 +108,36 @@ describe('Avaliações no detalhe da Mídia', () => {
     expect(await screen.findByLabelText('Total de avaliações: 1')).toBeOnTheScreen();
     expect(screen.getByLabelText('Nota média: 9.0')).toBeOnTheScreen();
   });
+
+  it('com Avaliação própria, não oferece uma segunda e edita a existente via PUT', async () => {
+    let avaliacoes = [avaliacao(), minha()];
+    const api = simularFetch({
+      ...rotas([]),
+      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      'PUT /avaliacoes/AVL-MINHA': (req) => {
+        avaliacoes = [avaliacao(), minha({ nota: 6.5, titulo_avaliacao: 'Revisto' })];
+        return { status: 200, corpo: { mensagem: 'Avaliação atualizada com sucesso!', nota_media_atualizada: '7.50' } };
+      },
+    });
+
+    await abrirDetalhe();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar minha Avaliação' }));
+
+    expect(screen.queryByRole('button', { name: 'Escrever Avaliação' })).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota (0,01 a 9,99)')).toHaveDisplayValue('7');
+    expect(screen.getByLabelText('Título')).toHaveDisplayValue('Bom');
+    expect(screen.getByLabelText('Texto')).toHaveDisplayValue('Gostei.');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '6,5');
+    await fireEvent.changeText(screen.getByLabelText('Título'), 'Revisto');
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+
+    expect(await screen.findByText('Revisto')).toBeOnTheScreen();
+    expect(api.para('POST /avaliacoes')).toHaveLength(0);
+    expect(api.para('PUT /avaliacoes/AVL-MINHA')[0].corpo).toEqual({
+      nota: 6.5,
+      titulo_avaliacao: 'Revisto',
+      texto_avaliacao: 'Gostei.',
+    });
+    expect(api.para(`GET /midias/${ID}`).length).toBeGreaterThan(1);
+  });
 });

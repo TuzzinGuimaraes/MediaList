@@ -171,7 +171,7 @@ export default function DetalheMidia() {
           </Secao>
         ) : null}
 
-        <SecaoAvaliacoes idMidia={m.id_midia} avaliacoes={avaliacoes.data ?? []} />
+        <SecaoAvaliacoes idMidia={m.id_midia} avaliacoes={avaliacoes.data} />
       </ScrollView>
     );
   } else if (midia.isError) {

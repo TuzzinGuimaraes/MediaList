@@ -13,6 +13,7 @@ const textos = {
   titulo: 'Avaliações',
   nenhuma: 'Nenhuma Avaliação ainda.',
   escrever: 'Escrever Avaliação',
+  editar: 'Editar minha Avaliação',
 };
 
 function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
@@ -34,22 +35,42 @@ function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
   );
 }
 
-export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; avaliacoes: AvaliacaoCompleta[] }) {
+export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; avaliacoes?: AvaliacaoCompleta[] }) {
   const { sessao } = useSessao();
-  const [formulario, setFormulario] = useState(false);
+  const [formulario, setFormulario] = useState<'novo' | 'edicao' | null>(null);
   const idUsuario = sessao.estado === 'autenticada' ? sessao.usuario.id : null;
-  const minha = avaliacoes.find((a) => a.id_usuario === idUsuario);
+  const minha = avaliacoes?.find((a) => a.id_usuario === idUsuario);
+  const fechar = () => setFormulario(null);
 
   return (
     <View className="gap-3 rounded-md bg-dark-secondary p-4">
       <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">{textos.titulo}</Text>
-      {!minha ? <Botao titulo={textos.escrever} onPress={() => setFormulario(true)} /> : null}
-      {avaliacoes.length ? (
-        avaliacoes.map((a) => <ItemAvaliacao key={a.id_avaliacao} a={a} />)
+      {/* No máximo uma Avaliação por Mídia: com a própria, o botão vira editar. */}
+      {!avaliacoes ? null : minha ? (
+        <Botao titulo={textos.editar} variante="secundario" onPress={() => setFormulario('edicao')} />
       ) : (
-        <Text className="text-sm text-text-secondary">{textos.nenhuma}</Text>
+        <Botao titulo={textos.escrever} onPress={() => setFormulario('novo')} />
       )}
-      {formulario ? <FormularioAvaliacao idMidia={idMidia} aoFechar={() => setFormulario(false)} /> : null}
+      {avaliacoes?.length ? (
+        avaliacoes.map((a) => <ItemAvaliacao key={a.id_avaliacao} a={a} />)
+      ) : avaliacoes ? (
+        <Text className="text-sm text-text-secondary">{textos.nenhuma}</Text>
+      ) : null}
+      {formulario === 'novo' ? <FormularioAvaliacao idMidia={idMidia} aoFechar={fechar} /> : null}
+      {formulario === 'edicao' && minha ? (
+        <FormularioAvaliacao
+          idMidia={idMidia}
+          edicao={{
+            idAvaliacao: minha.id_avaliacao,
+            campos: {
+              nota: String(Number(minha.nota)),
+              titulo: minha.titulo_avaliacao ?? '',
+              texto: minha.texto_avaliacao ?? '',
+            },
+          }}
+          aoFechar={fechar}
+        />
+      ) : null}
     </View>
   );
 }
