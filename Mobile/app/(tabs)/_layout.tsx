@@ -7,6 +7,7 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Carregando } from '@/components/EstadoTela';
 import { SeletorRecorte } from '@/components/SeletorRecorte';
 import paleta from '@/tema/paleta';
+import tipografia from '@/tema/tipografia';
 
 type Icone = ComponentProps<typeof Ionicons>['name'];
 
@@ -32,7 +33,8 @@ export default function AbasLayout() {
         headerStyle: { backgroundColor: paleta.dark.nav },
         headerTintColor: paleta.text.bright,
         headerTitleAlign: 'left',
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerTitleStyle: { fontWeight: 'bold', fontSize: tipografia['titulo-secao'].tamanho },
+        tabBarLabelStyle: { fontSize: tipografia.legenda.tamanho },
         tabBarStyle: { backgroundColor: paleta.dark.nav, borderTopColor: paleta.dark.border },
         tabBarActiveTintColor: paleta.accent.blue,
         tabBarInactiveTintColor: paleta.text.secondary,

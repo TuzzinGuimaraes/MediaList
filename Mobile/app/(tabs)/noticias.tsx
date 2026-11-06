@@ -38,15 +38,19 @@ function CartaoNoticia({ noticia }: { noticia: Noticia }) {
         <Image source={{ uri: noticia.imagem_url }} className="h-40 w-full" resizeMode="cover" />
       ) : null}
       <View className="gap-2 p-4">
-        <Text className="text-lg font-bold text-text-bright">{noticia.titulo}</Text>
-        <Text className="text-xs text-text-secondary">
+        <Text className="text-titulo-secao font-bold text-text-bright">{noticia.titulo}</Text>
+        <Text className="text-legenda text-text-secondary">
           Por {noticia.autor} · {formatarData(noticia.data_publicacao)}
         </Text>
-        {noticia.conteudo ? <Text className="text-sm text-text-primary">{noticia.conteudo}</Text> : null}
+        {noticia.conteudo ? <Text className="text-corpo text-text-primary">{noticia.conteudo}</Text> : null}
         {noticia.tags?.length ? (
           <View className="flex-row flex-wrap gap-1.5">
             {noticia.tags.map((tag) => (
-              <Text key={tag} className="rounded bg-dark-tertiary px-2 py-0.5 text-xs text-accent-blue">
+              <Text
+                key={tag}
+                maxFontSizeMultiplier={1.3}
+                className="rounded bg-dark-tertiary px-2 py-0.5 text-legenda text-accent-blue"
+              >
                 {tag}
               </Text>
             ))}
@@ -82,16 +86,16 @@ function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
       className={`flex-row gap-3 rounded-md p-4 ${notificacao.lida ? 'bg-dark-secondary' : 'bg-dark-tertiary'}`}
     >
       {notificacao.lida ? (
-        <View className="mt-1.5 h-2 w-2" />
+        <View className="mt-[6px] h-2 w-2" />
       ) : (
-        <View accessibilityLabel="Não lida" className="mt-1.5 h-2 w-2 rounded-full bg-accent-blue" />
+        <View accessibilityLabel="Não lida" className="mt-[6px] h-2 w-2 rounded-full bg-accent-blue" />
       )}
       <View className="flex-1 gap-1">
-        <Text className="text-xs text-text-secondary">
+        <Text className="text-legenda text-text-secondary">
           {notificacao.midia_nome} · {formatarData(notificacao.data_criacao)}
         </Text>
-        <Text className="text-base font-semibold text-text-bright">{notificacao.titulo}</Text>
-        <Text className="text-sm text-text-primary">{notificacao.mensagem}</Text>
+        <Text className="text-corpo font-semibold text-text-bright">{notificacao.titulo}</Text>
+        <Text className="text-corpo text-text-primary">{notificacao.mensagem}</Text>
       </View>
     </View>
   );
@@ -124,7 +128,7 @@ function ListaNotificacoes() {
               onPress={() => marcar.mutate()}
             />
             {marcar.isError ? (
-              <Text accessibilityRole="alert" className="text-center text-sm text-text-secondary">
+              <Text accessibilityRole="alert" className="text-center text-corpo text-text-secondary">
                 Não deu para marcar como lidas. Tente de novo.
               </Text>
             ) : null}
@@ -154,7 +158,7 @@ export default function Noticias() {
                 selecionada ? 'border-accent-blue' : 'border-transparent'
               }`}
             >
-              <Text className={selecionada ? 'font-semibold text-text-bright' : 'text-text-secondary'}>
+              <Text className={`text-corpo ${selecionada ? 'font-semibold text-text-bright' : 'text-text-secondary'}`}>
                 {aba.titulo}
               </Text>
             </Pressable>

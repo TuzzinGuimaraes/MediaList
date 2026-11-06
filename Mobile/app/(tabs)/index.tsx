@@ -18,9 +18,9 @@ const textos = {
 function Secao({ titulo, midias, vazio }: { titulo: string; midias: CartaoMidia[]; vazio: string }) {
   return (
     <View accessibilityLabel={titulo} className="gap-3">
-      <Text className="px-4 text-sm font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
+      <Text className="px-4 text-legenda font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
       {midias.length === 0 ? (
-        <Text className="px-4 text-text-secondary">{vazio}</Text>
+        <Text className="px-4 text-corpo text-text-secondary">{vazio}</Text>
       ) : (
         <FlatList
           horizontal

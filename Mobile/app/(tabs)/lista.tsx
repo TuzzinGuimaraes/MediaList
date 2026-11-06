@@ -49,7 +49,7 @@ export default function Lista() {
           />
         </View>
         {progresso.isError ? (
-          <Text accessibilityRole="alert" className="px-4 pb-2 text-sm text-accent-red">
+          <Text accessibilityRole="alert" className="px-4 pb-2 text-corpo text-accent-red">
             {mensagemDeErro(progresso.error)}
           </Text>
         ) : null}
@@ -66,7 +66,7 @@ export default function Lista() {
           )}
           ItemSeparatorComponent={() => <View className="mx-4 h-px bg-dark-border" />}
           ListEmptyComponent={
-            <Text className="p-6 text-center text-text-secondary">{textos.vazio(NOMES_ESTADO[aba])}</Text>
+            <Text className="p-6 text-center text-corpo text-text-secondary">{textos.vazio(NOMES_ESTADO[aba])}</Text>
           }
           refreshControl={
             <RefreshControl

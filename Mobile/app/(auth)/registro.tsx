@@ -48,7 +48,7 @@ export default function Registro() {
 
   return (
     <TelaFormulario>
-      <Text className="text-3xl font-bold text-text-bright">{textos.titulo}</Text>
+      <Text className="text-titulo-tela font-bold text-text-bright">{textos.titulo}</Text>
       <Campo rotulo={textos.nome} value={form.nome} onChangeText={campo('nome')} autoComplete="name" />
       <Campo
         rotulo={textos.email}
@@ -73,12 +73,12 @@ export default function Registro() {
         autoComplete="new-password"
       />
       {erro ? (
-        <Text accessibilityRole="alert" className="text-accent-red">
+        <Text accessibilityRole="alert" className="text-corpo text-accent-red">
           {erro}
         </Text>
       ) : null}
       <Botao titulo={textos.criar} onPress={enviar} carregando={enviando} />
-      <Link href="/login" replace className="text-center text-accent-blue">
+      <Link href="/login" replace className="text-center text-corpo text-accent-blue">
         {textos.temConta}
       </Link>
     </TelaFormulario>

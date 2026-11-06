@@ -109,7 +109,7 @@ export default function Explorar() {
             onChangeText={setTexto}
             autoCorrect={false}
             returnKeyType="search"
-            className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2.5 text-text-bright"
+            className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2.5 text-campo text-text-bright"
           />
         </View>
         {tipos.length > 1 ? (
