@@ -12,7 +12,7 @@ export function Barras({ titulo, barras }: { titulo: string; barras: Barra[] }) 
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
   return (
     <View className="gap-3">
-      <Text className="text-base font-semibold text-text-bright">{titulo}</Text>
+      <Text className="text-titulo-secao font-semibold text-text-bright">{titulo}</Text>
       {barras.map((b) => (
         <View
           key={b.rotulo}
@@ -20,11 +20,11 @@ export function Barras({ titulo, barras }: { titulo: string; barras: Barra[] }) 
           accessibilityLabel={`${b.rotulo}: ${b.valor}`}
           className={`gap-1 ${b.refinamento ? 'pl-4' : ''}`}
         >
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">
+          <View className="flex-row justify-between gap-3">
+            <Text className="flex-1 text-corpo text-text-secondary">
               {b.refinamento ? `↳ ${b.rotulo}` : b.rotulo}
             </Text>
-            <Text className="text-sm text-text-primary">{b.valor}</Text>
+            <Text className="text-corpo text-text-primary">{b.valor}</Text>
           </View>
           <View className="h-2 overflow-hidden rounded-full bg-dark-tertiary">
             <View

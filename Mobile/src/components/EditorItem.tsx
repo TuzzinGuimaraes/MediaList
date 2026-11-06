@@ -48,14 +48,15 @@ type Props = {
 
 function CampoCurto({ rotulo, ...props }: Omit<TextInputProps, 'className'> & { rotulo: string }) {
   return (
-    <View className="flex-1 gap-1">
-      <Text numberOfLines={1} className="text-xs text-text-secondary">
+    // Rótulo em até duas linhas, alinhado por baixo: os campos lado a lado ficam na mesma altura.
+    <View className="flex-1 justify-end gap-1">
+      <Text numberOfLines={2} className="text-legenda text-text-secondary">
         {rotulo}
       </Text>
       <TextInput
         accessibilityLabel={rotulo}
         placeholderTextColor={paleta.text.secondary}
-        className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2 text-text-bright"
+        className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2 text-campo text-text-bright"
         {...props}
       />
     </View>
@@ -76,10 +77,10 @@ function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'hea
     >
       <Ionicons
         name={ativo ? icone : (`${icone}-outline` as const)}
-        size={14}
+        size={16}
         color={ativo ? (icone === 'heart' ? paleta.accent.red : paleta.accent.blue) : paleta.text.secondary}
       />
-      <Text className={`text-xs font-semibold ${ativo ? 'text-text-bright' : 'text-text-secondary'}`}>{rotulo}</Text>
+      <Text className={`text-corpo font-semibold ${ativo ? 'text-text-bright' : 'text-text-secondary'}`}>{rotulo}</Text>
     </Pressable>
   );
 }
@@ -128,8 +129,8 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       aoFechar={aoFechar}
       cabecalho={
         <View className="gap-0.5">
-          <Text className="text-xs text-text-secondary">{item ? textos.editar : textos.adicionar}</Text>
-          <Text accessibilityRole="header" numberOfLines={1} className="text-lg font-bold text-text-bright">
+          <Text className="text-legenda text-text-secondary">{item ? textos.editar : textos.adicionar}</Text>
+          <Text accessibilityRole="header" numberOfLines={2} className="text-titulo-secao font-bold text-text-bright">
             {tituloDaMidia(midia)}
           </Text>
         </View>
@@ -137,13 +138,13 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       rodape={
         <>
           {erro ? (
-            <Text accessibilityRole="alert" className="text-sm text-accent-red">
+            <Text accessibilityRole="alert" className="text-corpo text-accent-red">
               {erro}
             </Text>
           ) : null}
           {confirmando ? (
             <>
-              <Text className="text-sm text-text-bright">{textos.confirmacao}</Text>
+              <Text className="text-corpo text-text-bright">{textos.confirmacao}</Text>
               <View className="flex-row gap-2">
                 <View className="flex-1">
                   <Botao titulo={textos.manter} variante="secundario" onPress={() => setConfirmando(false)} />
@@ -169,7 +170,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       }
     >
       <View className="gap-1.5">
-        <Text className="text-xs text-text-secondary">{textos.estado}</Text>
+        <Text className="text-legenda text-text-secondary">{textos.estado}</Text>
         {/* Só os Rótulos válidos para o Tipo: o backend recusa os outros (ADR 0002). */}
         <View accessibilityLabel={textos.estado} className="flex-row flex-wrap gap-2">
           {rotulosDoTipo(tipo).map((rotulo) => {
@@ -183,11 +184,11 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
                 accessibilityLabel={nome}
                 accessibilityState={{ checked: ativo }}
                 onPress={() => mudar('status_consumo')(rotulo)}
-                className={`min-h-[36px] justify-center rounded-full border px-3 ${
+                className={`min-h-[40px] justify-center rounded-full border px-3 py-1.5 ${
                   ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border'
                 }`}
               >
-                <Text className={`text-xs font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
+                <Text className={`text-corpo font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
                   {nome}
                 </Text>
               </Pressable>
@@ -224,7 +225,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           onChangeText={mudar('comentario')}
           multiline
           textAlignVertical="top"
-          style={{ minHeight: 64 }}
+          style={{ minHeight: 80 }}
         />
       </View>
     </BottomSheet>

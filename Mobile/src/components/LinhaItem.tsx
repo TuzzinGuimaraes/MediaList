@@ -26,14 +26,15 @@ function BotaoPasso({ novo, icone, rotulo, mudar }: PropsPasso) {
       disabled={novo === null}
       onPress={() => novo !== null && mudar(novo)}
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-      className="h-7 w-8 items-center justify-center active:opacity-60"
+      className="h-8 w-9 items-center justify-center active:opacity-60"
     >
-      <Ionicons name={icone} size={16} color={novo === null ? paleta.dark.border : paleta.text.bright} />
+      <Ionicons name={icone} size={18} color={novo === null ? paleta.dark.border : paleta.text.bright} />
     </Pressable>
   );
 }
 
-/** Pílula `− 12/24 +` com a altura de uma linha de texto; o hitSlop leva cada alvo a 44pt. */
+/** Pílula `− 12/24 +` com a altura de uma linha de texto; o hitSlop leva cada alvo a 44pt.
+ * O número cresce com a fonte do sistema até 1,3x, para a pílula caber ao lado do título. */
 function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mudar(n: number): void }) {
   const total = totalDoItem(item);
   const atual = item.progresso_atual ?? 0;
@@ -43,7 +44,8 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
       <BotaoPasso novo={passoDeProgresso(item, -1)} icone="remove" rotulo={`Menos um em ${titulo}`} mudar={mudar} />
       <Text
         accessibilityLabel={total !== null ? `Progresso: ${atual} de ${total}` : `Progresso: ${atual}`}
-        className="min-w-[44px] text-center text-xs font-semibold text-text-bright"
+        maxFontSizeMultiplier={1.3}
+        className="min-w-[48px] text-center text-legenda font-semibold text-text-bright"
         style={{ fontVariant: ['tabular-nums'] }}
       >
         {total !== null ? `${atual}/${total}` : atual}
@@ -78,20 +80,20 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
           ) : null}
         </View>
         <View className="flex-1 gap-0.5">
-          <Text numberOfLines={2} className="text-sm text-text-bright">
+          <Text numberOfLines={2} className="text-corpo text-text-bright">
             {titulo}
           </Text>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
             <SeloTipo tipo={item.tipo} />
-            <Text className="text-xs text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
+            <Text className="text-legenda text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
             {nota ? (
               <View className="flex-row items-center gap-0.5">
-                <Ionicons name="star" size={10} color={paleta.accent.yellow} />
-                <Text className="text-xs text-accent-yellow">{nota}</Text>
+                <Ionicons name="star" size={14} color={paleta.accent.yellow} />
+                <Text className="text-legenda text-accent-yellow">{nota}</Text>
               </View>
             ) : null}
-            {item.favorito ? <Ionicons name="heart" size={11} color={paleta.accent.red} /> : null}
-            {item.privado ? <Ionicons name="lock-closed" size={11} color={paleta.text.secondary} /> : null}
+            {item.favorito ? <Ionicons name="heart" size={14} color={paleta.accent.red} /> : null}
+            {item.privado ? <Ionicons name="lock-closed" size={14} color={paleta.text.secondary} /> : null}
           </View>
         </View>
       </Pressable>
@@ -99,7 +101,7 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
         <Stepper item={item} titulo={titulo} mudar={mudarProgresso} />
       ) : (
         // Horas jogadas não medem Progresso (CONTEXT.md): só exibidas, editadas no editor.
-        <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-xs text-text-secondary">
+        <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-legenda text-text-secondary">
           {`${item.progresso_atual ?? 0} h`}
         </Text>
       )}

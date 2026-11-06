@@ -32,9 +32,9 @@ function ApagarAvaliacao({ idMidia, idAvaliacao }: { idMidia: string; idAvaliaca
   }
   return (
     <View className="gap-2 rounded-md border border-accent-red p-3">
-      <Text className="text-sm text-text-bright">{textos.confirmacao}</Text>
+      <Text className="text-corpo text-text-bright">{textos.confirmacao}</Text>
       {apagar.isError ? (
-        <Text accessibilityRole="alert" className="text-sm text-accent-red">
+        <Text accessibilityRole="alert" className="text-corpo text-accent-red">
           {mensagemDeErro(apagar.error)}
         </Text>
       ) : null}
@@ -54,17 +54,17 @@ function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
   return (
     <View accessibilityLabel={`Avaliação de ${a.nome_completo}`} className="gap-1 rounded-md bg-dark-tertiary p-3">
       <View className="flex-row items-center justify-between gap-2">
-        <Text className="flex-1 text-sm font-semibold text-text-bright">{a.nome_completo}</Text>
+        <Text className="flex-1 text-corpo font-semibold text-text-bright">{a.nome_completo}</Text>
         <View className="flex-row items-center gap-1">
-          <Ionicons name="star" size={12} color={paleta.accent.yellow} />
-          <Text className="text-sm font-bold text-accent-yellow">{String(Number(a.nota))}</Text>
+          <Ionicons name="star" size={16} color={paleta.accent.yellow} />
+          <Text className="text-corpo font-bold text-accent-yellow">{String(Number(a.nota))}</Text>
         </View>
       </View>
-      <Text className="text-xs text-text-secondary">{formatarData(a.data_avaliacao)}</Text>
+      <Text className="text-legenda text-text-secondary">{formatarData(a.data_avaliacao)}</Text>
       {a.titulo_avaliacao ? (
-        <Text className="text-sm font-semibold text-text-bright">{a.titulo_avaliacao}</Text>
+        <Text className="text-corpo font-semibold text-text-bright">{a.titulo_avaliacao}</Text>
       ) : null}
-      {a.texto_avaliacao ? <Text className="text-sm leading-5 text-text-primary">{a.texto_avaliacao}</Text> : null}
+      {a.texto_avaliacao ? <Text className="text-corpo text-text-primary">{a.texto_avaliacao}</Text> : null}
     </View>
   );
 }
@@ -78,7 +78,7 @@ export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; aval
 
   return (
     <View className="gap-3 rounded-md bg-dark-secondary p-4">
-      <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">{textos.titulo}</Text>
+      <Text className="text-legenda font-bold uppercase tracking-wider text-text-secondary">{textos.titulo}</Text>
       {/* No máximo uma Avaliação por Mídia: com a própria, o botão vira editar. */}
       {!avaliacoes ? null : minha ? (
         <View className="gap-2">
@@ -91,7 +91,7 @@ export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; aval
       {avaliacoes?.length ? (
         avaliacoes.map((a) => <ItemAvaliacao key={a.id_avaliacao} a={a} />)
       ) : avaliacoes ? (
-        <Text className="text-sm text-text-secondary">{textos.nenhuma}</Text>
+        <Text className="text-corpo text-text-secondary">{textos.nenhuma}</Text>
       ) : null}
       {formulario === 'novo' ? <FormularioAvaliacao idMidia={idMidia} aoFechar={fechar} /> : null}
       {formulario === 'edicao' && minha ? (

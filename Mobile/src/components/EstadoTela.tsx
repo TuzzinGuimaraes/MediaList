@@ -15,7 +15,7 @@ export function Carregando() {
 export function Vazio({ mensagem }: { mensagem: string }) {
   return (
     <View className="flex-1 items-center justify-center bg-dark-primary p-6">
-      <Text className="text-center text-text-secondary">{mensagem}</Text>
+      <Text className="text-center text-corpo text-text-secondary">{mensagem}</Text>
     </View>
   );
 }
@@ -25,11 +25,11 @@ export function Falha({ erro, tentarDeNovo }: { erro: unknown; tentarDeNovo: () 
   const offline = erro instanceof ErroRede;
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-dark-primary p-6">
-      <Text accessibilityRole="alert" className="text-center text-base text-text-bright">
+      <Text accessibilityRole="alert" className="text-center text-corpo text-text-bright">
         {offline ? 'Sem conexão com o servidor.' : mensagemDeErro(erro)}
       </Text>
       {offline ? (
-        <Text className="text-center text-text-secondary">Verifique a internet e tente de novo.</Text>
+        <Text className="text-center text-corpo text-text-secondary">Verifique a internet e tente de novo.</Text>
       ) : null}
       <Botao titulo="Tentar de novo" variante="secundario" onPress={tentarDeNovo} />
     </View>

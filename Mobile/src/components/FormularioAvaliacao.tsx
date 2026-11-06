@@ -56,10 +56,10 @@ export function FormularioAvaliacao({ idMidia, edicao, aoFechar }: Props) {
           className="max-h-[90%] rounded-t-xl bg-dark-secondary"
           contentContainerClassName="gap-4 p-5 pb-10"
         >
-          <Text accessibilityRole="header" className="text-lg font-bold text-text-bright">
+          <Text accessibilityRole="header" className="text-titulo-secao font-bold text-text-bright">
             {edicao ? textos.edicao : textos.nova}
           </Text>
-          <Text className="text-sm leading-5 text-text-secondary">{textos.aviso}</Text>
+          <Text className="text-corpo text-text-secondary">{textos.aviso}</Text>
           <Campo rotulo={textos.nota} value={campos.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" />
           <Campo rotulo={textos.titulo} value={campos.titulo} onChangeText={mudar('titulo')} maxLength={200} />
           <Campo
@@ -71,7 +71,7 @@ export function FormularioAvaliacao({ idMidia, edicao, aoFechar }: Props) {
             style={{ minHeight: 120 }}
           />
           {erro ? (
-            <Text accessibilityRole="alert" className="text-sm text-accent-red">
+            <Text accessibilityRole="alert" className="text-corpo text-accent-red">
               {erro}
             </Text>
           ) : null}

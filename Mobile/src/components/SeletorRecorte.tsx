@@ -73,7 +73,7 @@ export function SeletorRecorte() {
             emTransicao ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border bg-dark-secondary'
           }`}
         >
-          <Text className="text-xs font-semibold text-accent-blue">{NOMES_RECORTE[destino]}</Text>
+          <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold text-accent-blue">{NOMES_RECORTE[destino]}</Text>
           <Ionicons name="chevron-down" size={14} color={paleta.text.secondary} />
         </View>
       </Pressable>
@@ -111,7 +111,7 @@ export function SeletorRecorte() {
                 className="flex-row items-center justify-between gap-4 px-4"
                 style={{ minHeight: 48 }}
               >
-                <Text className={atual ? 'font-semibold text-accent-blue' : 'text-text-primary'}>
+                <Text className={`text-corpo ${atual ? 'font-semibold text-accent-blue' : 'text-text-primary'}`}>
                   {NOMES_RECORTE[r]}
                 </Text>
                 {atual ? <Ionicons name="checkmark" size={18} color={paleta.accent.blue} /> : null}
