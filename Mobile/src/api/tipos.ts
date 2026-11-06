@@ -168,6 +168,15 @@ export type ItemLista = Midia & {
   progresso_total: number | null;
   /** Nota pessoal; pode chegar como texto (DECIMAL). */
   nota_usuario: NumeroOuTexto | null;
+  /** O MySQL devolve 0/1. */
+  favorito?: boolean | number;
+  privado?: boolean | number;
+  /** "2026-10-01" ou null. */
+  data_inicio?: string | null;
+  data_conclusao?: string | null;
+  /** Recontagem. */
+  total_rewatches?: number | null;
+  comentario?: string | null;
 };
 
 export type RespostaLista = { lista: ItemLista[] };
