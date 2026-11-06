@@ -1,15 +1,20 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAvaliacoes } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
+import type { ItemLista } from '@/api/tipos';
+import { Botao } from '@/components/Botao';
+import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
+import { temProgresso, totalDoItem } from '@/dominio/itemLista';
 import {
   atributosDoTipo,
   distribuicaoDeNotas,
@@ -29,6 +34,9 @@ const textos = {
   notas: 'Distribuição das notas',
   naLista: 'Na sua Lista',
   foraDaLista: 'Fora da sua Lista.',
+  adicionar: 'Adicionar à Lista',
+  editarNaLista: 'Editar na Lista',
+  progresso: 'Progresso',
   usuarios: 'Nas Listas dos Usuários',
   avaliacoes: (n: number) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`,
 };
@@ -40,6 +48,12 @@ function Info({ rotulo, valor }: { rotulo: string; valor: string }) {
       <Text className="text-sm text-text-bright">{valor}</Text>
     </View>
   );
+}
+
+function textoProgresso(item: ItemLista): string {
+  const total = totalDoItem(item);
+  const atual = item.progresso_atual ?? 0;
+  return total !== null ? `${atual} de ${total}` : String(atual);
 }
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -73,6 +87,7 @@ export default function DetalheMidia() {
   const avaliacoes = useAvaliacoes(id);
   const distribuicao = useDistribuicao(id);
   const item = useItemDaLista(id);
+  const [editor, setEditor] = useState(false);
 
   const voltar = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -121,9 +136,23 @@ export default function DetalheMidia() {
         </View>
 
         {item.data ? (
-          <Info rotulo={textos.naLista} valor={nomeDoRotulo(item.data.status_consumo, m.tipo)} />
+          <View className="flex-row items-center gap-4 rounded-md bg-dark-secondary p-4">
+            <View className="flex-1 flex-row flex-wrap gap-x-6 gap-y-2">
+              <Info rotulo={textos.naLista} valor={nomeDoRotulo(item.data.status_consumo, m.tipo)} />
+              {temProgresso(m.tipo) ? (
+                <Info rotulo={textos.progresso} valor={textoProgresso(item.data)} />
+              ) : null}
+            </View>
+            <Botao titulo={textos.editarNaLista} variante="secundario" onPress={() => setEditor(true)} />
+          </View>
         ) : item.data === null ? (
-          <Text className="text-sm text-text-secondary">{textos.foraDaLista}</Text>
+          <View className="flex-row items-center gap-4 rounded-md bg-dark-secondary p-4">
+            <Text className="flex-1 text-sm text-text-secondary">{textos.foraDaLista}</Text>
+            <Botao titulo={textos.adicionar} onPress={() => setEditor(true)} />
+          </View>
+        ) : null}
+        {editor && item.data !== undefined ? (
+          <EditorItem midia={m} item={item.data} aoFechar={() => setEditor(false)} />
         ) : null}
 
         {m.sinopse ? <Text className="leading-5 text-text-primary">{m.sinopse}</Text> : null}
