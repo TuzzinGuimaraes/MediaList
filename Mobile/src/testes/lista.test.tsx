@@ -68,7 +68,7 @@ function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Res
     };
   }
   const api = simularFetch({ ...rotas, ...extras });
-  return { api, adicionar: (novo: ReturnType<typeof item>) => (lista = [novo, ...lista]) };
+  return { api, rotas, adicionar: (novo: ReturnType<typeof item>) => (lista = [novo, ...lista]) };
 }
 
 const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${nome} (${n})` });
@@ -137,6 +137,34 @@ describe('aba Lista', () => {
 
     expect(await within(l).findByLabelText('Progresso: 12 de 28')).toBeOnTheScreen();
     expect(await screen.findByRole('alert')).toHaveTextContent('Progresso não pode ser maior que o total da mídia (28)');
+  });
+
+  it('toques seguidos: o primeiro falha e o segundo passa, fica só o +1 que deu certo', async () => {
+    const PUT = 'PUT /lista/LST-MID-ANM-2026-20053/progresso';
+    let falhar!: () => void;
+    let chamadas = 0;
+    const s = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 })], {
+      [PUT]: (req: Requisicao) =>
+        chamadas++ === 0
+          ? new Promise<Resposta>((r) => (falhar = () => r({ status: 500, corpo: { erro: 'Erro ao atualizar progresso' } })))
+          : s.rotas[PUT](req),
+    });
+
+    await abrir('/lista');
+    const l = await linha('Sousou no Frieren');
+    const mais = within(l).getByRole('button', { name: 'Mais um em Sousou no Frieren' });
+
+    await fireEvent.press(mais);
+    expect(await within(l).findByLabelText('Progresso: 13 de 28')).toBeOnTheScreen();
+    await fireEvent.press(mais);
+    expect(await within(l).findByLabelText('Progresso: 14 de 28')).toBeOnTheScreen();
+
+    falhar();
+
+    await waitFor(() => expect(s.api.para(PUT)).toHaveLength(2));
+    await waitFor(() => expect(s.api.para('GET /lista').length).toBeGreaterThan(1));
+    expect(await within(l).findByLabelText('Progresso: 13 de 28')).toBeOnTheScreen();
+    expect(s.api.para(PUT)[1].corpo).toEqual({ progresso_atual: 13 });
   });
 
   it('− e + respeitam 0 e o total; atingir o total leva a Concluído', async () => {

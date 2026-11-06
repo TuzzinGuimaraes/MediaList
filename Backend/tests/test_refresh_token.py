@@ -196,3 +196,125 @@ def test_logout_nao_revoga_refresh_de_outro_usuario(client, login, make_token):
 
     assert response.status_code == 200
     assert _refresh(client, alheio).status_code == 200
+
+
+
+# ============================================
+# Falha de infraestrutura x reuso
+# ============================================
+
+def _familia_viva(tokens):
+    return any(not linha['revogado'] for linha in tokens.tokens.values())
+
+
+def test_banco_indisponivel_na_busca_da_500_sem_revogar(client, login, tokens):
+    original = login()['refresh_token']
+    tokens.indisponivel.add('buscar_por_hash')
+
+    response = _refresh(client, original)
+
+    assert response.status_code == 500
+    assert _familia_viva(tokens)
+    tokens.indisponivel.clear()
+    assert _refresh(client, original).status_code == 200
+
+
+def test_falha_na_rotacao_da_500_sem_revogar(client, login, tokens):
+    original = login()['refresh_token']
+    tokens.indisponivel.add('rotacionar')
+
+    response = _refresh(client, original)
+
+    assert response.status_code == 500
+    assert _familia_viva(tokens)
+    tokens.indisponivel.clear()
+    assert _refresh(client, original).status_code == 200
+
+
+def test_corrida_perdida_na_rotacao_revoga_a_familia(client, login, tokens):
+    original = login()['refresh_token']
+    tokens.perder_corrida = True
+
+    response = _refresh(client, original)
+
+    assert response.status_code == 401
+    assert not _familia_viva(tokens)
+
+
+# ============================================
+# Repositório: infraestrutura vira exceção, ausência vira None
+# ============================================
+
+class _CursorQuebrado:
+    def execute(self, *_args, **_kwargs):
+        raise RuntimeError('conexão perdida')
+
+    def close(self):
+        pass
+
+
+def _repo(monkeypatch, connection):
+    from repositories import refresh_token_repository as modulo
+    monkeypatch.setattr(modulo, 'get_db_connection', lambda: connection)
+    return modulo.RefreshTokenRepository()
+
+
+@pytest.mark.parametrize('metodo,args', [
+    ('buscar_por_hash', ('hash',)),
+    ('rotacionar', ('RFT-1', 'hash', datetime(2100, 1, 1))),
+])
+def test_repositorio_sem_conexao_levanta_indisponivel(monkeypatch, metodo, args):
+    from repositories import RefreshTokenIndisponivel
+    repo = _repo(monkeypatch, None)
+
+    with pytest.raises(RefreshTokenIndisponivel):
+        getattr(repo, metodo)(*args)
+
+
+@pytest.mark.parametrize('metodo,args', [
+    ('buscar_por_hash', ('hash',)),
+    ('rotacionar', ('RFT-1', 'hash', datetime(2100, 1, 1))),
+])
+def test_repositorio_com_erro_de_query_levanta_indisponivel(monkeypatch, metodo, args):
+    from repositories import RefreshTokenIndisponivel
+    from .helpers import FakeConnection
+    connection = FakeConnection(_CursorQuebrado())
+    repo = _repo(monkeypatch, connection)
+
+    with pytest.raises(RefreshTokenIndisponivel):
+        getattr(repo, metodo)(*args)
+    assert connection.closed
+
+
+def test_repositorio_busca_inexistente_devolve_none(monkeypatch):
+    from .helpers import FakeConnection, FakeCursor
+    repo = _repo(monkeypatch, FakeConnection(FakeCursor()))
+
+    assert repo.buscar_por_hash('hash') is None
+
+
+def test_repositorio_rotacao_de_token_ja_revogado_devolve_none(monkeypatch):
+    from .helpers import FakeConnection, FakeCursor
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    repo = _repo(monkeypatch, connection)
+
+    assert repo.rotacionar('RFT-1', 'hash', datetime(2100, 1, 1)) is None
+    assert len(cursor.executed) == 1  # só o SELECT ... FOR UPDATE
+    assert connection.rolled_back
+
+
+def test_repositorio_rotacao_insere_sucessor_e_revoga_o_atual(monkeypatch):
+    from .helpers import FakeConnection, FakeCursor
+    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-1', 'familia': 'FAM-1'}])
+    connection = FakeConnection(cursor)
+    repo = _repo(monkeypatch, connection)
+
+    novo_id = repo.rotacionar('RFT-1', 'hash-novo', datetime(2100, 1, 1))
+
+    assert novo_id.startswith('RFT-')
+    insert, update = cursor.executed[1], cursor.executed[2]
+    assert 'INSERT INTO refresh_tokens' in insert[0]
+    assert insert[1] == (novo_id, 'hash-novo', 'USR-1', 'FAM-1', datetime(2100, 1, 1))
+    assert update[1] == (novo_id, 'RFT-1')
+    assert connection.committed and connection.closed

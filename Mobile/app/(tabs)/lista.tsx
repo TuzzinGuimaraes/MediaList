@@ -61,7 +61,9 @@ export default function Lista() {
             <LinhaItem
               item={item}
               editar={() => setEditando(item.id_lista)}
-              mudarProgresso={(p) => progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, progresso: p })}
+              mudarProgresso={(p) =>
+                progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: p - (item.progresso_atual ?? 0) })
+              }
             />
           )}
           ItemSeparatorComponent={() => <View className="mx-4 h-px bg-dark-border" />}

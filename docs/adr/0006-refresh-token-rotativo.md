@@ -22,6 +22,12 @@ num aparelho não derruba a sessão de outro aparelho, que tem família própria
 renovações concorrentes com o mesmo token caem no mesmo caso, porque a troca trava a
 linha (`SELECT ... FOR UPDATE`) e só a primeira encontra o token ainda válido.
 
+Falha de infraestrutura não é reuso. Se o banco não responde na busca ou na rotação, o
+servidor não sabe nada sobre o token: responde 500 e não revoga nada, e o app pode
+tentar de novo com o mesmo refresh. O repositório separa os casos de forma explícita:
+`None` é "não existe" ou "já rotacionado"; falha de banco levanta
+`RefreshTokenIndisponivel`. Só o primeiro caso revoga a família.
+
 `POST /auth/logout` aceita `refresh_token` no corpo e o revoga, se for do próprio
 Usuário; sem corpo, o comportamento antigo (blocklist do access token) não muda. Usuário
 desativado não renova: recebe 403 `Usuário desativado`, como no login, e a família é

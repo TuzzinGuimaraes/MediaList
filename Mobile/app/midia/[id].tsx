@@ -15,13 +15,8 @@ import { Carregando, Falha } from '@/components/EstadoTela';
 import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import { temProgresso, totalDoItem } from '@/dominio/itemLista';
-import {
-  atributosDoTipo,
-  distribuicaoDeNotas,
-  formatarData,
-  notaMedia,
-  tituloDaMidia,
-} from '@/dominio/midia';
+import { formatarData } from '@/dominio/datas';
+import { atributosDoTipo, distribuicaoDeNotas, notaMedia, tituloDaMidia } from '@/dominio/midia';
 import paleta from '@/tema/paleta';
 
 const textos = {

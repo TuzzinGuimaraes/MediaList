@@ -1,5 +1,9 @@
 // Tipos escritos à mão, só para os endpoints que o app usa (Backend/routes/).
 
+import type { TipoMidia } from '../dominio/estadoConsumo';
+
+export type { TipoMidia };
+
 export type NivelAcesso = 'admin' | 'moderador' | 'usuario';
 
 /** `usuario` da resposta de POST /auth/login. */
@@ -83,7 +87,6 @@ export type RespostaPermissoes = {
 };
 
 
-export type TipoMidia = 'anime' | 'manga' | 'jogo';
 
 /** A Mídia como vem nas listagens (GET /midias, /midias/trending). */
 export type MidiaResumo = {

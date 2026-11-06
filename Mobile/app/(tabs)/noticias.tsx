@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { useState } from 'react';
-import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
 import type { Noticia, Notificacao } from '@/api/tipos';
@@ -35,7 +36,13 @@ function CartaoNoticia({ noticia }: { noticia: Noticia }) {
   return (
     <View className="overflow-hidden rounded-md bg-dark-secondary">
       {noticia.imagem_url ? (
-        <Image source={{ uri: noticia.imagem_url }} className="h-40 w-full" resizeMode="cover" />
+        <Image
+          source={noticia.imagem_url}
+          style={{ width: '100%', height: 160 }}
+          contentFit="cover"
+          cachePolicy="disk"
+          accessibilityIgnoresInvertColors
+        />
       ) : null}
       <View className="gap-2 p-4">
         <Text className="text-titulo-secao font-bold text-text-bright">{noticia.titulo}</Text>

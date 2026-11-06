@@ -10,9 +10,9 @@ import {
   validarItem,
 } from './itemLista';
 
-const anime = { tipo: 'anime', numero_episodios: 28, numero_capitulos: null };
-const manga = { tipo: 'manga', numero_episodios: null, numero_capitulos: 95 };
-const jogo = { tipo: 'jogo', numero_episodios: null, numero_capitulos: null };
+const anime = { tipo: 'anime' as const, numero_episodios: 28, numero_capitulos: null };
+const manga = { tipo: 'manga' as const, numero_episodios: null, numero_capitulos: 95 };
+const jogo = { tipo: 'jogo' as const, numero_episodios: null, numero_capitulos: null };
 
 describe('Progresso', () => {
   it('jogos não têm Progresso; anime e mangá têm', () => {
@@ -106,9 +106,9 @@ describe('Rótulos e abas', () => {
 
   it('a aba Concluído inclui os platinados (Platinado ⊂ Concluído)', () => {
     const itens = [
-      { tipo: 'jogo', status_consumo: 'zerado' },
-      { tipo: 'jogo', status_consumo: 'platinado' },
-      { tipo: 'jogo', status_consumo: 'jogando' },
+      { tipo: 'jogo' as const, status_consumo: 'zerado' },
+      { tipo: 'jogo' as const, status_consumo: 'platinado' },
+      { tipo: 'jogo' as const, status_consumo: 'jogando' },
     ];
     expect(itensDoEstado(itens, 'concluido').map((i) => i.status_consumo)).toEqual(['zerado', 'platinado']);
     expect(itensDoEstado(itens, 'platinado').map((i) => i.status_consumo)).toEqual(['platinado']);

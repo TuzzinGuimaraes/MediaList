@@ -2,7 +2,7 @@
 // Cópia do que Backend/dominio/lista_pessoal.py decide: o backend segue autoritativo
 // (ADR 0002, 0004); aqui servem para o otimista do stepper e a validação do editor.
 
-import { formatarData } from './midia';
+import { formatarData } from './datas';
 import {
   type EstadoConsumo,
   estadoDe,
@@ -12,12 +12,12 @@ import {
 } from './estadoConsumo';
 
 /** Jogos não têm Progresso mensurável: o campo guarda horas, que nunca concluem. */
-export function temProgresso(tipo: string): boolean {
+export function temProgresso(tipo: TipoMidia): boolean {
   return tipo === 'anime' || tipo === 'manga';
 }
 
 type ComTotal = {
-  tipo: string;
+  tipo: TipoMidia;
   progresso_total?: number | null;
   numero_episodios?: number | null;
   numero_capitulos?: number | null;
@@ -43,7 +43,7 @@ export function passoDeProgresso(
   return novo;
 }
 
-function eTerminal(rotulo: string, tipo: string): boolean {
+function eTerminal(rotulo: string, tipo: TipoMidia): boolean {
   const estado = estadoDe(rotulo, tipo);
   return estado === 'concluido' || estado === 'platinado';
 }
@@ -62,7 +62,7 @@ export function aplicarProgresso<
   }
   return {
     ...novo,
-    status_consumo: rotuloPara('concluido', item.tipo as TipoMidia) ?? item.status_consumo,
+    status_consumo: rotuloPara('concluido', item.tipo) ?? item.status_consumo,
     data_conclusao: item.data_conclusao || hoje,
   };
 }
@@ -88,7 +88,7 @@ export function estadosDaLista(tipos: readonly TipoMidia[]): EstadoConsumo[] {
 }
 
 /** Itens de uma aba. A aba Concluído inclui os platinados. */
-export function itensDoEstado<T extends { tipo: string; status_consumo: string }>(
+export function itensDoEstado<T extends { tipo: TipoMidia; status_consumo: string }>(
   itens: readonly T[],
   estado: EstadoConsumo,
 ): T[] {
@@ -159,8 +159,8 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
     nota: item.nota_usuario == null || item.nota_usuario === '' ? '' : String(Number(item.nota_usuario)),
     favorito: Boolean(item.favorito),
     privado: Boolean(item.privado),
-    inicio: formatarData(item.data_inicio ?? null) ?? '',
-    conclusao: formatarData(item.data_conclusao ?? null) ?? '',
+    inicio: formatarData(item.data_inicio) ?? '',
+    conclusao: formatarData(item.data_conclusao) ?? '',
     recontagem: String(item.total_rewatches ?? 0),
     comentario: item.comentario ?? '',
   };
