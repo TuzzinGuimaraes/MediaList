@@ -103,6 +103,20 @@ describe('aba Lista', () => {
     expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
   });
 
+  it('cada linha mostra o selo do Tipo de mídia, também no rótulo de acessibilidade', async () => {
+    servidor([
+      item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 }),
+      item(jojo, { status_consumo: 'lendo', progresso_atual: 40 }),
+    ]);
+
+    await abrir('/lista');
+
+    expect(within(await linha('Sousou no Frieren')).getByText('Anime')).toBeOnTheScreen();
+    expect(within(await linha('JoJo no Kimyou na Bouken')).getByText('Mangá')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Editar Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Editar JoJo no Kimyou na Bouken, Mangá' })).toBeOnTheScreen();
+  });
+
   it('+1 aparece na hora e é desfeito se o servidor recusar', async () => {
     let responder!: (r: Resposta) => void;
     const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 })], {
@@ -166,7 +180,7 @@ describe('aba Lista', () => {
     ]);
 
     await abrir('/lista');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
     const estados = within(screen.getByLabelText('Estado de consumo'));
     expect(estados.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
       'Planejado',
@@ -178,7 +192,7 @@ describe('aba Lista', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Fechar' }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Hollow Knight' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Hollow Knight, Jogo' }));
     expect(screen.getByLabelText('Horas jogadas')).toHaveDisplayValue('42');
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));
     await fireEvent.changeText(screen.getByLabelText('Nota pessoal'), '9,5');
@@ -207,7 +221,7 @@ describe('aba Lista', () => {
     const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
 
     await abrir('/lista');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
     await fireEvent.changeText(screen.getByLabelText('Episódios (de 28)'), '29');
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
 
@@ -219,7 +233,7 @@ describe('aba Lista', () => {
     const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
 
     await abrir('/lista');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Remover' }));
     expect(screen.getByText(/Remover esta Mídia da sua Lista\?/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Manter' }));

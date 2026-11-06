@@ -7,6 +7,7 @@ import { nomeDoRotulo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
 import paleta from '../tema/paleta';
+import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
   item: ItemLista;
@@ -60,7 +61,7 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
     <View accessibilityLabel={`Item ${titulo}`} className="flex-row items-center gap-3 px-4 py-2">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Editar ${titulo}`}
+        accessibilityLabel={`Editar ${titulo}, ${nomeDoTipo(item.tipo)}`}
         onPress={editar}
         className="flex-1 flex-row items-center gap-3 active:opacity-80"
       >
@@ -81,6 +82,7 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
             {titulo}
           </Text>
           <View className="flex-row items-center gap-2">
+            <SeloTipo tipo={item.tipo} />
             <Text className="text-xs text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
             {nota ? (
               <View className="flex-row items-center gap-0.5">
