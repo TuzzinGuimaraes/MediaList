@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, TextInput, View } from 'react-native';
 
 import { type Ordem, useBuscaMidias, useGeneros } from '@/api/explorar';
 import type { TipoMidia } from '@/api/tipos';
+import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { Opcoes } from '@/components/Opcoes';
@@ -81,7 +82,13 @@ export default function Explorar() {
           if (resultados.hasNextPage && !resultados.isFetchingNextPage) resultados.fetchNextPage();
         }}
         ListFooterComponent={
-          resultados.isFetchingNextPage ? <ActivityIndicator color={paleta.accent.blue} /> : undefined
+          resultados.isFetchingNextPage ? (
+            <ActivityIndicator color={paleta.accent.blue} />
+          ) : resultados.isFetchNextPageError ? (
+            <View className="items-center">
+              <Botao titulo="Tentar de novo" variante="secundario" onPress={() => resultados.fetchNextPage()} />
+            </View>
+          ) : undefined
         }
       />
     );

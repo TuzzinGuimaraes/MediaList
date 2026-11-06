@@ -78,6 +78,70 @@ describe('Explorar', () => {
     expect(await screen.findByRole('link', { name: 'JoJo no Kimyou na Bouken' })).toBeOnTheScreen();
   });
 
+  it('no Recorte jogos busca só jogos, sem escolha de Tipo; nada encontrado mostra estado vazio', async () => {
+    const api = simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos('Drama'),
+      'GET /midias?tipo=jogo&ordem=nota_media&pagina=1&por_pagina=24': pagina([], 1, 'jogo'),
+      'GET /generos?tipo=jogo': generos('Ação'),
+    });
+    await abrirExplorar();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
+
+    expect(await screen.findByText('Nenhuma Mídia com esses filtros.')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Anime' })).not.toBeOnTheScreen();
+    expect(api.para('GET /midias?tipo=jogo&ordem=nota_media&pagina=1&por_pagina=24')).toHaveLength(1);
+  });
+
+  it('busca sem resultado diz o que foi buscado', async () => {
+    simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos(),
+      'GET /midias?tipo=anime&ordem=nota_media&busca=zzz&pagina=1&por_pagina=24': pagina([]),
+    });
+    await abrirExplorar();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+
+    await userEvent.setup().type(screen.getByLabelText('Buscar por título'), 'zzz');
+
+    expect(await screen.findByText('Nenhuma Mídia encontrada para "zzz".')).toBeOnTheScreen();
+  });
+
+  it('erro do servidor mostra o aviso e "Tentar de novo" recarrega', async () => {
+    let falhar = true;
+    simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': () =>
+        falhar ? { status: 400, corpo: { erro: 'Erro ao buscar mídias' } } : pagina([frieren]),
+      'GET /generos?tipo=anime': generos(),
+    });
+    await abrirExplorar();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Erro ao buscar mídias');
+    falhar = false;
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+  });
+
+  it('tocar num resultado abre o detalhe da Mídia', async () => {
+    simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos(),
+      'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
+      'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+      'GET /avaliacoes/MID-ANM-2026-20053': { status: 200, corpo: { avaliacoes: [] } },
+      'GET /lista': { status: 200, corpo: { lista: [] } },
+    });
+    const app = await abrirExplorar();
+
+    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren' }));
+
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(app.getPathname()).toBe('/midia/MID-ANM-2026-20053');
+  });
+
   it('rolar até o fim pede a próxima página; uma página incompleta encerra a rolagem', async () => {
     const cheia = Array.from({ length: 24 }, (_, i) =>
       anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
@@ -99,6 +163,29 @@ describe('Explorar', () => {
     await rolarAteOFim(resultados);
 
     expect(api.chamadas.filter((c) => c.caminho.includes('pagina=3'))).toHaveLength(0);
+  });
+
+  it('se a próxima página falha, o fim da lista oferece "Tentar de novo"', async () => {
+    const cheia = Array.from({ length: 24 }, (_, i) =>
+      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
+    );
+    let falhar = true;
+    simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina(cheia),
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=2&por_pagina=24': () =>
+        falhar ? { status: 400, corpo: { erro: 'Erro ao buscar mídias' } } : pagina([frieren], 2),
+      'GET /generos?tipo=anime': generos(),
+    });
+    await abrirExplorar();
+    const resultados = await screen.findByLabelText('Resultados');
+    await within(resultados).findByRole('link', { name: 'Anime 1' });
+
+    await rolarAteOFim(resultados);
+    falhar = false;
+    await fireEvent.press(await screen.findByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Anime 1' })).toBeOnTheScreen();
   });
 });
 
