@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import type { CartaoMidia } from '../api/tipos';
 import { tituloDaMidia } from '../dominio/midia';
+import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
   midia: CartaoMidia;
@@ -11,14 +12,14 @@ type Props = {
   largura?: number;
 };
 
-/** Pôster e título; tocar abre o detalhe da Mídia. */
+/** Pôster, título e selo do Tipo de mídia; tocar abre o detalhe da Mídia. */
 export function CardMidia({ midia, largura }: Props) {
   const titulo = tituloDaMidia(midia);
   return (
     <Link href={{ pathname: '/midia/[id]', params: { id: midia.id_midia } }} asChild>
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={titulo}
+        accessibilityLabel={`${titulo}, ${nomeDoTipo(midia.tipo)}`}
         className="gap-1.5 active:opacity-80"
         style={largura ? { width: largura } : { flex: 1 }}
       >
@@ -38,7 +39,7 @@ export function CardMidia({ midia, largura }: Props) {
         <Text numberOfLines={2} className="text-xs leading-tight text-text-primary">
           {titulo}
         </Text>
-        <Text className="text-[10px] text-text-secondary">{midia.tipo_label}</Text>
+        <SeloTipo tipo={midia.tipo} />
       </Pressable>
     </Link>
   );

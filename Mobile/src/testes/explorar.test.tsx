@@ -45,8 +45,8 @@ describe('Explorar', () => {
     await abrirExplorar();
 
     const resultados = await screen.findByLabelText('Resultados');
-    expect(await within(resultados).findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
-    expect(within(resultados).getByRole('link', { name: 'Fullmetal Alchemist: Brotherhood' })).toBeOnTheScreen();
+    expect(await within(resultados).findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(within(resultados).getByRole('link', { name: 'Fullmetal Alchemist: Brotherhood, Anime' })).toBeOnTheScreen();
   });
 
   it('Tipo, Gênero, ordem e busca entram na requisição; a busca espera a digitação parar', async () => {
@@ -61,7 +61,7 @@ describe('Explorar', () => {
       'GET /midias?tipo=manga&ordem=titulo&genero=Seinen&busca=jojo&pagina=1&por_pagina=24': pagina([jojo], 1, 'manga'),
     });
     await abrirExplorar();
-    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Mangá' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Seinen' }));
@@ -75,7 +75,7 @@ describe('Explorar', () => {
       ).toHaveLength(1),
     );
     expect(api.chamadas.filter((c) => /busca=(j|jo|joj)&/.test(c.caminho))).toHaveLength(0);
-    expect(await screen.findByRole('link', { name: 'JoJo no Kimyou na Bouken' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá' })).toBeOnTheScreen();
   });
 
   it('no Recorte jogos busca só jogos, sem escolha de Tipo; nada encontrado mostra estado vazio', async () => {
@@ -86,7 +86,7 @@ describe('Explorar', () => {
       'GET /generos?tipo=jogo': generos('Ação'),
     });
     await abrirExplorar();
-    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
 
@@ -102,7 +102,7 @@ describe('Explorar', () => {
       'GET /midias?tipo=anime&ordem=nota_media&busca=zzz&pagina=1&por_pagina=24': pagina([]),
     });
     await abrirExplorar();
-    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
 
     await userEvent.setup().type(screen.getByLabelText('Buscar por título'), 'zzz');
 
@@ -122,7 +122,7 @@ describe('Explorar', () => {
     falhar = false;
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
   });
 
   it('tocar num resultado abre o detalhe da Mídia', async () => {
@@ -136,7 +136,7 @@ describe('Explorar', () => {
     });
     const app = await abrirExplorar();
 
-    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren' }));
+    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' }));
 
     expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(app.getPathname()).toBe('/midia/MID-ANM-2026-20053');
@@ -153,11 +153,11 @@ describe('Explorar', () => {
     });
     await abrirExplorar();
     const resultados = await screen.findByLabelText('Resultados');
-    await within(resultados).findByRole('link', { name: 'Anime 1' });
+    await within(resultados).findByRole('link', { name: 'Anime 1, Anime' });
 
     await rolarAteOFim(resultados);
 
-    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
     expect(api.para('GET /midias?tipo=anime&ordem=nota_media&pagina=2&por_pagina=24')).toHaveLength(1);
 
     await rolarAteOFim(resultados);
@@ -178,14 +178,14 @@ describe('Explorar', () => {
     });
     await abrirExplorar();
     const resultados = await screen.findByLabelText('Resultados');
-    await within(resultados).findByRole('link', { name: 'Anime 1' });
+    await within(resultados).findByRole('link', { name: 'Anime 1, Anime' });
 
     await rolarAteOFim(resultados);
     falhar = false;
     await fireEvent.press(await screen.findByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
-    expect(screen.getByRole('link', { name: 'Anime 1' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Anime 1, Anime' })).toBeOnTheScreen();
   });
 });
 

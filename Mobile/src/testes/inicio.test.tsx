@@ -37,8 +37,24 @@ describe('Início', () => {
 
     const emAlta = await screen.findByLabelText('Em alta');
     const titulos = within(emAlta).getAllByRole('link').map((c) => c.props.accessibilityLabel);
-    expect(titulos).toEqual(['JoJo no Kimyou na Bouken', 'Sousou no Frieren', 'Fullmetal Alchemist: Brotherhood']);
+    expect(titulos).toEqual([
+      'JoJo no Kimyou na Bouken, Mangá',
+      'Sousou no Frieren, Anime',
+      'Fullmetal Alchemist: Brotherhood, Anime',
+    ]);
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(0);
+  });
+
+  it('cada card mostra o selo do Tipo de mídia, também no rótulo de acessibilidade', async () => {
+    simularFetch(catalogo());
+
+    await abrirLogado();
+
+    const emAlta = await screen.findByLabelText('Em alta');
+    const cardFrieren = await within(emAlta).findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    const cardJojo = within(emAlta).getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá' });
+    expect(within(cardFrieren).getByText('Anime')).toBeOnTheScreen();
+    expect(within(cardJojo).getByText('Mangá')).toBeOnTheScreen();
   });
 
   it('populares ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
@@ -49,8 +65,8 @@ describe('Início', () => {
     const populares = await screen.findByLabelText('Populares');
     expect(await within(populares).findAllByRole('link')).toHaveLength(2);
     expect(within(populares).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
-      'JoJo no Kimyou na Bouken',
-      'Fullmetal Alchemist: Brotherhood',
+      'JoJo no Kimyou na Bouken, Mangá',
+      'Fullmetal Alchemist: Brotherhood, Anime',
     ]);
   });
 
@@ -62,8 +78,8 @@ describe('Início', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
 
     const emAlta = await screen.findByLabelText('Em alta');
-    expect(await within(emAlta).findByRole('link', { name: 'Hollow Knight' })).toBeOnTheScreen();
-    expect(within(emAlta).queryByRole('link', { name: 'Sousou no Frieren' })).not.toBeOnTheScreen();
+    expect(await within(emAlta).findByRole('link', { name: 'Hollow Knight, Jogo' })).toBeOnTheScreen();
+    expect(within(emAlta).queryByRole('link', { name: 'Sousou no Frieren, Anime' })).not.toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
     expect(api.para('GET /midias/populares?tipo=jogo')).toHaveLength(1);
     expect(await screen.findByText('Nenhuma Mídia popular neste Recorte ainda.')).toBeOnTheScreen();
@@ -78,7 +94,7 @@ describe('Início', () => {
     await fireEvent.press(await screen.findByRole('button', { name: /^Início, tab/ }));
 
     expect(await screen.findByRole('button', { name: 'Jogos', selected: true })).toBeOnTheScreen();
-    expect(await screen.findByRole('link', { name: 'Hollow Knight' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Hollow Knight, Jogo' })).toBeOnTheScreen();
   });
 
   it('puxar para atualizar pede os dados de novo', async () => {
@@ -91,12 +107,12 @@ describe('Início', () => {
       }),
     });
     await abrirLogado();
-    await screen.findByRole('link', { name: 'Frieren 9.1' });
+    await screen.findByRole('link', { name: 'Frieren 9.1, Anime' });
 
     nota = 9.3;
     await userEvent.setup().pullToRefresh(screen.getByTestId('inicio'));
 
-    expect(await screen.findByRole('link', { name: 'Frieren 9.3' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Frieren 9.3, Anime' })).toBeOnTheScreen();
     expect(api.para('GET /midias/populares?tipo=manga')).toHaveLength(2);
   });
 
@@ -116,7 +132,7 @@ describe('Início', () => {
     online = true;
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
   });
 
   it('tocar num card abre o detalhe; voltar retorna ao Início', async () => {
@@ -129,7 +145,7 @@ describe('Início', () => {
     });
     const app = await abrirLogado();
 
-    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren' }));
+    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' }));
 
     expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(app.getPathname()).toBe('/midia/MID-ANM-2026-20053');
