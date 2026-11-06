@@ -4,6 +4,7 @@ import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/te
 import { guardarSessao } from '../auth/armazenamento';
 import { type Requisicao, type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
 import { anime, jogo, manga } from './midias';
+import { trocarRecorte } from './recorte';
 
 const APP = path.resolve(__dirname, '../../app');
 
@@ -95,7 +96,7 @@ describe('aba Lista', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
     expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
     expect(await aba('Concluído', 2)).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Platinado (1)' })).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Hollow Knight')).toBeOnTheScreen();
@@ -152,7 +153,7 @@ describe('aba Lista', () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 
     await abrir('/lista');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
 
     const l = await linha('Hollow Knight');
     expect(within(l).getByText('42 h')).toBeOnTheScreen();
@@ -177,7 +178,7 @@ describe('aba Lista', () => {
     ]);
     await fireEvent.press(screen.getByRole('button', { name: 'Fechar' }));
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Hollow Knight' }));
     expect(screen.getByLabelText('Horas jogadas')).toHaveDisplayValue('42');
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));

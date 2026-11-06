@@ -19,3 +19,11 @@ jest.mock('expo-secure-store', () => {
 beforeEach(() => {
   require('expo-secure-store').__limpar();
 });
+
+
+// "Reduzir movimento" ligado: a troca de Recorte e o menu ficam instantâneos e os testes não esperam animação.
+// O teste da transição animada desliga de volta.
+beforeEach(() => {
+  const { AccessibilityInfo } = require('react-native');
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+});

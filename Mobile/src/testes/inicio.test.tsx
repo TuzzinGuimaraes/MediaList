@@ -1,10 +1,12 @@
 import path from 'node:path';
 import { userEvent } from '@testing-library/react-native';
 import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { AccessibilityInfo } from 'react-native';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { usuarioAna, simularFetch } from './fetchSimulado';
 import { anime, jogo, manga, popular } from './midias';
+import { pilulaRecorte, trocarRecorte } from './recorte';
 
 const APP = path.resolve(__dirname, '../../app');
 
@@ -59,7 +61,7 @@ describe('Início', () => {
     await abrirLogado();
     await screen.findByLabelText('Em alta');
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
 
     const emAlta = await screen.findByLabelText('Em alta');
     expect(await within(emAlta).findByRole('link', { name: 'Hollow Knight' })).toBeOnTheScreen();
@@ -69,15 +71,73 @@ describe('Início', () => {
     expect(await screen.findByText('Nenhuma Mídia popular neste Recorte ainda.')).toBeOnTheScreen();
   });
 
+  it('a pílula abre o menu com as duas opções e a atual marcada', async () => {
+    simularFetch(catalogo());
+    await abrirLogado();
+
+    await fireEvent.press(await pilulaRecorte('Anime & Mangá'));
+
+    const menu = await screen.findByLabelText('Recorte de catálogo');
+    expect(within(menu).getAllByRole('menuitem').map((o) => o.props.accessibilityLabel)).toEqual([
+      'Anime & Mangá',
+      'Jogos',
+    ]);
+    expect(within(menu).getByRole('menuitem', { name: 'Anime & Mangá', selected: true })).toBeOnTheScreen();
+    expect(within(menu).getByRole('menuitem', { name: 'Jogos', selected: false })).toBeOnTheScreen();
+  });
+
+  it('tocar fora do menu fecha sem trocar o Recorte', async () => {
+    const api = simularFetch(catalogo());
+    await abrirLogado();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+
+    await fireEvent.press(await pilulaRecorte());
+    await fireEvent.press(await screen.findByRole('button', { name: 'Fechar menu' }));
+
+    expect(screen.queryByLabelText('Recorte de catálogo')).not.toBeOnTheScreen();
+    expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(0);
+  });
+
+  it('escolher o Recorte atual só fecha o menu', async () => {
+    const api = simularFetch(catalogo());
+    await abrirLogado();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+    const pedidos = api.chamadas.length;
+
+    await trocarRecorte('Anime & Mangá');
+
+    expect(screen.queryByLabelText('Recorte de catálogo')).not.toBeOnTheScreen();
+    expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(api.chamadas).toHaveLength(pedidos);
+  });
+
+  it('com animação, a pílula mostra o novo Recorte na hora e o conteúdo chega após o fade', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+    const api = simularFetch(catalogo());
+    await abrirLogado();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+
+    await trocarRecorte('Jogos');
+
+    // Durante o fade-out a pílula já mostra Jogos e o conteúdo ainda é o do Recorte anterior.
+    expect(await pilulaRecorte('Jogos')).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(await screen.findByRole('link', { name: 'Hollow Knight' })).toBeOnTheScreen();
+    expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
+  });
+
   it('o Recorte escolhido continua valendo ao trocar de aba e voltar', async () => {
     simularFetch({ ...catalogo(), 'GET /lista': { status: 200, corpo: { lista: [] } } });
     await abrirLogado();
-    await fireEvent.press(await screen.findByRole('button', { name: 'Jogos' }));
+    await trocarRecorte('Jogos');
 
     await fireEvent.press(await screen.findByRole('button', { name: /^Explorar, tab/ }));
     await fireEvent.press(await screen.findByRole('button', { name: /^Início, tab/ }));
 
-    expect(await screen.findByRole('button', { name: 'Jogos', selected: true })).toBeOnTheScreen();
+    expect(await pilulaRecorte('Jogos')).toBeOnTheScreen();
     expect(await screen.findByRole('link', { name: 'Hollow Knight' })).toBeOnTheScreen();
   });
 
