@@ -1,6 +1,6 @@
 # Refresh token rotativo, com detecção de reuso
 
-O app mobile precisa de uma **Sessão autenticada** que dure semanas, e o access token
+O app mobile precisa de uma sessão autenticada que dure semanas, e o access token
 JWT dura um dia. Reduzir ou alongar esse JWT não serve: o web não tem refresh e depende
 do dia inteiro, e um JWT de semanas não pode ser revogado antes de expirar sem uma
 blocklist persistente. Por isso o backend ganha um refresh token à parte, só para quem o
