@@ -140,4 +140,60 @@ describe('Avaliações no detalhe da Mídia', () => {
     });
     expect(api.para(`GET /midias/${ID}`).length).toBeGreaterThan(1);
   });
+
+  it('apagar pede confirmação, envia DELETE e volta a oferecer escrever', async () => {
+    let avaliacoes = [minha()];
+    let midia = anime({ nota_media: 7, total_avaliacoes: 1 });
+    const api = simularFetch({
+      ...rotas([]),
+      [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
+      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      'DELETE /avaliacoes/AVL-MINHA': () => {
+        avaliacoes = [];
+        midia = { ...midia, nota_media: 0, total_avaliacoes: 0 };
+        return { status: 200, corpo: { mensagem: 'Avaliação removida com sucesso' } };
+      },
+    });
+
+    await abrirDetalhe();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Apagar minha Avaliação' }));
+    expect(screen.getByText('Apagar sua Avaliação? Não dá para desfazer.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Manter' }));
+    expect(api.para('DELETE /avaliacoes/AVL-MINHA')).toHaveLength(0);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Apagar minha Avaliação' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Apagar' }));
+
+    expect(await screen.findByRole('button', { name: 'Escrever Avaliação' })).toBeOnTheScreen();
+    expect(api.para('DELETE /avaliacoes/AVL-MINHA')).toHaveLength(1);
+    expect(screen.queryByLabelText('Avaliação de Ana Souza')).not.toBeOnTheScreen();
+    expect(await screen.findByLabelText('Total de avaliações: 0')).toBeOnTheScreen();
+  });
+
+  it('nota fora da faixa não chega à API', async () => {
+    const api = simularFetch(rotas([]));
+
+    await abrirDetalhe();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
+    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '10');
+    await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('A nota vai de 0,01 a 9,99.');
+    expect(api.para('POST /avaliacoes')).toHaveLength(0);
+  });
+
+  it('mostra o erro da API sem fechar o formulário', async () => {
+    simularFetch({
+      ...rotas([]),
+      'POST /avaliacoes': { status: 400, corpo: { erro: 'Você já avaliou esta mídia' } },
+    });
+
+    await abrirDetalhe();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
+    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '8');
+    await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Você já avaliou esta mídia');
+    expect(screen.getByRole('button', { name: 'Publicar' })).toBeOnTheScreen();
+  });
 });

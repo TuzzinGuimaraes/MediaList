@@ -2,6 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { useApagarAvaliacao } from '../api/avaliacoes';
+import { mensagemDeErro } from '../api/erros';
 import type { AvaliacaoCompleta } from '../api/tipos';
 import { useSessao } from '../auth/SessaoContext';
 import { formatarData } from '../dominio/midia';
@@ -14,7 +16,39 @@ const textos = {
   nenhuma: 'Nenhuma Avaliação ainda.',
   escrever: 'Escrever Avaliação',
   editar: 'Editar minha Avaliação',
+  apagar: 'Apagar minha Avaliação',
+  confirmacao: 'Apagar sua Avaliação? Não dá para desfazer.',
+  confirmar: 'Apagar',
+  manter: 'Manter',
 };
+
+/** Apagar com confirmação na própria tela (sem Alert nativo). */
+function ApagarAvaliacao({ idMidia, idAvaliacao }: { idMidia: string; idAvaliacao: string }) {
+  const [confirmando, setConfirmando] = useState(false);
+  const apagar = useApagarAvaliacao(idMidia);
+
+  if (!confirmando) {
+    return <Botao titulo={textos.apagar} variante="secundario" onPress={() => setConfirmando(true)} />;
+  }
+  return (
+    <View className="gap-2 rounded-md border border-accent-red p-3">
+      <Text className="text-sm text-text-bright">{textos.confirmacao}</Text>
+      {apagar.isError ? (
+        <Text accessibilityRole="alert" className="text-sm text-accent-red">
+          {mensagemDeErro(apagar.error)}
+        </Text>
+      ) : null}
+      <View className="flex-row gap-2">
+        <View className="flex-1">
+          <Botao titulo={textos.manter} variante="secundario" onPress={() => setConfirmando(false)} />
+        </View>
+        <View className="flex-1">
+          <Botao titulo={textos.confirmar} onPress={() => apagar.mutate(idAvaliacao)} carregando={apagar.isPending} />
+        </View>
+      </View>
+    </View>
+  );
+}
 
 function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
   return (
@@ -47,7 +81,10 @@ export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; aval
       <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">{textos.titulo}</Text>
       {/* No máximo uma Avaliação por Mídia: com a própria, o botão vira editar. */}
       {!avaliacoes ? null : minha ? (
-        <Botao titulo={textos.editar} variante="secundario" onPress={() => setFormulario('edicao')} />
+        <View className="gap-2">
+          <Botao titulo={textos.editar} variante="secundario" onPress={() => setFormulario('edicao')} />
+          <ApagarAvaliacao idMidia={idMidia} idAvaliacao={minha.id_avaliacao} />
+        </View>
       ) : (
         <Botao titulo={textos.escrever} onPress={() => setFormulario('novo')} />
       )}
