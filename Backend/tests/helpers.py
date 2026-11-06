@@ -230,3 +230,66 @@ class FakeMongoCollection:
 
         self.updated.append((filtro, update, upsert))
         return FakeUpdateResult(modified_count=0)
+
+
+
+class FakeRefreshTokenRepository:
+    """Tabela `refresh_tokens` em memória, na costura de `RefreshTokenRepository`.
+
+    Guarda o que o banco guardaria: só o hash do token, nunca o texto em claro.
+    `usuarios_ativos` faz o papel do JOIN com `usuarios.ativo`.
+    """
+
+    def __init__(self, usuarios_ativos=None):
+        #: id_refresh -> linha de refresh_tokens.
+        self.tokens = {}
+        self.usuarios_ativos = dict(usuarios_ativos or {})
+        self._sequencia = 0
+
+    def _proximo_id(self):
+        self._sequencia += 1
+        return f'RFT-{self._sequencia}'
+
+    def criar(self, id_usuario, familia, token_hash, expira_em):
+        id_refresh = self._proximo_id()
+        self.tokens[id_refresh] = {
+            'id_refresh': id_refresh,
+            'token_hash': token_hash,
+            'id_usuario': id_usuario,
+            'familia': familia,
+            'expira_em': expira_em,
+            'revogado': False,
+            'substituido_por': None,
+        }
+        return id_refresh
+
+    def buscar_por_hash(self, token_hash):
+        for linha in self.tokens.values():
+            if linha['token_hash'] == token_hash:
+                return {
+                    **linha,
+                    'usuario_ativo': self.usuarios_ativos.get(linha['id_usuario'], True),
+                }
+        return None
+
+    def rotacionar(self, id_refresh, novo_hash, expira_em):
+        atual = self.tokens.get(id_refresh)
+        if not atual or atual['revogado']:
+            return None
+
+        novo_id = self.criar(atual['id_usuario'], atual['familia'], novo_hash, expira_em)
+        atual['revogado'] = True
+        atual['substituido_por'] = novo_id
+        return novo_id
+
+    def revogar_familia(self, familia):
+        for linha in self.tokens.values():
+            if linha['familia'] == familia:
+                linha['revogado'] = True
+
+    def revogar(self, token_hash, id_usuario):
+        for linha in self.tokens.values():
+            if linha['token_hash'] == token_hash and linha['id_usuario'] == id_usuario:
+                linha['revogado'] = True
+                return True
+        return False

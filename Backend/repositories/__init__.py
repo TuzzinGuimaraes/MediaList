@@ -8,6 +8,7 @@ from .midia_repository import (
     MangaRepository,
     MidiaRepository,
 )
+from .refresh_token_repository import RefreshTokenRepository
 
 __all__ = [
     'MidiaRepository',
@@ -15,4 +16,5 @@ __all__ = [
     'MangaRepository',
     'JogoRepository',
     'ListaRepository',
+    'RefreshTokenRepository',
 ]
