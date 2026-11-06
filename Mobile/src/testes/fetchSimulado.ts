@@ -50,12 +50,12 @@ export function semConexao(): never {
 }
 
 export const usuarioAna = {
-  id: 7,
+  id: 'USR-20261106-00007',
   nome: 'Ana Souza',
   email: 'ana@exemplo.com',
   nivel_acesso: 'usuario',
   grupos: 'Usuários',
-  permissoes: { pode_criar: false, pode_editar: false, pode_deletar: false, pode_moderar: false },
+  permissoes: { pode_criar: 0, pode_editar: 0, pode_deletar: 0, pode_moderar: 0 },
 };
 
 export function loginOk(tokens: { access: string; refresh: string | null }): Resposta {

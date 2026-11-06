@@ -35,7 +35,7 @@ function perfilResponde(accessValido: string, nivel = 'usuario') {
     req.autorizacao === `Bearer ${accessValido}` ? { status: 200, corpo } : expirado;
   return {
     'GET /auth/me': exige({
-      usuario: { id_usuario: 7, nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
+      usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
     }),
     'GET /usuario/permissoes': exige({ permissoes: { nivel_acesso: nivel, grupos: 'Usuários' } }),
   };
@@ -236,7 +236,7 @@ describe('criar conta', () => {
 
   it('cria a conta e já entra', async () => {
     const api = simularFetch({
-      'POST /auth/registro': { status: 201, corpo: { mensagem: 'Usuário criado com sucesso!', id_usuario: 7 } },
+      'POST /auth/registro': { status: 201, corpo: { mensagem: 'Usuário criado com sucesso!', id_usuario: 'USR-20261106-00007' } },
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
     });
 

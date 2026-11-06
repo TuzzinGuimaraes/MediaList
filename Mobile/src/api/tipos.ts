@@ -4,16 +4,18 @@ export type NivelAcesso = 'admin' | 'moderador' | 'usuario';
 
 /** `usuario` da resposta de POST /auth/login. */
 export type UsuarioSessao = {
-  id: number;
+  /** Ex.: "USR-20261106-01003". */
+  id: string;
   nome: string;
   email: string;
   nivel_acesso: NivelAcesso;
   grupos: string | null;
+  /** O MySQL devolve 0/1. */
   permissoes: {
-    pode_criar: boolean;
-    pode_editar: boolean;
-    pode_deletar: boolean;
-    pode_moderar: boolean;
+    pode_criar: boolean | number;
+    pode_editar: boolean | number;
+    pode_deletar: boolean | number;
+    pode_moderar: boolean | number;
   };
 };
 
@@ -41,7 +43,7 @@ export type DadosRegistro = {
 /** GET /auth/me. */
 export type RespostaMe = {
   usuario: {
-    id_usuario: number;
+    id_usuario: string;
     nome_completo: string;
     email: string;
     foto_perfil: string | null;
