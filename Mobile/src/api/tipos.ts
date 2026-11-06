@@ -57,3 +57,33 @@ export type RespostaPermissoes = {
     grupos: string | null;
   };
 };
+
+
+/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em RFC 1123 ("Fri, 06 Nov 2026 10:00:00 GMT"). */
+export type Noticia = {
+  titulo: string;
+  conteudo: string;
+  autor: string;
+  categoria: string;
+  tags: string[];
+  imagem_url: string | null;
+  data_publicacao: string;
+  visualizacoes: number;
+};
+
+export type RespostaNoticias = { noticias: Noticia[] };
+
+/** Item de GET /notificacoes: a entrega de uma Atualização de mídia (Backend/routes/midias.py). */
+export type Notificacao = {
+  id_usuario: string;
+  id_midia: string;
+  tipo_midia: string;
+  tipo: string;
+  titulo: string;
+  midia_nome: string;
+  mensagem: string;
+  lida: boolean;
+  data_criacao: string;
+};
+
+export type RespostaNotificacoes = { notificacoes: Notificacao[] };

@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 
+import { useNaoLidas } from '@/api/noticias';
 import { useSessao } from '@/auth/SessaoContext';
 import { Carregando } from '@/components/EstadoTela';
 import paleta from '@/tema/paleta';
@@ -18,6 +19,7 @@ const abas: { nome: string; titulo: string; icone: Icone }[] = [
 
 export default function AbasLayout() {
   const { sessao } = useSessao();
+  const naoLidas = useNaoLidas();
   if (sessao.estado === 'carregando') return <Carregando />;
   // Sem sessão (nunca entrou, saiu, ou o refresh falhou): volta ao login.
   if (sessao.estado === 'anonima') return <Redirect href="/login" />;
@@ -38,6 +40,7 @@ export default function AbasLayout() {
           name={aba.nome}
           options={{
             title: aba.titulo,
+            tabBarBadge: aba.nome === 'noticias' && naoLidas > 0 ? naoLidas : undefined,
             tabBarIcon: ({ color, size }) => <Ionicons name={aba.icone} color={color as string} size={size} />,
           }}
         />
