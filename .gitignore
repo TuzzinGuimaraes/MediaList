@@ -122,3 +122,8 @@ Previews/
 # Configuração de agente (CLAUDE.md, docs/agents/) fica de fora de propósito:
 # descreve o ferramental de desenvolvimento local, não o projeto. Não precisa de
 # regra própria — o **/*.md acima já cobre.
+.kiro/
+
+# Tracker local de specs/tickets (skills)
+.scratch/
+.worktrees/
