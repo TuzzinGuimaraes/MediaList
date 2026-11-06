@@ -13,14 +13,6 @@ export function notaMedia(midia: Pick<Midia, 'nota_media' | 'total_avaliacoes'>)
   return Number(midia.nota_media).toFixed(1);
 }
 
-/** "2023-09-29" → "29/09/2023", sem passar por Date (fuso deslocaria o dia). */
-export function formatarData(iso: string | null): string | null {
-  const partes = iso?.slice(0, 10).split('-');
-  if (!partes || partes.length !== 3) return null;
-  const [ano, mes, dia] = partes;
-  return `${dia}/${mes}/${ano}`;
-}
-
 type Atributo = [rotulo: string, valor: string | number | null];
 
 /** Atributos específicos do Tipo de mídia; os vazios ficam de fora. */

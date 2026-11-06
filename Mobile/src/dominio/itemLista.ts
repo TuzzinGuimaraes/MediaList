@@ -2,7 +2,7 @@
 // Cópia do que Backend/dominio/lista_pessoal.py decide: o backend segue autoritativo
 // (ADR 0002, 0004); aqui servem para o otimista do stepper e a validação do editor.
 
-import { formatarData } from './midia';
+import { formatarData } from './datas';
 import {
   type EstadoConsumo,
   estadoDe,
@@ -159,8 +159,8 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
     nota: item.nota_usuario == null || item.nota_usuario === '' ? '' : String(Number(item.nota_usuario)),
     favorito: Boolean(item.favorito),
     privado: Boolean(item.privado),
-    inicio: formatarData(item.data_inicio ?? null) ?? '',
-    conclusao: formatarData(item.data_conclusao ?? null) ?? '',
+    inicio: formatarData(item.data_inicio) ?? '',
+    conclusao: formatarData(item.data_conclusao) ?? '',
     recontagem: String(item.total_rewatches ?? 0),
     comentario: item.comentario ?? '',
   };

@@ -70,6 +70,15 @@ describe('Avaliações no detalhe da Mídia', () => {
     expect(within(item).getByText('05/11/2026')).toBeOnTheScreen();
   });
 
+  it('mostra a data da Avaliação também quando vem em RFC 1123', async () => {
+    simularFetch(rotas([avaliacao({ data_avaliacao: 'Thu, 05 Nov 2026 10:00:00 GMT' })]));
+
+    await abrirDetalhe();
+
+    const item = await screen.findByLabelText('Avaliação de Bruno Lima');
+    expect(within(item).getByText('05/11/2026')).toBeOnTheScreen();
+  });
+
   it('criar envia o payload certo e atualiza Nota média e Total de avaliações', async () => {
     let avaliacoes: unknown[] = [];
     let midia = anime({ nota_media: 9.1, total_avaliacoes: 0 });

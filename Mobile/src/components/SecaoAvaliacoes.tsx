@@ -6,7 +6,7 @@ import { useApagarAvaliacao } from '../api/avaliacoes';
 import { mensagemDeErro } from '../api/erros';
 import type { AvaliacaoCompleta } from '../api/tipos';
 import { useSessao } from '../auth/SessaoContext';
-import { formatarData } from '../dominio/midia';
+import { formatarData } from '../dominio/datas';
 import paleta from '../tema/paleta';
 import { Botao } from './Botao';
 import { FormularioAvaliacao } from './FormularioAvaliacao';
