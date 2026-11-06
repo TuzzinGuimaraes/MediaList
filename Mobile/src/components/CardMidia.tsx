@@ -2,11 +2,11 @@ import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
-import type { MidiaResumo } from '../api/tipos';
+import type { CartaoMidia } from '../api/tipos';
 import { tituloDaMidia } from '../dominio/midia';
 
 type Props = {
-  midia: MidiaResumo;
+  midia: CartaoMidia;
   /** Largura fixa (carrossel) ou ocupando a coluna (grade). */
   largura?: number;
 };

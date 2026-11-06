@@ -5,7 +5,7 @@ import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
 import type {
   Midia,
-  MidiaResumo,
+  MidiaPopular,
   RespostaDistribuicao,
   RespostaMidias,
 } from './tipos';
@@ -47,7 +47,7 @@ export function usePopulares(recorte: Recorte) {
   return useQuery({
     queryKey: ['midias', 'populares', recorte],
     queryFn: async () =>
-      (await porTipo<MidiaResumo>(cliente, recorte, (t) => `/midias/populares?tipo=${t}`)).sort(
+      (await porTipo<MidiaPopular>(cliente, recorte, (t) => `/midias/populares?tipo=${t}`)).sort(
         decrescente((m) => m.total_usuarios),
       ),
   });

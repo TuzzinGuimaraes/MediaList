@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { useEmAlta, usePopulares } from '@/api/midias';
-import type { MidiaResumo } from '@/api/tipos';
+import type { CartaoMidia } from '@/api/tipos';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { SeletorRecorte } from '@/components/SeletorRecorte';
@@ -16,7 +16,7 @@ const textos = {
   popularesVazio: 'Nenhuma Mídia popular neste Recorte ainda.',
 };
 
-function Secao({ titulo, midias, vazio }: { titulo: string; midias: MidiaResumo[]; vazio: string }) {
+function Secao({ titulo, midias, vazio }: { titulo: string; midias: CartaoMidia[]; vazio: string }) {
   return (
     <View accessibilityLabel={titulo} className="gap-3">
       <Text className="px-4 text-sm font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>

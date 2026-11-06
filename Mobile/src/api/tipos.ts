@@ -61,10 +61,7 @@ export type RespostaPermissoes = {
 
 export type TipoMidia = 'anime' | 'manga' | 'jogo';
 
-/**
- * O que todo card de Mídia precisa. Vem de /midias/trending, /midias e também de
- * /midias/populares, cuja view traz só um subconjunto dos campos.
- */
+/** A Mídia como vem nas listagens (GET /midias, /midias/trending). */
 export type MidiaResumo = {
   /** Ex.: "MID-ANM-2026-20053". */
   id_midia: string;
@@ -78,6 +75,18 @@ export type MidiaResumo = {
   nota_media: number | null;
   total_usuarios: number;
 };
+
+/** O que o card de Mídia lê: serve para qualquer listagem, inclusive populares. */
+export type CartaoMidia = Pick<
+  MidiaResumo,
+  'id_midia' | 'tipo' | 'tipo_label' | 'titulo_original' | 'titulo_portugues' | 'poster_url'
+>;
+
+/**
+ * Linha de GET /midias/populares (view vw_midias_populares). A rota não serializa
+ * DECIMAL: `nota_media` chega como string ("9.10").
+ */
+export type MidiaPopular = Omit<MidiaResumo, 'nota_media'> & { nota_media: string | null };
 
 /** GET /midias/trending e GET /midias/populares. */
 export type RespostaMidias<M = MidiaResumo> = { midias: M[] };
