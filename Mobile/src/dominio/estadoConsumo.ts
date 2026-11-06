@@ -5,6 +5,8 @@ export type TipoMidia = 'anime' | 'manga' | 'jogo';
 
 export const TIPOS: readonly TipoMidia[] = ['anime', 'manga', 'jogo'];
 
+export const NOMES_TIPO: Record<TipoMidia, string> = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' };
+
 export type EstadoConsumo =
   | 'planejado'
   | 'em_progresso'

@@ -4,16 +4,14 @@ import { useEstatisticasPorTipo, useItensParaEstatisticas } from '../api/estatis
 import {
   ESTADOS,
   NOMES_ESTADO,
+  NOMES_TIPO,
   TIPOS,
-  type TipoMidia,
   contarPorEstado,
   mediaNotasPessoais,
 } from '../dominio/estadoConsumo';
 import paleta from '../tema/paleta';
 import { type Barra, Barras } from './Barras';
 import { Falha } from './EstadoTela';
-
-const NOMES_TIPO: Record<TipoMidia, string> = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' };
 
 const textos = {
   porEstado: 'Por Estado de consumo',

@@ -1,9 +1,10 @@
 import path from 'node:path';
-import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { userEvent } from '@testing-library/react-native';
+import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { usuarioAna, simularFetch } from './fetchSimulado';
-import { anime } from './midias';
+import { anime, manga } from './midias';
 
 const APP = path.resolve(__dirname, '../../app');
 
@@ -46,6 +47,35 @@ describe('Explorar', () => {
     const resultados = await screen.findByLabelText('Resultados');
     expect(await within(resultados).findByRole('link', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(within(resultados).getByRole('link', { name: 'Fullmetal Alchemist: Brotherhood' })).toBeOnTheScreen();
+  });
+
+  it('Tipo, Gênero, ordem e busca entram na requisição; a busca espera a digitação parar', async () => {
+    const jojo = manga();
+    const api = simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos('Ação', 'Drama'),
+      'GET /midias?tipo=manga&ordem=nota_media&pagina=1&por_pagina=24': pagina([jojo], 1, 'manga'),
+      'GET /generos?tipo=manga': generos('Ação', 'Seinen'),
+      'GET /midias?tipo=manga&ordem=nota_media&genero=Seinen&pagina=1&por_pagina=24': pagina([jojo], 1, 'manga'),
+      'GET /midias?tipo=manga&ordem=titulo&genero=Seinen&pagina=1&por_pagina=24': pagina([jojo], 1, 'manga'),
+      'GET /midias?tipo=manga&ordem=titulo&genero=Seinen&busca=jojo&pagina=1&por_pagina=24': pagina([jojo], 1, 'manga'),
+    });
+    await abrirExplorar();
+    await screen.findByRole('link', { name: 'Sousou no Frieren' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Mangá' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Seinen' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Título' }));
+    await userEvent.setup().type(screen.getByLabelText('Buscar por título'), 'jojo');
+
+    expect(await screen.findByRole('button', { name: 'Seinen', selected: true })).toBeOnTheScreen();
+    await waitFor(() =>
+      expect(
+        api.para('GET /midias?tipo=manga&ordem=titulo&genero=Seinen&busca=jojo&pagina=1&por_pagina=24'),
+      ).toHaveLength(1),
+    );
+    expect(api.chamadas.filter((c) => /busca=(j|jo|joj)&/.test(c.caminho))).toHaveLength(0);
+    expect(await screen.findByRole('link', { name: 'JoJo no Kimyou na Bouken' })).toBeOnTheScreen();
   });
 
   it('rolar até o fim pede a próxima página; uma página incompleta encerra a rolagem', async () => {
