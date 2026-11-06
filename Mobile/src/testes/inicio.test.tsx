@@ -207,7 +207,7 @@ describe('Início', () => {
 
     await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' }));
 
-    expect(await screen.findByRole('header', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(app.getPathname()).toBe('/midia/MID-ANM-2026-20053');
 
     await fireEvent.press(screen.getByRole('button', { name: /voltar|back/i }));
