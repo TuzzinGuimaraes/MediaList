@@ -1,4 +1,4 @@
-import { contarPorEstado, estadoDe, mediaNotasPessoais, rotulosDoTipo } from './estadoConsumo';
+import { contarPorEstado, estadoDe, mediaNotasPessoais, nomeDoRotulo, rotulosDoTipo, somarPorEstado } from './estadoConsumo';
 
 describe('estadoDe', () => {
   it('traduz o Rótulo de estado de cada Tipo para o Estado de consumo (tabela do CONTEXT.md)', () => {
@@ -71,5 +71,38 @@ describe('mediaNotasPessoais', () => {
   it('sem nenhuma nota, não há média', () => {
     expect(mediaNotasPessoais([{ nota_usuario: null }])).toBeNull();
     expect(mediaNotasPessoais([])).toBeNull();
+  });
+});
+
+describe('nomeDoRotulo', () => {
+  it('dá o nome do Estado de consumo para o rótulo do Tipo', () => {
+    expect(nomeDoRotulo('lendo', 'manga')).toBe('Em progresso');
+    expect(nomeDoRotulo('zerado', 'jogo')).toBe('Concluído');
+  });
+
+  it('rótulo desconhecido ou de outro Tipo passa como veio', () => {
+    expect(nomeDoRotulo('xyz', 'anime')).toBe('xyz');
+    expect(nomeDoRotulo('platinado', 'anime')).toBe('platinado');
+  });
+});
+
+describe('somarPorEstado', () => {
+  it('soma linhas agregadas por Estado e conta platinados também como concluídos', () => {
+    expect(
+      somarPorEstado(
+        [
+          { status_consumo: 'zerado', total: 2 },
+          { status_consumo: 'platinado', total: 1 },
+          { status_consumo: 'jogando', total: 4 },
+          { status_consumo: 'na_fila', total: 3 },
+        ],
+        'jogo',
+      ),
+    ).toEqual([
+      { estado: 'planejado', nome: 'Planejado', total: 3 },
+      { estado: 'em_progresso', nome: 'Em progresso', total: 4 },
+      { estado: 'concluido', nome: 'Concluído', total: 3 },
+      { estado: 'platinado', nome: 'Platinado', total: 1 },
+    ]);
   });
 });

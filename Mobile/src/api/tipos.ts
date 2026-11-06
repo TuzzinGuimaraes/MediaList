@@ -74,15 +74,6 @@ export type RespostaEstatisticas = {
   };
 };
 
-/** GET /lista: só os campos que as estatísticas usam. */
-export type RespostaLista = {
-  lista: {
-    tipo: string;
-    status_consumo: string | null;
-    nota_usuario: NumeroOuTexto | null;
-  }[];
-};
-
 /** GET /usuario/permissoes. */
 export type RespostaPermissoes = {
   permissoes: {
@@ -175,6 +166,8 @@ export type ItemLista = Midia & {
   status_consumo: string;
   progresso_atual: number | null;
   progresso_total: number | null;
+  /** Nota pessoal; pode chegar como texto (DECIMAL). */
+  nota_usuario: NumeroOuTexto | null;
 };
 
 export type RespostaLista = { lista: ItemLista[] };

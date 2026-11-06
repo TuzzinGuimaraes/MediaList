@@ -8,7 +8,7 @@ import { useAvaliacoes } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import { Carregando, Falha } from '@/components/EstadoTela';
-import { contarPorEstado, estadoDoRotulo } from '@/dominio/estados';
+import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import {
   atributosDoTipo,
   distribuicaoDeNotas,
@@ -82,7 +82,7 @@ export default function DetalheMidia() {
     const lancamento = formatarData(m.data_lancamento);
     const notas = distribuicaoDeNotas((avaliacoes.data ?? []).map((a) => a.nota));
     const maiorNota = Math.max(...notas.map((n) => n.total));
-    const estados = contarPorEstado(distribuicao.data ?? []);
+    const estados = somarPorEstado(distribuicao.data ?? [], m.tipo);
     const maiorEstado = Math.max(0, ...estados.map((e) => e.total));
     const titulo = tituloDaMidia(m);
 
@@ -120,7 +120,7 @@ export default function DetalheMidia() {
         </View>
 
         {item.data ? (
-          <Info rotulo={textos.naLista} valor={estadoDoRotulo(item.data.status_consumo)} />
+          <Info rotulo={textos.naLista} valor={nomeDoRotulo(item.data.status_consumo, m.tipo)} />
         ) : item.data === null ? (
           <Text className="text-sm text-text-secondary">{textos.foraDaLista}</Text>
         ) : null}
@@ -161,10 +161,10 @@ export default function DetalheMidia() {
             {estados.map((e) => (
               <Barra
                 key={e.estado}
-                rotulo={e.estado}
+                rotulo={e.nome}
                 total={e.total}
                 maximo={maiorEstado}
-                a11y={`${e.estado}: ${e.total}`}
+                a11y={`${e.nome}: ${e.total}`}
               />
             ))}
           </Secao>

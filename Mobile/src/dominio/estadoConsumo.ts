@@ -103,3 +103,32 @@ export function mediaNotasPessoais(
   if (notas.length === 0) return null;
   return notas.reduce((soma, n) => soma + n, 0) / notas.length;
 }
+
+
+/** Nome de apresentação do Estado por trás do rótulo; rótulo desconhecido passa como veio. */
+export function nomeDoRotulo(rotulo: string, tipo: string): string {
+  const estado = estadoDe(rotulo, tipo);
+  return estado ? NOMES_ESTADO[estado] : rotulo;
+}
+
+/**
+ * Soma linhas já agregadas (ex.: GET /midias/<id>/distribuicao) por Estado de consumo,
+ * na ordem dos estados, omitindo os vazios. Platinado também soma em Concluído.
+ */
+export function somarPorEstado(
+  linhas: readonly { status_consumo: string; total: number }[],
+  tipo: string,
+): { estado: EstadoConsumo; nome: string; total: number }[] {
+  const contagem = Object.fromEntries(ESTADOS.map((e) => [e, 0])) as ContagemPorEstado;
+  for (const { status_consumo, total } of linhas) {
+    const estado = estadoDe(status_consumo, tipo);
+    if (!estado) continue;
+    contagem[estado] += total;
+    if (estado === 'platinado') contagem.concluido += total;
+  }
+  return ESTADOS.filter((e) => contagem[e] > 0).map((estado) => ({
+    estado,
+    nome: NOMES_ESTADO[estado],
+    total: contagem[estado],
+  }));
+}
