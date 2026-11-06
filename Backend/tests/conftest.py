@@ -10,6 +10,8 @@ import database
 from app import app as flask_app
 from config import token_blocklist
 
+from .helpers import FakeRefreshTokenRepository
+
 
 @pytest.fixture
 def app():
@@ -27,6 +29,17 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture(autouse=True)
+def refresh_tokens(monkeypatch):
+    """Tabela de refresh tokens em memória para todo teste: o login grava nela,
+    e nenhum teste de rota deve escrever no MySQL de verdade."""
+    from routes import auth as auth_routes
+
+    falso = FakeRefreshTokenRepository()
+    monkeypatch.setattr(auth_routes, 'refresh_token_repository', falso)
+    return falso
 
 
 @pytest.fixture
