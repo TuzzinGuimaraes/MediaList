@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
-import { aplicarProgresso, type DadosItem } from '../dominio/itemLista';
+import { aplicarProgresso, type DadosItem, totalDoItem } from '../dominio/itemLista';
 import type { RespostaLista } from './tipos';
 
 // As rotas de escrita (Backend/routes/lista.py) só respondem `{mensagem}` (e `id_lista`
@@ -75,40 +76,87 @@ function hoje(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+type ItemCache = RespostaLista['lista'][number];
+
+/** Estado de uma sequência de toques no stepper de um Item, enquanto houver toque pendente. */
+type Rajada = {
+  /** O Item como estava no cache antes do primeiro toque. */
+  original: ItemCache;
+  /** Soma dos passos que não falharam (pendentes ou confirmados): o que a tela mostra. */
+  aplicado: number;
+  /** Último Progresso que o servidor aceitou: base do próximo envio. */
+  confirmado: number;
+};
+
+function comProgresso(original: ItemCache, progresso: number): ItemCache {
+  return {
+    ...original,
+    ...aplicarProgresso({ ...original, data_conclusao: original.data_conclusao ?? null }, progresso, hoje()),
+  };
+}
+
 /**
- * − / + do stepper: aplica no cache na hora (inclusive a conclusão no total) e
- * desfaz se o servidor recusar. Com toques seguidos, só o último a terminar refaz a Lista.
+ * − / + do stepper, em passos de ±1: aplica no cache na hora (inclusive a conclusão no
+ * total) e, se o servidor recusar um toque, desfaz só o passo dele, não os que deram
+ * certo. Os toques vão ao servidor um por vez (mesmo `scope`), cada um sobre o último
+ * valor aceito, para que um toque recusado não fique embutido no envio seguinte. Com
+ * toques seguidos, só o último a terminar refaz a Lista.
  */
 export function useMudarProgresso() {
   const { cliente } = useSessao();
   const queryClient = useQueryClient();
   const invalidar = useInvalidarLista();
+  const rajadas = useRef(new Map<string, Rajada>()).current;
+
+  const mostrar = (idLista: string, rajada: Rajada) =>
+    queryClient.setQueryData<RespostaLista>(CHAVE, (r) =>
+      r && {
+        lista: r.lista.map((item) =>
+          item.id_lista === idLista
+            ? comProgresso(rajada.original, (rajada.original.progresso_atual ?? 0) + rajada.aplicado)
+            : item,
+        ),
+      },
+    );
+
   return useMutation({
     mutationKey: CHAVE_PROGRESSO,
-    mutationFn: ({ idLista, progresso }: { idLista: string; idMidia: string; progresso: number }) =>
-      cliente.requisitar(`/lista/${encodeURIComponent(idLista)}/progresso`, {
+    scope: { id: CHAVE_PROGRESSO.join('/') },
+    mutationFn: async ({ idLista, passo }: { idLista: string; idMidia: string; passo: number }) => {
+      const rajada = rajadas.get(idLista);
+      if (!rajada) throw new Error('Item fora da Lista pessoal');
+      const base = rajada.confirmado;
+      const total = totalDoItem(rajada.original);
+      const progresso = Math.max(0, total === null ? base + passo : Math.min(total, base + passo));
+      await cliente.requisitar(`/lista/${encodeURIComponent(idLista)}/progresso`, {
         metodo: 'PUT',
         corpo: { progresso_atual: progresso },
-      }),
-    onMutate: async ({ idLista, progresso }) => {
-      await queryClient.cancelQueries({ queryKey: CHAVE, exact: true });
-      const anterior = queryClient.getQueryData<RespostaLista>(CHAVE);
-      queryClient.setQueryData<RespostaLista>(CHAVE, (r) =>
-        r && {
-          lista: r.lista.map((item) =>
-            item.id_lista === idLista
-              ? { ...item, ...aplicarProgresso({ ...item, data_conclusao: item.data_conclusao ?? null }, progresso, hoje()) }
-              : item,
-          ),
-        },
-      );
-      return { anterior };
+      });
+      rajada.confirmado = progresso;
     },
-    onError: (_e, _v, contexto) => {
-      if (contexto?.anterior) queryClient.setQueryData(CHAVE, contexto.anterior);
+    onMutate: async ({ idLista, passo }) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE, exact: true });
+      let rajada = rajadas.get(idLista);
+      if (!rajada) {
+        const original = queryClient.getQueryData<RespostaLista>(CHAVE)?.lista.find((i) => i.id_lista === idLista);
+        if (!original) return;
+        rajada = { original, aplicado: 0, confirmado: original.progresso_atual ?? 0 };
+        rajadas.set(idLista, rajada);
+      }
+      rajada.aplicado += passo;
+      mostrar(idLista, rajada);
+    },
+    onError: (_e, { idLista, passo }) => {
+      const rajada = rajadas.get(idLista);
+      if (!rajada) return;
+      rajada.aplicado -= passo;
+      mostrar(idLista, rajada);
     },
     onSettled: (_r, _e, { idMidia }) => {
-      if (queryClient.isMutating({ mutationKey: CHAVE_PROGRESSO }) === 1) return invalidar(idMidia);
+      if (queryClient.isMutating({ mutationKey: CHAVE_PROGRESSO }) === 1) {
+        rajadas.clear();
+        return invalidar(idMidia);
+      }
     },
   });
 }
