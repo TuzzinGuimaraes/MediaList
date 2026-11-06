@@ -77,9 +77,7 @@ export default function Inicio() {
         />
       }
     >
-      <View className="px-4">
-        <SeletorRecorte />
-      </View>
+      <SeletorRecorte className="px-4" />
       {conteudo}
     </ScrollView>
   );

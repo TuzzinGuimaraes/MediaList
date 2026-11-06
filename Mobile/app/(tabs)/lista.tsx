@@ -41,7 +41,7 @@ export default function Lista() {
 
     conteudo = (
       <>
-        <View className="pb-2">
+        <View className="pb-2 pt-3">
           <Opcoes
             rotulo={textos.abas}
             opcoes={estados.map((e) => ({ valor: e, titulo: `${NOMES_ESTADO[e]} (${contagem[e]})` }))}
@@ -89,9 +89,7 @@ export default function Lista() {
 
   return (
     <View className="flex-1 bg-dark-primary">
-      <View className="px-4 py-3">
-        <SeletorRecorte />
-      </View>
+      <SeletorRecorte className="px-4 pt-3" />
       {conteudo}
     </View>
   );

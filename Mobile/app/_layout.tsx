@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { criarQueryClient, ligarFocoAoAppState } from '@/api/consulta';
 import { SessaoProvider } from '@/auth/SessaoContext';
 import { RecorteProvider } from '@/recorte/RecorteContext';
+// PROTÓTIPO (ticket 11): variante do seletor de Recorte + barra flutuante.
+import { PrototipoBarraVariantes, PrototipoVarianteProvider } from '@/recorte/PrototipoVarianteRecorte';
 import paleta from '@/tema/paleta';
 
 const tema = {
@@ -31,8 +33,11 @@ export default function RootLayout() {
       <ThemeProvider value={tema}>
         <SessaoProvider>
           <RecorteProvider>
-            <StatusBar style="light" />
-            <Stack screenOptions={{ headerShown: false }} />
+            <PrototipoVarianteProvider>
+              <StatusBar style="light" />
+              <Stack screenOptions={{ headerShown: false }} />
+              <PrototipoBarraVariantes />
+            </PrototipoVarianteProvider>
           </RecorteProvider>
         </SessaoProvider>
       </ThemeProvider>
