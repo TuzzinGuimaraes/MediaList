@@ -8,6 +8,7 @@ import { useAvaliacoes } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import { Carregando, Falha } from '@/components/EstadoTela';
+import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import {
   atributosDoTipo,
@@ -169,6 +170,8 @@ export default function DetalheMidia() {
             ))}
           </Secao>
         ) : null}
+
+        <SecaoAvaliacoes idMidia={m.id_midia} avaliacoes={avaliacoes.data} />
       </ScrollView>
     );
   } else if (midia.isError) {

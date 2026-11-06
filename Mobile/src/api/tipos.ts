@@ -222,3 +222,22 @@ export type Genero = {
 };
 
 export type RespostaGeneros = { generos: Genero[] };
+
+/** Campos completos de cada item de GET /avaliacoes/<id_midia> (conferido contra o backend local). */
+export type AvaliacaoCompleta = Avaliacao & {
+  id_midia: string;
+  titulo_avaliacao: string | null;
+  texto_avaliacao: string | null;
+  /** "2026-11-06T15:07:43". */
+  data_avaliacao: string;
+  data_edicao: string | null;
+  nome_completo: string;
+  foto_perfil: string | null;
+};
+
+/** Corpo de POST /avaliacoes (com `id_midia`) e de PUT /avaliacoes/<id_avaliacao>. */
+export type DadosAvaliacao = {
+  nota: number;
+  titulo_avaliacao: string | null;
+  texto_avaliacao: string | null;
+};
