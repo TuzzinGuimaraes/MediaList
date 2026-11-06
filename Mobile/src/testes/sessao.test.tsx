@@ -218,3 +218,62 @@ describe('estados de erro', () => {
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
   });
 });
+
+
+describe('criar conta', () => {
+  async function abrirRegistro() {
+    await abrirApp();
+    await fireEvent.press(await screen.findByText('Não tem conta? Criar conta'));
+  }
+
+  async function preencherRegistro(dados: { nome: string; email: string; senha: string; confirmacao: string }) {
+    await fireEvent.changeText(await screen.findByLabelText('Nome'), dados.nome);
+    await fireEvent.changeText(screen.getByLabelText('Email'), dados.email);
+    await fireEvent.changeText(screen.getByLabelText('Senha'), dados.senha);
+    await fireEvent.changeText(screen.getByLabelText('Confirmar senha'), dados.confirmacao);
+    await fireEvent.press(screen.getByRole('button', { name: 'Criar conta' }));
+  }
+
+  it('cria a conta e já entra', async () => {
+    const api = simularFetch({
+      'POST /auth/registro': { status: 201, corpo: { mensagem: 'Usuário criado com sucesso!', id_usuario: 7 } },
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+    });
+
+    await abrirRegistro();
+    await preencherRegistro({
+      nome: 'Ana Souza',
+      email: 'ana@exemplo.com',
+      senha: 'segredo1',
+      confirmacao: 'segredo1',
+    });
+
+    expect(await aba('Início')).toBeOnTheScreen();
+    expect(api.para('POST /auth/registro')[0].corpo).toEqual({
+      nome_completo: 'Ana Souza',
+      email: 'ana@exemplo.com',
+      senha: 'segredo1',
+    });
+  });
+
+  it('com senhas diferentes, avisa sem chamar a API', async () => {
+    const api = simularFetch({});
+
+    await abrirRegistro();
+    await preencherRegistro({ nome: 'Ana', email: 'ana@exemplo.com', senha: 'segredo1', confirmacao: 'outra' });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('As senhas não conferem.');
+    expect(api.chamadas).toHaveLength(0);
+  });
+
+  it('com email já usado, mostra a mensagem da API', async () => {
+    simularFetch({
+      'POST /auth/registro': { status: 400, corpo: { erro: 'Email já cadastrado ou erro ao criar usuário' } },
+    });
+
+    await abrirRegistro();
+    await preencherRegistro({ nome: 'Ana', email: 'ana@exemplo.com', senha: 'segredo1', confirmacao: 'segredo1' });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email já cadastrado ou erro ao criar usuário');
+  });
+});
