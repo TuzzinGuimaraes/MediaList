@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Animated } from 'react-native';
 
-import type { TipoMidia } from '../api/tipos';
+import type { TipoMidia } from '../dominio/estadoConsumo';
 import { useReduzirMovimento } from '../tema/movimento';
 
 /** Recorte de catálogo: estado de interface em memória, não persistido (CONTEXT.md). */
