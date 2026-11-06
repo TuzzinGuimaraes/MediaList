@@ -52,7 +52,7 @@ DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).sql
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 .PHONY: help install install-backend install-frontend compose-build services-up services-up-dev \
-	services-down services-logs db-schema db-shell backend-dev frontend-dev smoke-mysql \
+	services-down services-logs db-schema db-migrate-refresh db-shell backend-dev frontend-dev smoke-mysql \
 	smoke-mongo smoke-permissions test-backend test-frontend test build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
@@ -62,6 +62,7 @@ help:
 	@printf "  make services-up-dev   Sobe o stack completo e habilita mongo-express\n"
 	@printf "  make compose-build     Rebuilda as imagens Docker de backend e frontend\n"
 	@printf "  make db-schema         Reaplica Banco DDL.sql no MySQL do Docker\n"
+	@printf "  make db-migrate-refresh Cria a tabela refresh_tokens num banco existente\n"
 	@printf "  make db-shell          Abre o cliente MySQL dentro do container\n"
 	@printf "  make db-dump          Gera um dump SQL completo em ./dumps\n"
 	@printf "  make db-restore       Restaura um dump com DUMP_FILE=/caminho/arquivo.sql\n"
@@ -107,6 +108,10 @@ services-logs:
 db-schema:
 	$(DOCKER_COMPOSE) up -d mysql
 	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(ROOT_DIR)/Banco DDL.sql"
+
+db-migrate-refresh:
+	$(DOCKER_COMPOSE) up -d mysql
+	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(ROOT_DIR)/Banco migracao 0006 refresh tokens.sql"
 
 db-shell:
 	$(DOCKER_COMPOSE) up -d mysql

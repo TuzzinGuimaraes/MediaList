@@ -36,6 +36,9 @@ load_dotenv()
 # Configuração JWT
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'sua-chave-secreta-super-segura')
 JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_ACCESS_TOKEN_DAYS', '1')))
+# Refresh token opaco e rotativo (ADR-0006). Não é JWT: vale o que está na
+# tabela `refresh_tokens`, então expira e é revogado no banco.
+REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_REFRESH_TOKEN_DAYS', '30')))
 
 # Configuração MySQL
 MYSQL_CONFIG = {

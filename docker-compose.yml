@@ -64,6 +64,7 @@ services:
       MONGO_DB_NAME: ${MONGO_DB_NAME:-medialist_updates_db}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-sua-chave-secreta-super-segura}
       JWT_ACCESS_TOKEN_DAYS: ${JWT_ACCESS_TOKEN_DAYS:-1}
+      JWT_REFRESH_TOKEN_DAYS: ${JWT_REFRESH_TOKEN_DAYS:-30}
       RAWG_API_KEY: ${RAWG_API_KEY:-}
       ANILIST_API_URL: ${ANILIST_API_URL:-https://graphql.anilist.co}
       RAWG_API_URL: ${RAWG_API_URL:-https://api.rawg.io/api}

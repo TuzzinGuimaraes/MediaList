@@ -7,17 +7,48 @@ from flask_jwt_extended import (
     create_access_token, jwt_required, get_jwt_identity, get_jwt
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
+import uuid
 from database import execute_query, get_db_connection
 from decorators import get_user_permissions
-from config import token_blocklist
+from config import REFRESH_TOKEN_EXPIRES, token_blocklist
+from repositories import RefreshTokenIndisponivel, RefreshTokenRepository
 
 auth_bp = Blueprint('auth', __name__)
+
+refresh_token_repository = RefreshTokenRepository()
 
 # Grupo atribuído a todo novo cadastro. Localizado por nome: a ordem em que o
 # schema semeia os grupos não é contrato, e um id fixo transforma qualquer
 # reordenação do seed em escalação de privilégio silenciosa.
 GRUPO_PADRAO = 'Usuários'
+
+
+# ============================================
+# REFRESH TOKEN (ADR-0006)
+# ============================================
+
+def _hash_refresh(token):
+    """SHA-256 basta: o token tem 256 bits aleatórios, não é senha a ser adivinhada."""
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
+def _novo_refresh():
+    """Devolve (token em claro, hash, expiração em UTC sem fuso)."""
+    token = secrets.token_urlsafe(32)
+    expira_em = datetime.now(timezone.utc).replace(tzinfo=None) + REFRESH_TOKEN_EXPIRES
+    return token, _hash_refresh(token), expira_em
+
+
+def _emitir_refresh(id_usuario):
+    """Abre uma família de rotação nova: uma por login."""
+    token, token_hash, expira_em = _novo_refresh()
+    familia = f'FAM-{uuid.uuid4().hex}'
+    if not refresh_token_repository.criar(id_usuario, familia, token_hash, expira_em):
+        return None
+    return token
 
 # ============================================
 # AUTENTICAÇÃO
@@ -127,6 +158,12 @@ def login():
         permissions = get_user_permissions(usuario['id_usuario'])
         access_token = create_access_token(identity=usuario['id_usuario'])
 
+        # Sem refresh o login continua valendo: o web não usa o campo, e um
+        # banco ainda sem a tabela `refresh_tokens` não deve derrubar o login.
+        refresh_token = _emitir_refresh(usuario['id_usuario'])
+        if not refresh_token:
+            print(f"Aviso: refresh token não emitido para {usuario['id_usuario']}")
+
         # Último acesso é escrito aqui, no único momento em que o usuário de fato
         # acessou o sistema. Antes vinha de um trigger em qualquer UPDATE de
         # `usuarios`, o que fazia editar a biografia contar como acesso.
@@ -136,6 +173,7 @@ def login():
         return jsonify({
             'token': access_token,
             'access_token': access_token,
+            'refresh_token': refresh_token,
             'usuario': {
                 'id': usuario['id_usuario'],
                 'nome': usuario['nome_completo'],
@@ -152,6 +190,59 @@ def login():
         }), 200
     except Exception as e:
         print(f"Erro no login: {e}")
+        return jsonify({'erro': 'Erro interno no servidor'}), 500
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+def refresh():
+    """Trocar um refresh token por um par novo de access + refresh (rotação)"""
+    try:
+        data = request.get_json(silent=True) or {}
+        token = data.get('refresh_token')
+        if not token or not isinstance(token, str):
+            return jsonify({'erro': 'Refresh token inválido'}), 401
+
+        atual = refresh_token_repository.buscar_por_hash(_hash_refresh(token))
+        if not atual:
+            return jsonify({'erro': 'Refresh token inválido'}), 401
+
+        if atual['revogado']:
+            # Já trocado por um sucessor: alguém está reapresentando um token
+            # velho. Não dá para saber se é o ladrão ou a vítima, então a
+            # família inteira morre. Revogado por logout não tem sucessor e
+            # só é recusado.
+            if atual['substituido_por']:
+                refresh_token_repository.revogar_familia(atual['familia'])
+            return jsonify({'erro': 'Refresh token inválido'}), 401
+
+        if atual['expira_em'] <= datetime.now(timezone.utc).replace(tzinfo=None):
+            return jsonify({'erro': 'Refresh token expirado'}), 401
+
+        if not atual['usuario_ativo']:
+            # Mesmo status e mensagem do login. A família é revogada para que
+            # reativar a conta exija um login novo, não ressuscite a sessão.
+            refresh_token_repository.revogar_familia(atual['familia'])
+            return jsonify({'erro': 'Usuário desativado'}), 403
+
+        novo_token, novo_hash, expira_em = _novo_refresh()
+        if not refresh_token_repository.rotacionar(atual['id_refresh'], novo_hash, expira_em):
+            # Outra requisição rotacionou este token entre a leitura e a
+            # troca: é o mesmo caso do reuso. Falha de banco não chega aqui,
+            # levanta RefreshTokenIndisponivel.
+            refresh_token_repository.revogar_familia(atual['familia'])
+            return jsonify({'erro': 'Refresh token inválido'}), 401
+
+        return jsonify({
+            'access_token': create_access_token(identity=atual['id_usuario']),
+            'refresh_token': novo_token,
+        }), 200
+    except RefreshTokenIndisponivel as e:
+        # Banco fora do ar não diz nada sobre o token: nada é revogado, e o
+        # app pode tentar de novo com o mesmo refresh.
+        print(f"Refresh indisponível: {e}")
+        return jsonify({'erro': 'Erro interno no servidor'}), 500
+    except Exception as e:
+        print(f"Erro no refresh: {e}")
         return jsonify({'erro': 'Erro interno no servidor'}), 500
 
 
@@ -180,6 +271,14 @@ def logout():
     try:
         jti = get_jwt()['jti']
         token_blocklist.add(jti)
+
+        # Opcional: o app manda o refresh do aparelho para encerrar a sessão
+        # de verdade. Só revoga token do próprio usuário.
+        data = request.get_json(silent=True) or {}
+        refresh_token = data.get('refresh_token')
+        if refresh_token and isinstance(refresh_token, str):
+            refresh_token_repository.revogar(_hash_refresh(refresh_token), get_jwt_identity())
+
         return jsonify({'mensagem': 'Logout realizado com sucesso'}), 200
     except Exception as e:
         print(f"Erro no logout: {e}")

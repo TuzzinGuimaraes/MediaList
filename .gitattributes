@@ -1,0 +1,7 @@
+# Working tree sempre em LF, independente do core.autocrlf da máquina.
+# CRLF quebra Makefile, Dockerfile e scripts no Linux e nos containers.
+* text=auto eol=lf
+
+*.docx binary
+*.png binary
+*.ico binary
