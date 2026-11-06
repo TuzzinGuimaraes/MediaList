@@ -109,6 +109,7 @@ function ListaNotificacoes() {
   return (
     <FlatList
       data={notificacoes.data}
+      testID="lista-notificacoes"
       keyExtractor={(n, i) => `${n.id_midia}-${n.data_criacao}-${i}`}
       renderItem={({ item }) => <ItemNotificacao notificacao={item} />}
       contentContainerClassName="flex-grow gap-3 p-4"

@@ -1,9 +1,28 @@
 import path from 'node:path';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { focusManager } from '@tanstack/react-query';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { loginOk, simularFetch } from './fetchSimulado';
 
 const APP = path.resolve(__dirname, '../../app');
+
+afterEach(() => focusManager.setFocused(undefined));
+
+/** O sistema avisa os ouvintes do AppState (mock do jest-preset do RN). */
+async function appFica(estado: AppStateStatus) {
+  const ouvintes = jest
+    .mocked(AppState.addEventListener)
+    .mock.calls.filter(([evento]) => evento === 'change')
+    .map(([, ouvinte]) => ouvinte);
+  await act(async () => ouvintes.forEach((ouvinte) => ouvinte(estado)));
+}
+
+/** O gesto de puxar a lista: o RefreshControl chama `onRefresh`. */
+async function puxarParaAtualizar(testID: string) {
+  const lista = screen.getByTestId(testID);
+  await act(async () => lista.props.refreshControl.props.onRefresh());
+}
 
 /** Botão da barra de abas (o React Navigation rotula como "Notícias, tab, 4 of 5"). */
 function aba(nome: string) {
@@ -86,5 +105,79 @@ describe('badge de Notificações não lidas', () => {
 
     await waitFor(() => expect(badgeNoticias()).toBeNull());
     expect(api.para('PUT /notificacoes/marcar-todas-lidas')[0].autorizacao).toBe('Bearer A1');
+  });
+
+  it('o badge atualiza quando o app volta para o primeiro plano', async () => {
+    let novas = 1;
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /notificacoes': () => ({
+        status: 200,
+        corpo: { notificacoes: Array.from({ length: novas }, (_, i) => notificacao(`Episódio ${i}`, false)) },
+      }),
+    });
+    await entrar();
+    await waitFor(() => expect(badgeNoticias()).toBe(1));
+
+    await appFica('background');
+    novas = 3;
+    await appFica('active');
+
+    await waitFor(() => expect(badgeNoticias()).toBe(3));
+  });
+
+  it('puxar a lista de Notificações busca de novo e atualiza o badge', async () => {
+    let novas = 1;
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /noticias?limite=20': { status: 200, corpo: { noticias: [] } },
+      'GET /notificacoes': () => ({
+        status: 200,
+        corpo: { notificacoes: Array.from({ length: novas }, (_, i) => notificacao(`Episódio ${i}`, false)) },
+      }),
+    });
+    await entrar();
+    await fireEvent.press(await aba('Notícias'));
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Notificações' }));
+    await screen.findByText('Episódio 0');
+
+    novas = 2;
+    await puxarParaAtualizar('lista-notificacoes');
+
+    expect(await screen.findByText('Episódio 1')).toBeOnTheScreen();
+    await waitFor(() => expect(badgeNoticias()).toBe(2));
+  });
+});
+
+describe('Notícias', () => {
+  it('lista as Notícias publicadas com autor e data', async () => {
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
+      'GET /noticias?limite=20': {
+        status: 200,
+        corpo: {
+          noticias: [
+            {
+              titulo: 'Temporada de inverno',
+              conteudo: 'Os lançamentos de janeiro.',
+              autor: 'Admin',
+              categoria: 'geral',
+              tags: ['anime'],
+              imagem_url: null,
+              data_publicacao: 'Fri, 06 Nov 2026 10:00:00 GMT',
+              visualizacoes: 0,
+            },
+          ],
+        },
+      },
+    });
+    await entrar();
+
+    await fireEvent.press(await aba('Notícias'));
+
+    expect(await screen.findByText('Temporada de inverno')).toBeOnTheScreen();
+    expect(screen.getByText('Por Admin · 06/11/2026')).toBeOnTheScreen();
+    expect(badgeNoticias()).toBeNull();
   });
 });
