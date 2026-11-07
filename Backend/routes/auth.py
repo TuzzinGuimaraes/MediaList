@@ -348,6 +348,9 @@ def redefinir_senha():
         query = "UPDATE usuarios SET senha_hash = %s WHERE id_usuario = %s"
         execute_query(query, (senha_hash, user_id), fetch=False)
 
+        # Uso único: o mesmo token não redefine a senha de novo.
+        token_blocklist.add(claims['jti'])
+
         return jsonify({'mensagem': 'Senha redefinida com sucesso!'}), 200
     except Exception as e:
         print(f"Erro ao redefinir senha: {e}")
