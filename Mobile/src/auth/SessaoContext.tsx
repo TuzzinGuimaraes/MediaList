@@ -30,20 +30,26 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
     const definirTokens = (novos: Tokens | null) => {
       tokens = novos;
     };
-    const encerrar = async () => {
-      definirTokens(null);
-      await apagarSessao();
-      queryClient.clear();
-      setSessao({ estado: 'anonima' });
-    };
+    // Várias requisições podem descobrir a expiração juntas: todas esperam o mesmo
+    // encerramento, e quem chega depois dele, com a sessão já limpa, não refaz nada.
+    let encerramento: Promise<void> | null = null;
+    const encerrar = () =>
+      (encerramento ??= (async () => {
+        definirTokens(null);
+        await apagarSessao();
+        queryClient.clear();
+        setSessao({ estado: 'anonima' });
+      })().finally(() => {
+        encerramento = null;
+      }));
     const cliente = criarCliente(urlApi(), {
       atuais: () => tokens,
       renovados: async (novos) => {
         definirTokens(novos);
         await guardarTokens(novos);
       },
-      expirada: () => {
-        encerrar();
+      expirada: async () => {
+        if (tokens || encerramento) await encerrar();
       },
     });
     return { cliente, definirTokens, encerrar };

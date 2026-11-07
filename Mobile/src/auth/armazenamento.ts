@@ -23,10 +23,15 @@ export async function carregarSessao(): Promise<SessaoGuardada | null> {
   }
 }
 
+/**
+ * O refresh vai primeiro: se o app morrer entre as gravações, sobra o refresh novo com o
+ * access antigo, que só pede outro refresh. O contrário deixaria guardado um refresh já
+ * rotacionado, e reusá-lo revoga a família inteira (ADR 0006).
+ */
 export async function guardarTokens(tokens: Tokens): Promise<void> {
-  await SecureStore.setItemAsync(CHAVE_ACCESS, tokens.access);
   if (tokens.refresh) await SecureStore.setItemAsync(CHAVE_REFRESH, tokens.refresh);
   else await SecureStore.deleteItemAsync(CHAVE_REFRESH);
+  await SecureStore.setItemAsync(CHAVE_ACCESS, tokens.access);
 }
 
 export async function guardarSessao(sessao: SessaoGuardada): Promise<void> {

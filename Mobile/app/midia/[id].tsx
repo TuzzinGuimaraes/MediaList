@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +9,10 @@ import { useAvaliacoes } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import type { ItemLista } from '@/api/tipos';
+import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { EditorItem } from '@/components/EditorItem';
-import { Carregando, Falha } from '@/components/EstadoTela';
+import { Carregando, Falha, FalhaParcial } from '@/components/EstadoTela';
 import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import { temProgresso, totalDoItem } from '@/dominio/itemLista';
@@ -75,7 +76,15 @@ function Barra({ rotulo, total, maximo, a11y }: { rotulo: string; total: number;
   );
 }
 
-export default function DetalheMidia() {
+/** Fora das abas, o detalhe precisa do próprio guard: um deep link pode abrir sem sessão. */
+export default function TelaDetalhe() {
+  const { sessao } = useSessao();
+  if (sessao.estado === 'carregando') return <Carregando />;
+  if (sessao.estado === 'anonima') return <Redirect href="/login" />;
+  return <DetalheMidia />;
+}
+
+function DetalheMidia() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const midia = useMidia(id);
@@ -145,6 +154,10 @@ export default function DetalheMidia() {
             <Text className="flex-1 text-corpo text-text-secondary">{textos.foraDaLista}</Text>
             <Botao titulo={textos.adicionar} onPress={() => setEditor(true)} />
           </View>
+        ) : item.isError ? (
+          <View className="rounded-md bg-dark-secondary p-4">
+            <FalhaParcial erro={item.error} tentarDeNovo={() => item.refetch()} />
+          </View>
         ) : null}
         {editor && item.data !== undefined ? (
           <EditorItem midia={m} item={item.data} aoFechar={() => setEditor(false)} />
@@ -163,7 +176,9 @@ export default function DetalheMidia() {
         </View>
 
         <Secao titulo={textos.notas}>
-          {m.total_avaliacoes ? (
+          {avaliacoes.isError && !avaliacoes.data ? (
+            <FalhaParcial erro={avaliacoes.error} tentarDeNovo={() => avaliacoes.refetch()} />
+          ) : m.total_avaliacoes ? (
             notas
               .slice()
               .reverse()
@@ -181,7 +196,11 @@ export default function DetalheMidia() {
           )}
         </Secao>
 
-        {estados.length ? (
+        {distribuicao.isError && !distribuicao.data ? (
+          <Secao titulo={textos.usuarios}>
+            <FalhaParcial erro={distribuicao.error} tentarDeNovo={() => distribuicao.refetch()} />
+          </Secao>
+        ) : estados.length ? (
           <Secao titulo={textos.usuarios}>
             {estados.map((e) => (
               <Barra

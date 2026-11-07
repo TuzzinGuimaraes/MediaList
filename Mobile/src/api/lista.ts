@@ -34,7 +34,7 @@ export function useItemDaLista(id: string) {
 }
 
 /**
- * Refaz tudo o que deriva da Lista: ['lista'] cobre também ['lista','estatisticas'];
+ * Refaz tudo o que deriva da Lista: ['lista'] (também lida pelas estatísticas do Perfil);
  * os totais do Perfil e a distribuição por Estado no detalhe também mudam.
  */
 function useInvalidarLista() {

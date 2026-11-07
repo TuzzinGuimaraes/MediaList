@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import * as SecureStore from 'expo-secure-store';
 
 import { type Requisicao, type Resposta, loginOk, semConexao, simularFetch } from './fetchSimulado';
 
@@ -170,8 +171,64 @@ describe('renovação da sessão', () => {
     await abrirApp();
     expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
   });
-});
 
+  it.each([
+    ['com 5xx', () => ({ status: 503, corpo: { erro: 'Serviço indisponível' } }), 'Serviço indisponível'],
+    ['sem rede', semConexao, 'Sem conexão com o servidor.'],
+  ])('se a renovação falha %s, mantém a sessão e "Tentar de novo" renova', async (_caso, falha, aviso) => {
+    let servidorOk = false;
+    const api = simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'POST /auth/refresh': (req) => (servidorOk ? renovaPara('A2', 'R2')(req) : falha()),
+      ...perfilResponde('A2'),
+    });
+    await entrar();
+
+    await fireEvent.press(await aba('Perfil'));
+    expect(await screen.findByText(aviso, {}, { timeout: 4000 })).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Email')).not.toBeOnTheScreen();
+
+    servidorOk = true;
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
+    // O refresh guardado continuou o R1: nenhum token foi descartado na falha.
+    expect(api.para('POST /auth/refresh').every((r) => r.corpo.refresh_token === 'R1')).toBe(true);
+  });
+
+  it('se a requisição repetida com o par novo ainda dá 401, volta ao login', async () => {
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'POST /auth/refresh': renovaPara('A2', 'R2'),
+      ...perfilResponde('A-outro'),
+    });
+    const primeira = await entrar();
+
+    await fireEvent.press(await aba('Perfil'));
+
+    expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
+    await primeira.unmount();
+    await abrirApp();
+    expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
+  });
+
+  it('várias requisições com a sessão expirada encerram a sessão uma vez só', async () => {
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R-velho' }),
+      'POST /auth/refresh': renovaPara('A2', 'R2'),
+      ...perfilResponde('A2'),
+    });
+    await entrar();
+    const apagar = jest.spyOn(SecureStore, 'deleteItemAsync');
+
+    await fireEvent.press(await aba('Perfil'));
+    await screen.findByLabelText('Email');
+    await act(async () => {});
+
+    const apagouRefresh = apagar.mock.calls.filter(([chave]) => /refresh/.test(chave));
+    expect(apagouRefresh).toHaveLength(1);
+  });
+});
 
 describe('casos de borda da sessão', () => {
   it('Usuário desativado vê o aviso no login', async () => {
