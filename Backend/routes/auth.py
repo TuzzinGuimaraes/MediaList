@@ -2,18 +2,18 @@
 Blueprint de Autenticação
 Endpoints: registro, login, logout, recuperação de senha, perfil
 """
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import (
-    create_access_token, jwt_required, get_jwt_identity, get_jwt
-)
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, jwt_required
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from config import REFRESH_TOKEN_EXPIRES, token_blocklist
 from database import execute_query, get_db_connection
 from decorators import get_user_permissions
-from config import REFRESH_TOKEN_EXPIRES, token_blocklist
 from repositories import RefreshTokenIndisponivel, RefreshTokenRepository
 
 auth_bp = Blueprint('auth', __name__)

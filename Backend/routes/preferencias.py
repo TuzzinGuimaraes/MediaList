@@ -2,10 +2,12 @@
 Blueprint de Preferências
 Endpoints para preferências do usuário (MongoDB)
 """
-import database
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
+
+import database
 
 preferencias_bp = Blueprint('preferencias', __name__)
 

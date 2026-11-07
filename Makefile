@@ -25,7 +25,8 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 .PHONY: help install install-backend install-frontend install-mobile compose-build services-up services-up-dev \
 	services-down services-logs db-schema db-migrate-refresh db-shell backend-dev frontend-dev smoke-mysql \
-	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test build-frontend build \
+	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
+	lint-mobile build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
 help:
@@ -53,6 +54,7 @@ help:
 	@printf "  make test-backend      Executa o pytest do backend no host\n"
 	@printf "  make test-frontend     Executa os testes do frontend no host\n"
 	@printf "  make test-mobile       Executa os testes do mobile no host\n"
+	@printf "  make lint              Roda ruff (backend), eslint (frontend) e o lint do mobile\n"
 	@printf "  make build-frontend    Gera a build do frontend no host\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
@@ -141,6 +143,17 @@ test-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) test -- --ci
 
 test: test-backend test-frontend test-mobile
+
+lint-backend:
+	cd "$(BACKEND_DIR)" && $(PYTHON) -m ruff check .
+
+lint-frontend:
+	cd "$(FRONTEND_DIR)" && npx eslint src
+
+lint-mobile:
+	cd "$(MOBILE_DIR)" && $(NPM) run lint
+
+lint: lint-backend lint-frontend lint-mobile
 
 build-frontend:
 	cd "$(FRONTEND_DIR)" && $(NPM) run build

@@ -160,7 +160,9 @@ def test_esqueci_senha_email_inexistente_nao_vaza_informacao(client, monkeypatch
 
 def test_redefinir_senha_com_token_valido(client, make_token, monkeypatch):
     chamadas = []
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda query, params=None, fetch=True: chamadas.append((query, params, fetch)))
+    monkeypatch.setattr(
+        auth_routes, 'execute_query', lambda query, params=None, fetch=True: chamadas.append((query, params, fetch))
+    )
 
     token = make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})
     response = client.post(

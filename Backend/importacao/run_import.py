@@ -57,7 +57,9 @@ def main():
 
     if args.tipo in ('jogo', 'todos'):
         print('=== Importando Jogos (RAWG) ===')
-        stats, erro_fatal = executar_importacao('jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers)
+        stats, erro_fatal = executar_importacao(
+            'jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers
+        )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
 

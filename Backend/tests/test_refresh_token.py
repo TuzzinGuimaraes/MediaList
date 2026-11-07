@@ -4,8 +4,9 @@ O banco entra por duas costuras: `execute_query`/`get_user_permissions` para o
 login (como em test_auth_routes.py) e o repositório de refresh tokens, trocado
 por uma tabela em memória.
 """
-import pytest
 from datetime import datetime
+
+import pytest
 from werkzeug.security import generate_password_hash
 
 from routes import auth as auth_routes
@@ -277,6 +278,7 @@ def test_repositorio_sem_conexao_levanta_indisponivel(monkeypatch, metodo, args)
 ])
 def test_repositorio_com_erro_de_query_levanta_indisponivel(monkeypatch, metodo, args):
     from repositories import RefreshTokenIndisponivel
+
     from .helpers import FakeConnection
     connection = FakeConnection(_CursorQuebrado())
     repo = _repo(monkeypatch, connection)

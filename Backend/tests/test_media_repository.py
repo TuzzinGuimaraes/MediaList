@@ -96,7 +96,9 @@ def test_buscar_por_id_combina_campos_base_e_tipo(monkeypatch):
 
 def test_obter_item_usuario_retorna_item(monkeypatch):
     repo = ListaRepository()
-    monkeypatch.setattr(repo, '_fetch_one', lambda *_args, **_kwargs: {'id_lista': 'LST-1', 'id_usuario': 'USR-1', 'id_midia': 'MID-1'})
+    monkeypatch.setattr(
+        repo, '_fetch_one', lambda *_args, **_kwargs: {'id_lista': 'LST-1', 'id_usuario': 'USR-1', 'id_midia': 'MID-1'}
+    )
 
     result = repo.obter_item_usuario('USR-1', 'MID-1')
 
