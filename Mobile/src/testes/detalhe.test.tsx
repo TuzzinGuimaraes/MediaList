@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { renderRouter, screen } from 'expo-router/testing-library';
+import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
@@ -162,6 +162,31 @@ describe('detalhe da Mídia', () => {
 
     expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
     expect(api.chamadas).toEqual([]);
+  });
+
+  it.each([
+    ['as Avaliações', (id: string) => `GET /avaliacoes/${id}`],
+    ['a distribuição por Estado', (id: string) => `GET /midias/${id}/distribuicao`],
+    ['a Lista pessoal', () => 'GET /lista'],
+  ])('se falha ao carregar %s, o detalhe mostra o erro e "Tentar de novo" recarrega', async (_parte, rota) => {
+    const frieren = anime();
+    const normais = detalhe(frieren);
+    const chave = rota(frieren.id_midia);
+    let falhando = true;
+    simularFetch({
+      ...normais,
+      [chave]: () => (falhando ? { status: 500, corpo: { erro: 'Falha no servidor' } } : (normais[chave] as Resposta)),
+    });
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('Falha no servidor');
+
+    falhando = false;
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeOnTheScreen());
   });
 
   it('Mídia inexistente mostra a mensagem da API', async () => {
