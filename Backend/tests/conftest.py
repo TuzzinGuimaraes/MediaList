@@ -42,6 +42,18 @@ def refresh_tokens(monkeypatch):
     return falso
 
 
+@pytest.fixture(autouse=True)
+def logs_da_importacao_isolados(tmp_path, monkeypatch):
+    """Os logs da importação vão para tmp_path: nenhum teste toca em
+    Backend/importacao_logs/ (o arquivo real pode nem ser gravável)."""
+    from importacao import utils as importacao_utils
+
+    monkeypatch.setattr(importacao_utils, 'LOG_PATH', tmp_path / 'importacao.log')
+    monkeypatch.setattr(importacao_utils, 'ERROR_LOG_PATH', tmp_path / 'importacao_erros.jsonl')
+    yield
+    importacao_utils.remover_log()
+
+
 @pytest.fixture
 def make_token(app):
     def _make(user_id='USR-TEST-0001', additional_claims=None):
