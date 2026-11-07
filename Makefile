@@ -24,7 +24,7 @@ DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).sql
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 .PHONY: help install install-backend install-frontend install-mobile compose-build services-up services-up-dev \
-	services-down services-logs db-schema db-migrate-refresh db-shell backend-dev frontend-dev smoke-mysql \
+	services-down services-logs db-schema db-migrate-refresh db-grants mongo-app-user db-shell backend-dev frontend-dev smoke-mysql \
 	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
@@ -35,6 +35,8 @@ help:
 	@printf "  make compose-build     Rebuilda as imagens Docker de backend e frontend\n"
 	@printf "  make db-schema         Reaplica Banco DDL.sql no MySQL do Docker\n"
 	@printf "  make db-migrate-refresh Cria a tabela refresh_tokens num banco existente\n"
+	@printf "  make db-grants         Reduz o usuário do app no MySQL a SELECT/INSERT/UPDATE/DELETE/EXECUTE\n"
+	@printf "  make mongo-app-user    Cria/atualiza o usuário do app no MongoDB (volume existente)\n"
 	@printf "  make db-shell          Abre o cliente MySQL dentro do container\n"
 	@printf "  make db-dump          Gera um dump SQL completo em ./dumps\n"
 	@printf "  make db-restore       Restaura um dump com DUMP_FILE=/caminho/arquivo.sql\n"
@@ -91,6 +93,18 @@ db-schema:
 db-migrate-refresh:
 	$(DOCKER_COMPOSE) up -d mysql
 	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(ROOT_DIR)/Banco migracao 0006 refresh tokens.sql"
+
+# Idempotente. Lê DB_USER/DB_NAME do .env, como o compose.
+db-grants:
+	$(DOCKER_COMPOSE) up -d mysql
+	set -a; [ -f "$(ROOT_DIR)/.env" ] && . "$(ROOT_DIR)/.env"; set +a; \
+	$(DOCKER_COMPOSE) exec -T -e APP_DB_USER="$${DB_USER:-media_app_user}" -e APP_DB_NAME="$${DB_NAME:-medialist_db}" mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "REVOKE ALL PRIVILEGES, GRANT OPTION FROM '\''$$APP_DB_USER'\''@'\''%'\''; GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON \`$$APP_DB_NAME\`.* TO '\''$$APP_DB_USER'\''@'\''%'\''; FLUSH PRIVILEGES; SHOW GRANTS FOR '\''$$APP_DB_USER'\''@'\''%'\'';"'
+
+# Idempotente. Mesmo script do init do volume novo (docker/mongo-init).
+mongo-app-user:
+	$(DOCKER_COMPOSE) up -d mongodb
+	set -a; [ -f "$(ROOT_DIR)/.env" ] && . "$(ROOT_DIR)/.env"; set +a; \
+	$(DOCKER_COMPOSE) exec -T -e MONGO_DB_NAME="$${MONGO_DB_NAME:-medialist_updates_db}" -e MONGO_APP_USER="$${MONGO_APP_USER:-medialist_app}" -e MONGO_APP_PASSWORD="$${MONGO_APP_PASSWORD:-medialist-app-dev}" mongodb sh -c 'until mongosh --quiet --eval "db.runCommand({ping: 1})" > /dev/null 2>&1; do sleep 2; done; exec mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --file /dev/stdin' < "$(ROOT_DIR)/docker/mongo-init/01-app-user.js"
 
 db-shell:
 	$(DOCKER_COMPOSE) up -d mysql
