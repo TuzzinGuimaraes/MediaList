@@ -24,13 +24,43 @@ LOG_DIR.mkdir(exist_ok=True)
 LOG_PATH = LOG_DIR / 'importacao.log'
 ERROR_LOG_PATH = LOG_DIR / 'importacao_erros.jsonl'
 
+_PADRAO_CHAVE = re.compile(r'(\bkey=)[^&\s\'"]+', re.IGNORECASE)
+
+
+def ocultar_segredos(texto: str) -> str:
+    """Troca o valor de `key=` (chave da RAWG na query string) por ***."""
+    texto = _PADRAO_CHAVE.sub(r'\1***', texto)
+    from importacao.config import RAWG_API_KEY
+
+    if RAWG_API_KEY:
+        texto = texto.replace(RAWG_API_KEY, '***')
+    return texto
+
+
+class FiltroSegredos(logging.Filter):
+    """Filtro de handler: oculta segredos na mensagem e no traceback de qualquer logger."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = ocultar_segredos(record.getMessage())
+        record.args = None
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = ocultar_segredos(record.exc_text)
+        return True
+
+
+def _handlers_de_log() -> list[logging.Handler]:
+    handlers = [logging.FileHandler(LOG_PATH), logging.StreamHandler()]
+    for handler in handlers:
+        handler.addFilter(FiltroSegredos())
+    return handlers
+
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_PATH),
-        logging.StreamHandler(),
-    ],
+    handlers=_handlers_de_log(),
 )
 
 logger = logging.getLogger(__name__)
@@ -179,7 +209,7 @@ def registrar_falha_importacao(
     }
 
     with ERROR_LOG_PATH.open('a', encoding='utf-8') as handle:
-        handle.write(json.dumps(record, ensure_ascii=False, default=str))
+        handle.write(ocultar_segredos(json.dumps(record, ensure_ascii=False, default=str)))
         handle.write('\n')
 
     logger.error(
@@ -187,7 +217,7 @@ def registrar_falha_importacao(
         titulo or identificador or 'item_sem_identificador',
         tipo_midia,
         origem,
-        exc,
+        ocultar_segredos(str(exc)),
     )
 
 

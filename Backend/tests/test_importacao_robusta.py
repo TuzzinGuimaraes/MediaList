@@ -174,3 +174,46 @@ def test_sem_chave_rawg_jogos_sao_pulados_e_import_all_nao_sai_com_erro(monkeypa
     assert 'jogo: pulado (RAWG_API_KEY não configurada)' in saida
     assert 'anime: processados=0' in saida
     assert any('RAWG_API_KEY' in r.getMessage() for r in caplog.records if r.levelname == 'WARNING')
+
+
+
+def test_chave_rawg_nao_aparece_no_log_de_erros(monkeypatch, capsys, tmp_path, caplog):
+    url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
+    _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
+
+    with caplog.at_level('INFO'):
+        _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '1')
+
+    jsonl = (tmp_path / 'erros.jsonl').read_text(encoding='utf-8')
+    assert 'key=***' in jsonl
+    assert CHAVE not in jsonl
+    assert caplog.records
+    assert all(CHAVE not in r.getMessage() for r in caplog.records)
+    assert CHAVE not in capsys.readouterr().err
+
+
+def test_filtro_de_log_oculta_chave_em_mensagens_de_terceiros_e_tracebacks():
+    import io
+    import logging
+
+    from importacao.utils import FiltroSegredos
+
+    destino = io.StringIO()
+    handler = logging.StreamHandler(destino)
+    handler.addFilter(FiltroSegredos())
+    log = logging.getLogger('teste.urllib3.connectionpool')
+    log.addHandler(handler)
+    log.propagate = False
+    try:
+        log.warning('Retrying (%r) after connection broken: %s', 'Retry(total=2)', f'/api/games?key={CHAVE}&page=3')
+        try:
+            raise requests.HTTPError(f'502 for url: https://api.rawg.io/api/games/zelda?key={CHAVE}')
+        except requests.HTTPError:
+            log.exception('falhou')
+    finally:
+        log.removeHandler(handler)
+
+    texto = destino.getvalue()
+    assert '/api/games?key=***&page=3' in texto
+    assert 'zelda?key=***' in texto
+    assert CHAVE not in texto
