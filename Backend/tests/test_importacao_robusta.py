@@ -217,3 +217,18 @@ def test_filtro_de_log_oculta_chave_em_mensagens_de_terceiros_e_tracebacks():
     assert '/api/games?key=***&page=3' in texto
     assert 'zelda?key=***' in texto
     assert CHAVE not in texto
+
+
+
+def test_config_da_importacao_vem_do_config_do_backend():
+    import config
+    from importacao import config as config_importacao
+
+    assert config_importacao.DB_HOST == config.MYSQL_CONFIG['host']
+    assert config_importacao.DB_PORT == config.MYSQL_CONFIG['port']
+    assert config_importacao.DB_NAME == config.MYSQL_CONFIG['database']
+    assert config_importacao.DB_USER == config.MYSQL_CONFIG['user']
+    assert config_importacao.DB_PASSWORD == config.MYSQL_CONFIG['password']
+    assert config_importacao.ANILIST_URL == config.ANILIST_API_URL
+    assert config_importacao.RAWG_API_KEY == config.RAWG_API_KEY
+    assert config_importacao.RAWG_BASE_URL == config.RAWG_API_URL
