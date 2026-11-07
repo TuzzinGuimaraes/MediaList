@@ -119,15 +119,15 @@ frontend-dev:
 
 smoke-mysql:
 	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) run --rm backend python test_mysql_connection.py
+	$(DOCKER_COMPOSE) run --rm backend python smoke_mysql_connection.py
 
 smoke-mongo:
 	$(DOCKER_COMPOSE) up -d mongodb
-	$(DOCKER_COMPOSE) run --rm backend python test_mongo.py
+	$(DOCKER_COMPOSE) run --rm backend python smoke_mongo.py
 
 smoke-permissions:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
-	$(DOCKER_COMPOSE) run --rm backend python test_permissions.py
+	$(DOCKER_COMPOSE) run --rm backend python smoke_permissions.py
 
 smoke: smoke-mysql smoke-mongo smoke-permissions
 
