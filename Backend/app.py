@@ -71,6 +71,19 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     return jwt_payload['jti'] in token_blocklist
 
 
+@jwt.token_verification_loader
+def token_serve_para_a_rota(jwt_header, jwt_payload):
+    """Token de recuperação de senha só vale em /auth/redefinir-senha."""
+    if jwt_payload.get('tipo') == 'recuperacao_senha':
+        return request.endpoint == 'auth.redefinir_senha'
+    return True
+
+
+@jwt.token_verification_failed_loader
+def token_fora_da_rota(jwt_header, jwt_payload):
+    return jsonify({'erro': 'Token inválido para esta operação'}), 401
+
+
 @app.errorhandler(404)
 def not_found(_error):
     return jsonify({'erro': 'Endpoint não encontrado'}), 404
