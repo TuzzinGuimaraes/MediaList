@@ -1,3 +1,5 @@
+import logging
+
 from werkzeug.security import generate_password_hash
 
 from config import token_blocklist
@@ -184,3 +186,89 @@ def test_redefinir_senha_rejeita_token_de_tipo_errado(client, auth_headers):
 
     assert response.status_code == 403
     assert response.get_json()['erro'] == 'Token inválido para esta operação'
+
+
+
+# ============================================
+# Recuperação de senha: paliativo (ticket 03)
+# ============================================
+
+USUARIO_RECUPERACAO = {
+    'id_usuario': 'USR-RESET-1',
+    'nome_completo': 'Usuária Esquecida',
+    'email': 'esquecida@example.com',
+}
+
+
+def test_esqueci_senha_email_existente_nao_devolve_token(client, monkeypatch):
+    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+
+    response = client.post('/api/auth/esqueci-senha', json={'email': 'esquecida@example.com'})
+
+    assert response.status_code == 200
+    assert 'dev_token' not in response.get_json()
+
+
+def test_esqueci_senha_email_inexistente_nao_devolve_token(client, monkeypatch):
+    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [])
+
+    response = client.post('/api/auth/esqueci-senha', json={'email': 'naoexiste@example.com'})
+
+    assert 'dev_token' not in response.get_json()
+
+
+def _token_do_log(caplog):
+    for record in caplog.records:
+        if 'recuperação' in record.getMessage().lower():
+            return record.getMessage().rsplit(' ', 1)[-1]
+    return None
+
+
+def test_esqueci_senha_em_dev_registra_token_no_log(client, monkeypatch, caplog):
+    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+    monkeypatch.setattr(auth_routes, 'EM_PRODUCAO', False)
+    caplog.set_level(logging.INFO)
+
+    client.post('/api/auth/esqueci-senha', json={'email': 'esquecida@example.com'})
+
+    token = _token_do_log(caplog)
+    assert token and token.count('.') == 2
+
+
+def test_esqueci_senha_em_producao_nao_registra_token(client, monkeypatch, caplog, capsys):
+    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+    monkeypatch.setattr(auth_routes, 'EM_PRODUCAO', True)
+    caplog.set_level(logging.DEBUG)
+
+    client.post('/api/auth/esqueci-senha', json={'email': 'esquecida@example.com'})
+
+    assert _token_do_log(caplog) is None
+    assert 'eyJ' not in caplog.text
+    assert 'eyJ' not in capsys.readouterr().out
+
+
+def test_token_de_recuperacao_recusado_em_me(client, make_token):
+    token = make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})
+
+    response = client.get('/api/auth/me', headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == 401
+
+
+def test_token_de_recuperacao_recusado_na_lista(client, make_token):
+    token = make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})
+
+    response = client.get('/api/lista', headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == 401
+
+
+def test_token_de_recuperacao_vale_uma_vez(client, make_token, monkeypatch):
+    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: None)
+    headers = {'Authorization': f"Bearer {make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})}"}
+
+    primeira = client.post('/api/auth/redefinir-senha', headers=headers, json={'nova_senha': 'novaSenha123'})
+    segunda = client.post('/api/auth/redefinir-senha', headers=headers, json={'nova_senha': 'outraSenha456'})
+
+    assert primeira.status_code == 200
+    assert segunda.status_code == 401

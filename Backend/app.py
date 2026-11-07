@@ -1,9 +1,10 @@
 """
 MediaList API.
 """
+import logging
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
@@ -26,6 +27,10 @@ from routes import (
 
 app = Flask(__name__)
 CORS(app)
+
+# Sem handler no root, mensagens INFO dos módulos (ex. token de recuperação
+# em dev) não aparecem em lugar nenhum.
+logging.basicConfig(level=logging.INFO)
 
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = JWT_ACCESS_TOKEN_EXPIRES

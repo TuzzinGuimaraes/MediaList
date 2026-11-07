@@ -9,12 +9,15 @@ from flask_jwt_extended import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
 import hashlib
+import logging
 import secrets
 import uuid
 from database import execute_query, get_db_connection
 from decorators import get_user_permissions
-from config import REFRESH_TOKEN_EXPIRES, token_blocklist
+from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES, token_blocklist
 from repositories import RefreshTokenIndisponivel, RefreshTokenRepository
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -309,13 +312,13 @@ def esqueci_senha():
             additional_claims={'tipo': 'recuperacao_senha'}
         )
 
-        print(f"\n{'=' * 60}")
-        print(f"🔑 TOKEN DE RECUPERAÇÃO: {token_recuperacao}")
-        print(f"{'=' * 60}\n")
+        # Paliativo até o envio por email (ticket 25): em dev o token só sai
+        # no log; em produção não sai em lugar nenhum.
+        if not EM_PRODUCAO:
+            logger.info('Token de recuperação para %s: %s', usuario['id_usuario'], token_recuperacao)
 
         return jsonify({
-            'mensagem': 'Se o email existir, você receberá instruções.',
-            'dev_token': token_recuperacao
+            'mensagem': 'Se o email existir, você receberá instruções.'
         }), 200
     except Exception as e:
         print(f"Erro ao processar recuperação: {e}")

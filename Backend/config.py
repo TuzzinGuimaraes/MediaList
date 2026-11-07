@@ -32,6 +32,8 @@ def _forcar_saida_utf8() -> None:
 _forcar_saida_utf8()
 
 load_dotenv()
+APP_ENV = os.getenv('APP_ENV', 'development')
+EM_PRODUCAO = APP_ENV == 'production'
 
 # Configuração JWT
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'sua-chave-secreta-super-segura')
