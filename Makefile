@@ -1,59 +1,31 @@
 .DEFAULT_GOAL := help
 
-# Os diretórios são relativos de propósito, não derivados de $(CURDIR). O
-# caminho absoluto do projeto pode conter espaços — 'C:\...\Área de Trabalho\'
-# é o caso comum no Windows — e aí `cd /c/.../Área de Trabalho/MediaList/Backend`
-# falha com "cd: too many arguments", porque o shell parte o caminho nos
-# espaços. Caminho relativo não tem esse problema em lugar nenhum.
+# Diretórios relativos: as receitas fazem `cd "$(DIR)"` e o caminho do projeto
+# pode conter espaços.
 ROOT_DIR := $(CURDIR)
 BACKEND_DIR := ./Backend
 FRONTEND_DIR := ./Frontend
+MOBILE_DIR := ./Mobile
 DUMP_DIR := ./dumps
 
-# Interpretador Python. Nem todo `python3` no PATH serve: no Windows com MSYS2
-# instalado, `python3` resolve para um Python sem pip. Por isso a escolha é por
-# capacidade (tem pip?) e não por nome, nesta ordem:
-#   1. venv do projeto, se existir      2. py -3 (launcher do Windows)
-#   3. python3                          4. python
-#
-# ATENÇÃO: as receitas que usam $(PYTHON)/$(PIP) fazem `cd "$(BACKEND_DIR)"`
-# antes, então o caminho do venv é relativo a Backend/, não à raiz.
-#
-# $(PYTHON), $(PIP) e $(NPM) NÃO levam aspas nas receitas: o valor pode ser
-# `py -3`, ou seja, comando mais argumento, e aspas o transformariam num nome de
-# executável inexistente. Aspas são para os diretórios, não para os comandos.
+# Usa o venv do projeto quando existe. O caminho é relativo a Backend/, porque
+# as receitas fazem `cd "$(BACKEND_DIR)"` antes.
 # Sobrescreva quando precisar: make install PYTHON=/caminho/para/python
 ifeq ($(origin PYTHON), undefined)
-PYTHON := $(shell \
-	if [ -x "$(BACKEND_DIR)/.venv/Scripts/python.exe" ]; then echo "./.venv/Scripts/python.exe"; \
-	elif [ -x "$(BACKEND_DIR)/.venv/bin/python" ]; then echo "./.venv/bin/python"; \
-	elif command -v py >/dev/null 2>&1 && py -3 -c "import pip" >/dev/null 2>&1; then echo "py -3"; \
-	elif command -v python3 >/dev/null 2>&1 && python3 -c "import pip" >/dev/null 2>&1; then echo "python3"; \
-	elif command -v python >/dev/null 2>&1 && python -c "import pip" >/dev/null 2>&1; then echo "python"; \
-	else echo "python3"; fi)
+PYTHON := $(shell if [ -x "$(BACKEND_DIR)/.venv/bin/python" ]; then echo "./.venv/bin/python"; else echo "python3"; fi)
 endif
 
 PIP ?= $(PYTHON) -m pip
-
-# No Windows existem dois "npm" no PATH: `npm.cmd` (nativo) e `npm`, um script
-# `#!/usr/bin/env bash`. Um shell POSIX escolhe o script, e se `bash` resolver
-# para o launcher do WSL o comando morre em `execvpe(/bin/bash) failed`.
-# Preferir `npm.cmd` quando ele existe evita esse desvio.
-#
-# A detecção é por execução, não por `command -v`: o shell do MSYS executa
-# arquivos .cmd mas não os encontra em `command -v`, que só considera .exe.
-ifeq ($(origin NPM), undefined)
-NPM := $(shell if npm.cmd --version >/dev/null 2>&1; then echo npm.cmd; else echo npm; fi)
-endif
+NPM ?= npm
 
 DOCKER_COMPOSE ?= docker compose
 IMPORT_WORKERS ?= 8
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).sql
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
-.PHONY: help install install-backend install-frontend compose-build services-up services-up-dev \
+.PHONY: help install install-backend install-frontend install-mobile compose-build services-up services-up-dev \
 	services-down services-logs db-schema db-migrate-refresh db-shell backend-dev frontend-dev smoke-mysql \
-	smoke-mongo smoke-permissions test-backend test-frontend test build-frontend build \
+	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
 help:
@@ -76,19 +48,26 @@ help:
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
+	@printf "  make smoke             Executa os três smoke tests no container backend\n"
+	@printf "  make test              Executa os testes do backend, do frontend e do mobile no host\n"
+	@printf "  make test-backend      Executa o pytest do backend no host\n"
 	@printf "  make test-frontend     Executa os testes do frontend no host\n"
+	@printf "  make test-mobile       Executa os testes do mobile no host\n"
 	@printf "  make build-frontend    Gera a build do frontend no host\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
 	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, MYSQL_PORT, MONGO_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
 
-install: install-backend install-frontend
+install: install-backend install-frontend install-mobile
 
 install-backend:
-	cd "$(BACKEND_DIR)" && $(PIP) install -r requirements.txt
+	cd "$(BACKEND_DIR)" && $(PIP) install -r requirements-dev.txt
 
 install-frontend:
 	cd "$(FRONTEND_DIR)" && $(NPM) install
+
+install-mobile:
+	cd "$(MOBILE_DIR)" && $(NPM) install
 
 compose-build:
 	$(DOCKER_COMPOSE) build backend frontend
@@ -150,12 +129,18 @@ smoke-permissions:
 	$(DOCKER_COMPOSE) up -d mysql mongodb
 	$(DOCKER_COMPOSE) run --rm backend python test_permissions.py
 
-test-backend: smoke-mysql smoke-mongo smoke-permissions
+smoke: smoke-mysql smoke-mongo smoke-permissions
+
+test-backend:
+	cd "$(BACKEND_DIR)" && $(PYTHON) -m pytest -q
 
 test-frontend:
-	cd "$(FRONTEND_DIR)" && $(NPM) test -- --watchAll=false
+	cd "$(FRONTEND_DIR)" && CI=true $(NPM) test -- --watchAll=false
 
-test: test-frontend
+test-mobile:
+	cd "$(MOBILE_DIR)" && $(NPM) test -- --ci
+
+test: test-backend test-frontend test-mobile
 
 build-frontend:
 	cd "$(FRONTEND_DIR)" && $(NPM) run build
