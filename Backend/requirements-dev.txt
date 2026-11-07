@@ -1,0 +1,4 @@
+# Dependências de teste. Ficam fora da imagem de produção.
+-r requirements.txt
+pytest==7.4.3
+pytest-flask==1.3.0
