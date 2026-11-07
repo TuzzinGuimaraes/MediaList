@@ -117,6 +117,24 @@ describe('ListEditorModal', () => {
         await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
     });
 
+    test('editor de jogo oferece Pausado e salva pausado', async () => {
+        const apiCall = jest.fn().mockResolvedValue({});
+        useApi.mockReturnValue({ apiCall });
+
+        render(
+            <ListEditorModal isOpen={true} onClose={() => {}} midia={{ ...midiaAnime, tipo: 'jogo' }} listaItem={null} onSave={() => {}} />
+        );
+
+        const select = screen.getByDisplayValue('Backlog');
+        fireEvent.change(select, { target: { value: 'pausado' } });
+        expect(screen.getByDisplayValue('Paused')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Save'));
+
+        await waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
+        expect(JSON.parse(apiCall.mock.calls[0][1].body).status_consumo).toBe('pausado');
+    });
+
     test('trata erro da API', async () => {
         useApi.mockReturnValue({ apiCall: jest.fn().mockRejectedValue(new Error('Falha na API')) });
 
