@@ -101,6 +101,22 @@ describe('BrowsePage', () => {
         });
     });
 
+    test('falha ao carregar midias mostra erro em vez de lista vazia', async () => {
+        useApi.mockReturnValue({
+            apiCall: jest.fn().mockImplementation((endpoint) => {
+                if (endpoint.startsWith('/generos')) return Promise.resolve({ generos: [] });
+                return Promise.reject(new Error('Erro de conexão com o servidor.'));
+            }),
+        });
+
+        renderPage('/browse?tipo=anime');
+        await flushBrowseEffects();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Erro de conexão com o servidor.');
+        expect(screen.queryByText('Nenhuma mídia disponível')).not.toBeInTheDocument();
+        expect(screen.queryByText('0 resultado(s)')).not.toBeInTheDocument();
+    });
+
     test('troca tabs conforme sessao ativa e limpa filtros especificos ao trocar de tipo', async () => {
         renderPage('/browse?tipo=anime&estudio=Wit&status=finalizado');
         await flushBrowseEffects();
