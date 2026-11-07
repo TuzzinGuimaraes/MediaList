@@ -1,10 +1,11 @@
 """
 MediaList API.
 """
+import logging
 import os
 import re
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
@@ -48,6 +49,10 @@ def debug_ativo():
 app = Flask(__name__)
 configurar_cors(app, EM_PRODUCAO, os.getenv('CORS_ORIGINS'))
 
+# Sem handler no root, mensagens INFO dos módulos (ex. token de recuperação
+# em dev) não aparecem em lugar nenhum.
+logging.basicConfig(level=logging.INFO)
+
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = JWT_ACCESS_TOKEN_EXPIRES
 
@@ -85,6 +90,19 @@ app.register_blueprint(utils_bp, url_prefix='/api')
 def check_if_token_revoked(jwt_header, jwt_payload):
     """Verificar se token foi revogado."""
     return jwt_payload['jti'] in token_blocklist
+
+
+@jwt.token_verification_loader
+def token_serve_para_a_rota(jwt_header, jwt_payload):
+    """Token de recuperação de senha só vale em /auth/redefinir-senha."""
+    if jwt_payload.get('tipo') == 'recuperacao_senha':
+        return request.endpoint == 'auth.redefinir_senha'
+    return True
+
+
+@jwt.token_verification_failed_loader
+def token_fora_da_rota(jwt_header, jwt_payload):
+    return jsonify({'erro': 'Token inválido para esta operação'}), 401
 
 
 @app.errorhandler(404)
