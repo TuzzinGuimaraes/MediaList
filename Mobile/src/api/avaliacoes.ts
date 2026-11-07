@@ -14,12 +14,16 @@ export function useAvaliacoes(id: string) {
   });
 }
 
-/** Nota média e Total de avaliações vêm do detalhe: os dois são refeitos após qualquer mudança. */
+/**
+ * Uma Avaliação muda a Nota média e o Total de avaliações da Mídia, que aparecem (ou
+ * ordenam) no detalhe, em Início e Explorar (todas sob ['midias']) e nos Itens da Lista.
+ */
 function useInvalidarDetalhe(idMidia: string) {
   const queryClient = useQueryClient();
   return () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['midias', idMidia] }),
+      queryClient.invalidateQueries({ queryKey: ['midias'] }),
+      queryClient.invalidateQueries({ queryKey: ['lista'] }),
       queryClient.invalidateQueries({ queryKey: ['avaliacoes', idMidia] }),
     ]);
 }
