@@ -128,11 +128,13 @@ def processar_e_inserir_jogo(
 
 
 def importar_jogos(paginas: int = 25, workers: int = 4):
-    """Executa a importação em lote de jogos."""
-    if not RAWG_API_KEY:
-        raise RuntimeError('RAWG_API_KEY não configurada')
-
+    """Executa a importação em lote de jogos. Sem RAWG_API_KEY, pula com aviso."""
     stats = ImportStats(tipo_midia='jogo', origem='RAWG')
+    if not RAWG_API_KEY:
+        stats.pulado = 'RAWG_API_KEY não configurada'
+        logger.warning('Importação de jogos pulada: RAWG_API_KEY não configurada.')
+        return stats
+
     conn = get_connection()
     genero_cache: dict[str, int] = {}
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)

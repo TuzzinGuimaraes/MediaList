@@ -47,6 +47,7 @@ class ImportStats:
     falhas: int = 0
     ja_existia: int = 0
     paginas_com_falha: list[int] = field(default_factory=list)
+    pulado: str | None = None
 
     def registrar_sucesso(self, *, ja_existia: bool = False):
         self.processados += 1
@@ -70,6 +71,8 @@ class ImportStats:
         self.paginas_com_falha.extend(other.paginas_com_falha)
 
     def resumo(self) -> str:
+        if self.pulado:
+            return f'{self.tipo_midia}: pulado ({self.pulado})'
         return (
             f'{self.tipo_midia}: processados={self.processados} sucessos={self.sucessos} '
             f'falhas={self.falhas} ja_existia={self.ja_existia} '

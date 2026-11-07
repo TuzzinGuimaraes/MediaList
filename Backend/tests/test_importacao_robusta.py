@@ -148,3 +148,29 @@ def test_pagina_de_jogos_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_pa
 
     saida = capsys.readouterr().out
     assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1, 2]' in saida
+
+
+
+def test_sem_chave_rawg_jogos_sao_pulados_e_import_all_nao_sai_com_erro(monkeypatch, capsys, tmp_path, caplog):
+    from importacao import importar_animes, importar_mangas
+
+    def sem_banco():
+        raise AssertionError('jogos sem chave não devem abrir conexão')
+
+    importar_jogos = _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(None), chave='')
+    monkeypatch.setattr(importar_jogos, 'get_connection', sem_banco)
+
+    def fonte(tipo, paginas, **kwargs):
+        yield {'pagina': 1, 'itens': [], 'erro': None}
+
+    for modulo in (importar_animes, importar_mangas):
+        monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
+        monkeypatch.setattr(modulo, 'get_connection', _ConexaoFalsa)
+
+    with caplog.at_level('WARNING'):
+        _rodar_main(monkeypatch, '--tipo', 'todos')  # SystemExit(1) aqui falha o teste
+
+    saida = capsys.readouterr().out
+    assert 'jogo: pulado (RAWG_API_KEY não configurada)' in saida
+    assert 'anime: processados=0' in saida
+    assert any('RAWG_API_KEY' in r.getMessage() for r in caplog.records if r.levelname == 'WARNING')
