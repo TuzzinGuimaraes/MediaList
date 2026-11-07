@@ -4,8 +4,9 @@ import { useSessao } from '../auth/SessaoContext';
 import type { AvaliacaoCompleta, DadosAvaliacao } from './tipos';
 
 export function useAvaliacoes(id: string) {
-  const { cliente } = useSessao();
+  const { cliente, sessao } = useSessao();
   return useQuery({
+    enabled: sessao.estado === 'autenticada',
     queryKey: ['avaliacoes', id],
     queryFn: () =>
       cliente.requisitar<{ avaliacoes: AvaliacaoCompleta[] }>(`/avaliacoes/${encodeURIComponent(id)}`),

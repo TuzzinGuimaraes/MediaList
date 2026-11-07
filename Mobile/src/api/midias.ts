@@ -31,8 +31,9 @@ const decrescente =
 
 /** O backend chama de trending as Mídias de maior nota de cada Tipo. */
 export function useEmAlta(recorte: Recorte) {
-  const { cliente } = useSessao();
+  const { cliente, sessao } = useSessao();
   return useQuery({
+    enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', 'em-alta', recorte],
     queryFn: async () =>
       (
@@ -43,8 +44,9 @@ export function useEmAlta(recorte: Recorte) {
 
 /** Popularidade: quantos Usuários têm a Mídia na Lista pessoal. */
 export function usePopulares(recorte: Recorte) {
-  const { cliente } = useSessao();
+  const { cliente, sessao } = useSessao();
   return useQuery({
+    enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', 'populares', recorte],
     queryFn: async () =>
       (await porTipo<MidiaPopular>(cliente, recorte, (t) => `/midias/populares?tipo=${t}`)).sort(
@@ -54,16 +56,18 @@ export function usePopulares(recorte: Recorte) {
 }
 
 export function useMidia(id: string) {
-  const { cliente } = useSessao();
+  const { cliente, sessao } = useSessao();
   return useQuery({
+    enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', id],
     queryFn: () => cliente.requisitar<Midia>(`/midias/${encodeURIComponent(id)}`),
   });
 }
 
 export function useDistribuicao(id: string) {
-  const { cliente } = useSessao();
+  const { cliente, sessao } = useSessao();
   return useQuery({
+    enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', id, 'distribuicao'],
     queryFn: () =>
       cliente.requisitar<RespostaDistribuicao>(`/midias/${encodeURIComponent(id)}/distribuicao`),

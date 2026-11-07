@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useAvaliacoes } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import type { ItemLista } from '@/api/tipos';
+import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
@@ -75,7 +76,15 @@ function Barra({ rotulo, total, maximo, a11y }: { rotulo: string; total: number;
   );
 }
 
-export default function DetalheMidia() {
+/** Fora das abas, o detalhe precisa do próprio guard: um deep link pode abrir sem sessão. */
+export default function TelaDetalhe() {
+  const { sessao } = useSessao();
+  if (sessao.estado === 'carregando') return <Carregando />;
+  if (sessao.estado === 'anonima') return <Redirect href="/login" />;
+  return <DetalheMidia />;
+}
+
+function DetalheMidia() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const midia = useMidia(id);

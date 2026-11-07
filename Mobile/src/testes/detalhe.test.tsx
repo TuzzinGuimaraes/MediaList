@@ -155,6 +155,15 @@ describe('detalhe da Mídia', () => {
     expect(screen.queryByLabelText(/^Na sua Lista/)).not.toBeOnTheScreen();
   });
 
+  it('deep link sem sessão vai ao login sem chamar a API', async () => {
+    const api = simularFetch(detalhe(anime()));
+
+    await renderRouter(APP, { initialUrl: `/midia/${anime().id_midia}` });
+
+    expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
+    expect(api.chamadas).toEqual([]);
+  });
+
   it('Mídia inexistente mostra a mensagem da API', async () => {
     simularFetch({ 'GET /midias/MID-NADA': { status: 404, corpo: { erro: 'Mídia não encontrada' } } });
 
