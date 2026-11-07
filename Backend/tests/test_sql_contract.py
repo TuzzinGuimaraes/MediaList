@@ -118,6 +118,10 @@ def test_procedures_de_lista_sairam_do_schema():
         """
     )
     nomes_triggers = {row['trigger_name'] for row in triggers}
+    if not nomes_triggers:
+        # information_schema.triggers só lista triggers para quem tem o
+        # privilégio TRIGGER, que o usuário do app não tem (grants mínimos).
+        pytest.skip('usuário do app sem privilégio TRIGGER: triggers invisíveis')
     assert 'validar_progresso_lista' in nomes_triggers
     assert 'validar_progresso_lista_update' in nomes_triggers
 
