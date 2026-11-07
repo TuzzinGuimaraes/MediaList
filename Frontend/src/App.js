@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import { ApiProvider } from './contexts/ApiContext';
@@ -18,19 +18,20 @@ import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
 
 function AppContent() {
-    const [, forceUpdate] = useState(0);
+    // O AuthProvider fica dentro do ApiProvider; ele registra aqui como limpar a sessão.
+    const sessionExpiredRef = useRef(null);
 
     const handleUnauthorized = useCallback(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('permissions');
-        forceUpdate(n => n + 1);
+        if (sessionExpiredRef.current) sessionExpiredRef.current();
     }, []);
 
     return (
         <ApiProvider onUnauthorized={handleUnauthorized}>
             <SessionProvider>
-            <AuthProvider>
+            <AuthProvider sessionExpiredRef={sessionExpiredRef}>
                 <Routes>
                     {/* Auth routes */}
                     <Route element={<AuthLayout />}>

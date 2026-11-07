@@ -63,6 +63,7 @@ describe('ApiContext', () => {
     });
 
     test('aciona onUnauthorized em 401', async () => {
+        localStorage.setItem('token', 'token-expirado');
         const onUnauthorized = jest.fn();
         global.fetch = jest.fn().mockResolvedValue({
             ok: false,
@@ -81,6 +82,54 @@ describe('ApiContext', () => {
 
         await waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
         expect(document.body.dataset.errorMessage).toMatch(/Sessão expirada/i);
+    });
+
+    test('401 sem token (login errado) mostra mensagem do backend e nao desloga', async () => {
+        const onUnauthorized = jest.fn();
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ erro: 'Email ou senha incorretos' }),
+        });
+
+        render(
+            <ApiProvider onUnauthorized={onUnauthorized}>
+                <ApiErrorConsumer />
+            </ApiProvider>
+        );
+
+        fireEvent.click(screen.getByText('erro'));
+
+        await waitFor(() => expect(document.body.dataset.errorMessage).toBe('Email ou senha incorretos'));
+        expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    test('erro HTTP carrega o status da resposta', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 404,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ erro: 'Mídia não encontrada' }),
+        });
+        let capturado;
+
+        function Consumidor() {
+            const { apiCall } = useApi();
+            return <button onClick={() => apiCall('/midias/X').catch((e) => { capturado = e; })}>404</button>;
+        }
+
+        render(
+            <ApiProvider>
+                <Consumidor />
+            </ApiProvider>
+        );
+
+        fireEvent.click(screen.getByText('404'));
+
+        await waitFor(() => expect(capturado).toBeDefined());
+        expect(capturado.message).toBe('Mídia não encontrada');
+        expect(capturado.status).toBe(404);
     });
 
     test('normaliza erro de rede', async () => {

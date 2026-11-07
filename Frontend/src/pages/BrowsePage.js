@@ -34,6 +34,7 @@ const BrowsePage = () => {
     const [midias, setMidias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [generos, setGeneros] = useState([]);
+    const [erro, setErro] = useState('');
 
     const tiposDisponiveis = sessaoConfig.tipos;
     const tipoParam = searchParams.get('tipo');
@@ -70,6 +71,7 @@ const BrowsePage = () => {
 
     const carregarDados = useCallback(async () => {
         setLoading(true);
+        setErro('');
         try {
             const query = new URLSearchParams({ tipo, por_pagina: '200', ordem });
             if (busca && busca.length >= 2) query.set('busca', busca);
@@ -83,7 +85,7 @@ const BrowsePage = () => {
             if (desenvolvedor) query.set('desenvolvedor', desenvolvedor);
 
             const [midiasData, generosData] = await Promise.all([
-                apiCall(`/midias?${query.toString()}`).catch(() => ({ midias: [] })),
+                apiCall(`/midias?${query.toString()}`),
                 apiCall(`/generos?tipo=${tipo}`).catch(() => ({ generos: [] })),
             ]);
 
@@ -91,6 +93,8 @@ const BrowsePage = () => {
             setGeneros(generosData.generos || []);
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
+            setMidias([]);
+            setErro(error.message || 'Erro ao carregar mídias.');
         } finally {
             setLoading(false);
         }
@@ -214,7 +218,7 @@ const BrowsePage = () => {
                 <select value={genero} onChange={(e) => updateParam('genero', e.target.value)} className={inputClass}>
                     <option value="">Gêneros</option>
                     {generos.map(generoItem => (
-                        <option key={generoItem.id_genero || generoItem.nome} value={generoItem.nome}>{generoItem.nome}</option>
+                        <option key={generoItem.id_genero || generoItem.nome_genero} value={generoItem.nome_genero}>{generoItem.nome_genero}</option>
                     ))}
                 </select>
 
@@ -227,13 +231,17 @@ const BrowsePage = () => {
                 {renderTypeSpecificFilters()}
             </div>
 
-            {!loading && (
+            {!loading && !erro && (
                 <p className="text-xs text-text-secondary">{midias.length} resultado(s)</p>
             )}
 
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin rounded-full h-10 w-10 border-4 border-accent-blue border-t-transparent"></div>
+                </div>
+            ) : erro ? (
+                <div className="text-center py-20">
+                    <p role="alert" className="text-accent-red">{erro}</p>
                 </div>
             ) : midias.length === 0 ? (
                 <div className="text-center py-20">

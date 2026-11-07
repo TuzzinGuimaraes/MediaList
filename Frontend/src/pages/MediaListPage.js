@@ -38,6 +38,7 @@ const MediaListPage = ({ tipo }) => {
     const { apiCall } = useApi();
     const [lista, setLista] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [erro, setErro] = useState('');
     const [filtroStatus, setFiltroStatus] = useState('all');
     const [busca, setBusca] = useState('');
     const [viewMode, setViewMode] = useState('grid');
@@ -46,11 +47,13 @@ const MediaListPage = ({ tipo }) => {
 
     const carregarLista = useCallback(async () => {
         setLoading(true);
+        setErro('');
         try {
             const data = await apiCall('/lista');
             setLista(data.lista || []);
         } catch (error) {
             console.error('Erro ao carregar lista:', error);
+            setErro(error.message || 'Erro ao carregar lista.');
         } finally {
             setLoading(false);
         }
@@ -198,6 +201,10 @@ const MediaListPage = ({ tipo }) => {
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="animate-spin rounded-full h-10 w-10 border-4 border-accent-blue border-t-transparent"></div>
+                    </div>
+                ) : erro ? (
+                    <div className="text-center py-20">
+                        <p role="alert" className="text-accent-red text-sm">{erro}</p>
                     </div>
                 ) : listaFiltrada.length === 0 ? (
                     <div className="text-center py-20">
