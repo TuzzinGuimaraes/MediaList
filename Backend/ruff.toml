@@ -1,0 +1,10 @@
+# Lint do Backend. Só `ruff check`; o projeto não usa `ruff format`.
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B"]
+
+[lint.isort]
+# Módulos do próprio Backend (rodam com Backend/ no sys.path).
+known-first-party = ["app", "config", "database", "decorators", "dominio", "importacao", "repositories", "routes", "schemas", "tests"]

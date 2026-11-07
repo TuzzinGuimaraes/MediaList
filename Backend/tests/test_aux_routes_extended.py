@@ -4,8 +4,6 @@ from routes import avaliacoes as avaliacoes_routes
 from routes import jogos as jogos_routes
 from routes import mangas as mangas_routes
 from routes import moderacao as moderacao_routes
-from routes import noticias as noticias_routes
-from routes import preferencias as preferencias_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
@@ -39,7 +37,9 @@ def test_delete_avaliacao_bloqueia_usuario_sem_permissao(client, auth_headers, m
     monkeypatch.setattr(
         avaliacoes_routes,
         'execute_query',
-        lambda query, params=None, fetch=True: [{'id_usuario': 'USR-OUTRO'}] if query.startswith('SELECT id_usuario') else None,
+        lambda query, params=None, fetch=True: (
+            [{'id_usuario': 'USR-OUTRO'}] if query.startswith('SELECT id_usuario') else None
+        ),
     )
     monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _user_id: {'pode_moderar': 0})
 
@@ -214,9 +214,13 @@ def test_animes_crud_e_atualizacao(client, admin_headers, monkeypatch):
 
 def test_mangas_endpoints_de_busca_e_criacao(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(mangas_routes.manga_repository, 'buscar_manga_completo', lambda manga_id: {'id_midia': manga_id})
+    monkeypatch.setattr(
+        mangas_routes.manga_repository, 'buscar_manga_completo', lambda manga_id: {'id_midia': manga_id}
+    )
     monkeypatch.setattr(mangas_routes.manga_repository, 'buscar_por_autor', lambda autor: [{'autor': autor}])
-    monkeypatch.setattr(mangas_routes.manga_repository, 'buscar_por_demografia', lambda demografia: [{'demografia': demografia}])
+    monkeypatch.setattr(
+        mangas_routes.manga_repository, 'buscar_por_demografia', lambda demografia: [{'demografia': demografia}]
+    )
     monkeypatch.setattr(mangas_routes.manga_repository, 'inserir_manga', lambda _base, _payload: 'MID-M1')
 
     detalhes = client.get('/api/mangas/MID-M1')
@@ -240,7 +244,9 @@ def test_mangas_endpoints_de_busca_e_criacao(client, admin_headers, monkeypatch)
 def test_jogos_endpoints_de_busca_e_criacao(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
     monkeypatch.setattr(jogos_routes.jogo_repository, 'buscar_jogo_completo', lambda jogo_id: {'id_midia': jogo_id})
-    monkeypatch.setattr(jogos_routes.jogo_repository, 'buscar_por_plataforma', lambda plataforma: [{'plataforma': plataforma}])
+    monkeypatch.setattr(
+        jogos_routes.jogo_repository, 'buscar_por_plataforma', lambda plataforma: [{'plataforma': plataforma}]
+    )
     monkeypatch.setattr(jogos_routes.jogo_repository, 'inserir_jogo', lambda _base, _payload: 'MID-J1')
 
     detalhes = client.get('/api/jogos/MID-J1')

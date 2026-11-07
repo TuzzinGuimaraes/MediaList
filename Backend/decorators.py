@@ -2,10 +2,11 @@
 Decoradores para verificação de permissões
 """
 from functools import wraps
+
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
-from database import execute_query
 
+from database import execute_query
 
 # Permissões de quem não tem grupo nenhum. A ausência de grupo nunca concede
 # mais do que a presença de um: sem grupo, sem poder.

@@ -65,3 +65,39 @@ def test_executar_em_paralelo_retorna_resultados_e_erros():
     assert por_item[2][0] is None
     assert isinstance(por_item[2][1], RuntimeError)
     assert por_item[3][0] == 30
+
+
+
+def test_importar_utils_nao_configura_log_em_arquivo():
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    codigo = (
+        'import logging\n'
+        'import importacao.utils\n'
+        'assert logging.getLogger().handlers == [], logging.getLogger().handlers\n'
+    )
+    backend = Path(__file__).resolve().parents[1]
+    resultado = subprocess.run([sys.executable, '-c', codigo], cwd=backend, capture_output=True, text=True)
+    assert resultado.returncode == 0, resultado.stderr
+
+
+def test_configurar_log_grava_em_log_path_sem_duplicar_handlers(tmp_path, monkeypatch):
+    import logging
+
+    log_path = tmp_path / 'sub' / 'importacao.log'
+    monkeypatch.setattr(utils, 'LOG_PATH', log_path)
+
+    raiz = logging.getLogger()
+    antes = len(raiz.handlers)
+    utils.configurar_log()
+    utils.configurar_log()
+    assert len(raiz.handlers) == antes + 2
+
+    utils.logger.info('linha de teste key=segredo')
+    utils.remover_log()
+
+    assert len(raiz.handlers) == antes
+    texto = log_path.read_text(encoding='utf-8')
+    assert 'linha de teste key=***' in texto

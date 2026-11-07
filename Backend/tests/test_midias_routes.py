@@ -64,7 +64,11 @@ def test_get_midia_por_id_retorna_404(client, monkeypatch):
 def test_put_midia_atualiza_campos_validos(client, admin_headers, monkeypatch):
     monkeypatch.setattr(midias_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id, 'tipo': 'anime'})
     atualizados = []
-    monkeypatch.setattr(midias_routes.midia_repository, 'atualizar_midia_base', lambda id_midia, payload: atualizados.append((id_midia, payload)) or True)
+    monkeypatch.setattr(
+        midias_routes.midia_repository,
+        'atualizar_midia_base',
+        lambda id_midia, payload: atualizados.append((id_midia, payload)) or True,
+    )
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
 
     response = client.put('/api/midias/MID-1', headers=admin_headers, json={
@@ -148,7 +152,9 @@ def test_trending_limita_resultado(client, monkeypatch):
     monkeypatch.setattr(
         midias_routes.midia_repository,
         'buscar_por_tipo',
-        lambda tipo, pagina, limite, filtros: chamadas.append((tipo, pagina, limite, filtros)) or [{'id_midia': 'MID-1'}],
+        lambda tipo, pagina, limite, filtros: (
+            chamadas.append((tipo, pagina, limite, filtros)) or [{'id_midia': 'MID-1'}]
+        ),
     )
 
     response = client.get('/api/midias/trending?tipo=anime&limite=99')

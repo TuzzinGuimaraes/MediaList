@@ -3,12 +3,12 @@ Utilitários compartilhados pelos importadores.
 """
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
 import re
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,7 +19,6 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 LOG_DIR = Path(__file__).resolve().parent.parent / 'importacao_logs'
-LOG_DIR.mkdir(exist_ok=True)
 
 LOG_PATH = LOG_DIR / 'importacao.log'
 ERROR_LOG_PATH = LOG_DIR / 'importacao_erros.jsonl'
@@ -50,18 +49,36 @@ class FiltroSegredos(logging.Filter):
         return True
 
 
-def _handlers_de_log() -> list[logging.Handler]:
-    handlers = [logging.FileHandler(LOG_PATH), logging.StreamHandler()]
-    for handler in handlers:
+_handlers_instalados: list[logging.Handler] = []
+
+
+def remover_log() -> None:
+    """Tira do logger raiz (e fecha) os handlers instalados por `configurar_log`."""
+    raiz = logging.getLogger()
+    while _handlers_instalados:
+        handler = _handlers_instalados.pop()
+        raiz.removeHandler(handler)
+        handler.close()
+
+
+def configurar_log() -> None:
+    """Liga o log da importação em arquivo (LOG_PATH) e no stderr.
+
+    Chamado na execução (run_import.main), nunca no import do módulo: importar
+    `importacao.utils` não cria diretório nem arquivo. Chamar de novo troca os
+    handlers em vez de duplicá-los.
+    """
+    remover_log()
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    formato = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+    raiz = logging.getLogger()
+    for handler in (logging.FileHandler(LOG_PATH, encoding='utf-8'), logging.StreamHandler()):
+        handler.setFormatter(formato)
         handler.addFilter(FiltroSegredos())
-    return handlers
+        raiz.addHandler(handler)
+        _handlers_instalados.append(handler)
+    raiz.setLevel(logging.INFO)
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=_handlers_de_log(),
-)
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +225,7 @@ def registrar_falha_importacao(
         'traceback': traceback_text,
     }
 
+    ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with ERROR_LOG_PATH.open('a', encoding='utf-8') as handle:
         handle.write(ocultar_segredos(json.dumps(record, ensure_ascii=False, default=str)))
         handle.write('\n')

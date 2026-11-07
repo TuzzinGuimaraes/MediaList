@@ -114,7 +114,7 @@ describe('ListEditorModal', () => {
         });
 
         resolveRequest({});
-        await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
+        await screen.findByText('Save');
     });
 
     test('editor de jogo oferece Pausado e salva pausado', async () => {
