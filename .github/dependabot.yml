@@ -1,0 +1,57 @@
+# Atualizações semanais, agrupadas: um PR por ecossistema/diretório.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /Backend
+    schedule:
+      interval: weekly
+    groups:
+      backend:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /Frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /Mobile
+    schedule:
+      interval: weekly
+    groups:
+      mobile:
+        patterns: ["*"]
+    # Expo, React, React Native e NativeWind/Tailwind seguem o SDK do Expo (ADR
+    # 0005): sobem juntos com `npx expo install --fix`, não pacote a pacote.
+    # Majors também ficam de fora; atualizar é decisão manual.
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "react"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "nativewind"
+      - dependency-name: "tailwindcss"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /Backend
+      - /Frontend
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]
