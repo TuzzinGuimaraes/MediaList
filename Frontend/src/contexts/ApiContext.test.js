@@ -63,6 +63,7 @@ describe('ApiContext', () => {
     });
 
     test('aciona onUnauthorized em 401', async () => {
+        localStorage.setItem('token', 'token-expirado');
         const onUnauthorized = jest.fn();
         global.fetch = jest.fn().mockResolvedValue({
             ok: false,
@@ -81,6 +82,27 @@ describe('ApiContext', () => {
 
         await waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
         expect(document.body.dataset.errorMessage).toMatch(/Sessão expirada/i);
+    });
+
+    test('401 sem token (login errado) mostra mensagem do backend e nao desloga', async () => {
+        const onUnauthorized = jest.fn();
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ erro: 'Email ou senha incorretos' }),
+        });
+
+        render(
+            <ApiProvider onUnauthorized={onUnauthorized}>
+                <ApiErrorConsumer />
+            </ApiProvider>
+        );
+
+        fireEvent.click(screen.getByText('erro'));
+
+        await waitFor(() => expect(document.body.dataset.errorMessage).toBe('Email ou senha incorretos'));
+        expect(onUnauthorized).not.toHaveBeenCalled();
     });
 
     test('normaliza erro de rede', async () => {

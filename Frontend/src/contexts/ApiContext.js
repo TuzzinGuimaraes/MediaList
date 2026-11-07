@@ -26,7 +26,7 @@ export const ApiProvider = ({ children, onUnauthorized }) => {
                 data = await response.json();
             }
 
-            if (response.status === 401 || response.status === 422) {
+            if (token && (response.status === 401 || response.status === 422)) {
                 if (onUnauthorized) onUnauthorized();
                 throw new Error('Sessão expirada. Faça login novamente.');
             }
