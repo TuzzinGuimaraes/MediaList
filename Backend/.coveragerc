@@ -1,0 +1,10 @@
+# Cobertura do pytest (pytest --cov). Relatório apenas, sem limite mínimo.
+[run]
+source = .
+omit =
+    .venv/*
+    tests/*
+    smoke_*.py
+
+[report]
+skip_empty = true

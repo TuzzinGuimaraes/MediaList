@@ -1,12 +1,16 @@
 name: CI
 
+# push só na master; branches de trabalho rodam pelo pull_request. Assim um push
+# num PR aberto dispara uma execução, não duas.
 on:
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
 
+# Um push novo no mesmo PR (ou na mesma branch) cancela a execução anterior.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -31,15 +35,30 @@ jobs:
             Backend/requirements.txt
             Backend/requirements-dev.txt
 
-      # pytest fica fora da imagem de produção; a suíte não usa banco e roda no
-      # runner com as dependências de desenvolvimento.
+      # pytest e ruff ficam fora da imagem de produção; a suíte não usa banco e
+      # roda no runner com as dependências de desenvolvimento.
       - name: Install backend dependencies
         working-directory: Backend
         run: pip install -r requirements-dev.txt
 
+      - name: Lint (ruff)
+        working-directory: Backend
+        run: ruff check --output-format=github .
+
       - name: Run backend pytest suite
         working-directory: Backend
-        run: pytest -q
+        run: pytest -q --cov --cov-report=term
+
+      # Cobertura é só relatório: não há limite mínimo que bloqueie o merge.
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        working-directory: Backend
+        run: |
+          {
+            echo "### Cobertura do Backend"
+            echo
+            python -m coverage report --format=markdown || echo "Resumo de cobertura indisponível."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate Docker Compose
         run: docker compose config > /dev/null
@@ -47,14 +66,15 @@ jobs:
       - name: Build backend image
         run: docker compose build backend
 
+      # --wait espera o healthcheck do MySQL e do backend antes dos smoke.
       - name: Start backend dependencies
-        run: docker compose up -d mysql mongodb backend
+        run: docker compose up -d --wait --wait-timeout 180 mysql mongodb backend
 
       - name: Run backend smoke scripts
         run: |
-          docker compose exec -T backend python test_mysql_connection.py
-          docker compose exec -T backend python test_mongo.py
-          docker compose exec -T backend python test_permissions.py
+          docker compose exec -T backend python smoke_mysql_connection.py
+          docker compose exec -T backend python smoke_mongo.py
+          docker compose exec -T backend python smoke_permissions.py
 
       - name: Shutdown stack
         if: always()
@@ -80,14 +100,21 @@ jobs:
         working-directory: Frontend
         run: npm ci
 
+      # Config do CRA (eslintConfig no package.json). --max-warnings=0 mantém o
+      # rigor do antigo `CI=true npm run build`, que tratava aviso como erro.
+      - name: Lint (eslint)
+        working-directory: Frontend
+        run: npx eslint --max-warnings=0 src
+
       - name: Run frontend test suite
         working-directory: Frontend
-        run: CI=true npm test -- --watchAll=false
+        run: CI=true npm test -- --watchAll=false --coverage --coverageReporters=json-summary --coverageReporters=text-summary
 
-      - name: Build frontend bundle
-        working-directory: Frontend
-        run: npm run build
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/jest-coverage-summary.js Frontend/coverage/coverage-summary.json "Cobertura do Frontend" >> "$GITHUB_STEP_SUMMARY"
 
+      # A imagem roda `npm run build` no estágio de build; não repetimos no runner.
       - name: Build frontend image
         run: docker compose build frontend
 
@@ -122,4 +149,8 @@ jobs:
 
       - name: Run mobile test suite
         working-directory: Mobile
-        run: npm test -- --ci
+        run: npm test -- --ci --coverage --coverageReporters=json-summary --coverageReporters=text-summary
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/jest-coverage-summary.js Mobile/coverage/coverage-summary.json "Cobertura do Mobile" >> "$GITHUB_STEP_SUMMARY"
