@@ -4,8 +4,6 @@ from routes import avaliacoes as avaliacoes_routes
 from routes import jogos as jogos_routes
 from routes import mangas as mangas_routes
 from routes import moderacao as moderacao_routes
-from routes import noticias as noticias_routes
-from routes import preferencias as preferencias_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
@@ -62,7 +60,9 @@ def test_post_avaliacao_rejeita_duplicada(client, auth_headers, monkeypatch):
 
 
 def test_put_avaliacao_restringe_edicao_ao_autor(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(avaliacoes_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_usuario': 'USR-OUTRO', 'id_midia': 'MID-1'}])
+    monkeypatch.setattr(
+        avaliacoes_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_usuario': 'USR-OUTRO', 'id_midia': 'MID-1'}]
+    )
 
     response = client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': 7})
 
@@ -88,7 +88,11 @@ def test_delete_avaliacao_permite_moderador(client, auth_headers, monkeypatch):
 
 
 def test_get_usuario_perfil_retorna_dados(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(usuario_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}])
+    monkeypatch.setattr(
+        usuario_routes,
+        'execute_query',
+        lambda *_args, **_kwargs: [{'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}],
+    )
 
     response = client.get('/api/usuario/perfil', headers=auth_headers)
 
@@ -116,7 +120,11 @@ def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch
 
 def test_utils_generos_filtra_por_tipo(client, monkeypatch):
     chamadas = []
-    monkeypatch.setattr(utils_routes, 'execute_query', lambda query, params=None, fetch=True: chamadas.append((query, params)) or [{'nome_genero': 'Ação'}])
+    monkeypatch.setattr(
+        utils_routes,
+        'execute_query',
+        lambda query, params=None, fetch=True: chamadas.append((query, params)) or [{'nome_genero': 'Ação'}],
+    )
 
     response = client.get('/api/generos?tipo=anime')
 
@@ -185,7 +193,9 @@ def test_noticias_cria_registro_quando_autorizado(client, admin_headers, monkeyp
 
 
 def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'usuario', 'pode_moderar': 0})
+    monkeypatch.setattr(
+        'decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'usuario', 'pode_moderar': 0}
+    )
 
     response = client.get('/api/moderacao/usuarios', headers=auth_headers)
 
@@ -203,9 +213,14 @@ def test_moderacao_lista_usuarios_para_admin(client, admin_headers, monkeypatch)
 
 
 def test_rotas_de_tipo_listam_e_validam_payload(client, admin_headers, monkeypatch):
-    monkeypatch.setattr(animes_routes.anime_repository, 'buscar_por_tipo', lambda *_args, **_kwargs: [{'id_midia': 'MID-A'}])
-    monkeypatch.setattr(mangas_routes.manga_repository, 'buscar_por_tipo', lambda *_args, **_kwargs: [{'id_midia': 'MID-M'}])
-    monkeypatch.setattr(jogos_routes.jogo_repository, 'buscar_por_tipo', lambda *_args, **_kwargs: [{'id_midia': 'MID-J'}])
+    for repositorio, id_midia in (
+        (animes_routes.anime_repository, 'MID-A'),
+        (mangas_routes.manga_repository, 'MID-M'),
+        (jogos_routes.jogo_repository, 'MID-J'),
+    ):
+        monkeypatch.setattr(
+            repositorio, 'buscar_por_tipo', lambda *_args, _id=id_midia, **_kwargs: [{'id_midia': _id}]
+        )
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
 
     assert client.get('/api/animes').status_code == 200

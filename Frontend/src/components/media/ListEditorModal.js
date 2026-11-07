@@ -22,6 +22,7 @@ const STATUS_POR_TIPO = {
         { value: 'zerado', label: 'Completed' },
         { value: 'platinado', label: 'Platinum' },
         { value: 'na_fila', label: 'Backlog' },
+        { value: 'pausado', label: 'Paused' },
         { value: 'abandonado', label: 'Dropped' },
     ],
 };

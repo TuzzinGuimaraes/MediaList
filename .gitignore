@@ -38,6 +38,7 @@ nosetests.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.ruff_cache/
 coverage/
 
 # Banco / frameworks Python
@@ -95,7 +96,6 @@ voxel-api-ssh.pem
 node_modules/
 .pnp
 .pnp.js
-build/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -106,22 +106,13 @@ Backend/importacao_logs/*
 !Backend/importacao_logs/.gitkeep
 dumps/*
 !dumps/.gitkeep
-
-# Documentação local
-**/*.md
-!README.md
-!**/README.md
-
-
 Previews/
-# Documentação de domínio: exceção à regra **/*.md acima. Glossário e ADRs
-# registram decisões do projeto e servem a quem for mexer no repositório.
-!CONTEXT.md
-!docs/adr/*.md
 
-# Configuração de agente (CLAUDE.md, docs/agents/) fica de fora de propósito:
-# descreve o ferramental de desenvolvimento local, não o projeto. Não precisa de
-# regra própria — o **/*.md acima já cobre.
+# Configuração de agente: descreve o ferramental de desenvolvimento local, não o
+# projeto, por isso fica fora do repositório.
+AGENTS.md
+CLAUDE.md
+docs/agents/
 .kiro/
 
 # Tracker local de specs/tickets (skills)

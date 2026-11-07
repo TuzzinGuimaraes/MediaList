@@ -20,6 +20,18 @@ export function Vazio({ mensagem }: { mensagem: string }) {
   );
 }
 
+/** Erro numa parte da tela que não impede o resto de aparecer. */
+export function FalhaParcial({ erro, tentarDeNovo }: { erro: unknown; tentarDeNovo: () => void }) {
+  return (
+    <View className="gap-2">
+      <Text accessibilityRole="alert" className="text-corpo text-accent-red">
+        {mensagemDeErro(erro)}
+      </Text>
+      <Botao titulo="Tentar de novo" variante="secundario" onPress={tentarDeNovo} />
+    </View>
+  );
+}
+
 /** Erro ou falta de conexão, sempre com "Tentar de novo". */
 export function Falha({ erro, tentarDeNovo }: { erro: unknown; tentarDeNovo: () => void }) {
   const offline = erro instanceof ErroRede;

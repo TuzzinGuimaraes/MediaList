@@ -3,7 +3,7 @@ Blueprint de animes.
 Mantém compatibilidade com clientes legados.
 """
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from decorators import get_user_permissions, permission_required
 from repositories import AnimeRepository

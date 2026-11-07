@@ -126,6 +126,26 @@ describe('Explorar', () => {
     expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
   });
 
+  it('se os Gêneros falham, avisa sem esconder os resultados e "Tentar de novo" recarrega', async () => {
+    let falhando = true;
+    simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': () =>
+        falhando ? { status: 500, corpo: { erro: 'Falha no servidor' } } : generos('Ação', 'Drama'),
+    });
+
+    await abrirExplorar();
+
+    expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('Falha no servidor');
+    expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+
+    falhando = false;
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByRole('button', { name: 'Drama' })).toBeOnTheScreen();
+    expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
+  });
+
   it('tocar num resultado abre o detalhe da Mídia', async () => {
     simularFetch({
       'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),

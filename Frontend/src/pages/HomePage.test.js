@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
-
 import { MemoryRouter } from '../testRouterMock';
 
 import HomePage from './HomePage';
+
+jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
 
 jest.mock('../contexts/ApiContext', () => ({
     useApi: jest.fn(),

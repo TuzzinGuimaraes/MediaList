@@ -70,4 +70,15 @@ describe('MediaListPage', () => {
 
         expect(await screen.findByText('Nenhuma mídia nesta categoria')).toBeInTheDocument();
     });
+
+    test('falha ao carregar a lista mostra erro em vez de lista vazia', async () => {
+        useApi.mockReturnValue({
+            apiCall: jest.fn().mockRejectedValue(new Error('Erro de conexão com o servidor.')),
+        });
+
+        render(<MediaListPage tipo="anime" />);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Erro de conexão com o servidor.');
+        expect(screen.queryByText('Nenhuma mídia nesta categoria')).not.toBeInTheDocument();
+    });
 });

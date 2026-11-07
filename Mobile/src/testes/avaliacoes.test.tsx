@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
@@ -116,6 +116,34 @@ describe('Avaliações no detalhe da Mídia', () => {
     });
     expect(await screen.findByLabelText('Total de avaliações: 1')).toBeOnTheScreen();
     expect(screen.getByLabelText('Nota média: 9.0')).toBeOnTheScreen();
+  });
+
+  it('uma Avaliação nova refaz as listagens que ordenam pela Nota média e a Lista', async () => {
+    const api = simularFetch({
+      ...rotas([]),
+      'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: [frieren] } },
+      'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [] } },
+      'GET /midias/populares?tipo=anime': { status: 200, corpo: { midias: [] } },
+      'GET /midias/populares?tipo=manga': { status: 200, corpo: { midias: [] } },
+      'POST /avaliacoes': { status: 201, corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA' } },
+    });
+    await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
+    await renderRouter(APP, { initialUrl: '/' });
+
+    const emAlta = await screen.findByLabelText('Em alta');
+    await fireEvent.press(within(emAlta).getByRole('link', { name: 'Sousou no Frieren, Anime' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
+    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '9');
+    const antes = {
+      emAlta: api.para('GET /midias/trending?tipo=anime&limite=10').length,
+      lista: api.para('GET /lista').length,
+    };
+    await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
+
+    await waitFor(() =>
+      expect(api.para('GET /midias/trending?tipo=anime&limite=10').length).toBeGreaterThan(antes.emAlta),
+    );
+    await waitFor(() => expect(api.para('GET /lista').length).toBeGreaterThan(antes.lista));
   });
 
   it('com Avaliação própria, não oferece uma segunda e edita a existente via PUT', async () => {

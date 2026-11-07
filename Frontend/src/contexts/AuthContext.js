@@ -3,7 +3,7 @@ import { useApi } from './ApiContext';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children, sessionExpiredRef }) => {
     const [user, setUser] = useState(null);
     const [permissions, setPermissions] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -35,6 +35,15 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setPermissions(null);
     }, []);
+
+    useEffect(() => {
+        if (!sessionExpiredRef) return undefined;
+        sessionExpiredRef.current = () => {
+            setUser(null);
+            setPermissions(null);
+        };
+        return () => { sessionExpiredRef.current = null; };
+    }, [sessionExpiredRef]);
 
     const login = useCallback(async (email, senha) => {
         try {
