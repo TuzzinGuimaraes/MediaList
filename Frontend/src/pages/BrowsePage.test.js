@@ -52,7 +52,7 @@ describe('BrowsePage', () => {
         useApi.mockReturnValue({
             apiCall: jest.fn().mockImplementation((endpoint) => {
                 if (endpoint.startsWith('/generos')) {
-                    return Promise.resolve({ generos: [{ id_genero: 1, nome: 'Ação' }] });
+                    return Promise.resolve({ generos: [{ id_genero: 1, nome_genero: 'Ação' }] });
                 }
                 return Promise.resolve({ midias: [{ id_midia: 'MID-1', titulo_portugues: 'Anime X' }] });
             }),
@@ -84,6 +84,20 @@ describe('BrowsePage', () => {
         await waitFor(() => {
             expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('estudio=Bones'));
             expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('status=em_exibicao'));
+        });
+    });
+
+    test('filtro de genero lista nome_genero da API e filtra por ele', async () => {
+        renderPage('/browse?tipo=anime');
+        await flushBrowseEffects();
+        await screen.findByText('Anime X');
+
+        fireEvent.change(screen.getByDisplayValue('Gêneros'), { target: { value: 'Ação' } });
+        await flushBrowseEffects();
+
+        expect(screen.getByRole('option', { name: 'Ação' })).toBeInTheDocument();
+        await waitFor(() => {
+            expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('genero=A%C3%A7%C3%A3o'));
         });
     });
 

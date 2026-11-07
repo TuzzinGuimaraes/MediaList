@@ -214,7 +214,7 @@ const BrowsePage = () => {
                 <select value={genero} onChange={(e) => updateParam('genero', e.target.value)} className={inputClass}>
                     <option value="">Gêneros</option>
                     {generos.map(generoItem => (
-                        <option key={generoItem.id_genero || generoItem.nome} value={generoItem.nome}>{generoItem.nome}</option>
+                        <option key={generoItem.id_genero || generoItem.nome_genero} value={generoItem.nome_genero}>{generoItem.nome_genero}</option>
                     ))}
                 </select>
 
