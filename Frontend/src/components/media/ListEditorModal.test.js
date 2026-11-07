@@ -132,7 +132,7 @@ describe('ListEditorModal', () => {
         fireEvent.click(screen.getByText('Save'));
 
         await waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
-        expect(JSON.parse(apiCall.mock.calls[0][1].body).status_consumo).toBe('pausado');
+        expect(JSON.parse(apiCall.mock.calls[0][1].body).status).toBe('pausado');
     });
 
     test('trata erro da API', async () => {
