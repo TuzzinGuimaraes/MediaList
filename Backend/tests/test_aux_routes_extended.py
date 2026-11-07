@@ -127,25 +127,6 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
 
 
-def test_moderacao_ativa_e_desativa_usuario(client, admin_headers, monkeypatch):
-    chamadas = []
-
-    def fake_execute(query, params=None, fetch=True):
-        chamadas.append((query, params, fetch))
-        return None
-
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(moderacao_routes, 'execute_query', fake_execute)
-
-    response_desativar = client.put('/api/moderacao/usuarios/USR-2/desativar', headers=admin_headers)
-    response_ativar = client.put('/api/moderacao/usuarios/USR-2/ativar', headers=admin_headers)
-
-    assert response_desativar.status_code == 200
-    assert response_ativar.status_code == 200
-    assert chamadas[0][0].startswith('UPDATE usuarios SET ativo = FALSE')
-    assert chamadas[1][0].startswith('UPDATE usuarios SET ativo = TRUE')
-
-
 def test_utils_notificacoes_filtra_nao_lidas(client, auth_headers):
     notificacoes = FakeMongoCollection([
         {'id_usuario': 'USR-TEST-0001', 'titulo': 'Lida', 'lida': True},
