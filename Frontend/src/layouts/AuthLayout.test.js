@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
-
 import { MemoryRouter, Route, Routes } from '../testRouterMock';
 import AuthLayout from './AuthLayout';
+
+jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
 
 jest.mock('../contexts/AuthContext', () => ({
     useAuth: jest.fn(),
@@ -35,9 +35,9 @@ describe('AuthLayout', () => {
     test('renderiza loading enquanto autenticacao carrega', () => {
         useAuth.mockReturnValue({ user: null, loading: true });
 
-        const { container } = renderLayout();
+        renderLayout();
 
-        expect(container.querySelector('.animate-spin')).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: 'Carregando' })).toBeInTheDocument();
     });
 
     test('redireciona para home quando usuario ja esta autenticado', () => {

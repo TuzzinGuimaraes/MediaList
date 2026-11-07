@@ -1,11 +1,11 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
-
 import { MemoryRouter, Route, Routes } from '../testRouterMock';
 
 import BrowsePage from './BrowsePage';
+
+jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
 
 jest.mock('../contexts/ApiContext', () => ({
     useApi: jest.fn(),
@@ -81,10 +81,10 @@ describe('BrowsePage', () => {
         fireEvent.change(screen.getByDisplayValue('Status'), { target: { value: 'em_exibicao' } });
         await flushBrowseEffects();
 
-        await waitFor(() => {
-            expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('estudio=Bones'));
-            expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('status=em_exibicao'));
-        });
+        await waitFor(() => expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('estudio=Bones')));
+        await waitFor(() =>
+            expect(useApi().apiCall).toHaveBeenCalledWith(expect.stringContaining('status=em_exibicao'))
+        );
     });
 
     test('filtro de genero lista nome_genero da API e filtra por ele', async () => {
