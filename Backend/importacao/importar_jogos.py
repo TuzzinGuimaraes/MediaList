@@ -156,7 +156,7 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
                 response.raise_for_status()
                 data = response.json()
             except Exception as exc:
-                stats.registrar_falha()
+                stats.registrar_falha_pagina(pagina)
                 registrar_falha_importacao(
                     tipo_midia='jogo',
                     origem='RAWG',

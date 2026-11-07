@@ -62,10 +62,7 @@ def main():
 
     print('=== Resumo da importação ===')
     for stats in resumo:
-        print(
-            f"{stats.tipo_midia}: processados={stats.processados} "
-            f"sucessos={stats.sucessos} falhas={stats.falhas} ja_existia={stats.ja_existia}"
-        )
+        print(stats.resumo())
 
     if houve_erro_fatal:
         sys.exit(1)

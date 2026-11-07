@@ -88,3 +88,63 @@ def test_sessao_http_desiste_do_429_apos_limite_de_tentativas():
 
     assert resposta.status_code == 429
     assert len(hits) == 4
+
+
+
+class _ConexaoFalsa:
+    def close(self):
+        pass
+
+
+def _rodar_main(monkeypatch, *argv):
+    import sys
+
+    from importacao import run_import
+
+    monkeypatch.setattr(sys, 'argv', ['run_import', *argv])
+    run_import.main()
+
+
+def test_pagina_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
+    from importacao import importar_animes, importar_mangas, utils
+
+    monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
+
+    def fonte(tipo, paginas, **kwargs):
+        yield {'pagina': 1, 'itens': [], 'erro': None}
+        yield {'pagina': 2, 'itens': [], 'erro': RuntimeError('timeout'), 'payload': {}}
+
+    for modulo in (importar_animes, importar_mangas):
+        monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
+        monkeypatch.setattr(modulo, 'get_connection', _ConexaoFalsa)
+
+    _rodar_main(monkeypatch, '--tipo', 'anime')
+    _rodar_main(monkeypatch, '--tipo', 'manga')
+
+    saida = capsys.readouterr().out
+    assert 'anime: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[2]' in saida
+    assert 'manga: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[2]' in saida
+
+
+
+CHAVE = 'chave-rawg-secreta-123'
+
+
+def _preparar_jogos(monkeypatch, tmp_path, sessao, chave=CHAVE):
+    from importacao import importar_jogos, utils
+
+    monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
+    monkeypatch.setattr(importar_jogos, 'RAWG_API_KEY', chave)
+    monkeypatch.setattr(importar_jogos, 'get_connection', _ConexaoFalsa)
+    monkeypatch.setattr(importar_jogos, 'criar_sessao_http', lambda **kw: sessao)
+    return importar_jogos
+
+
+def test_pagina_de_jogos_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
+    url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
+    _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
+
+    _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
+
+    saida = capsys.readouterr().out
+    assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1, 2]' in saida

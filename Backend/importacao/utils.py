@@ -9,7 +9,7 @@ import logging
 import re
 import time
 import traceback
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -46,6 +46,7 @@ class ImportStats:
     sucessos: int = 0
     falhas: int = 0
     ja_existia: int = 0
+    paginas_com_falha: list[int] = field(default_factory=list)
 
     def registrar_sucesso(self, *, ja_existia: bool = False):
         self.processados += 1
@@ -57,11 +58,23 @@ class ImportStats:
         self.processados += 1
         self.falhas += 1
 
+    def registrar_falha_pagina(self, pagina: int):
+        """Página da fonte que não veio: os itens dela não entram nas contagens."""
+        self.paginas_com_falha.append(pagina)
+
     def merge(self, other: 'ImportStats'):
         self.processados += other.processados
         self.sucessos += other.sucessos
         self.falhas += other.falhas
         self.ja_existia += other.ja_existia
+        self.paginas_com_falha.extend(other.paginas_com_falha)
+
+    def resumo(self) -> str:
+        return (
+            f'{self.tipo_midia}: processados={self.processados} sucessos={self.sucessos} '
+            f'falhas={self.falhas} ja_existia={self.ja_existia} '
+            f'paginas_com_falha={self.paginas_com_falha}'
+        )
 
     def to_dict(self) -> dict:
         return asdict(self)

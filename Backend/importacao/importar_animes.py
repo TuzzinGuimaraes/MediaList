@@ -107,7 +107,7 @@ def importar_animes(paginas: int = 20):
     try:
         for pagina in importar_do_anilist('ANIME', paginas, session=session, rate_limiter=rate_limiter):
             if pagina.get('erro'):
-                stats.registrar_falha()
+                stats.registrar_falha_pagina(pagina['pagina'])
                 registrar_falha_importacao(
                     tipo_midia='anime',
                     origem='AniList',
