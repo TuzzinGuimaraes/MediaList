@@ -169,7 +169,8 @@ deliberada: as datas de um Item recontado descrevem a passagem mais recente, nã
 
 Voltar a **Concluído** um Item que já tinha data de conclusão é uma nova passagem: soma uma
 Recontagem e a data de conclusão passa a ser a de hoje, salvo se o Usuário informar outra
-(ADR-0009). Sair de Concluído não apaga a data.
+(ADR-0009). Sair de Concluído não apaga a data. Voltar a Concluído no mesmo dia da conclusão
+anterior não soma Recontagem: é desfazer um toque errado, não uma nova passagem.
 
 ---
 
