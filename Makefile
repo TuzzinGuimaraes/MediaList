@@ -23,25 +23,22 @@ IMPORT_WORKERS ?= 8
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
-.PHONY: help install install-backend install-frontend install-mobile compose-build services-up services-up-dev \
-	services-down services-logs db-migrate db-revision mongo-app-user db-shell backend-dev frontend-dev smoke-postgres \
-	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
+.PHONY: help install install-backend install-frontend install-mobile compose-build services-up \
+	services-down services-logs db-migrate db-revision db-shell backend-dev frontend-dev smoke-postgres \
+	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
 	lint-mobile build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
-	@printf "  make services-up       Sobe frontend, backend, PostgreSQL e MongoDB via Docker\n"
-	@printf "  make services-up-dev   Sobe o stack completo e habilita mongo-express\n"
+	@printf "  make services-up       Sobe frontend, backend e PostgreSQL via Docker\n"
 	@printf "  make compose-build     Rebuilda as imagens Docker de backend e frontend\n"
 	@printf "  make db-migrate        Aplica as migrações pendentes (alembic upgrade head, serviço migrate)\n"
 	@printf "  make db-revision MSG=\"...\" Cria uma revisão nova em Backend/migrations/versions\n"
-	@printf "  make mongo-app-user    Cria/atualiza o usuário do app no MongoDB (volume existente)\n"
 	@printf "  make db-shell          Abre o psql (usuário dono) dentro do container\n"
 	@printf "  make db-dump           Gera um dump (pg_dump -Fc) em ./dumps\n"
 	@printf "  make db-restore        Restaura um dump com DUMP_FILE=/caminho/arquivo.dump\n"
 	@printf "  make smoke-postgres    Executa o smoke test de PostgreSQL no container backend\n"
-	@printf "  make smoke-mongo       Executa o smoke test de MongoDB no container backend\n"
 	@printf "  make smoke-permissions Executa o script de permissões no container backend\n"
 	@printf "  make import-animes     Importa animes no container backend\n"
 	@printf "  make import-mangas     Importa mangás no container backend\n"
@@ -50,7 +47,7 @@ help:
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
-	@printf "  make smoke             Executa os três smoke tests no container backend\n"
+	@printf "  make smoke             Executa os dois smoke tests no container backend\n"
 	@printf "  make test              Executa os testes do backend, do frontend e do mobile no host\n"
 	@printf "  make test-backend      Executa o pytest do backend no host\n"
 	@printf "  make test-frontend     Executa os testes do frontend no host\n"
@@ -59,7 +56,7 @@ help:
 	@printf "  make build-frontend    Gera a build do frontend no host\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
-	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, POSTGRES_PORT, MONGO_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
+	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, POSTGRES_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
 
 install: install-backend install-frontend install-mobile
 
@@ -76,10 +73,7 @@ compose-build:
 	$(DOCKER_COMPOSE) build backend frontend
 
 services-up:
-	$(DOCKER_COMPOSE) up -d postgres mongodb backend frontend
-
-services-up-dev:
-	$(DOCKER_COMPOSE) --profile dev up -d
+	$(DOCKER_COMPOSE) up -d postgres backend frontend
 
 services-down:
 	$(DOCKER_COMPOSE) down
@@ -97,12 +91,6 @@ db-migrate:
 db-revision:
 	@test -n "$(MSG)" || (printf "Defina MSG=\"descricao da revisao\"\n" && exit 1)
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m alembic revision -m "$(MSG)"
-
-# Idempotente. Mesmo script do init do volume novo (docker/mongo-init).
-mongo-app-user:
-	$(DOCKER_COMPOSE) up -d mongodb
-	set -a; [ -f "$(ROOT_DIR)/.env" ] && . "$(ROOT_DIR)/.env"; set +a; \
-	$(DOCKER_COMPOSE) exec -T -e MONGO_DB_NAME="$${MONGO_DB_NAME:-medialist_updates_db}" -e MONGO_APP_USER="$${MONGO_APP_USER:-medialist_app}" -e MONGO_APP_PASSWORD="$${MONGO_APP_PASSWORD:-medialist-app-dev}" mongodb sh -c 'until mongosh --quiet --eval "db.runCommand({ping: 1})" > /dev/null 2>&1; do sleep 2; done; exec mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --file /dev/stdin' < "$(ROOT_DIR)/docker/mongo-init/01-app-user.js"
 
 db-shell:
 	$(DOCKER_COMPOSE) up -d --wait postgres
@@ -125,7 +113,7 @@ db-restore:
 	@printf "Dump restaurado a partir de: %s\n" "$(DUMP_FILE)"
 
 backend-dev:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	cd "$(BACKEND_DIR)" && $(PYTHON) app.py
 
 frontend-dev:
@@ -135,15 +123,11 @@ smoke-postgres:
 	$(DOCKER_COMPOSE) up -d --wait postgres
 	$(DOCKER_COMPOSE) run --rm backend python smoke_postgres.py
 
-smoke-mongo:
-	$(DOCKER_COMPOSE) up -d mongodb
-	$(DOCKER_COMPOSE) run --rm backend python smoke_mongo.py
-
 smoke-permissions:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python smoke_permissions.py
 
-smoke: smoke-postgres smoke-mongo smoke-permissions
+smoke: smoke-postgres smoke-permissions
 
 test-backend:
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m pytest -q
@@ -173,19 +157,19 @@ build-frontend:
 build: build-frontend
 
 import-animes:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo anime --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-mangas:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo manga --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-jogos:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo jogo --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-all:
-	$(DOCKER_COMPOSE) up -d postgres mongodb
+	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo todos --paginas 100 --workers $(IMPORT_WORKERS)
 
 clean-frontend:
