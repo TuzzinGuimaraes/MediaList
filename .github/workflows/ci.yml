@@ -55,7 +55,7 @@ jobs:
       # --wait espera o postgres healthy, o migrate (alembic upgrade head)
       # terminar com sucesso e o healthcheck do backend.
       - name: Start postgres, migrate and backend
-        run: docker compose up -d --wait --wait-timeout 180 postgres migrate mongodb backend
+        run: docker compose up -d --wait --wait-timeout 180 postgres migrate backend
 
       - name: Migration logs
         if: ${{ !cancelled() }}
@@ -82,7 +82,6 @@ jobs:
       - name: Run backend smoke scripts
         run: |
           docker compose exec -T backend python smoke_postgres.py
-          docker compose exec -T backend python smoke_mongo.py
           docker compose exec -T backend python smoke_permissions.py
 
       - name: Shutdown stack

@@ -1,4 +1,3 @@
-import database
 from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
 from routes import jogos as jogos_routes
@@ -7,7 +6,7 @@ from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
-from .helpers import FakeBanco, FakeMongoCollection
+from .helpers import FakeBanco
 
 
 def test_put_avaliacao_atualiza_campos_e_retorna_nota_media(client, auth_headers, monkeypatch):
@@ -61,49 +60,6 @@ def test_usuario_perfil_retorna_404_quando_view_nao_tem_registro(client, auth_he
     assert response.get_json()['erro'] == 'Perfil não encontrado'
 
 
-def test_preferencias_update_salva_campos_validos(client, auth_headers):
-    preferencias = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True},
-    ])
-    database.mongo_db = object()
-    database.preferencias_collection = preferencias
-
-    response = client.put('/api/preferencias', headers=auth_headers, json={
-        'tema': 'dark',
-        'notificacoes_ativas': False,
-    })
-
-    assert response.status_code == 200
-    assert response.get_json()['modificado'] is True
-    assert preferencias.items[0]['tema'] == 'dark'
-    assert preferencias.items[0]['notificacoes_ativas'] is False
-
-
-def test_noticias_lista_registros_do_mongo(client):
-    noticias = FakeMongoCollection([
-        {'titulo': 'Notícia A', 'categoria': 'geral'},
-        {'titulo': 'Notícia B', 'categoria': 'anime'},
-    ])
-    database.mongo_db = object()
-    database.noticias_collection = noticias
-
-    response = client.get('/api/noticias?limite=1')
-
-    assert response.status_code == 200
-    assert response.get_json()['noticias'][0]['titulo'] == 'Notícia A'
-
-
-def test_noticias_rejeita_criacao_sem_titulo(client, admin_headers, monkeypatch):
-    database.mongo_db = object()
-    database.noticias_collection = FakeMongoCollection()
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-
-    response = client.post('/api/noticias', headers=admin_headers, json={'conteudo': 'Sem título'})
-
-    assert response.status_code == 400
-    assert response.get_json()['erro'] == 'Título é obrigatório'
-
-
 def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
     FakeBanco({'FROM avaliacoes': [{'id_avaliacao': 'AVL-1'}]}).instalar(monkeypatch, moderacao_routes)
@@ -112,36 +68,6 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
 
     assert response.status_code == 200
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
-
-
-def test_utils_notificacoes_filtra_nao_lidas(client, auth_headers):
-    notificacoes = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Lida', 'lida': True},
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova', 'lida': False},
-        {'id_usuario': 'USR-OUTRO', 'titulo': 'Outro usuário', 'lida': False},
-    ])
-    database.mongo_db = object()
-    database.notificacoes_collection = notificacoes
-
-    response = client.get('/api/notificacoes?nao_lidas=true', headers=auth_headers)
-
-    assert response.status_code == 200
-    assert response.get_json()['notificacoes'] == [{'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova', 'lida': False}]
-
-
-def test_utils_marcar_todas_lidas_atualiza_documentos(client, auth_headers):
-    notificacoes = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova 1', 'lida': False},
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova 2', 'lida': False},
-    ])
-    database.mongo_db = object()
-    database.notificacoes_collection = notificacoes
-
-    response = client.put('/api/notificacoes/marcar-todas-lidas', headers=auth_headers)
-
-    assert response.status_code == 200
-    assert all(item['lida'] is True for item in notificacoes.items)
-    assert '2 notificações' in response.get_json()['mensagem']
 
 
 def test_utils_populares_e_temporada_consultam_views(client, monkeypatch):

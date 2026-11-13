@@ -9,7 +9,6 @@ BACKEND_DIR = pathlib.Path(__file__).resolve().parents[1]
 SEGREDOS_FORTES = {
     'JWT_SECRET_KEY': 'k3y-de-producao-com-entropia-suficiente-0123456789',
     'DB_PASSWORD': 'senha-forte-do-banco-9876',
-    'MONGO_URI': 'mongodb://medialist_app:senha-forte-mongo-5555@mongodb:27017/medialist_updates_db',
 }
 
 
@@ -56,21 +55,6 @@ def test_producao_sem_senha_do_banco_recusa_iniciar():
     assert 'DB_PASSWORD' in resultado.stderr
 
 
-def test_producao_com_uri_mongo_de_senha_default_recusa_iniciar():
-    resultado = _importar_config(
-        APP_ENV='production',
-        **{**SEGREDOS_FORTES, 'MONGO_URI': 'mongodb://admin:senha123@mongodb:27017/'},
-    )
-    assert resultado.returncode != 0
-    assert 'MONGO_URI' in resultado.stderr
-
-
-def test_producao_sem_uri_mongo_recusa_iniciar():
-    resultado = _importar_config(APP_ENV='production', **{**SEGREDOS_FORTES, 'MONGO_URI': ''})
-    assert resultado.returncode != 0
-    assert 'MONGO_URI' in resultado.stderr
-
-
 def test_dev_mantem_os_defaults():
-    resultado = _importar_config(APP_ENV='development', JWT_SECRET_KEY='', DB_PASSWORD='', MONGO_URI='')
+    resultado = _importar_config(APP_ENV='development', JWT_SECRET_KEY='', DB_PASSWORD='')
     assert resultado.returncode == 0, resultado.stderr

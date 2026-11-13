@@ -7,7 +7,6 @@ from flask_jwt_extended import create_access_token
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 import banco
-import database
 from app import app as flask_app
 from config import token_blocklist
 
@@ -27,23 +26,12 @@ def banco_isolado(monkeypatch):
     banco.fechar()
 
 
-@pytest.fixture(autouse=True)
-def mongo_sem_conexao(monkeypatch):
-    """O before_request do app não tenta o Mongo real; cada teste põe o seu."""
-    monkeypatch.setattr(database, 'mongo_tentado', True)
-
-
 @pytest.fixture
 def app():
     flask_app.config.update(TESTING=True)
     yield flask_app
 
     token_blocklist.clear()
-    database.mongo_db = None
-    database.noticias_collection = None
-    database.atualizacoes_collection = None
-    database.notificacoes_collection = None
-    database.preferencias_collection = None
 
 
 @pytest.fixture

@@ -3,14 +3,13 @@ Blueprint de mídias.
 """
 from __future__ import annotations
 
+import json
 import logging
-from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-import database
-from banco import consultar
+from banco import consultar, transacao
 from decorators import permission_required
 from parametros import POR_PAGINA_MAX, ler_int, ler_paginacao
 from repositories import MidiaRepository
@@ -39,10 +38,6 @@ def _payload_error(exc: ValidationError):
     return jsonify({'erro': 'Payload inválido', 'detalhes': exc.errors}), 400
 
 
-def _media_title(midia: dict) -> str:
-    return midia.get('titulo_portugues') or midia.get('titulo_original') or 'Mídia'
-
-
 def _load_schema(tipo: str, data: dict, partial: bool = False) -> dict:
     schema = SCHEMA_BY_TYPE.get(tipo)
     if not schema:
@@ -51,87 +46,58 @@ def _load_schema(tipo: str, data: dict, partial: bool = False) -> dict:
 
 
 def _carregar_atualizacoes(id_midia: str) -> list[dict]:
-    if database.mongo_db is None or database.atualizacoes_collection is None:
-        return []
-
-    try:
-        return list(
-            database.atualizacoes_collection.find(
-                {'id_midia': id_midia},
-                {'_id': 0},
-            ).sort('data_atualizacao', -1).limit(10)
-        )
-    except Exception:
-        return []
+    """As 10 Atualizações de mídia mais recentes."""
+    return consultar(
+        """
+        SELECT a.id_midia, t.nome_tipo AS tipo_midia, a.tipo_atualizacao, a.titulo,
+               a.descricao, a.dados_adicionais, a.data_atualizacao
+        FROM atualizacoes_midia a
+        JOIN midias m ON m.id_midia = a.id_midia
+        JOIN tipo_midia t ON t.id_tipo = m.id_tipo
+        WHERE a.id_midia = %s
+        ORDER BY a.data_atualizacao DESC, a.id_atualizacao DESC
+        LIMIT 10
+        """,
+        (id_midia,),
+    )
 
 
 def _criar_atualizacao_midia(id_midia: str):
-    if (
-        database.mongo_db is None
-        or database.atualizacoes_collection is None
-        or database.notificacoes_collection is None
-    ):
-        return jsonify({'erro': 'MongoDB não disponível'}), 503
-
+    """Grava a Atualização de mídia e, na mesma transação, a Notificação de cada
+    Usuário que tem a Mídia na Lista pessoal num status ativo ou como favorita."""
     midia = midia_repository.buscar_por_id(id_midia)
     if not midia:
         return jsonify({'erro': 'Mídia não encontrada'}), 404
 
-    try:
-        data = request.get_json() or {}
-        if not data.get('tipo') or not data.get('titulo'):
-            return jsonify({'erro': 'Tipo e título são obrigatórios'}), 400
+    data = request.get_json(silent=True) or {}
+    if not data.get('tipo') or not data.get('titulo'):
+        return jsonify({'erro': 'Tipo e título são obrigatórios'}), 400
 
-        atualizacao = {
-            'id_midia': id_midia,
-            'tipo_midia': midia['tipo'],
-            'tipo_atualizacao': data['tipo'],
-            'titulo': data['titulo'],
-            'descricao': data.get('descricao'),
-            'data_atualizacao': datetime.now(),
-            'dados_adicionais': data.get('dados_adicionais', {}),
-        }
-        database.atualizacoes_collection.insert_one(atualizacao)
+    dados_adicionais = data.get('dados_adicionais') or {}
+    if not isinstance(dados_adicionais, dict):
+        return jsonify({'erro': 'dados_adicionais deve ser um objeto'}), 400
 
-        statuses = sorted(NOTIFY_STATUSES.get(midia['tipo'], {'planejado'}))
-        placeholders = ', '.join(['%s'] * len(statuses))
-        usuarios = consultar(
-            f"""
-            SELECT DISTINCT id_usuario
-            FROM lista_usuarios
-            WHERE id_midia = %s
-              AND (status_consumo IN ({placeholders}) OR favorito = TRUE)
+    statuses = sorted(NOTIFY_STATUSES.get(midia['tipo'], {'planejado'}))
+    with transacao() as t:
+        atualizacao = t.consultar_um(
+            """
+            INSERT INTO atualizacoes_midia (id_midia, tipo_atualizacao, titulo, descricao, dados_adicionais)
+            VALUES (%s, %s, %s, %s, %s::jsonb)
+            RETURNING id_atualizacao
             """,
-            (id_midia, *statuses),
+            (id_midia, data['tipo'], data['titulo'], data.get('descricao'), json.dumps(dados_adicionais)),
+        )
+        enviadas = t.executar(
+            """
+            INSERT INTO notificacoes (id_usuario, id_atualizacao)
+            SELECT id_usuario, %s
+            FROM lista_usuarios
+            WHERE id_midia = %s AND (status_consumo = ANY(%s) OR favorito)
+            """,
+            (atualizacao['id_atualizacao'], id_midia, statuses),
         )
 
-        titulo_midia = _media_title(midia)
-        notificacoes = [
-            {
-                'id_usuario': user['id_usuario'],
-                'id_midia': id_midia,
-                'tipo_midia': midia['tipo'],
-                'tipo': data['tipo'],
-                'titulo': data['titulo'],
-                'midia_nome': titulo_midia,
-                'anime_nome': titulo_midia,
-                'mensagem': f"Novidade em {midia['tipo']} da sua lista: {titulo_midia}",
-                'lida': False,
-                'data_criacao': datetime.now(),
-            }
-            for user in usuarios or []
-        ]
-
-        if notificacoes:
-            database.notificacoes_collection.insert_many(notificacoes)
-
-        return jsonify({
-            'mensagem': 'Atualização adicionada!',
-            'notificacoes_enviadas': len(notificacoes),
-        }), 201
-    except Exception:
-        logger.exception('Erro ao adicionar atualização da mídia %s', id_midia)
-        return jsonify({'erro': 'Erro ao adicionar atualização'}), 500
+    return jsonify({'mensagem': 'Atualização adicionada!', 'notificacoes_enviadas': enviadas}), 201
 
 
 @midias_bp.route('', methods=['GET'])

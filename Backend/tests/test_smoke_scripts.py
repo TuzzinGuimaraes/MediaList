@@ -1,5 +1,4 @@
 import decorators
-import smoke_mongo
 import smoke_permissions
 import smoke_postgres
 from decorators import get_user_permissions
@@ -58,49 +57,6 @@ def test_postgres_smoke_sem_conexao(monkeypatch):
 
     assert report['connection_ok'] is False
     assert smoke_postgres.main() == 1
-
-
-def test_mongo_smoke_report(monkeypatch):
-    class FakeCollection:
-        def __init__(self):
-            self.inserted = []
-            self.deleted = []
-
-        def insert_one(self, item):
-            self.inserted.append(item)
-
-        def delete_one(self, item):
-            self.deleted.append(item)
-
-    class FakeDatabase(dict):
-        def __getitem__(self, key):
-            if key not in self:
-                self[key] = FakeCollection()
-            return dict.__getitem__(self, key)
-
-    class FakeMongoClient:
-        def __init__(self, *_args, **_kwargs):
-            self.databases = {'medialist_updates_db': FakeDatabase()}
-
-        def server_info(self):
-            return {'ok': 1}
-
-        def list_database_names(self):
-            return list(self.databases.keys())
-
-        def __getitem__(self, key):
-            return self.databases.setdefault(key, FakeDatabase())
-
-    monkeypatch.setattr(smoke_mongo, 'MongoClient', FakeMongoClient)
-
-    report = smoke_mongo.run_checks()
-
-    assert report == {
-        'server_ok': True,
-        'insert_ok': True,
-        'cleanup_ok': True,
-        'database_names': ['medialist_updates_db'],
-    }
 
 
 def test_permissions_smoke_report(monkeypatch):

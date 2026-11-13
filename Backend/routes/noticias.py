@@ -1,73 +1,63 @@
 """
-Blueprint de Notícias
+Blueprint de Notícias.
+
+`autor` sai como o nome do Usuário que publicou (`noticias.id_autor`); Notícia
+de Usuário apagado sai com 'Admin', o autor padrão de antes.
 """
-import logging
-from datetime import datetime
-
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-import database
+from banco import consultar, consultar_um
 from decorators import permission_required
 from parametros import POR_PAGINA_MAX, ler_int
 
-logger = logging.getLogger(__name__)
-
 noticias_bp = Blueprint('noticias', __name__)
+
 
 @noticias_bp.route('', methods=['GET'])
 def listar_noticias():
-    """Listar notícias"""
-    # Acessar via módulo para pegar valor atualizado
-    if database.mongo_db is None or database.noticias_collection is None:
-        return jsonify({'noticias': []}), 200
-
+    """As Notícias mais recentes."""
     limite = ler_int('limite', 10, minimo=1, maximo=POR_PAGINA_MAX)
-    try:
-        noticias = list(database.noticias_collection.find(
-            {},
-            {'_id': 0}
-        ).sort('data_publicacao', -1).limit(limite))
-
-        return jsonify({'noticias': noticias}), 200
-    except Exception:
-        logger.exception('Erro ao listar notícias')
-        return jsonify({'noticias': []}), 200
+    noticias = consultar(
+        """
+        SELECT n.titulo, n.conteudo, COALESCE(u.nome_completo, 'Admin') AS autor,
+               n.categoria, n.tags, n.imagem_url, n.data_publicacao, n.visualizacoes
+        FROM noticias n
+        LEFT JOIN usuarios u ON u.id_usuario = n.id_autor
+        ORDER BY n.data_publicacao DESC
+        LIMIT %s
+        """,
+        (limite,),
+    )
+    return jsonify({'noticias': noticias}), 200
 
 
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('criar')
 def criar_noticia():
-    """Criar notícia"""
-    # Acessar via módulo para pegar valor atualizado
-    if database.mongo_db is None or database.noticias_collection is None:
-        return jsonify({'erro': 'MongoDB não disponível'}), 503
+    """Criar Notícia; o autor é o Usuário logado."""
+    data = request.get_json(silent=True) or {}
+    if not data.get('titulo'):
+        return jsonify({'erro': 'Título é obrigatório'}), 400
 
-    try:
-        data = request.get_json()
+    tags = data.get('tags') or []
+    if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
+        return jsonify({'erro': 'Tags devem ser uma lista de textos'}), 400
 
-        if not data or not data.get('titulo'):
-            return jsonify({'erro': 'Título é obrigatório'}), 400
-
-        noticia = {
-            'titulo': data['titulo'],
-            'conteudo': data.get('conteudo', ''),
-            'autor': data.get('autor', 'Admin'),
-            'categoria': data.get('categoria', 'geral'),
-            'tags': data.get('tags', []),
-            'imagem_url': data.get('imagem_url'),
-            'data_publicacao': datetime.now(),
-            'visualizacoes': 0
-        }
-
-        result = database.noticias_collection.insert_one(noticia)
-
-        return jsonify({
-            'mensagem': 'Notícia criada!',
-            'id': str(result.inserted_id)
-        }), 201
-    except Exception:
-        logger.exception('Erro ao criar notícia')
-        return jsonify({'erro': 'Erro ao criar notícia'}), 500
-
+    criada = consultar_um(
+        """
+        INSERT INTO noticias (titulo, conteudo, id_autor, categoria, tags, imagem_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id_noticia
+        """,
+        (
+            data['titulo'],
+            data.get('conteudo') or '',
+            get_jwt_identity(),
+            data.get('categoria') or 'geral',
+            tags,
+            data.get('imagem_url') or None,
+        ),
+    )
+    return jsonify({'mensagem': 'Notícia criada!', 'id': criada['id_noticia']}), 201
