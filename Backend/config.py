@@ -67,18 +67,6 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_ACCESS_TOKEN_DAYS',
 # tabela `refresh_tokens`, então expira e é revogado no banco.
 REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_REFRESH_TOKEN_DAYS', '30')))
 
-# Só a Importação (Backend/importacao) ainda lê isto; o app fala PostgreSQL
-# pelo módulo `banco`. Sai com a Importação sobre o PostgreSQL (ticket 23).
-MYSQL_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', '3308')),
-    'user': os.getenv('DB_USER', 'media_app_user'),
-    'password': _env('DB_PASSWORD', _DB_PASSWORD_DEV),
-    'database': os.getenv('DB_NAME', 'medialist_db'),
-    'charset': 'utf8mb4',
-    'use_unicode': True,
-}
-
 # Pool do PostgreSQL (módulo `banco`), por processo: com N workers do gunicorn
 # o banco vê até N * DB_POOL_MAX conexões. O timeout (segundos) vale para abrir
 # conexão e para esperar uma livre no pool; estourado, a API responde 503.

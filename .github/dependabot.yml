@@ -69,7 +69,7 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
     # Node só em versões LTS (pares) e trocadas à mão; Python sobe de versão à mão,
-    # depois de conferir as wheels das dependências (psycopg, mysql-connector).
+    # depois de conferir as wheels das dependências (psycopg).
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
