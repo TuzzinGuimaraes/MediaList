@@ -1,162 +1,199 @@
+"""Contrato do schema aplicado pelas migrações (Backend/migrations) no PostgreSQL.
+
+Roda contra um banco real com `alembic upgrade head` já aplicado, conectando
+como o usuário da aplicação (só DML). A URL vem de TEST_DATABASE_URL, por
+exemplo postgresql://media_app_user:...@127.0.0.1:5433/medialist_db; sem ela,
+o módulo inteiro é pulado. Cada teste roda numa transação desfeita no fim.
+"""
+import os
+from decimal import Decimal
+
 import pytest
 
-from database import get_db_connection
+psycopg = pytest.importorskip('psycopg')
+from psycopg import errors  # noqa: E402
+from psycopg.rows import dict_row  # noqa: E402
+
+TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
+
+pytestmark = pytest.mark.skipif(
+    not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para o contrato SQL'
+)
+
+TABELAS = {
+    'tipo_midia', 'usuarios', 'grupos_usuarios', 'usuarios_grupos', 'midias', 'animes',
+    'jogos', 'mangas', 'generos', 'midias_generos', 'lista_usuarios', 'avaliacoes',
+    'comentarios_avaliacoes', 'refresh_tokens', 'noticias', 'atualizacoes_midia',
+    'notificacoes',
+}
+VIEWS = {'vw_notas_midia', 'vw_midias_populares', 'vw_animes_temporada_atual', 'vw_perfil_usuario'}
 
 
-def _query_all(query, params=()):
-    connection = get_db_connection()
-    if not connection:
-        pytest.skip('MySQL indisponivel para testes de contrato SQL')
-
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        return [{str(key).lower(): value for key, value in row.items()} for row in rows]
-    finally:
-        cursor.close()
-        connection.close()
+@pytest.fixture
+def db():
+    with psycopg.connect(TEST_DATABASE_URL, row_factory=dict_row) as conn:
+        try:
+            yield conn
+        finally:
+            conn.rollback()
 
 
-def _query_one(query, params=()):
-    rows = _query_all(query, params)
-    return rows[0] if rows else None
+def _todos(conn, query, params=()):
+    return conn.execute(query, params).fetchall()
 
 
-def test_schema_removeu_musica_e_campos_legados():
-    musica = _query_one(
+def _um(conn, query, params=()):
+    return conn.execute(query, params).fetchone()
+
+
+def _colunas(conn, tabela):
+    rows = _todos(
+        conn,
         """
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = DATABASE() AND table_name = 'musicas'
-        """
+        SELECT column_name, data_type, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s
+        """,
+        (tabela,),
     )
-    assert musica is None
+    return {row['column_name']: row for row in rows}
 
-    tipos = _query_all("SELECT nome_tipo FROM tipo_midia ORDER BY nome_tipo")
+
+def _usuario(conn, email='contrato@exemplo.test'):
+    return _um(
+        conn,
+        "INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES ('Contrato', %s, 'x') "
+        'RETURNING id_usuario',
+        (email,),
+    )['id_usuario']
+
+
+def _midia(conn, tipo='anime', titulo='Mídia de contrato'):
+    return _um(
+        conn,
+        """
+        INSERT INTO midias (id_tipo, titulo_original)
+        SELECT id_tipo, %s FROM tipo_midia WHERE nome_tipo = %s
+        RETURNING id_midia
+        """,
+        (titulo, tipo),
+    )['id_midia']
+
+
+def test_tabelas_e_views_da_baseline(db):
+    tabelas = {
+        row['table_name']
+        for row in _todos(
+            db,
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
+        )
+    }
+    assert TABELAS <= tabelas
+    assert 'sequences' not in tabelas
+    assert 'musicas' not in tabelas
+
+    views = {
+        row['table_name']
+        for row in _todos(db, "SELECT table_name FROM information_schema.views WHERE table_schema = 'public'")
+    }
+    assert VIEWS <= views
+
+
+def test_colunas_que_mudaram_com_as_decisoes(db):
+    midias = _colunas(db, 'midias')
+    assert 'nota_media' not in midias
+    assert 'total_avaliacoes' not in midias
+    assert midias['nota_fonte']['data_type'] == 'numeric'
+    assert midias['id_midia']['data_type'] == 'uuid'
+
+    assert 'codigo_usuario' not in _colunas(db, 'usuarios')
+    assert 'codigo_avaliacao' not in _colunas(db, 'avaliacoes')
+    assert _colunas(db, 'usuarios')['preferencias']['data_type'] == 'jsonb'
+    assert _colunas(db, 'jogos')['plataformas']['udt_name'] == '_text'
+    assert _colunas(db, 'generos')['aplicavel_a']['udt_name'] == '_text'
+
+    lista = _colunas(db, 'lista_usuarios')
+    assert {'total_rewatches', 'privado', 'status_consumo'} <= set(lista)
+
+
+def test_dados_estruturais_semeados(db):
+    tipos = _todos(db, 'SELECT nome_tipo FROM tipo_midia ORDER BY nome_tipo')
     assert [row['nome_tipo'] for row in tipos] == ['anime', 'jogo', 'manga']
+    assert _um(db, 'SELECT count(*) AS total FROM grupos_usuarios')['total'] == 3
+    assert _um(db, 'SELECT count(*) AS total FROM generos')['total'] >= 20
+    assert _um(db, "SELECT count(*) AS total FROM generos WHERE 'musica' = ANY (aplicavel_a)")['total'] == 0
 
-    lista_columns = _query_all(
+
+def test_sem_procedures_e_so_a_funcao_de_data_atualizacao(db):
+    rotinas = _todos(
+        db,
         """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE() AND table_name = 'lista_usuarios'
-        """
+        SELECT p.proname, p.prokind
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+        """,
     )
-    nomes = {row['column_name'] for row in lista_columns}
-    assert 'total_rewatches' in nomes
-    assert 'privado' in nomes
+    assert {(row['proname'], row['prokind']) for row in rotinas} == {('definir_data_atualizacao', 'f')}
 
 
-def test_generos_e_status_nao_reintroduzem_musica():
-    generos_invalidos = _query_all(
-        """
-        SELECT nome_genero, aplicavel_a
-        FROM generos
-        WHERE aplicavel_a LIKE '%musica%'
-        """
-    )
-    assert generos_invalidos == []
-
-    status_column = _query_one(
-        """
-        SELECT column_type
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-          AND table_name = 'lista_usuarios'
-          AND column_name = 'status_consumo'
-        """
-    )
-    assert 'ouvindo' not in status_column['column_type']
-    assert 'ouvido' not in status_column['column_type']
-
-
-def test_procedures_e_views_essenciais_existem():
-    procedures = _query_all(
-        """
-        SELECT routine_name
-        FROM information_schema.routines
-        WHERE routine_schema = DATABASE()
-          AND routine_type = 'PROCEDURE'
-        """
-    )
-    nomes = {row['routine_name'] for row in procedures}
-    assert 'obter_estatisticas_usuario' in nomes
-
-    views = _query_all(
-        """
-        SELECT table_name
-        FROM information_schema.views
-        WHERE table_schema = DATABASE()
-        """
-    )
-    nomes_views = {row['table_name'] for row in views}
-    assert 'vw_midias_populares' in nomes_views
-    assert 'vw_perfil_usuario' in nomes_views
-
-
-def test_procedures_de_lista_sairam_do_schema():
-    """O Estado de consumo é escrito pela aplicação (ADR-0004): as procedures que
-    o banco usava para adicionar item e promover a Concluído não existem mais."""
-    procedures = _query_all(
-        """
-        SELECT routine_name
-        FROM information_schema.routines
-        WHERE routine_schema = DATABASE()
-          AND routine_type = 'PROCEDURE'
-        """
-    )
-    nomes = {row['routine_name'] for row in procedures}
-    assert 'adicionar_midia_lista' not in nomes
-    assert 'atualizar_progresso_midia' not in nomes
-
-    triggers = _query_all(
-        """
-        SELECT trigger_name
-        FROM information_schema.triggers
-        WHERE trigger_schema = DATABASE()
-        """
-    )
-    nomes_triggers = {row['trigger_name'] for row in triggers}
-    if not nomes_triggers:
-        # information_schema.triggers só lista triggers para quem tem o
-        # privilégio TRIGGER, que o usuário do app não tem (grants mínimos).
-        pytest.skip('usuário do app sem privilégio TRIGGER: triggers invisíveis')
-    assert 'validar_progresso_lista' in nomes_triggers
-    assert 'validar_progresso_lista_update' in nomes_triggers
-
-
-def test_dados_estruturais_minimos_e_sem_seeds_exemplo():
-    grupos = _query_one("SELECT COUNT(*) AS total FROM grupos_usuarios")
-    generos = _query_one("SELECT COUNT(*) AS total FROM generos")
-    placeholder_assets = _query_all(
-        """
-        SELECT titulo_original, poster_url, banner_url
-        FROM midias
-        WHERE poster_url LIKE 'https://example.com/%'
-           OR banner_url LIKE 'https://example.com/%'
-        """
-    )
-
-    assert grupos['total'] == 3
-    assert generos['total'] >= 20
-    assert placeholder_assets == []
-
-
-
-def test_refresh_tokens_guarda_so_o_hash():
+def test_refresh_tokens_guarda_so_o_hash(db):
     """ADR-0006: a tabela tem a cadeia de rotação e nenhuma coluna para o token em claro."""
-    colunas = _query_all(
-        """
-        SELECT column_name, data_type, character_maximum_length
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE() AND table_name = 'refresh_tokens'
-        """
-    )
-    por_nome = {row['column_name']: row for row in colunas}
-
-    assert set(por_nome) == {
+    assert set(_colunas(db, 'refresh_tokens')) == {
         'id_refresh', 'token_hash', 'id_usuario', 'familia',
         'criado_em', 'expira_em', 'revogado', 'substituido_por',
     }
-    assert por_nome['token_hash']['character_maximum_length'] == 64
+
+
+def test_nota_aceita_dez_e_recusa_acima(db):
+    usuario = _usuario(db)
+    midia = _midia(db)
+    db.execute('INSERT INTO avaliacoes (id_usuario, id_midia, nota) VALUES (%s, %s, 10)', (usuario, midia))
+
+    outra = _midia(db, titulo='Outra mídia')
+    with pytest.raises(errors.CheckViolation), db.transaction():
+        db.execute('INSERT INTO avaliacoes (id_usuario, id_midia, nota) VALUES (%s, %s, 10.1)', (usuario, outra))
+    with pytest.raises(errors.CheckViolation), db.transaction():
+        db.execute("UPDATE midias SET nota_fonte = 10.1 WHERE id_midia = %s", (midia,))
+
+
+def test_rotulo_invalido_e_progresso_negativo_recusados(db):
+    usuario = _usuario(db)
+    midia = _midia(db)
+    with pytest.raises(errors.CheckViolation), db.transaction():
+        db.execute(
+            "INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo) VALUES (%s, %s, 'ouvindo')",
+            (usuario, midia),
+        )
+    with pytest.raises(errors.CheckViolation), db.transaction():
+        db.execute(
+            "INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo, progresso_atual) "
+            "VALUES (%s, %s, 'assistindo', -1)",
+            (usuario, midia),
+        )
+    # O conjunto é global (ADR-0002): o banco aceita qualquer Rótulo dos três Tipos.
+    db.execute(
+        "INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo) VALUES (%s, %s, 'platinado')",
+        (usuario, midia),
+    )
+
+
+def test_view_de_notas_calcula_media_e_devolve_null_sem_avaliacoes(db):
+    midia = _midia(db)
+    sql = 'SELECT nota_media, total_avaliacoes FROM vw_notas_midia WHERE id_midia = %s'
+    assert _um(db, sql, (midia,)) == {'nota_media': None, 'total_avaliacoes': None}
+
+    for indice, nota in enumerate(('8.0', '9.5')):
+        usuario = _usuario(db, email=f'nota{indice}@exemplo.test')
+        db.execute('INSERT INTO avaliacoes (id_usuario, id_midia, nota) VALUES (%s, %s, %s)', (usuario, midia, nota))
+
+    assert _um(db, sql, (midia,)) == {'nota_media': Decimal('8.75'), 'total_avaliacoes': 2}
+
+
+def test_usuario_da_aplicacao_nao_faz_ddl(db):
+    with pytest.raises(errors.InsufficientPrivilege), db.transaction():
+        db.execute('CREATE TABLE contrato_ddl (id integer)')
+    with pytest.raises(errors.InsufficientPrivilege), db.transaction():
+        db.execute('ALTER TABLE midias ADD COLUMN contrato_ddl integer')
+    with pytest.raises(errors.InsufficientPrivilege), db.transaction():
+        db.execute('DROP TABLE noticias')
