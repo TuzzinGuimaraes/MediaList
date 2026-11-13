@@ -19,7 +19,7 @@ from flask_jwt_extended import JWTManager
 from werkzeug.exceptions import HTTPException
 
 from banco import Conflito, Indisponivel, Integridade
-from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY, token_blocklist
+from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
 from parametros import ErroEntrada
 from routes import (
     animes_bp,
@@ -35,6 +35,7 @@ from routes import (
     usuario_bp,
     utils_bp,
 )
+from routes import auth as rotas_auth
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +130,25 @@ app.register_blueprint(utils_bp, url_prefix='/api')
 
 @jwt.token_in_blocklist_loader
 def check_if_token_revoked(jwt_header, jwt_payload):
-    """Verificar se token foi revogado."""
-    return jwt_payload['jti'] in token_blocklist
+    """Logout e token de recuperação usado: blocklist no banco (ticket 26)."""
+    return rotas_auth.acesso_repository.revogado(jwt_payload['jti'])
+
+
+@jwt.user_lookup_loader
+def usuario_do_token(jwt_header, jwt_payload):
+    """Usuário inexistente ou desativado não usa o token (ticket 26).
+
+    Sem isso o token de um Usuário apagado seguia válido até expirar, e a rota
+    falhava adiante (FK -> 400). Uma consulta por requisição autenticada.
+    """
+    usuario = rotas_auth.acesso_repository.usuario(jwt_payload['sub'])
+    return usuario if usuario and usuario['ativo'] else None
+
+
+@jwt.user_lookup_error_loader
+def usuario_sem_acesso(jwt_header, jwt_payload):
+    # 401, não 403: o cliente trata como sessão encerrada (refresh ou login).
+    return jsonify({'erro': 'Sessão inválida: Usuário inexistente ou desativado'}), 401
 
 
 @jwt.token_verification_loader

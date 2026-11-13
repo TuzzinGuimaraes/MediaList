@@ -231,3 +231,29 @@ class FakeRefreshTokenRepository:
                 linha['revogado'] = True
                 return True
         return False
+
+
+
+class FakeAcessoRepository:
+    """Costura de `AcessoRepository` em memória: blocklist e quem pode acessar.
+
+    Todo Usuário existe e está ativo, salvo os de `usuarios` (id -> ativo) e os
+    de `inexistentes`.
+    """
+
+    def __init__(self):
+        #: jti -> expira_em, como a tabela access_tokens_revogados.
+        self.revogados = {}
+        self.usuarios = {}
+        self.inexistentes = set()
+
+    def revogar(self, jti, expira_em):
+        self.revogados.setdefault(jti, expira_em)
+
+    def revogado(self, jti):
+        return jti in self.revogados
+
+    def usuario(self, id_usuario):
+        if id_usuario in self.inexistentes:
+            return None
+        return {'id_usuario': id_usuario, 'ativo': self.usuarios.get(id_usuario, True)}

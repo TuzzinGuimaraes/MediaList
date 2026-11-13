@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 import decorators
-from banco import consultar, consultar_um, executar
+from banco import consultar, consultar_um, executar, transacao
 from decorators import moderator_or_admin_required
 
 moderacao_bp = Blueprint('moderacao', __name__)
@@ -34,11 +34,18 @@ def _alterar_status(target_user_id, ativo):
     if _nivel(target_user_id) >= _nivel(ator):
         return jsonify({'erro': 'Só é possível moderar usuários com nível de acesso menor que o seu'}), 403
 
-    query = (
-        "UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s" if ativo
-        else "UPDATE usuarios SET ativo = FALSE WHERE id_usuario = %s"
-    )
-    if not executar(query, (target_user_id,)):
+    if ativo:
+        alterados = executar("UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s", (target_user_id,))
+    else:
+        # O access token já é recusado pelo `ativo` (app.py); os refresh tokens
+        # são revogados junto, para que reativar exija login novo (ADR-0006).
+        with transacao() as t:
+            alterados = t.executar("UPDATE usuarios SET ativo = FALSE WHERE id_usuario = %s", (target_user_id,))
+            t.executar(
+                "UPDATE refresh_tokens SET revogado = TRUE WHERE id_usuario = %s AND revogado = FALSE",
+                (target_user_id,),
+            )
+    if not alterados:
         # Apagado entre a leitura e o UPDATE.
         return jsonify({'erro': 'Usuário não encontrado'}), 404
 

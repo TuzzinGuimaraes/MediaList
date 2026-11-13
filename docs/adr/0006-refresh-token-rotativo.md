@@ -33,10 +33,33 @@ Usuário; sem corpo, o comportamento antigo (blocklist do access token) não mud
 desativado não renova: recebe 403 `Usuário desativado`, como no login, e a família é
 revogada, então reativar a conta exige um login novo.
 
-Consequências aceitas. A blocklist do access token continua em memória: depois de um
-logout, o access token revogado volta a valer se o processo reiniciar, até expirar. Isso
-não é novo e fica fora deste ADR. Linhas expiradas e revogadas não são apagadas; a tabela
+Consequências aceitas. Linhas expiradas e revogadas não são apagadas; a tabela
 cresce com os logins até que exista uma limpeza. Se o banco ainda não tiver a tabela, o
 login funciona e devolve `refresh_token: null`, para que o web não quebre num banco não
 migrado. A tabela está na baseline das migrações em `Backend/migrations` (ADR-0007), que
 substituíram o `Banco DDL.sql` e o script avulso `Banco migracao 0006 refresh tokens.sql`.
+
+## Blocklist persistida e Usuário sem acesso (ticket 26)
+
+A blocklist do access token saiu da memória do processo para a tabela
+`access_tokens_revogados` (`jti`, `expira_em`; migração 0004). Logout e o token de
+recuperação de senha já usado gravam o `jti` com a expiração do próprio JWT, e o
+`token_in_blocklist_loader` consulta a tabela. O logout vale entre os workers do gunicorn
+e depois de um restart. A limpeza vai junto de cada gravação: um `DELETE` das linhas com
+`expira_em` vencido, pelo índice. Não há rotina à parte, e `DELETE`s concorrentes de dois
+workers só apagam o que já não vale.
+
+Toda rota com `@jwt_required` carrega o Usuário do token (`user_lookup_loader`, uma
+consulta por id com `ativo`). Usuário inexistente, desativado ou com identidade que nem é
+uuid (token de antes de uma troca de banco) recebe **401**, não 400 de FK nem 403. Para os
+clientes isso é sessão encerrada: o app tenta o refresh e, recusado, volta ao login; o web
+desloga no 401. Com o banco fora a consulta levanta e a resposta é 503, sem deslogar.
+
+O refresh segue a mesma regra. Usuário apagado leva os refresh tokens junto (`ON DELETE
+CASCADE`), então o refresh responde 401 `Refresh token inválido`. Usuário desativado
+recebe 403, como acima. Desativar pela moderação revoga os refresh do Usuário na mesma
+transação: o access token já é recusado pelo `ativo`, e reativar não ressuscita a sessão
+(o access ainda não expirado volta a valer; o refresh, não).
+
+Custo aceito: duas consultas leves por requisição autenticada (blocklist e Usuário), sem
+cache. Um cache curto pode entrar se a carga pedir.
