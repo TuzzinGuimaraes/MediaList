@@ -700,6 +700,7 @@ class ListaRepository(MidiaRepository):
                    lu.progresso_atual,
                    lu.progresso_total,
                    lu.data_conclusao,
+                   lu.total_rewatches,
                    tm.nome_tipo AS tipo,
                    CASE tm.nome_tipo
                        WHEN 'anime' THEN a.numero_episodios
