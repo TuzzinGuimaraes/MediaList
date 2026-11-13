@@ -3,7 +3,6 @@ from decimal import Decimal
 import pytest
 
 import banco
-import database
 from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
 from routes import jogos as jogos_routes
@@ -12,7 +11,7 @@ from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
-from .helpers import FakeBanco, FakeMongoCollection
+from .helpers import FakeBanco
 
 
 def test_get_avaliacoes_lista_vazia(client, monkeypatch):
@@ -143,81 +142,22 @@ def test_utils_generos_filtra_por_tipo(client, monkeypatch):
     assert fake.chamadas[0][2] == ('anime',)
 
 
-def test_utils_health_reporta_estado_conectado(client, monkeypatch):
+def test_utils_health_reporta_postgres_conectado(client, monkeypatch):
     FakeBanco({'SELECT 1': {'ok': 1}}).instalar(monkeypatch, utils_routes)
-    database.mongo_db = object()
 
     response = client.get('/api/health')
 
     assert response.status_code == 200
-    assert response.get_json() == {'status': 'healthy', 'postgres': 'connected', 'mongodb': 'connected'}
+    assert response.get_json() == {'status': 'healthy', 'postgres': 'connected'}
 
 
 def test_utils_health_sem_postgres_responde_503(client, monkeypatch):
     FakeBanco({'SELECT 1': banco.Indisponivel('fora')}).instalar(monkeypatch, utils_routes)
-    database.mongo_db = object()
 
     response = client.get('/api/health')
 
     assert response.status_code == 503
-    assert response.get_json()['postgres'] == 'disconnected'
-
-
-def test_utils_health_sem_mongo_fica_degradado(client, monkeypatch):
-    FakeBanco({'SELECT 1': {'ok': 1}}).instalar(monkeypatch, utils_routes)
-    database.mongo_db = None
-
-    response = client.get('/api/health')
-
-    assert response.status_code == 200
-    assert response.get_json()['status'] == 'degraded'
-
-
-def test_preferencias_cria_defaults_quando_nao_existirem(client, auth_headers):
-    preferencias = FakeMongoCollection()
-    database.mongo_db = object()
-    database.preferencias_collection = preferencias
-
-    response = client.get('/api/preferencias', headers=auth_headers)
-
-    data = response.get_json()['preferencias']
-    assert response.status_code == 200
-    assert data['tema'] == 'light'
-    assert preferencias.inserted[0]['id_usuario'] == 'USR-TEST-0001'
-
-
-def test_preferencias_update_rejeita_payload_vazio(client, auth_headers):
-    database.mongo_db = object()
-    database.preferencias_collection = FakeMongoCollection()
-
-    response = client.put('/api/preferencias', headers=auth_headers, json={'invalido': True})
-
-    assert response.status_code == 400
-
-
-def test_noticias_lista_vazia_quando_mongo_indisponivel(client):
-    database.mongo_db = None
-    database.noticias_collection = None
-
-    response = client.get('/api/noticias')
-
-    assert response.status_code == 200
-    assert response.get_json()['noticias'] == []
-
-
-def test_noticias_cria_registro_quando_autorizado(client, admin_headers, monkeypatch):
-    noticias = FakeMongoCollection()
-    database.mongo_db = object()
-    database.noticias_collection = noticias
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-
-    response = client.post('/api/noticias', headers=admin_headers, json={
-        'titulo': 'Nova noticia',
-        'conteudo': 'Texto',
-    })
-
-    assert response.status_code == 201
-    assert noticias.inserted[0]['titulo'] == 'Nova noticia'
+    assert response.get_json() == {'status': 'unhealthy', 'postgres': 'disconnected'}
 
 
 def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
