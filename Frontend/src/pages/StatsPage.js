@@ -120,7 +120,7 @@ const StatsPage = () => {
                 : (Array.isArray(item.generos) ? item.generos : []);
 
             generos.forEach(genero => {
-                const name = (typeof genero === 'string' ? genero : genero.nome || '').trim();
+                const name = (typeof genero === 'string' ? genero : genero.nome_genero || '').trim();
                 if (name) {
                     counts[name] = (counts[name] || 0) + 1;
                 }
