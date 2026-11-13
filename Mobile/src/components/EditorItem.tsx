@@ -65,6 +65,47 @@ function CampoCurto({ rotulo, ...props }: Omit<TextInputProps, 'className'> & { 
   );
 }
 
+type PropsPasso = { icone: 'remove' | 'add'; rotulo: string; desativado?: boolean; aoTocar(): void };
+
+function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={rotulo}
+      accessibilityState={{ disabled: desativado }}
+      disabled={desativado}
+      onPress={aoTocar}
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+      className="h-10 w-10 items-center justify-center active:opacity-60"
+    >
+      <Ionicons name={icone} size={18} color={desativado ? paleta.dark.border : paleta.text.bright} />
+    </Pressable>
+  );
+}
+
+/** Recontagem com − e + (mínimo 0), no visual do stepper do Progresso da Lista. */
+function ContadorRecontagem({ valor, mudar }: { valor: number; mudar(n: number): void }) {
+  return (
+    <View className="flex-1 justify-end gap-1">
+      <Text numberOfLines={2} className="text-legenda text-text-secondary">
+        {textos.recontagem}
+      </Text>
+      <View className="flex-row items-center justify-between rounded-full border border-dark-border bg-dark-tertiary">
+        <BotaoPasso icone="remove" rotulo={`Diminuir ${textos.recontagem}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
+        <Text
+          accessibilityLabel={`${textos.recontagem}: ${valor}`}
+          accessibilityLiveRegion="polite"
+          className="text-campo font-semibold text-text-bright"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {valor}
+        </Text>
+        <BotaoPasso icone="add" rotulo={`Aumentar ${textos.recontagem}`} aoTocar={() => mudar(valor + 1)} />
+      </View>
+    </View>
+  );
+}
+
 function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'heart' | 'lock-closed'; ativo: boolean; mudar(): void }) {
   return (
     <Pressable
@@ -209,7 +250,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           keyboardType="number-pad"
         />
         <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 10" />
-        <CampoCurto rotulo={textos.recontagem} value={form.recontagem} onChangeText={mudar('recontagem')} keyboardType="number-pad" />
+        <ContadorRecontagem valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
       </View>
 
       <View className="flex-row gap-2">

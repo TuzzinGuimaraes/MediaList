@@ -261,6 +261,30 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Episódios (de 10)')).toHaveDisplayValue('0');
   });
 
+  it('editor: Recontagem com − e +, mínimo 0, sem campo digitável', async () => {
+    const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3, total_rewatches: 1 })]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    expect(screen.queryByDisplayValue('1')).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Recontagem: 1')).toBeOnTheScreen();
+
+    const menos = screen.getByRole('button', { name: 'Diminuir Recontagem' });
+    await fireEvent.press(menos);
+    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+    expect(menos).toBeDisabled();
+    await fireEvent.press(menos);
+    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
+    expect(screen.getByLabelText('Recontagem: 2')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')).toHaveLength(1));
+    expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')[0].corpo).toMatchObject({ total_rewatches: 2 });
+  });
+
   it('jogo mostra horas e não tem stepper', async () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 
@@ -295,7 +319,7 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Horas jogadas')).toHaveDisplayValue('42');
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));
     await fireEvent.changeText(screen.getByLabelText('Nota pessoal'), '9,5');
-    await fireEvent.changeText(screen.getByLabelText('Recontagem'), '1');
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
     await fireEvent.changeText(screen.getByLabelText('Início'), '01/10/2026');
     await fireEvent.changeText(screen.getByLabelText('Comentário'), 'Panteão feito');
     await fireEvent.press(screen.getByRole('switch', { name: 'Favorito' }));
