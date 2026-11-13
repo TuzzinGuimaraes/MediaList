@@ -27,3 +27,8 @@ beforeEach(() => {
   const { AccessibilityInfo } = require('react-native');
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
 });
+
+
+// Calendário nativo de mentira: um View com as props do picker; o teste chama `onChange` como o
+// diálogo do Android faria ao escolher ("set") ou cancelar ("dismissed").
+jest.mock('@react-native-community/datetimepicker', () => require('./src/testes/calendarioSimulado'));

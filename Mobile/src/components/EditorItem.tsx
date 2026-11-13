@@ -1,15 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Pressable, Text, TextInput, type TextInputProps, View } from 'react-native';
+import { Keyboard, Platform, Pressable, Text, TextInput, type TextInputProps, View } from 'react-native';
 
 import { mensagemDeErro } from '../api/erros';
 import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
+import { dataDoTexto, textoDaData } from '../dominio/datas';
 import { estadoDe, NOMES_ESTADO, rotulosDoTipo } from '../dominio/estadoConsumo';
 import {
-  ajustarFormulario,
+  type EdicaoItem,
   type FormularioItem,
-  formularioDoItem,
+  iniciarEdicao,
+  mudarEdicao,
   nomeDoProgresso,
   temProgresso,
   totalDoItem,
@@ -30,6 +33,9 @@ const textos = {
   inicio: 'Início',
   conclusao: 'Conclusão',
   data: 'dd/mm/aaaa',
+  semData: 'sem data',
+  abreCalendario: 'Abre o calendário',
+  limpar: 'Limpar',
   comentario: 'Comentário',
   favorito: 'Favorito',
   privado: 'Privado',
@@ -64,6 +70,101 @@ function CampoCurto({ rotulo, ...props }: Omit<TextInputProps, 'className'> & { 
   );
 }
 
+type PropsData = { rotulo: string; valor: string; minimo?: Date; mudar(texto: string): void };
+
+/** Data pelo calendário nativo (diálogo no Android), nunca no futuro; vazio = sem data. */
+function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
+  const [aberto, setAberto] = useState(false);
+  const hoje = new Date();
+  const escolher = (evento: DateTimePickerEvent, data?: Date) => {
+    setAberto(false);
+    if (evento.type === 'set' && data) mudar(textoDaData(data));
+  };
+  return (
+    <View className="flex-1 justify-end gap-1">
+      <Text numberOfLines={2} className="text-legenda text-text-secondary">
+        {rotulo}
+      </Text>
+      <View className="flex-row items-center rounded-md border border-dark-border bg-dark-tertiary">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${rotulo}: ${valor || textos.semData}`}
+          accessibilityHint={textos.abreCalendario}
+          onPress={() => {
+            Keyboard.dismiss();
+            setAberto(true);
+          }}
+          className="flex-1 px-3 py-2 active:opacity-60"
+        >
+          <Text className={`text-campo ${valor ? 'text-text-bright' : 'text-text-secondary'}`}>{valor || textos.data}</Text>
+        </Pressable>
+        {valor ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${textos.limpar} ${rotulo}`}
+            onPress={() => mudar('')}
+            hitSlop={8}
+            className="px-2 py-2 active:opacity-60"
+          >
+            <Text className="text-legenda font-semibold text-accent-blue">{textos.limpar}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {aberto ? (
+        <DateTimePicker
+          value={dataDoTexto(valor) ?? hoje}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          maximumDate={hoje}
+          minimumDate={minimo}
+          onChange={escolher}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+type PropsPasso = { icone: 'remove' | 'add'; rotulo: string; desativado?: boolean; aoTocar(): void };
+
+function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={rotulo}
+      accessibilityState={{ disabled: desativado }}
+      disabled={desativado}
+      onPress={aoTocar}
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+      className="h-10 w-10 items-center justify-center active:opacity-60"
+    >
+      <Ionicons name={icone} size={18} color={desativado ? paleta.dark.border : paleta.text.bright} />
+    </Pressable>
+  );
+}
+
+/** Recontagem com − e + (mínimo 0), no visual do stepper do Progresso da Lista. */
+function ContadorRecontagem({ valor, mudar }: { valor: number; mudar(n: number): void }) {
+  return (
+    <View className="flex-1 justify-end gap-1">
+      <Text numberOfLines={2} className="text-legenda text-text-secondary">
+        {textos.recontagem}
+      </Text>
+      <View className="flex-row items-center justify-between rounded-full border border-dark-border bg-dark-tertiary">
+        <BotaoPasso icone="remove" rotulo={`Diminuir ${textos.recontagem}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
+        <Text
+          accessibilityLabel={`${textos.recontagem}: ${valor}`}
+          accessibilityLiveRegion="polite"
+          className="text-campo font-semibold text-text-bright"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {valor}
+        </Text>
+        <BotaoPasso icone="add" rotulo={`Aumentar ${textos.recontagem}`} aoTocar={() => mudar(valor + 1)} />
+      </View>
+    </View>
+  );
+}
+
 function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'heart' | 'lock-closed'; ativo: boolean; mudar(): void }) {
   return (
     <Pressable
@@ -90,7 +191,8 @@ function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'hea
 export function EditorItem({ midia, item, aoFechar }: Props) {
   const tipo = midia.tipo;
   const total = totalDoItem(item ?? { ...midia, progresso_total: null });
-  const [form, setForm] = useState<FormularioItem>(() => formularioDoItem(item, tipo));
+  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, tipo));
+  const form = edicao.form;
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
@@ -98,7 +200,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
-    setForm((f) => ajustarFormulario(f, { ...f, [campo]: valor }, { tipo, total }));
+    setEdicao((e) => mudarEdicao(e, { [campo]: valor }, { tipo, total }));
 
   const enviar = async () => {
     const resultado = validarItem(form, { tipo, total });
@@ -207,12 +309,12 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           keyboardType="number-pad"
         />
         <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 10" />
-        <CampoCurto rotulo={textos.recontagem} value={form.recontagem} onChangeText={mudar('recontagem')} keyboardType="number-pad" />
+        <ContadorRecontagem valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
       </View>
 
       <View className="flex-row gap-2">
-        <CampoCurto rotulo={textos.inicio} value={form.inicio} onChangeText={mudar('inicio')} placeholder={textos.data} keyboardType="numbers-and-punctuation" maxLength={10} />
-        <CampoCurto rotulo={textos.conclusao} value={form.conclusao} onChangeText={mudar('conclusao')} placeholder={textos.data} keyboardType="numbers-and-punctuation" maxLength={10} />
+        <CampoData rotulo={textos.inicio} valor={form.inicio} mudar={mudar('inicio')} />
+        <CampoData rotulo={textos.conclusao} valor={form.conclusao} minimo={dataDoTexto(form.inicio) ?? undefined} mudar={mudar('conclusao')} />
       </View>
 
       <View className="flex-row gap-2">
