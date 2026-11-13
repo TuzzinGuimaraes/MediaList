@@ -27,7 +27,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
 	lint-mobile build-frontend build \
-	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
+	import-animes import-mangas import-jogos import-all seed-dev clean-frontend db-dump db-restore
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
@@ -45,6 +45,7 @@ help:
 	@printf "  make import-mangas     Importa mangás no container backend\n"
 	@printf "  make import-jogos      Importa jogos no container backend com concorrência limitada\n"
 	@printf "  make import-all        Executa todos os importadores no container backend\n"
+	@printf "  make seed-dev          Cria os dados de desenvolvimento (SEED_ARGS=--recriar refaz)\n"
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
@@ -179,6 +180,12 @@ import-jogos:
 import-all:
 	$(DOCKER_COMPOSE) up -d postgres
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo todos --paginas 100 --workers $(IMPORT_WORKERS)
+
+# Dados de desenvolvimento (Backend/seed_dev.py); idempotente, recusa APP_ENV=production.
+# SEED_ARGS=--recriar apaga e recria os Usuários do seed e o que é deles.
+seed-dev:
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) run --rm --build backend python -m seed_dev $(SEED_ARGS)
 
 clean-frontend:
 	rm -rf "$(FRONTEND_DIR)/build"

@@ -227,6 +227,7 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make import-mangas` | Importa mangás no container backend |
 | `make import-jogos` | Importa jogos no container backend |
 | `make import-all` | Executa todos os importadores no container backend |
+| `make seed-dev` | Cria os dados de desenvolvimento (Usuários de dev, Lista, Avaliações, Notificações) |
 | `make install` | Instala dependências locais para desenvolvimento sem Docker |
 | `make backend-dev` | Inicia a API Flask no host |
 | `make frontend-dev` | Inicia o frontend React no host |
@@ -235,6 +236,26 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make test-frontend` | Executa os testes do frontend no host |
 | `make test-mobile` | Executa os testes do mobile no host |
 | `make build-frontend` | Gera a build do frontend no host |
+
+## Dados de desenvolvimento
+
+`make seed-dev` roda o [Backend/seed_dev.py](Backend/seed_dev.py) no container backend e cria,
+sem precisar de RAWG nem AniList: animes, mangás e jogos reais, os Usuários de dev, a Lista
+pessoal do Usuário comum com todos os Estados de consumo de cada Tipo, Avaliações (há Nota
+média), Notícias e Notificações (uma lida, outra não).
+
+| Usuário | Senha | Grupo |
+|---|---|---|
+| `teste@medialist.dev` | `teste123` | Usuários |
+| `admin@medialist.dev` | `admin123` | Administradores |
+| `moderador@medialist.dev` | `moderador123` | Moderadores |
+
+- Rodar de novo não duplica nada: o que já existe fica como está.
+- `make seed-dev SEED_ARGS=--recriar` apaga e recria os três Usuários do seed e o que é deles;
+  as Mídias e os dados de outros Usuários ficam.
+- Combina com `make import-*` em qualquer ordem: as Mídias do seed usam os `anilist_id` e
+  `rawg_slug` reais, e a Importação as atualiza no lugar.
+- Recusa rodar com `APP_ENV=production`.
 
 ## Importação de dados externos
 
