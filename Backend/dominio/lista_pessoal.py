@@ -2,7 +2,7 @@
 Escrita da Lista pessoal: tudo o que um Item de lista significa.
 
 O módulo é o autor do Estado de consumo (ver docs/adr/0002): validação do
-Rótulo de estado contra o Tipo de mídia, limites de Progresso, promoção a
+Rótulo de estado contra o Tipo de mídia, limites de Progresso, Concluído ⇔ total
 Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Os triggers
 `validar_progresso_lista*` continuam como rede de segurança do banco.
 
@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from schemas.estado_consumo import CONCLUIDO, e_terminal, erro_de_rotulo, rotulo_para
+from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, erro_de_rotulo, estado_de, rotulo_para
 
 OK = 'ok'
 INVALIDO = 'invalido'
@@ -131,31 +131,60 @@ def _erro_de_progresso(progresso: int | None, total: int | None) -> str | None:
     return None
 
 
-def _promocao(status: str | None, tipo: str | None, progresso: int | None, total: int | None) -> str | None:
-    """Rótulo de Concluído quando o progresso atinge o total, senão None.
+def _decidido(campos: dict[str, Any], item: dict[str, Any], nome: str) -> bool:
+    """Diz se o payload traz um valor novo para o campo.
 
-    Só promove, nunca rebaixa: um Item já terminal fica como está — reduzir o
-    progresso não desfaz uma conclusão, e `platinado` não vira `zerado`. Jogo
-    nunca deriva Concluído do progresso: horas de jogo não medem Progresso.
+    O editor reenvia o formulário inteiro: repetir o valor guardado é silêncio,
+    não uma decisão do Usuário.
     """
-    if tipo in TIPOS_SEM_PROGRESSO or progresso is None:
-        return None
-
-    if total is None or total <= 0 or progresso < total:
-        return None
-
-    if e_terminal(status, tipo):
-        return None
-
-    return rotulo_para(CONCLUIDO, tipo)
+    return campos.get(nome) is not None and campos.get(nome) != item.get(nome)
 
 
-def _marcar_conclusao(campos: dict[str, Any], rotulo: str, data_atual: str | None = None) -> None:
-    """Escreve o Concluído derivado, com a data só quando ela ainda falta."""
-    campos['status_consumo'] = rotulo
-    # A data de conclusão continua gravável: o módulo só preenche o vazio.
-    if not campos.get('data_conclusao') and not data_atual:
+def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any]) -> None:
+    """Entrada em Concluído: data de hoje e, se já houve passagem, +1 na Recontagem.
+
+    As datas do Item descrevem a passagem mais recente (ADR 0003), então a nova
+    conclusão sobrescreve a anterior, salvo data escolhida pelo Usuário.
+    """
+    if not _decidido(campos, item, 'data_conclusao'):
         campos['data_conclusao'] = date.today().isoformat()
+
+    if item.get('data_conclusao') and not _decidido(campos, item, 'total_rewatches'):
+        campos['total_rewatches'] = (item.get('total_rewatches') or 0) + 1
+
+
+def _concluido_segue_o_progresso(
+    campos: dict[str, Any], tipo: str | None, total: int | None, item: dict[str, Any] | None = None,
+) -> None:
+    """Concluído ⇔ Progresso = total (ADR 0009), escrito direto em `campos`.
+
+    - Escolher Concluído (vindo de outro Estado) leva o Progresso ao total.
+    - Progresso enviado no total promove a Concluído; abaixo dele, um Item
+      concluído volta ao Em progresso do Tipo, e a data de conclusão fica.
+    - Sem total conhecido, ou jogo (horas não medem Progresso), nada muda.
+
+    `item` é o Item antes da escrita; ausente em `adicionar`.
+    """
+    if tipo in TIPOS_SEM_PROGRESSO or total is None or total <= 0:
+        return
+
+    item = item or {}
+    ja_concluido = estado_de(item.get('status_consumo'), tipo) == CONCLUIDO
+    estado = estado_de(campos.get('status_consumo') or item.get('status_consumo'), tipo)
+    progresso = campos.get('progresso_atual')
+
+    if estado == CONCLUIDO and not ja_concluido:
+        campos['progresso_atual'] = total
+    elif progresso is not None and progresso >= total and estado != CONCLUIDO:
+        campos['status_consumo'] = rotulo_para(CONCLUIDO, tipo)
+    elif progresso is not None and progresso < total and estado == CONCLUIDO:
+        campos['status_consumo'] = rotulo_para(EM_PROGRESSO, tipo)
+        return
+    else:
+        return
+
+    if not ja_concluido:
+        _registrar_conclusao(campos, item)
 
 
 class ListaPessoal:
@@ -193,9 +222,7 @@ class ListaPessoal:
         if erro:
             return _invalido('progresso_atual', erro)
 
-        rotulo = _promocao(campos['status_consumo'], tipo, progresso, total)
-        if rotulo:
-            _marcar_conclusao(campos, rotulo)
+        _concluido_segue_o_progresso(campos, tipo, total)
 
         id_lista = self._lista.criar_item(id_usuario, id_midia, campos)
         if id_lista is None:
@@ -228,10 +255,7 @@ class ListaPessoal:
 
         # Sem status no payload, o estado atual do Item é o que vale: atualizar
         # o progresso não é uma decisão sobre o estado de consumo.
-        status = campos.get('status_consumo') or item.get('status_consumo')
-        rotulo = _promocao(status, tipo, progresso, total)
-        if rotulo:
-            _marcar_conclusao(campos, rotulo, item.get('data_conclusao'))
+        _concluido_segue_o_progresso(campos, tipo, total, item)
 
         if campos:
             self._lista.atualizar_campos(id_lista, campos)

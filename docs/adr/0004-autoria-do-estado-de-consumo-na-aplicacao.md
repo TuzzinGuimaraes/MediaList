@@ -14,7 +14,8 @@ espalhar a decisão por procedures que nenhum teste alcança. Os triggers
 segurança do banco: eles recusam progresso acima do total venha de onde vier, inclusive de
 um cliente que não seja a API.
 
-Três consequências que precisam estar explícitas. O módulo **só promove, nunca rebaixa**:
+Três consequências que precisam estar explícitas. O módulo **só promove, nunca rebaixa**
+(*substituído pelo ADR-0009: Concluído agora segue o Progresso nos dois sentidos*):
 reduzir o Progresso de um Item concluído não o devolve a em andamento, porque a **Recontagem**
 é contada, não historiada (ADR-0003), e rebaixar apagaria a conclusão registrada. O total
 contra o qual o Progresso é medido vem da **Mídia** — número de episódios ou de capítulos —,
