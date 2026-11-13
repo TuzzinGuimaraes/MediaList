@@ -20,6 +20,7 @@ nada. UUIDs voltam como texto, que é como a API e o JWT os tratam.
 """
 from __future__ import annotations
 
+import atexit
 import logging
 import threading
 from contextlib import contextmanager
@@ -92,6 +93,9 @@ def _obter_pool() -> ConnectionPool:
                     name='medialist',
                 )
                 pool.open(wait=False)
+                # Fecha antes do fim do interpretador: as threads do pool não
+                # podem mais ser juntadas no __del__ durante o shutdown.
+                atexit.register(fechar)
                 _pool = pool
     return _pool
 
