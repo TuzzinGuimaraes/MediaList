@@ -191,6 +191,50 @@ describe('aba Lista', () => {
     expect(api.para('PUT /lista/LST-MID-ANM-2026-20053/progresso')).toHaveLength(1);
   });
 
+  it('− num Concluído no total o leva a Em progresso na hora, antes da resposta (ADR 0009)', async () => {
+    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Ataque dos Titãs', numero_episodios: 10 });
+    const { api } = servidor([item(aot, { status_consumo: 'completo', progresso_atual: 10, data_conclusao: '2026-01-02' })], {
+      'PUT /lista/LST-MID-ANM-2026-20099/progresso': () => new Promise<Resposta>(() => {}),
+    });
+
+    await abrir('/lista');
+    await fireEvent.press(await aba('Concluído', 1));
+    const l = await linha('Ataque dos Titãs');
+    await fireEvent.press(within(l).getByRole('button', { name: 'Menos um em Ataque dos Titãs' }));
+
+    await fireEvent.press(await aba('Em progresso', 1));
+    const rebaixado = await linha('Ataque dos Titãs');
+    expect(within(rebaixado).getByLabelText('Progresso: 9 de 10')).toBeOnTheScreen();
+    expect(api.para('PUT /lista/LST-MID-ANM-2026-20099/progresso')[0].corpo).toEqual({ progresso_atual: 9 });
+  });
+
+  it('o stepper não muda a posição do Item: a ordem é a da API', async () => {
+    servidor([
+      item(fma, { status_consumo: 'assistindo', progresso_atual: 3 }),
+      item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 }),
+    ]);
+
+    await abrir('/lista');
+    const ordem = async () => (await screen.findAllByLabelText(/^Item /)).map((l) => l.props.accessibilityLabel as string);
+    const antes = await ordem();
+    await fireEvent.press(within(await linha('Sousou no Frieren')).getByRole('button', { name: 'Mais um em Sousou no Frieren' }));
+
+    expect(await within(await linha('Sousou no Frieren')).findByLabelText('Progresso: 13 de 28')).toBeOnTheScreen();
+    expect(await ordem()).toEqual(antes);
+  });
+
+  it('editor: escolher Concluído leva o Progresso ao total', async () => {
+    servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Concluído' }));
+
+    expect(screen.getByLabelText('Episódios (de 28)')).toHaveDisplayValue('28');
+    await fireEvent.changeText(screen.getByLabelText('Episódios (de 28)'), '20');
+    expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+  });
+
   it('jogo mostra horas e não tem stepper', async () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 

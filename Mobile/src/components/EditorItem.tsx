@@ -7,6 +7,7 @@ import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
 import { estadoDe, NOMES_ESTADO, rotulosDoTipo } from '../dominio/estadoConsumo';
 import {
+  ajustarFormulario,
   type FormularioItem,
   formularioDoItem,
   nomeDoProgresso,
@@ -95,8 +96,9 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
   const salvar = useSalvarItem();
   const remover = useRemoverItem();
 
+  // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
-    setForm((f) => ({ ...f, [campo]: valor }));
+    setForm((f) => ajustarFormulario(f, { ...f, [campo]: valor }, { tipo, total }));
 
   const enviar = async () => {
     const resultado = validarItem(form, { tipo, total });

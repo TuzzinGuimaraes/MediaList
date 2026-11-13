@@ -1,4 +1,5 @@
 import {
+  ajustarFormulario,
   aplicarProgresso,
   estadosDaLista,
   formularioDoItem,
@@ -76,14 +77,59 @@ describe('aplicarProgresso (o que o backend fará, para o otimista)', () => {
     expect(aplicarProgresso(mng, 95, hoje).status_consumo).toBe('lido');
   });
 
-  it('não sobrescreve data de conclusão existente', () => {
-    const item = { ...base, progresso_atual: 27, status_consumo: 'pausado', data_conclusao: '2025-01-01' };
-    expect(aplicarProgresso(item, 28, hoje).data_conclusao).toBe('2025-01-01');
+  it('reentrar em Concluído com data anterior renova a data e soma +1 na Recontagem', () => {
+    const item = { ...base, progresso_atual: 27, status_consumo: 'pausado', data_conclusao: '2025-01-01', total_rewatches: 1 };
+    expect(aplicarProgresso(item, 28, hoje)).toMatchObject({
+      status_consumo: 'completo',
+      data_conclusao: hoje,
+      total_rewatches: 2,
+    });
   });
 
-  it('só promove, nunca rebaixa: voltar o Progresso de um concluído o mantém Concluído', () => {
-    const item = { ...base, progresso_atual: 28, status_consumo: 'completo', data_conclusao: hoje };
-    expect(aplicarProgresso(item, 27, hoje)).toMatchObject({ progresso_atual: 27, status_consumo: 'completo' });
+  it('primeira conclusão não soma Recontagem', () => {
+    const item = { ...base, progresso_atual: 27, total_rewatches: 0 };
+    expect(aplicarProgresso(item, 28, hoje).total_rewatches).toBe(0);
+  });
+
+  it('baixar do total rebaixa ao Em progresso do Tipo e mantém a data de conclusão', () => {
+    const item = { ...base, progresso_atual: 28, status_consumo: 'completo', data_conclusao: '2025-01-01' };
+    expect(aplicarProgresso(item, 27, hoje)).toMatchObject({
+      progresso_atual: 27,
+      status_consumo: 'assistindo',
+      data_conclusao: '2025-01-01',
+    });
+    const mng = { ...manga, progresso_total: 95, status_consumo: 'lido', data_conclusao: null, progresso_atual: 95 };
+    expect(aplicarProgresso(mng, 61, hoje).status_consumo).toBe('lendo');
+  });
+
+  it('sem total conhecido, o Estado não segue o Progresso', () => {
+    const mng = { ...manga, numero_capitulos: null, progresso_total: null, status_consumo: 'lido', data_conclusao: null, progresso_atual: 50 };
+    expect(aplicarProgresso(mng, 49, hoje).status_consumo).toBe('lido');
+  });
+});
+
+describe('formulário segue a regra de Concluído (ADR 0009)', () => {
+  const midia = { tipo: 'anime' as const, total: 64 };
+  const form = { ...formularioDoItem(null, 'anime'), status_consumo: 'assistindo', progresso: '61' };
+
+  it('escolher Concluído leva o Progresso ao total', () => {
+    expect(ajustarFormulario(form, { ...form, status_consumo: 'completo' }, midia)).toMatchObject({
+      status_consumo: 'completo',
+      progresso: '64',
+    });
+  });
+
+  it('Progresso abaixo do total com Concluído volta a Em progresso; no total, volta a Concluído', () => {
+    const concluido = { ...form, status_consumo: 'completo', progresso: '64' };
+    const rebaixado = ajustarFormulario(concluido, { ...concluido, progresso: '6' }, midia);
+    expect(rebaixado.status_consumo).toBe('assistindo');
+    expect(ajustarFormulario(rebaixado, { ...rebaixado, progresso: '64' }, midia).status_consumo).toBe('completo');
+  });
+
+  it('sem total e jogo ficam como o Usuário escolheu (Platinado intacto)', () => {
+    expect(ajustarFormulario(form, { ...form, status_consumo: 'completo' }, { tipo: 'manga', total: null }).progresso).toBe('61');
+    const jogo = { ...formularioDoItem(null, 'jogo'), status_consumo: 'platinado', progresso: '40' };
+    expect(ajustarFormulario(jogo, { ...jogo, progresso: '3' }, { tipo: 'jogo', total: null }).status_consumo).toBe('platinado');
   });
 });
 
