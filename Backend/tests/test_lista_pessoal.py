@@ -253,14 +253,6 @@ def test_promocao_preenche_a_data_de_conclusao_quando_vazia():
     assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
 
 
-def test_promocao_nao_sobrescreve_data_de_conclusao_existente():
-    modulo, repo = _com_item(data_conclusao='2020-01-01')
-
-    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
-
-    assert repo.itens['LST-1']['data_conclusao'] == '2020-01-01'
-
-
 def test_data_de_conclusao_do_payload_prevalece_sobre_a_promocao():
     modulo, repo = _com_item()
 
@@ -269,13 +261,158 @@ def test_data_de_conclusao_do_payload_prevalece_sobre_a_promocao():
     assert repo.itens['LST-1']['data_conclusao'] == '2026-01-02'
 
 
-def test_reduzir_o_progresso_nao_desfaz_a_conclusao():
-    """O módulo só promove: nunca rebaixa um Item já concluído."""
+# --- Concluído ⇔ Progresso = total (ADR 0009) --------------------------------
+
+
+def test_reduzir_o_progresso_abaixo_do_total_rebaixa_para_em_progresso():
+    """A data de conclusão fica: descreve a passagem mais recente (ADR 0003)."""
+    modulo, repo = _com_item(status_consumo='completo', progresso_atual=24, data_conclusao='2026-01-02')
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 23})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'assistindo'
+    assert repo.itens['LST-1']['data_conclusao'] == '2026-01-02'
+
+
+def test_rebaixar_usa_o_rotulo_do_tipo():
+    modulo, repo = _com_item(id_midia='MID-MANGA', status_consumo='lido', progresso_atual=100)
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 61})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'lendo'
+
+
+def test_editor_reduzindo_o_progresso_de_item_concluido_rebaixa():
+    """O editor reenvia o Estado que já estava: isso não é escolher Concluído."""
     modulo, repo = _com_item(status_consumo='completo', progresso_atual=24)
 
-    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 12})
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'completo', 'progresso_atual': 7})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'assistindo'
+    assert repo.itens['LST-1']['progresso_atual'] == 7
+
+
+def test_escolher_concluido_leva_o_progresso_ao_total():
+    modulo, repo = _com_item(progresso_atual=3)
+
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'completo', 'progresso_atual': 3})
 
     assert repo.itens['LST-1']['status_consumo'] == 'completo'
+    assert repo.itens['LST-1']['progresso_atual'] == 24
+    assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
+
+
+def test_adicionar_ja_concluido_entra_com_o_progresso_no_total():
+    modulo, repo = _modulo()
+
+    resultado = modulo.adicionar(DONO, {'id_midia': 'MID-MANGA', 'status_consumo': 'lido'})
+
+    item = repo.obter_item_por_id(resultado.id_lista)
+    assert item['status_consumo'] == 'lido'
+    assert item['progresso_atual'] == 100
+
+
+def test_reentrar_em_concluido_soma_recontagem_e_renova_a_data():
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao='2020-01-01', total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'completo'
+    assert repo.itens['LST-1']['total_rewatches'] == 2
+    assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
+
+
+def test_reentrar_em_concluido_no_mesmo_dia_nao_soma_recontagem():
+    """− e + no stepper no mesmo dia desfazem um toque errado, não são nova passagem."""
+    hoje = date.today().isoformat()
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao=hoje, total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'completo'
+    assert repo.itens['LST-1']['total_rewatches'] == 1
+    assert repo.itens['LST-1']['data_conclusao'] == hoje
+
+
+def test_reentrar_em_concluido_respeita_a_data_do_payload():
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao='2020-01-01', total_rewatches=0)
+
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'completo', 'data_conclusao': '2026-03-04'})
+
+    assert repo.itens['LST-1']['total_rewatches'] == 1
+    assert repo.itens['LST-1']['data_conclusao'] == '2026-03-04'
+
+
+def test_editor_reenviando_data_e_recontagem_guardadas_nao_conta_como_decisao():
+    """O editor manda o formulário inteiro: valor igual ao guardado é silêncio, não escolha."""
+    modulo, repo = _com_item(progresso_atual=0, data_conclusao='2020-01-01', total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {
+        'status_consumo': 'completo',
+        'progresso_atual': 0,
+        'data_conclusao': '2020-01-01',
+        'total_rewatches': 1,
+    })
+
+    assert repo.itens['LST-1']['progresso_atual'] == 24
+    assert repo.itens['LST-1']['total_rewatches'] == 2
+    assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
+
+
+def test_recontagem_mudada_no_payload_prevalece_ao_reentrar():
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao='2020-01-01', total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'completo', 'total_rewatches': 5})
+
+    assert repo.itens['LST-1']['total_rewatches'] == 5
+
+
+def test_primeira_conclusao_nao_soma_recontagem():
+    modulo, repo = _com_item(progresso_atual=23, total_rewatches=0)
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
+
+    assert repo.itens['LST-1'].get('total_rewatches', 0) == 0
+
+
+def test_item_que_continua_concluido_nao_soma_recontagem():
+    modulo, repo = _com_item(status_consumo='completo', progresso_atual=24,
+                             data_conclusao='2020-01-01', total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'completo', 'progresso_atual': 24, 'favorito': True})
+
+    assert repo.itens['LST-1']['total_rewatches'] == 1
+    assert repo.itens['LST-1']['data_conclusao'] == '2020-01-01'
+
+
+def test_sem_total_conhecido_concluido_e_progresso_nao_se_mexem():
+    midias = _catalogo()
+    midias['MID-MANGA'] = {'tipo': 'manga', 'progresso_total_padrao': None}
+    item = _item(id_midia='MID-MANGA', status_consumo='lido', progresso_atual=50)
+    lista = FakeListaRepository(midias=midias, itens={'LST-1': item})
+    modulo = ListaPessoal(lista, FakeMidiaRepository(midias))
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 40})
+    assert lista.itens['LST-1']['status_consumo'] == 'lido'
+
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'lendo'})
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'lido'})
+    assert lista.itens['LST-1']['progresso_atual'] == 40
+
+
+def test_jogo_platinado_nao_e_afetado_pelo_progresso():
+    midias = _catalogo()
+    midias['MID-JOGO'] = {'tipo': 'jogo', 'progresso_total_padrao': 40}
+    item = _item(id_midia='MID-JOGO', status_consumo='platinado', progresso_atual=40)
+    lista = FakeListaRepository(midias=midias, itens={'LST-1': item})
+    modulo = ListaPessoal(lista, FakeMidiaRepository(midias))
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 10})
+    modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'zerado'})
+
+    assert lista.itens['LST-1']['status_consumo'] == 'zerado'
+    assert lista.itens['LST-1']['progresso_atual'] == 10
+    assert lista.itens['LST-1'].get('total_rewatches') is None
 
 
 def test_promocao_nao_mexe_em_item_ja_concluido():

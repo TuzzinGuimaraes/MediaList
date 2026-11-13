@@ -153,7 +153,10 @@ então um Item de jogo tem Estado de consumo mas não fração completada. Um It
 aceita o número de horas jogadas, mas **horas não medem Progresso**: nenhuma quantidade
 delas leva o Item a Concluído.
 
-O Progresso nunca excede o total da Mídia. Atingir o total leva o Item a **Concluído**.
+O Progresso nunca excede o total da Mídia. Quando o total é conhecido, **Concluído ⇔
+Progresso = total** (ADR-0009): atingir o total leva o Item a **Concluído**, baixar dele
+devolve o Item a **Em progresso**, e escolher Concluído leva o Progresso ao total. Sem total
+conhecido, o Estado de consumo não segue o Progresso.
 
 ## Recontagem
 
@@ -163,6 +166,11 @@ reassistir um anime, reler um mangá, rejogar um jogo.
 **O sistema conta recontagens, não guarda o histórico delas.** Um Item de lista tem um único
 par de datas de início e conclusão, sobrescrito a cada nova passagem. Consequência
 deliberada: as datas de um Item recontado descrevem a passagem mais recente, não a primeira.
+
+Voltar a **Concluído** um Item que já tinha data de conclusão é uma nova passagem: soma uma
+Recontagem e a data de conclusão passa a ser a de hoje, salvo se o Usuário informar outra
+(ADR-0009). Sair de Concluído não apaga a data. Voltar a Concluído no mesmo dia da conclusão
+anterior não soma Recontagem: é desfazer um toque errado, não uma nova passagem.
 
 ---
 

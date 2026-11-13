@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { type Requisicao, type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
@@ -75,6 +76,9 @@ const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${
 const linha = (titulo: string) => screen.findByLabelText(`Item ${titulo}`);
 
 describe('aba Lista', () => {
+  // Desfaz o Platform.OS e os espiões do teste de teclado do Android.
+  afterEach(() => jest.restoreAllMocks());
+
   it('abas por Estado de consumo com contador, filtradas pelo Recorte; Platinado também conta em Concluído', async () => {
     servidor([
       item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 }),
@@ -191,6 +195,50 @@ describe('aba Lista', () => {
     expect(api.para('PUT /lista/LST-MID-ANM-2026-20053/progresso')).toHaveLength(1);
   });
 
+  it('− num Concluído no total o leva a Em progresso na hora, antes da resposta (ADR 0009)', async () => {
+    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Ataque dos Titãs', numero_episodios: 10 });
+    const { api } = servidor([item(aot, { status_consumo: 'completo', progresso_atual: 10, data_conclusao: '2026-01-02' })], {
+      'PUT /lista/LST-MID-ANM-2026-20099/progresso': () => new Promise<Resposta>(() => {}),
+    });
+
+    await abrir('/lista');
+    await fireEvent.press(await aba('Concluído', 1));
+    const l = await linha('Ataque dos Titãs');
+    await fireEvent.press(within(l).getByRole('button', { name: 'Menos um em Ataque dos Titãs' }));
+
+    await fireEvent.press(await aba('Em progresso', 1));
+    const rebaixado = await linha('Ataque dos Titãs');
+    expect(within(rebaixado).getByLabelText('Progresso: 9 de 10')).toBeOnTheScreen();
+    expect(api.para('PUT /lista/LST-MID-ANM-2026-20099/progresso')[0].corpo).toEqual({ progresso_atual: 9 });
+  });
+
+  it('o stepper não muda a posição do Item: a ordem é a da API', async () => {
+    servidor([
+      item(fma, { status_consumo: 'assistindo', progresso_atual: 3 }),
+      item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 }),
+    ]);
+
+    await abrir('/lista');
+    const ordem = async () => (await screen.findAllByLabelText(/^Item /)).map((l) => l.props.accessibilityLabel as string);
+    const antes = await ordem();
+    await fireEvent.press(within(await linha('Sousou no Frieren')).getByRole('button', { name: 'Mais um em Sousou no Frieren' }));
+
+    expect(await within(await linha('Sousou no Frieren')).findByLabelText('Progresso: 13 de 28')).toBeOnTheScreen();
+    expect(await ordem()).toEqual(antes);
+  });
+
+  it('editor: escolher Concluído leva o Progresso ao total', async () => {
+    servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Concluído' }));
+
+    expect(screen.getByLabelText('Episódios (de 28)')).toHaveDisplayValue('28');
+    await fireEvent.changeText(screen.getByLabelText('Episódios (de 28)'), '20');
+    expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+  });
+
   it('jogo mostra horas e não tem stepper', async () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 
@@ -244,6 +292,30 @@ describe('aba Lista', () => {
       comentario: 'Panteão feito',
     });
     expect(screen.queryByLabelText('Editor do Item de lista')).not.toBeOnTheScreen();
+  });
+
+  it('Android: o editor sobe com o teclado e rola até o campo em foco, com o rodapé visível', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const rolar = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    // O campo em foco, como o RN o mede dentro do conteúdo rolável do sheet.
+    jest.spyOn(TextInput.State, 'currentlyFocusedInput').mockReturnValue({
+      measureLayout: (_relativo: unknown, medido: (x: number, y: number, w: number, h: number) => void) => medido(0, 420, 100, 40),
+    } as never);
+    servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    const sheet = screen.getByLabelText('Editor do Item de lista');
+    expect(sheet).toHaveStyle({ marginBottom: 0 });
+
+    await act(async () => DeviceEventEmitter.emit('keyboardDidShow', { endCoordinates: { height: 300, screenY: 500 } }));
+
+    expect(sheet).toHaveStyle({ marginBottom: 300 });
+    expect(rolar).toHaveBeenLastCalledWith({ y: 408, animated: true });
+    expect(within(sheet).getByRole('button', { name: 'Salvar' })).toBeOnTheScreen();
+
+    await act(async () => DeviceEventEmitter.emit('keyboardDidHide', { endCoordinates: { height: 0, screenY: 800 } }));
+    expect(sheet).toHaveStyle({ marginBottom: 0 });
   });
 
   it('editor valida antes de enviar', async () => {

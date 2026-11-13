@@ -1,6 +1,6 @@
 // Regras do Item de lista (CONTEXT.md: Item de lista, Progresso, Recontagem, Nota pessoal).
 // Cópia do que Backend/dominio/lista_pessoal.py decide: o backend segue autoritativo
-// (ADR 0002, 0004); aqui servem para o otimista do stepper e a validação do editor.
+// (ADR 0002, 0004, 0009); aqui servem para o otimista do stepper e o editor.
 
 import { formatarData } from './datas';
 import {
@@ -43,27 +43,63 @@ export function passoDeProgresso(
   return novo;
 }
 
-function eTerminal(rotulo: string, tipo: TipoMidia): boolean {
-  const estado = estadoDe(rotulo, tipo);
-  return estado === 'concluido' || estado === 'platinado';
+function eConcluido(rotulo: string | null | undefined, tipo: TipoMidia): boolean {
+  return rotulo != null && estadoDe(rotulo, tipo) === 'concluido';
 }
 
 /**
- * O Item como o backend o deixará após gravar `progresso`: atingir o total leva a
- * Concluído (com a data de hoje, se ainda não há), e um Item terminal não é rebaixado.
+ * Concluído ⇔ Progresso = total (ADR 0009); cópia de `_concluido_segue_o_progresso`.
+ * Escolher Concluído leva o Progresso ao total; atingir o total leva a Concluído; abaixo
+ * dele, um Concluído volta ao Em progresso do Tipo. Sem total (ou jogo), nada muda.
+ * `entrou` diz se o Item passou a Concluído vindo de outro Estado.
+ */
+function concluidoSegueOProgresso(
+  tipo: TipoMidia,
+  total: number | null,
+  antes: string,
+  pedido: { status_consumo: string; progresso_atual: number },
+): { status_consumo: string; progresso_atual: number; entrou: boolean } {
+  const igual = { ...pedido, entrou: false };
+  if (!temProgresso(tipo) || total === null || total <= 0) return igual;
+  const jaConcluido = eConcluido(antes, tipo);
+  const concluido = eConcluido(pedido.status_consumo, tipo);
+  if (concluido && !jaConcluido) return { ...pedido, progresso_atual: total, entrou: true };
+  if (pedido.progresso_atual >= total && !concluido) {
+    return { ...pedido, status_consumo: rotuloPara('concluido', tipo) ?? pedido.status_consumo, entrou: !jaConcluido };
+  }
+  if (pedido.progresso_atual < total && concluido) {
+    return { ...pedido, status_consumo: rotuloPara('em_progresso', tipo) ?? pedido.status_consumo, entrou: false };
+  }
+  return igual;
+}
+
+/**
+ * O Item como o backend o deixará após gravar `progresso` (ADR 0009): no total vira
+ * Concluído; entrar em Concluído grava a data de hoje e, se já havia conclusão, soma +1 na
+ * Recontagem; abaixo do total um Concluído volta a Em progresso, com a data mantida.
  */
 export function aplicarProgresso<
-  T extends ComTotal & { progresso_atual: number | null; status_consumo: string; data_conclusao: string | null },
+  T extends ComTotal & {
+    progresso_atual: number | null;
+    status_consumo: string;
+    data_conclusao: string | null;
+    total_rewatches?: number | null;
+  },
 >(item: T, progresso: number, hoje: string): T {
-  const novo = { ...item, progresso_atual: progresso };
-  const total = totalDoItem(item);
-  if (total === null || total <= 0 || progresso < total || eTerminal(item.status_consumo, item.tipo)) {
-    return novo;
-  }
+  const r = concluidoSegueOProgresso(item.tipo, totalDoItem(item), item.status_consumo, {
+    status_consumo: item.status_consumo,
+    progresso_atual: progresso,
+  });
+  const novo = { ...item, progresso_atual: r.progresso_atual, status_consumo: r.status_consumo };
+  if (!r.entrou) return novo;
   return {
     ...novo,
-    status_consumo: rotuloPara('concluido', item.tipo) ?? item.status_consumo,
-    data_conclusao: item.data_conclusao || hoje,
+    data_conclusao: hoje,
+    // Concluir de novo no mesmo dia da conclusão anterior desfaz um toque errado: não conta.
+    total_rewatches:
+      item.data_conclusao && item.data_conclusao.slice(0, 10) !== hoje
+        ? (item.total_rewatches ?? 0) + 1
+        : item.total_rewatches,
   };
 }
 
@@ -184,6 +220,29 @@ function dataIso(texto: string): string | null | undefined {
 }
 
 export type ResultadoItem = { ok: true; dados: DadosItem } | { ok: false; erro: string };
+
+/**
+ * O formulário depois de uma mudança, com Estado e Progresso acoplados (ADR 0009): a tela
+ * mostra o que o backend gravará. Data de conclusão e Recontagem ficam com o backend, que
+ * as decide contra o Item guardado.
+ */
+export function ajustarFormulario(
+  antes: FormularioItem,
+  depois: FormularioItem,
+  midia: { tipo: TipoMidia; total: number | null },
+): FormularioItem {
+  const texto = depois.progresso.trim() || '0';
+  if (!INTEIRO.test(texto)) return depois;
+  const r = concluidoSegueOProgresso(midia.tipo, midia.total, antes.status_consumo, {
+    status_consumo: depois.status_consumo,
+    progresso_atual: Number(texto),
+  });
+  return {
+    ...depois,
+    status_consumo: r.status_consumo,
+    progresso: r.progresso_atual === Number(texto) ? depois.progresso : String(r.progresso_atual),
+  };
+}
 
 export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: number | null }): ResultadoItem {
   const falha = (erro: string): ResultadoItem => ({ ok: false, erro });

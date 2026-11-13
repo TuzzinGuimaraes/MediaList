@@ -135,3 +135,24 @@ def test_put_progresso_exige_o_campo_progresso(client, auth_headers, modulo):
     assert response.status_code == 400
     assert response.get_json()['erro'] == 'Progresso é obrigatório'
     assert falso.chamadas == []
+
+
+
+def test_put_progresso_passa_pelo_modulo_e_rebaixa_o_concluido(client, auth_headers, monkeypatch):
+    """O stepper usa esta rota: baixar do total tira o Item de Concluído (ADR 0009)."""
+    from dominio.lista_pessoal import ListaPessoal
+
+    from .helpers import FakeListaRepository, FakeMidiaRepository
+
+    midias = {'MID-1': {'tipo': 'anime', 'progresso_total_padrao': 10}}
+    lista = FakeListaRepository(midias=midias, itens={'LST-1': {
+        'id_lista': 'LST-1', 'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1',
+        'status_consumo': 'completo', 'progresso_atual': 10, 'data_conclusao': '2026-01-02',
+    }})
+    monkeypatch.setattr(lista_routes, 'lista_pessoal', ListaPessoal(lista, FakeMidiaRepository(midias)))
+
+    response = client.put('/api/lista/LST-1/progresso', headers=auth_headers, json={'progresso_atual': 9})
+
+    assert response.status_code == 200
+    assert lista.itens['LST-1']['status_consumo'] == 'assistindo'
+    assert lista.itens['LST-1']['progresso_atual'] == 9
