@@ -180,7 +180,8 @@ describe('Avaliações no detalhe da Mídia', () => {
 
   it('apagar pede confirmação, envia DELETE e volta a oferecer escrever', async () => {
     let avaliacoes = [minha()];
-    let midia = anime({ nota_media: 7, total_avaliacoes: 1 });
+    // Sem Avaliações a Nota média e o Total vêm null (calculados na leitura).
+    let midia: Record<string, unknown> = anime({ nota_media: 7, total_avaliacoes: 1 });
     const api = simularFetch({
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
