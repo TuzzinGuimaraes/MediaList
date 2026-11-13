@@ -1,3 +1,5 @@
+import pytest
+
 import database
 from routes import midias as midias_routes
 
@@ -78,6 +80,26 @@ def test_put_midia_atualiza_campos_validos(client, admin_headers, monkeypatch):
 
     assert response.status_code == 200
     assert atualizados == [('MID-1', {'titulo_original': 'Novo titulo', 'numero_episodios': 24})]
+
+
+@pytest.mark.parametrize('tipo', ['anime', 'manga', 'jogo'])
+def test_put_midia_nao_grava_notas(client, admin_headers, monkeypatch, tipo):
+    """Nota média é calculada das Avaliações; Nota da fonte só a Importação grava."""
+    monkeypatch.setattr(midias_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id, 'tipo': tipo})
+    atualizados = []
+    monkeypatch.setattr(
+        midias_routes.midia_repository,
+        'atualizar_midia_base',
+        lambda id_midia, payload: atualizados.append(payload) or True,
+    )
+    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+
+    response = client.put('/api/midias/MID-1', headers=admin_headers, json={
+        'titulo_original': 'Novo titulo', 'nota_media': 9.9, 'nota_fonte': 1, 'total_avaliacoes': 3,
+    })
+
+    assert response.status_code == 200
+    assert atualizados == [{'titulo_original': 'Novo titulo'}]
 
 
 def test_put_midia_rejeita_payload_invalido(client, admin_headers, monkeypatch):

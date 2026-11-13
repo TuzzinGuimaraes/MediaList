@@ -21,6 +21,8 @@ class BaseSchema:
     field_types: dict[str, type | tuple[type, ...]] = {}
     allowed_values: dict[str, set[Any]] = {}
     cast_fields: dict[str, Any] = {}
+    #: Campos que o cliente pode mandar de volta, mas que a API nunca grava.
+    ignored_fields: frozenset[str] = frozenset()
 
     def load(self, data: dict[str, Any] | None, partial: bool = False) -> dict[str, Any]:
         if not isinstance(data, dict):
@@ -34,6 +36,9 @@ class BaseSchema:
                 errors[field] = 'Campo obrigatório'
 
         for field, value in data.items():
+            if field in self.ignored_fields:
+                continue
+
             if value == '' and field not in self.required_fields:
                 cleaned[field] = None
                 continue
@@ -74,9 +79,9 @@ class BaseMediaSchema(BaseSchema):
         'data_lancamento': str,
         'poster_url': str,
         'banner_url': str,
-        'nota_media': (int, float),
         'generos': list,
     }
-    cast_fields = {
-        'nota_media': float,
-    }
+    cast_fields: dict[str, Any] = {}
+    #: A Nota média é calculada das Avaliações e a Nota da fonte é gravada só
+    #: pela Importação: nenhuma das duas é gravável pela API (ticket 13).
+    ignored_fields = frozenset({'nota_media', 'total_avaliacoes', 'nota_fonte', 'origem_nota'})
