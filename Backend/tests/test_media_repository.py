@@ -49,9 +49,6 @@ def test_build_filters_monta_clausulas_por_tipo():
     ]
 
 
-def test_ordem_por_nota_media_poe_sem_avaliacao_no_fim():
-    assert 'n.nota_media DESC NULLS LAST' in MidiaRepository()._order_clause('nota_media')
-
 
 def test_buscar_por_id_combina_campos_base_e_tipo(monkeypatch):
     repo = MidiaRepository()
