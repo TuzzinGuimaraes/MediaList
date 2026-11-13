@@ -170,7 +170,7 @@ O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser popu
 
 ## Desenvolvimento local
 
-Se preferir rodar frontend e backend no host, mantendo apenas os bancos no Docker:
+Se preferir rodar frontend e backend no host, mantendo só o PostgreSQL no Docker:
 
 ### 1. Instale as dependências locais
 
@@ -201,7 +201,7 @@ make frontend-dev
 
 Nesse modo:
 
-- o backend local usa `localhost:5433` e `localhost:27017`
+- o backend local usa o PostgreSQL em `localhost:5433`
 - o frontend local usa `http://localhost:5000/api` no modo desenvolvimento
 
 ## Comandos principais
