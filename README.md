@@ -6,7 +6,7 @@ Sistema full stack para catálogo, listas pessoais, avaliações e notícias de 
 - mangás
 - jogos
 
-O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, PostgreSQL e MongoDB orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
+O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend e PostgreSQL orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
 
 ## Visão geral
 
@@ -22,7 +22,7 @@ Além disso, o sistema oferece:
 - controle de permissões por grupos
 - lista pessoal por usuário
 - avaliações e nota média agregada
-- notificações e notícias com MongoDB
+- notícias e notificações de Atualização de mídia
 - importação automática de catálogos externos
 - alternância de sessão entre `animanga` e `jogos`
 
@@ -36,7 +36,6 @@ Além disso, o sistema oferece:
 - psycopg 3 + `psycopg_pool` (PostgreSQL, módulo `Backend/banco.py`)
 - `mysql-connector-python` (só a Importação, até o ticket 23)
 - `flask-jwt-extended`
-- PyMongo
 
 ### Frontend
 
@@ -52,9 +51,7 @@ Além disso, o sistema oferece:
 
 ### Banco e serviços
 
-- PostgreSQL 18, com migrações versionadas (Alembic)
-- MongoDB
-- mongo-express opcional via profile de desenvolvimento
+- PostgreSQL 18, com migrações versionadas (Alembic): catálogo, Lista pessoal, notícias, notificações e preferências
 - Docker Compose na raiz para toda a stack
 
 ## Estrutura do projeto
@@ -127,22 +124,11 @@ Isso sobe:
 - `frontend` em `http://localhost:3005`
 - `backend` em `http://localhost:5000`
 - `postgres` em `localhost:5433` (`POSTGRES_PORT`)
-- `mongodb` em `localhost:27017`
 
 Antes do backend, o serviço one-shot `migrate` roda `alembic upgrade head` com o usuário dono do banco
 (migrações em [Backend/migrations](Backend/migrations)). Elas criam a estrutura e os dados estruturais minimos do sistema, sem catalogo pre-populado de midias.
 
-### 3. Suba ferramentas auxiliares de desenvolvimento, se quiser
-
-```bash
-make services-up-dev
-```
-
-Esse comando habilita também:
-
-- `mongo-express` em `http://localhost:8081`
-
-### 4. Rebuild de imagens, quando necessário
+### 3. Rebuild de imagens, quando necessário
 
 ```bash
 make compose-build
@@ -165,7 +151,6 @@ O frontend é buildado em [Frontend/Dockerfile](Frontend/Dockerfile) e servido p
 O backend é empacotado em [Backend/Dockerfile](Backend/Dockerfile) e executado com Gunicorn, como usuário sem root (`app`, UID 1000). No Compose, ele conversa com:
 
 - PostgreSQL em `postgres:5432`
-- MongoDB em `mongodb:27017`
 
 ### Banco de dados
 
@@ -192,10 +177,10 @@ Se preferir rodar frontend e backend no host, mantendo apenas os bancos no Docke
 make install
 ```
 
-### 2. Suba PostgreSQL e MongoDB
+### 2. Suba o PostgreSQL
 
 ```bash
-docker compose up -d postgres mongodb
+docker compose up -d postgres
 make db-migrate
 ```
 
@@ -224,8 +209,7 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 
 | Comando | O que faz |
 |---|---|
-| `make services-up` | Sobe frontend, backend, PostgreSQL e MongoDB |
-| `make services-up-dev` | Sobe o stack completo e habilita `mongo-express` |
+| `make services-up` | Sobe frontend, backend e PostgreSQL |
 | `make compose-build` | Rebuilda as imagens Docker de backend e frontend |
 | `make services-down` | Derruba os containers do stack |
 | `make services-logs` | Mostra logs do Docker Compose |
@@ -235,9 +219,8 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make db-dump` | Gera um dump (`pg_dump -Fc`) em `./dumps` |
 | `make db-restore DUMP_FILE=...` | Restaura um dump com `pg_restore` |
 | `make smoke-postgres` | Executa o smoke test de PostgreSQL no container backend |
-| `make smoke-mongo` | Executa o smoke test de MongoDB no container backend |
 | `make smoke-permissions` | Executa o smoke test de permissões no container backend |
-| `make smoke` | Executa os três smoke tests no container backend |
+| `make smoke` | Executa os dois smoke tests no container backend |
 | `make import-animes` | Importa animes no container backend |
 | `make import-mangas` | Importa mangás no container backend |
 | `make import-jogos` | Importa jogos no container backend |
