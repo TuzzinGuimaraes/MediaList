@@ -47,6 +47,9 @@ _SEGREDOS_CONHECIDOS = {
     'JWT_SECRET_KEY': {_JWT_SECRET_DEV, 'troque-esta-chave-em-producao'},
     'DB_PASSWORD': {_DB_PASSWORD_DEV},
 }
+# Senha do dono: só conta quando o dono é usado (DB_OWNER_USER definido, como
+# no serviço migrate). O backend não recebe DB_OWNER_* e não precisa dela.
+_DB_OWNER_PASSWORD_DEV = 'medialist-owner-dev'
 
 
 def _env(nome, default):
@@ -73,12 +76,19 @@ def database_url(*, dono: bool = False) -> str:
     """URL do PostgreSQL (postgresql://user:pass@host:port/name).
 
     Por padrão usa o usuário da aplicação (DB_USER/DB_PASSWORD, só DML). Com
-    `dono=True`, para as migrações, usa DB_OWNER_USER/DB_OWNER_PASSWORD quando
-    definidos. Usuário e senha vão escapados: '@', ':' e '/' não quebram a URL.
+    `dono=True`, para as migrações, usa DB_OWNER_USER/DB_OWNER_PASSWORD; sem
+    DB_OWNER_USER levanta RuntimeError em vez de migrar com o usuário da
+    aplicação, que não tem DDL. Usuário e senha vão escapados: '@', ':' e '/'
+    não quebram a URL.
     """
     user = _env('DB_USER', 'media_app_user')
     password = _env('DB_PASSWORD', _DB_PASSWORD_DEV)
-    if dono and os.getenv('DB_OWNER_USER'):
+    if dono:
+        if not os.getenv('DB_OWNER_USER'):
+            raise RuntimeError(
+                'DB_OWNER_USER ausente: as migrações rodam com o dono do banco, '
+                'não com o usuário da aplicação (DB_USER). Defina DB_OWNER_USER e DB_OWNER_PASSWORD.'
+            )
         user = os.environ['DB_OWNER_USER']
         password = os.getenv('DB_OWNER_PASSWORD', '')
     host = _env('DB_HOST', 'localhost')
@@ -104,6 +114,12 @@ def _problemas_de_producao():
             problemas.append(f'{nome} ausente')
         elif valor in conhecidos:
             problemas.append(f'{nome} igual a um default conhecido')
+    if os.getenv('DB_OWNER_USER'):
+        senha_dono = os.getenv('DB_OWNER_PASSWORD')
+        if not senha_dono:
+            problemas.append('DB_OWNER_PASSWORD ausente')
+        elif senha_dono == _DB_OWNER_PASSWORD_DEV:
+            problemas.append('DB_OWNER_PASSWORD igual a um default conhecido')
     return problemas
 
 
