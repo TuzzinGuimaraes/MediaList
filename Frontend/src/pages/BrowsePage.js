@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { useApi } from '../contexts/ApiContext';
@@ -25,6 +25,9 @@ const FILTER_KEYS_BY_TYPE = {
     jogo: ['status', 'plataforma', 'modo_jogo', 'desenvolvedor'],
 };
 
+// A API limita por_pagina a 50; uma página com menos itens é a última.
+const POR_PAGINA = 48;
+
 const BrowsePage = () => {
     const { apiCall } = useApi();
     const { sessaoConfig } = useSession();
@@ -35,6 +38,12 @@ const BrowsePage = () => {
     const [loading, setLoading] = useState(true);
     const [generos, setGeneros] = useState([]);
     const [erro, setErro] = useState('');
+    const [pagina, setPagina] = useState(1);
+    const [temMais, setTemMais] = useState(false);
+    const [carregandoMais, setCarregandoMais] = useState(false);
+    const [erroMais, setErroMais] = useState('');
+    // Descarta respostas de páginas pedidas antes da última troca de filtro.
+    const geracao = useRef(0);
 
     const tiposDisponiveis = sessaoConfig.tipos;
     const tipoParam = searchParams.get('tipo');
@@ -69,36 +78,68 @@ const BrowsePage = () => {
         setSearchParams(params);
     };
 
+    const montarQuery = useCallback((numeroPagina) => {
+        const query = new URLSearchParams({ tipo, pagina: String(numeroPagina), por_pagina: String(POR_PAGINA), ordem });
+        if (busca && busca.length >= 2) query.set('busca', busca);
+        if (genero) query.set('genero', genero);
+        if (status) query.set('status', status);
+        if (demografia) query.set('demografia', demografia);
+        if (autor) query.set('autor', autor);
+        if (estudio) query.set('estudio', estudio);
+        if (plataforma) query.set('plataforma', plataforma);
+        if (modoJogo) query.set('modo_jogo', modoJogo);
+        if (desenvolvedor) query.set('desenvolvedor', desenvolvedor);
+        return query.toString();
+    }, [tipo, ordem, busca, genero, status, demografia, autor, estudio, plataforma, modoJogo, desenvolvedor]);
+
     const carregarDados = useCallback(async () => {
+        const atual = ++geracao.current;
         setLoading(true);
         setErro('');
+        setErroMais('');
+        setCarregandoMais(false);
+        setPagina(1);
+        setTemMais(false);
         try {
-            const query = new URLSearchParams({ tipo, por_pagina: '200', ordem });
-            if (busca && busca.length >= 2) query.set('busca', busca);
-            if (genero) query.set('genero', genero);
-            if (status) query.set('status', status);
-            if (demografia) query.set('demografia', demografia);
-            if (autor) query.set('autor', autor);
-            if (estudio) query.set('estudio', estudio);
-            if (plataforma) query.set('plataforma', plataforma);
-            if (modoJogo) query.set('modo_jogo', modoJogo);
-            if (desenvolvedor) query.set('desenvolvedor', desenvolvedor);
-
             const [midiasData, generosData] = await Promise.all([
-                apiCall(`/midias?${query.toString()}`),
+                apiCall(`/midias?${montarQuery(1)}`),
                 apiCall(`/generos?tipo=${tipo}`).catch(() => ({ generos: [] })),
             ]);
+            if (atual !== geracao.current) return;
 
-            setMidias(midiasData.midias || []);
+            const recebidas = midiasData.midias || [];
+            setMidias(recebidas);
+            setTemMais(recebidas.length >= POR_PAGINA);
             setGeneros(generosData.generos || []);
         } catch (error) {
+            if (atual !== geracao.current) return;
             console.error('Erro ao carregar dados:', error);
             setMidias([]);
             setErro(error.message || 'Erro ao carregar mídias.');
         } finally {
-            setLoading(false);
+            if (atual === geracao.current) setLoading(false);
         }
-    }, [apiCall, tipo, ordem, busca, genero, status, demografia, autor, estudio, plataforma, modoJogo, desenvolvedor]);
+    }, [apiCall, tipo, montarQuery]);
+
+    const carregarMais = async () => {
+        const atual = geracao.current;
+        const proxima = pagina + 1;
+        setCarregandoMais(true);
+        setErroMais('');
+        try {
+            const midiasData = await apiCall(`/midias?${montarQuery(proxima)}`);
+            if (atual !== geracao.current) return;
+            const recebidas = midiasData.midias || [];
+            setMidias(anteriores => [...anteriores, ...recebidas]);
+            setPagina(proxima);
+            setTemMais(recebidas.length >= POR_PAGINA);
+        } catch (error) {
+            if (atual !== geracao.current) return;
+            setErroMais(error.message || 'Erro ao carregar mais mídias.');
+        } finally {
+            if (atual === geracao.current) setCarregandoMais(false);
+        }
+    };
 
     useEffect(() => {
         const timer = setTimeout(() => carregarDados(), 300);
@@ -258,6 +299,20 @@ const BrowsePage = () => {
                             onClick={() => navigate(`/media/${midia.id_midia}`)}
                         />
                     ))}
+                </div>
+            )}
+
+            {!loading && !erro && (temMais || erroMais) && (
+                <div className="flex flex-col items-center gap-2 py-4">
+                    {erroMais && <p role="alert" className="text-sm text-accent-red">{erroMais}</p>}
+                    <button
+                        type="button"
+                        onClick={carregarMais}
+                        disabled={carregandoMais}
+                        className="px-4 py-2 text-sm font-semibold rounded border border-dark-border text-text-primary hover:border-accent-blue hover:text-accent-blue transition-colors disabled:opacity-50"
+                    >
+                        {carregandoMais ? 'Carregando...' : erroMais ? 'Tentar de novo' : 'Carregar mais'}
+                    </button>
                 </div>
             )}
         </div>

@@ -69,7 +69,7 @@ describe('BrowsePage', () => {
         await flushBrowseEffects();
 
         await screen.findByText('Anime X');
-        expect(useApi().apiCall).toHaveBeenCalledWith('/midias?tipo=anime&por_pagina=200&ordem=nota_media');
+        expect(useApi().apiCall).toHaveBeenCalledWith('/midias?tipo=anime&pagina=1&por_pagina=48&ordem=nota_media');
     });
 
     test('aplica filtros de anime e atualiza query', async () => {
@@ -126,7 +126,105 @@ describe('BrowsePage', () => {
         await flushBrowseEffects();
 
         await waitFor(() => {
-            expect(useApi().apiCall).toHaveBeenCalledWith('/midias?tipo=manga&por_pagina=200&ordem=nota_media');
+            expect(useApi().apiCall).toHaveBeenCalledWith('/midias?tipo=manga&pagina=1&por_pagina=48&ordem=nota_media');
+        });
+    });
+
+    describe('paginacao', () => {
+        const pagina = (n, quantidade) => Array.from({ length: quantidade }, (_, i) => ({
+            id_midia: `P${n}-${i}`,
+            titulo_portugues: `Pagina ${n} item ${i}`,
+        }));
+
+        function mockPaginas(paginas) {
+            const apiCall = jest.fn().mockImplementation((endpoint) => {
+                if (endpoint.startsWith('/generos')) return Promise.resolve({ generos: [] });
+                const numero = Number(new URLSearchParams(endpoint.split('?')[1]).get('pagina'));
+                const resposta = paginas[numero];
+                return resposta instanceof Error ? Promise.reject(resposta) : Promise.resolve({ midias: resposta || [] });
+            });
+            useApi.mockReturnValue({ apiCall });
+            return apiCall;
+        }
+
+        test('carregar mais pede a segunda pagina e acrescenta os itens', async () => {
+            const apiCall = mockPaginas({ 1: pagina(1, 48), 2: pagina(2, 10) });
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 0');
+
+            fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+            await flushBrowseEffects();
+
+            expect(await screen.findByText('Pagina 2 item 9')).toBeInTheDocument();
+            expect(screen.getByText('Pagina 1 item 0')).toBeInTheDocument();
+            expect(apiCall).toHaveBeenCalledWith('/midias?tipo=anime&pagina=2&por_pagina=48&ordem=nota_media');
+        });
+
+        test('botao some quando a pagina vem com menos de por_pagina itens', async () => {
+            mockPaginas({ 1: pagina(1, 48), 2: pagina(2, 47) });
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 0');
+
+            fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 2 item 46');
+
+            expect(screen.queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+        });
+
+        test('sem botao quando a primeira pagina ja e a ultima', async () => {
+            mockPaginas({ 1: pagina(1, 3) });
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 2');
+
+            expect(screen.queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+        });
+
+        test('trocar filtro reinicia na pagina 1', async () => {
+            const apiCall = mockPaginas({ 1: pagina(1, 48), 2: pagina(2, 48) });
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 0');
+            fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 2 item 0');
+
+            fireEvent.change(screen.getByPlaceholderText('Estúdio'), { target: { value: 'Bones' } });
+            await flushBrowseEffects();
+
+            await waitFor(() => expect(apiCall).toHaveBeenCalledWith(
+                '/midias?tipo=anime&pagina=1&por_pagina=48&ordem=nota_media&estudio=Bones'
+            ));
+            await waitFor(() => expect(screen.queryByText('Pagina 2 item 0')).not.toBeInTheDocument());
+            expect(screen.getByText('Pagina 1 item 0')).toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+            await flushBrowseEffects();
+            expect(apiCall).toHaveBeenLastCalledWith('/midias?tipo=anime&pagina=2&por_pagina=48&ordem=nota_media&estudio=Bones');
+        });
+
+        test('erro na proxima pagina mantem os itens e permite tentar de novo', async () => {
+            const paginas = { 1: pagina(1, 48), 2: new Error('Falhou a página 2.') };
+            mockPaginas(paginas);
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 0');
+
+            fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+            await flushBrowseEffects();
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('Falhou a página 2.');
+            expect(screen.getByText('Pagina 1 item 0')).toBeInTheDocument();
+
+            paginas[2] = pagina(2, 5);
+            fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+            await flushBrowseEffects();
+
+            expect(await screen.findByText('Pagina 2 item 4')).toBeInTheDocument();
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
         });
     });
 });
