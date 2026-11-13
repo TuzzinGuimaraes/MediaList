@@ -1,6 +1,7 @@
 """
 Exports dos repositórios.
 """
+from .acesso_repository import AcessoRepository
 from .midia_repository import (
     AnimeRepository,
     JogoRepository,
@@ -11,6 +12,7 @@ from .midia_repository import (
 from .refresh_token_repository import RefreshTokenRepository
 
 __all__ = [
+    'AcessoRepository',
     'MidiaRepository',
     'AnimeRepository',
     'MangaRepository',

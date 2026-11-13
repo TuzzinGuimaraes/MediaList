@@ -490,4 +490,20 @@ describe('adicionar pelo detalhe', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Mídia já está na lista do usuário');
     expect(screen.getByRole('button', { name: 'Salvar' })).toBeOnTheScreen();
   });
+
+  it('se o Usuário deixou de existir, o 401 e o refresh recusado levam ao login', async () => {
+    const sessaoInvalida = { status: 401, corpo: { erro: 'Sessão inválida: Usuário inexistente ou desativado' } };
+    const { api } = servidor([], {
+      ...detalhe(frieren),
+      'POST /lista/adicionar': sessaoInvalida,
+      'POST /auth/refresh': { status: 401, corpo: { erro: 'Refresh token inválido' } },
+    });
+
+    await abrir(`/midia/${frieren.id_midia}`);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Adicionar à Lista' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+
+    expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
+    expect(api.para('POST /auth/refresh')[0].corpo).toEqual({ refresh_token: 'R1' });
+  });
 });

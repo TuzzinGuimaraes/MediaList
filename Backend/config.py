@@ -101,9 +101,6 @@ ANILIST_API_URL = os.getenv('ANILIST_API_URL', 'https://graphql.anilist.co')
 RAWG_API_KEY = os.getenv('RAWG_API_KEY', '')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 
-# Token Blocklist
-token_blocklist = set()
-
 
 def _problemas_de_producao():
     """Segredos ausentes ou iguais a um default conhecido."""
