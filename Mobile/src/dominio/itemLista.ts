@@ -205,16 +205,10 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
 
 const INTEIRO = /^\d+$/;
 
-/** "dd/mm/aaaa" → "aaaa-mm-dd"; vazio → null; inválido → undefined. */
-function dataIso(texto: string): string | null | undefined {
-  const t = texto.trim();
-  if (!t) return null;
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
-  if (!m) return undefined;
-  const [, dia, mes, ano] = m;
-  const data = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia)));
-  if (data.getUTCDate() !== Number(dia) || data.getUTCMonth() !== Number(mes) - 1) return undefined;
-  return `${ano}-${mes}-${dia}`;
+/** "dd/mm/aaaa" (escrito pelo calendário do editor) → "aaaa-mm-dd"; vazio → null. */
+function dataIso(texto: string): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
 }
 
 export type ResultadoItem = { ok: true; dados: DadosItem } | { ok: false; erro: string };
@@ -303,9 +297,7 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   if (!INTEIRO.test(textoRecontagem)) return falha('A Recontagem é um número inteiro a partir de 0.');
 
   const inicio = dataIso(f.inicio);
-  if (inicio === undefined) return falha('Data de início inválida (dd/mm/aaaa).');
   const conclusao = dataIso(f.conclusao);
-  if (conclusao === undefined) return falha('Data de conclusão inválida (dd/mm/aaaa).');
   if (inicio && conclusao && conclusao < inicio) return falha('A conclusão não pode ser antes do início.');
 
   return {

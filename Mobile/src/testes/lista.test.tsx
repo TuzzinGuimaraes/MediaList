@@ -285,6 +285,44 @@ describe('aba Lista', () => {
     expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')[0].corpo).toMatchObject({ total_rewatches: 2 });
   });
 
+  it('editor: Início e Conclusão pelo calendário, sem data futura, Conclusão nunca antes do Início e Limpar', async () => {
+    const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3, data_conclusao: '2026-01-20' })]);
+    const hoje = new Date();
+    const mesmoDia = (d: Date) => d.toDateString() === hoje.toDateString();
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    expect(screen.queryByDisplayValue('20/01/2026')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('calendario')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Início: sem data' }));
+    const inicio = screen.getByTestId('calendario');
+    expect(mesmoDia(inicio.props.maximumDate)).toBe(true);
+    await act(async () => inicio.props.onChange({ type: 'set' }, new Date(2026, 0, 5)));
+    expect(screen.queryByTestId('calendario')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Início: 05/01/2026' })).toHaveTextContent('05/01/2026');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Conclusão: 20/01/2026' }));
+    const conclusao = screen.getByTestId('calendario');
+    expect(conclusao.props.minimumDate).toEqual(new Date(2026, 0, 5));
+    expect(mesmoDia(conclusao.props.maximumDate)).toBe(true);
+    expect(conclusao.props.value).toEqual(new Date(2026, 0, 20));
+    // Cancelar o diálogo não muda a data.
+    await act(async () => conclusao.props.onChange({ type: 'dismissed' }, undefined));
+    expect(screen.getByRole('button', { name: 'Conclusão: 20/01/2026' })).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Limpar Conclusão' }));
+    expect(screen.getByRole('button', { name: 'Conclusão: sem data' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Limpar Conclusão' })).not.toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')).toHaveLength(1));
+    expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')[0].corpo).toMatchObject({
+      data_inicio: '2026-01-05',
+      data_conclusao: null,
+    });
+  });
+
   it('jogo mostra horas e não tem stepper', async () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 
@@ -320,7 +358,8 @@ describe('aba Lista', () => {
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));
     await fireEvent.changeText(screen.getByLabelText('Nota pessoal'), '9,5');
     await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
-    await fireEvent.changeText(screen.getByLabelText('Início'), '01/10/2026');
+    await fireEvent.press(screen.getByRole('button', { name: 'Início: sem data' }));
+    await act(async () => screen.getByTestId('calendario').props.onChange({ type: 'set' }, new Date(2026, 9, 1)));
     await fireEvent.changeText(screen.getByLabelText('Comentário'), 'Panteão feito');
     await fireEvent.press(screen.getByRole('switch', { name: 'Favorito' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));

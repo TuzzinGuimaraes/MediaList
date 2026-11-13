@@ -292,8 +292,6 @@ describe('formulário do editor', () => {
     [{ nota: '-1' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ nota: 'abc' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ recontagem: '-2' }, 'A Recontagem é um número inteiro a partir de 0.'],
-    [{ inicio: '31/02/2026' }, 'Data de início inválida (dd/mm/aaaa).'],
-    [{ conclusao: '2026-10-01' }, 'Data de conclusão inválida (dd/mm/aaaa).'],
     [{ inicio: '10/10/2026', conclusao: '09/10/2026' }, 'A conclusão não pode ser antes do início.'],
   ])('recusa %o', (mudanca, erro) => {
     expect(validarItem({ ...valido, ...mudanca }, { tipo: 'anime', total: 28 })).toEqual({ ok: false, erro });

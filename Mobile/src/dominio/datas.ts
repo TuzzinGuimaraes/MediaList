@@ -19,3 +19,16 @@ export function formatarData(texto: string | null | undefined): string | null {
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(texto);
   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : null;
 }
+
+/** Data do calendário (dia local do aparelho) → "dd/mm/aaaa". */
+export function textoDaData(data: Date): string {
+  return `${dois(data.getDate())}/${dois(data.getMonth() + 1)}/${data.getFullYear()}`;
+}
+
+/** "dd/mm/aaaa" → Date à meia-noite local, para o calendário; null se vazio ou ilegível. */
+export function dataDoTexto(texto: string): Date | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
+  if (!m) return null;
+  const data = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return textoDaData(data) === texto.trim() ? data : null;
+}
