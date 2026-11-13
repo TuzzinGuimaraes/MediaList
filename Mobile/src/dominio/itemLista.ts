@@ -242,6 +242,42 @@ export function ajustarFormulario(
   };
 }
 
+/**
+ * Estado do editor aberto: o formulário e o Progresso de antes de o Item entrar em Concluído
+ * nesta edição (null se não entrou).
+ */
+export type EdicaoItem = { form: FormularioItem; progressoAntesDoConcluido: string | null };
+
+export function iniciarEdicao(item: ItemDaApi | null, tipo: TipoMidia): EdicaoItem {
+  return { form: formularioDoItem(item, tipo), progressoAntesDoConcluido: null };
+}
+
+/**
+ * Uma mudança no editor (ticket 33). Além do acoplamento de `ajustarFormulario`, sair de
+ * Concluído escolhendo outro Estado não pode deixar o Progresso no total (o que forçaria
+ * Concluído de novo): volta ao Progresso de antes de entrar em Concluído nesta edição, ou a 0
+ * se o Item já abriu concluído (nova passagem; reconcluir soma Recontagem, ADR 0009).
+ */
+export function mudarEdicao(
+  edicao: EdicaoItem,
+  mudanca: Partial<FormularioItem>,
+  midia: { tipo: TipoMidia; total: number | null },
+): EdicaoItem {
+  const antes = edicao.form;
+  const depois = { ...antes, ...mudanca };
+  const estavaConcluido = eConcluido(antes.status_consumo, midia.tipo);
+  const comTotal = temProgresso(midia.tipo) && midia.total !== null && midia.total > 0;
+  if (comTotal && estavaConcluido && mudanca.status_consumo !== undefined && !eConcluido(mudanca.status_consumo, midia.tipo)) {
+    return { form: { ...depois, progresso: edicao.progressoAntesDoConcluido ?? '0' }, progressoAntesDoConcluido: null };
+  }
+  const form = ajustarFormulario(antes, depois, midia);
+  const concluido = eConcluido(form.status_consumo, midia.tipo);
+  let memoria = edicao.progressoAntesDoConcluido;
+  if (!estavaConcluido && concluido) memoria = antes.progresso;
+  else if (!concluido) memoria = null;
+  return { form, progressoAntesDoConcluido: memoria };
+}
+
 export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: number | null }): ResultadoItem {
   const falha = (erro: string): ResultadoItem => ({ ok: false, erro });
 

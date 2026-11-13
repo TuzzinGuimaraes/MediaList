@@ -3,7 +3,9 @@ import {
   aplicarProgresso,
   estadosDaLista,
   formularioDoItem,
+  iniciarEdicao,
   itensDoEstado,
+  mudarEdicao,
   passoDeProgresso,
   rotuloInicial,
   temProgresso,
@@ -112,6 +114,49 @@ describe('aplicarProgresso (o que o backend fará, para o otimista)', () => {
   it('sem total conhecido, o Estado não segue o Progresso', () => {
     const mng = { ...manga, numero_capitulos: null, progresso_total: null, status_consumo: 'lido', data_conclusao: null, progresso_atual: 50 };
     expect(aplicarProgresso(mng, 49, hoje).status_consumo).toBe('lido');
+  });
+});
+
+describe('edição: sair de Concluído com o Progresso no total (ticket 33)', () => {
+  const midia = { tipo: 'anime' as const, total: 28 };
+  const emProgresso = { ...anime, status_consumo: 'assistindo', progresso_atual: 12, nota_usuario: null };
+
+  it('escolher Concluído nesta edição e depois outro Estado devolve o Progresso de antes', () => {
+    let e = iniciarEdicao(emProgresso, 'anime');
+    e = mudarEdicao(e, { status_consumo: 'completo' }, midia);
+    expect(e.form).toMatchObject({ status_consumo: 'completo', progresso: '28' });
+    e = mudarEdicao(e, { status_consumo: 'pausado' }, midia);
+    expect(e.form).toMatchObject({ status_consumo: 'pausado', progresso: '12' });
+  });
+
+  it.each(['assistindo', 'pausado', 'planejado', 'abandonado'])('Item que abriu concluído e recebe %s zera o Progresso', (rotulo) => {
+    const concluido = { ...emProgresso, status_consumo: 'completo', progresso_atual: 28 };
+    const e = mudarEdicao(iniciarEdicao(concluido, 'anime'), { status_consumo: rotulo }, midia);
+    expect(e.form).toMatchObject({ status_consumo: rotulo, progresso: '0' });
+  });
+
+  it('reabrir e reconcluir na mesma edição: sair de novo volta a 0', () => {
+    const concluido = { ...emProgresso, status_consumo: 'completo', progresso_atual: 28 };
+    let e = mudarEdicao(iniciarEdicao(concluido, 'anime'), { status_consumo: 'pausado' }, midia);
+    e = mudarEdicao(e, { status_consumo: 'completo' }, midia);
+    expect(e.form.progresso).toBe('28');
+    e = mudarEdicao(e, { status_consumo: 'abandonado' }, midia);
+    expect(e.form).toMatchObject({ status_consumo: 'abandonado', progresso: '0' });
+  });
+
+  it('mudar outros campos não mexe no Estado nem no Progresso', () => {
+    let e = mudarEdicao(iniciarEdicao(emProgresso, 'anime'), { status_consumo: 'completo' }, midia);
+    e = mudarEdicao(e, { nota: '9' }, midia);
+    expect(e.form).toMatchObject({ status_consumo: 'completo', progresso: '28', nota: '9' });
+  });
+
+  it('jogo e Tipo sem total não mudam', () => {
+    const zerado = { ...jogo, status_consumo: 'zerado', progresso_atual: 40, nota_usuario: null };
+    expect(mudarEdicao(iniciarEdicao(zerado, 'jogo'), { status_consumo: 'jogando' }, { tipo: 'jogo', total: null }).form)
+      .toMatchObject({ status_consumo: 'jogando', progresso: '40' });
+    const lido = { ...manga, status_consumo: 'lido', progresso_atual: 50, nota_usuario: null };
+    expect(mudarEdicao(iniciarEdicao(lido, 'manga'), { status_consumo: 'pausado' }, { tipo: 'manga', total: null }).form)
+      .toMatchObject({ status_consumo: 'pausado', progresso: '50' });
   });
 });
 

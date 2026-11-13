@@ -7,9 +7,10 @@ import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
 import { estadoDe, NOMES_ESTADO, rotulosDoTipo } from '../dominio/estadoConsumo';
 import {
-  ajustarFormulario,
+  type EdicaoItem,
   type FormularioItem,
-  formularioDoItem,
+  iniciarEdicao,
+  mudarEdicao,
   nomeDoProgresso,
   temProgresso,
   totalDoItem,
@@ -90,7 +91,8 @@ function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'hea
 export function EditorItem({ midia, item, aoFechar }: Props) {
   const tipo = midia.tipo;
   const total = totalDoItem(item ?? { ...midia, progresso_total: null });
-  const [form, setForm] = useState<FormularioItem>(() => formularioDoItem(item, tipo));
+  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, tipo));
+  const form = edicao.form;
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
@@ -98,7 +100,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
-    setForm((f) => ajustarFormulario(f, { ...f, [campo]: valor }, { tipo, total }));
+    setEdicao((e) => mudarEdicao(e, { [campo]: valor }, { tipo, total }));
 
   const enviar = async () => {
     const resultado = validarItem(form, { tipo, total });

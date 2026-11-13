@@ -239,6 +239,28 @@ describe('aba Lista', () => {
     expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
   });
 
+  it('editor: sair de Concluído devolve o Progresso de antes; Item que abriu concluído zera', async () => {
+    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Ataque dos Titãs', numero_episodios: 10 });
+    servidor([
+      item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 }),
+      item(aot, { status_consumo: 'completo', progresso_atual: 10 }),
+    ]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Concluído' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Pausado' }));
+    expect(screen.getByRole('radio', { name: 'Pausado' })).toBeChecked();
+    expect(screen.getByLabelText('Episódios (de 28)')).toHaveDisplayValue('3');
+    await fireEvent.press(screen.getByRole('button', { name: 'Fechar' }));
+
+    await fireEvent.press(await aba('Concluído', 1));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Ataque dos Titãs, Anime' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Em progresso' }));
+    expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+    expect(screen.getByLabelText('Episódios (de 10)')).toHaveDisplayValue('0');
+  });
+
   it('jogo mostra horas e não tem stepper', async () => {
     servidor([item(hollow, { status_consumo: 'jogando', progresso_atual: 42 })]);
 
