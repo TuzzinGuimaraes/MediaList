@@ -291,6 +291,12 @@ ATUALIZACOES = [
 class Relatorio:
     """Contagem de criados e já existentes por entidade, para a saída do terminal."""
 
+    #: Entidade -> particípio concordando com ela, na ordem em que o seed grava.
+    ENTIDADES = {
+        'Mídias': 'criadas', 'Usuários': 'criados', 'Itens de lista': 'criados', 'Avaliações': 'criadas',
+        'Notícias': 'criadas', 'Atualizações de mídia': 'criadas', 'Notificações': 'criadas',
+    }
+
     def __init__(self):
         self.criados: Counter[str] = Counter()
         self.existentes: Counter[str] = Counter()
@@ -300,8 +306,10 @@ class Relatorio:
         (self.criados if criado else self.existentes)[entidade] += 1
 
     def linhas(self) -> list[str]:
-        entidades = list(dict.fromkeys([*self.criados, *self.existentes]))
-        linhas = [f'  {e}: {self.criados[e]} criados, {self.existentes[e]} já existiam' for e in entidades]
+        linhas = [
+            f'  {e}: {self.criados[e]} {criadas}, {self.existentes[e]} já existiam'
+            for e, criadas in self.ENTIDADES.items()
+        ]
         if self.apagados:
             linhas.insert(0, f'  --recriar: {self.apagados} Usuários do seed apagados com o que era deles')
         return linhas
