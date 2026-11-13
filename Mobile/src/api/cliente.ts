@@ -9,7 +9,7 @@ export type FonteTokens = {
   /** O refresh trocou o par: guardar antes de repetir as requisições. */
   renovados(tokens: Tokens): Promise<void>;
   /** A sessão não pôde ser renovada: limpar e voltar ao login. */
-  expirada(): void;
+  expirada(): Promise<void>;
 };
 
 /** Rotas em que um 401 é a resposta final (credenciais erradas, refresh inválido). */
@@ -90,12 +90,12 @@ export function criarCliente(baseUrl: string, fonte: FonteTokens): Cliente {
       const vigentes = fonte.atuais();
       const novos = vigentes && vigentes.access !== usados.access ? vigentes : await renovar();
       if (!novos) {
-        fonte.expirada();
+        await fonte.expirada();
         return ler<T>(resposta);
       }
 
       const repetida = await enviar(caminho, opcoes, novos);
-      if (repetida.status === 401) fonte.expirada();
+      if (repetida.status === 401) await fonte.expirada();
       return ler<T>(repetida);
     },
   };

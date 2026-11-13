@@ -3,8 +3,6 @@ Cliente AniList reutilizável para animes e mangás.
 """
 from __future__ import annotations
 
-import time
-
 from importacao.config import ANILIST_URL
 from importacao.utils import RateLimiter, criar_sessao_http, logger
 
@@ -67,14 +65,9 @@ def importar_do_anilist(tipo: str, paginas: int = 20, session=None, rate_limiter
 
             try:
                 rate_limiter.wait()
+                # O 429 é tratado pelo Retry da sessão (respeita Retry-After, com
+                # limite de tentativas). Esgotado, raise_for_status falha a página.
                 response = session.post(ANILIST_URL, json=payload, timeout=30)
-
-                if response.status_code == 429:
-                    retry_after = int(response.headers.get('Retry-After', 60))
-                    logger.warning('Rate limit do AniList atingido. Aguardando %ss.', retry_after)
-                    time.sleep(retry_after)
-                    continue
-
                 response.raise_for_status()
                 data = response.json()['data']['Page']
             except Exception as exc:

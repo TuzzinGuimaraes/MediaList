@@ -26,13 +26,15 @@ export const ApiProvider = ({ children, onUnauthorized }) => {
                 data = await response.json();
             }
 
-            if (response.status === 401 || response.status === 422) {
+            if (token && (response.status === 401 || response.status === 422)) {
                 if (onUnauthorized) onUnauthorized();
                 throw new Error('Sessão expirada. Faça login novamente.');
             }
 
             if (!response.ok) {
-                throw new Error(data.erro || data.msg || 'Erro na requisição');
+                const httpError = new Error(data.erro || data.msg || 'Erro na requisição');
+                httpError.status = response.status;
+                throw httpError;
             }
 
             return data;

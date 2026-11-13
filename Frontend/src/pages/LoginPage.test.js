@@ -1,14 +1,14 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import { MemoryRouter } from '../testRouterMock';
+
+import LoginPage from './LoginPage';
+
 jest.mock('react-router-dom', () => ({
     ...require('../testRouterMock'),
     useNavigate: () => mockNavigate,
 }), { virtual: true });
-
-import { MemoryRouter } from '../testRouterMock';
-
-import LoginPage from './LoginPage';
 
 jest.mock('../contexts/AuthContext', () => ({
     useAuth: jest.fn(),

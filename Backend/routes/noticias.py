@@ -1,10 +1,12 @@
 """
 Blueprint de Notícias
 """
-import database
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
 from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
+
+import database
 from decorators import permission_required
 
 noticias_bp = Blueprint('noticias', __name__)

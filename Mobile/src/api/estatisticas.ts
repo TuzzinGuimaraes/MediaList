@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { RespostaEstatisticas, RespostaLista } from './tipos';
+import { useLista } from './lista';
+import type { RespostaEstatisticas } from './tipos';
 
 /** Totais por Tipo de mídia (GET /usuario/estatisticas). */
 export function useEstatisticasPorTipo() {
@@ -16,13 +17,8 @@ export function useEstatisticasPorTipo() {
 /**
  * Itens da Lista pessoal, base das contagens por Estado de consumo e da média das
  * Notas pessoais: /usuario/estatisticas não traz Planejado, Pausado, Abandonado nem
- * Platinado separados. Fica sob ['lista'] para ser invalidada junto com a Lista.
+ * Platinado separados. É a própria consulta ['lista'], sem cópia em outra chave.
  */
 export function useItensParaEstatisticas() {
-  const { cliente } = useSessao();
-  return useQuery({
-    queryKey: ['lista', 'estatisticas'],
-    queryFn: () => cliente.requisitar<RespostaLista>('/lista'),
-    select: (r) => r.lista,
-  });
+  return useLista();
 }

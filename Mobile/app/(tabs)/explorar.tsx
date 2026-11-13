@@ -5,7 +5,7 @@ import { type Ordem, useBuscaMidias, useGeneros } from '@/api/explorar';
 import type { TipoMidia } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
-import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
+import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
 import { Opcoes } from '@/components/Opcoes';
 import { NOMES_TIPO } from '@/dominio/estadoConsumo';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
@@ -129,6 +129,11 @@ export default function Explorar() {
           valor={nomeGenero}
           escolher={(nome) => setGenero(nome ? { tipo, nome } : null)}
         />
+        {generos.isError && !generos.data ? (
+          <View className="px-4">
+            <FalhaParcial erro={generos.error} tentarDeNovo={() => generos.refetch()} />
+          </View>
+        ) : null}
         <Opcoes rotulo={textos.ordem} opcoes={ORDENS} valor={ordem} escolher={setOrdem} />
       </View>
       {conteudo}

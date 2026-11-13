@@ -6,7 +6,7 @@ Sistema full stack para catálogo, listas pessoais, avaliações e notícias de 
 - mangás
 - jogos
 
-O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, MySQL e MongoDB orquestrados a partir de um único [docker-compose.yml](/home/artur/anilist/Projeto_LabBancoDados/docker-compose.yml).
+O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, MySQL e MongoDB orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
 
 ## Visão geral
 
@@ -44,6 +44,11 @@ Além disso, o sistema oferece:
 - `lucide-react`
 - Nginx para servir o build em produção
 
+### Mobile
+
+- Expo (React Native) com TypeScript
+- Instruções em [Mobile/README.md](Mobile/README.md)
+
 ### Banco e serviços
 
 - MySQL 8
@@ -64,6 +69,9 @@ Além disso, o sistema oferece:
 │   ├── repositories/
 │   ├── routes/
 │   ├── schemas/
+│   ├── tests/
+│   ├── requirements.txt
+│   ├── requirements-dev.txt
 │   └── test_*.py
 ├── Frontend/
 │   ├── Dockerfile
@@ -71,8 +79,15 @@ Além disso, o sistema oferece:
 │   ├── public/
 │   ├── src/
 │   └── package.json
+├── Mobile/
+│   ├── app/
+│   ├── src/
+│   └── package.json
+├── docs/adr/
 ├── .env.example
 ├── Banco DDL.sql
+├── Banco migracao 0006 refresh tokens.sql
+├── CONTEXT.md
 ├── docker-compose.yml
 ├── Makefile
 └── README.md
@@ -88,13 +103,13 @@ Para usar o stack completo com Docker, você só precisa de:
 Para desenvolvimento local sem containerizar frontend/backend:
 
 - Python 3.10+
-- Node.js 18+ e npm
+- Node.js 18+ e npm (o Mobile exige Node 22.13+)
 
 ## Distribuição via Docker
 
 ### 1. Ajuste o ambiente, se necessário
 
-Os defaults do projeto já funcionam sem arquivo adicional. Se quiser customizar portas, credenciais ou chaves, crie um `.env` a partir de [.env.example](/home/artur/anilist/Projeto_LabBancoDados/.env.example).
+Os defaults do projeto já funcionam sem arquivo adicional. Se quiser customizar portas, credenciais ou chaves, crie um `.env` a partir de [.env.example](.env.example).
 
 Exemplo:
 
@@ -115,7 +130,7 @@ Isso sobe:
 - `mysql` em `localhost:3308`
 - `mongodb` em `localhost:27017`
 
-Na primeira subida com volume vazio, o MySQL aplica automaticamente o schema de [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql).
+Na primeira subida com volume vazio, o MySQL aplica automaticamente o schema de [Banco DDL.sql](Banco%20DDL.sql).
 Esse bootstrap cria apenas a estrutura do banco e os dados estruturais minimos do sistema, sem catalogo pre-populado de midias.
 
 ### 3. Suba ferramentas auxiliares de desenvolvimento, se quiser
@@ -144,18 +159,18 @@ docker compose up --build -d
 
 ### Frontend
 
-O frontend é buildado em [Frontend/Dockerfile](/home/artur/anilist/Projeto_LabBancoDados/Frontend/Dockerfile) e servido por Nginx. O proxy reverso configurado em [Frontend/nginx.conf](/home/artur/anilist/Projeto_LabBancoDados/Frontend/nginx.conf) encaminha `/api` para o backend, então a versão distribuída não depende de `localhost` hardcoded.
+O frontend é buildado em [Frontend/Dockerfile](Frontend/Dockerfile) e servido por Nginx. O proxy reverso configurado em [Frontend/nginx.conf](Frontend/nginx.conf) encaminha `/api` para o backend, então a versão distribuída não depende de `localhost` hardcoded.
 
 ### Backend
 
-O backend é empacotado em [Backend/Dockerfile](/home/artur/anilist/Projeto_LabBancoDados/Backend/Dockerfile) e executado com Gunicorn. No Compose, ele conversa com:
+O backend é empacotado em [Backend/Dockerfile](Backend/Dockerfile) e executado com Gunicorn, como usuário sem root (`app`, UID 1000). No Compose, ele conversa com:
 
 - MySQL em `mysql:3306`
 - MongoDB em `mongodb:27017`
 
 ### Banco de dados
 
-O schema principal está em [Banco DDL.sql](/home/artur/anilist/Projeto_LabBancoDados/Banco%20DDL.sql). Ele cria:
+O schema principal está em [Banco DDL.sql](Banco%20DDL.sql). Ele cria:
 
 - database `medialist_db`
 - usuário `media_app_user`
@@ -165,7 +180,7 @@ O schema principal está em [Banco DDL.sql](/home/artur/anilist/Projeto_LabBanco
 - views
 - dados estruturais iniciais, como grupos de usuarios e generos
 
-O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser populado pelos importadores em [Backend/importacao](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao).
+O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser populado pelos importadores em [Backend/importacao](Backend/importacao).
 
 ## Desenvolvimento local
 
@@ -204,7 +219,7 @@ Nesse modo:
 
 ## Comandos principais
 
-O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os fluxos mais comuns.
+O [Makefile](Makefile) centraliza os fluxos mais comuns.
 
 | Comando | O que faz |
 |---|---|
@@ -214,12 +229,14 @@ O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os f
 | `make services-down` | Derruba os containers do stack |
 | `make services-logs` | Mostra logs do Docker Compose |
 | `make db-schema` | Reaplica `Banco DDL.sql` no MySQL do Docker |
+| `make db-migrate-refresh` | Cria a tabela `refresh_tokens` num banco existente |
 | `make db-shell` | Abre o cliente MySQL dentro do container |
 | `make db-dump` | Gera um dump SQL completo em `./dumps` |
 | `make db-restore DUMP_FILE=...` | Restaura um dump SQL no MySQL do Docker |
 | `make smoke-mysql` | Executa o smoke test de MySQL no container backend |
 | `make smoke-mongo` | Executa o smoke test de MongoDB no container backend |
 | `make smoke-permissions` | Executa o smoke test de permissões no container backend |
+| `make smoke` | Executa os três smoke tests no container backend |
 | `make import-animes` | Importa animes no container backend |
 | `make import-mangas` | Importa mangás no container backend |
 | `make import-jogos` | Importa jogos no container backend |
@@ -227,12 +244,15 @@ O [Makefile](/home/artur/anilist/Projeto_LabBancoDados/Makefile) centraliza os f
 | `make install` | Instala dependências locais para desenvolvimento sem Docker |
 | `make backend-dev` | Inicia a API Flask no host |
 | `make frontend-dev` | Inicia o frontend React no host |
+| `make test` | Executa os testes do backend, do frontend e do mobile no host |
+| `make test-backend` | Executa o pytest do backend no host |
 | `make test-frontend` | Executa os testes do frontend no host |
+| `make test-mobile` | Executa os testes do mobile no host |
 | `make build-frontend` | Gera a build do frontend no host |
 
 ## Importação de dados externos
 
-Os importadores ficam em [Backend/importacao](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao).
+Os importadores ficam em [Backend/importacao](Backend/importacao).
 
 Depois de subir o projeto com banco vazio, rode a importacao para popular o catalogo. Sem esse passo, o sistema inicia corretamente, mas sem midias cadastradas.
 
@@ -292,7 +312,7 @@ docker compose run --rm backend python -m importacao.run_import --tipo todos --p
 
 ### Variáveis importantes
 
-As configurações são lidas de [Backend/config.py](/home/artur/anilist/Projeto_LabBancoDados/Backend/config.py) e [Backend/importacao/config.py](/home/artur/anilist/Projeto_LabBancoDados/Backend/importacao/config.py).
+As configurações são lidas de [Backend/config.py](Backend/config.py) e [Backend/importacao/config.py](Backend/importacao/config.py).
 
 Você pode sobrescrever por ambiente no Compose:
 
@@ -314,7 +334,10 @@ Observações:
 
 - `POST /api/auth/registro`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
 - `POST /api/auth/logout`
+- `POST /api/auth/esqueci-senha`
+- `POST /api/auth/redefinir-senha`
 - `GET /api/auth/me`
 
 ### Mídias

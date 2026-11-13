@@ -1,8 +1,6 @@
-import pytest
-
-import test_mongo
-import test_mysql_connection
-import test_permissions
+import smoke_mongo
+import smoke_mysql_connection
+import smoke_permissions
 from decorators import get_user_permissions
 
 
@@ -11,9 +9,9 @@ def test_mysql_smoke_report(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(test_mysql_connection, 'get_db_connection', lambda: FakeConnection())
+    monkeypatch.setattr(smoke_mysql_connection, 'get_db_connection', lambda: FakeConnection())
     monkeypatch.setattr(
-        test_mysql_connection,
+        smoke_mysql_connection,
         'execute_query',
         lambda query: (
             [{'test': 1}]
@@ -26,7 +24,7 @@ def test_mysql_smoke_report(monkeypatch):
         ),
     )
 
-    report = test_mysql_connection.run_checks()
+    report = smoke_mysql_connection.run_checks()
 
     assert report['connection_ok'] is True
     assert report['simple_query_ok'] is True
@@ -66,9 +64,9 @@ def test_mongo_smoke_report(monkeypatch):
         def __getitem__(self, key):
             return self.databases.setdefault(key, FakeDatabase())
 
-    monkeypatch.setattr(test_mongo, 'MongoClient', FakeMongoClient)
+    monkeypatch.setattr(smoke_mongo, 'MongoClient', FakeMongoClient)
 
-    report = test_mongo.run_checks()
+    report = smoke_mongo.run_checks()
 
     assert report == {
         'server_ok': True,
@@ -79,10 +77,10 @@ def test_mongo_smoke_report(monkeypatch):
 
 
 def test_permissions_smoke_report(monkeypatch):
-    monkeypatch.setattr(test_permissions, 'execute_query', lambda *_args, **_kwargs: [
+    monkeypatch.setattr(smoke_permissions, 'execute_query', lambda *_args, **_kwargs: [
         {'id_usuario': 'USR-1', 'nome_completo': 'User 1', 'email': 'u1@example.com'},
     ])
-    monkeypatch.setattr(test_permissions, 'get_user_permissions', lambda user_id: (
+    monkeypatch.setattr(smoke_permissions, 'get_user_permissions', lambda user_id: (
         {
             'nivel_acesso': 'usuario',
             'grupos': 'Usuários',
@@ -93,7 +91,7 @@ def test_permissions_smoke_report(monkeypatch):
         else get_user_permissions('USR-FAKE-00000')
     ))
 
-    report = test_permissions.run_checks()
+    report = smoke_permissions.run_checks()
 
     assert report['usuarios_consultados'] == 1
     assert report['usuarios_validos'] == 1

@@ -3,13 +3,13 @@ Utilitários compartilhados pelos importadores.
 """
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
 import re
 import time
 import traceback
-from dataclasses import asdict, dataclass
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -19,19 +19,66 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 LOG_DIR = Path(__file__).resolve().parent.parent / 'importacao_logs'
-LOG_DIR.mkdir(exist_ok=True)
 
 LOG_PATH = LOG_DIR / 'importacao.log'
 ERROR_LOG_PATH = LOG_DIR / 'importacao_erros.jsonl'
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_PATH),
-        logging.StreamHandler(),
-    ],
-)
+_PADRAO_CHAVE = re.compile(r'(\bkey=)[^&\s\'"]+', re.IGNORECASE)
+
+
+def ocultar_segredos(texto: str) -> str:
+    """Troca o valor de `key=` (chave da RAWG na query string) por ***."""
+    texto = _PADRAO_CHAVE.sub(r'\1***', texto)
+    from importacao.config import RAWG_API_KEY
+
+    if RAWG_API_KEY:
+        texto = texto.replace(RAWG_API_KEY, '***')
+    return texto
+
+
+class FiltroSegredos(logging.Filter):
+    """Filtro de handler: oculta segredos na mensagem e no traceback de qualquer logger."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = ocultar_segredos(record.getMessage())
+        record.args = None
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = ocultar_segredos(record.exc_text)
+        return True
+
+
+_handlers_instalados: list[logging.Handler] = []
+
+
+def remover_log() -> None:
+    """Tira do logger raiz (e fecha) os handlers instalados por `configurar_log`."""
+    raiz = logging.getLogger()
+    while _handlers_instalados:
+        handler = _handlers_instalados.pop()
+        raiz.removeHandler(handler)
+        handler.close()
+
+
+def configurar_log() -> None:
+    """Liga o log da importação em arquivo (LOG_PATH) e no stderr.
+
+    Chamado na execução (run_import.main), nunca no import do módulo: importar
+    `importacao.utils` não cria diretório nem arquivo. Chamar de novo troca os
+    handlers em vez de duplicá-los.
+    """
+    remover_log()
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    formato = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+    raiz = logging.getLogger()
+    for handler in (logging.FileHandler(LOG_PATH, encoding='utf-8'), logging.StreamHandler()):
+        handler.setFormatter(formato)
+        handler.addFilter(FiltroSegredos())
+        raiz.addHandler(handler)
+        _handlers_instalados.append(handler)
+    raiz.setLevel(logging.INFO)
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +93,8 @@ class ImportStats:
     sucessos: int = 0
     falhas: int = 0
     ja_existia: int = 0
+    paginas_com_falha: list[int] = field(default_factory=list)
+    pulado: str | None = None
 
     def registrar_sucesso(self, *, ja_existia: bool = False):
         self.processados += 1
@@ -57,11 +106,25 @@ class ImportStats:
         self.processados += 1
         self.falhas += 1
 
+    def registrar_falha_pagina(self, pagina: int):
+        """Página da fonte que não veio: os itens dela não entram nas contagens."""
+        self.paginas_com_falha.append(pagina)
+
     def merge(self, other: 'ImportStats'):
         self.processados += other.processados
         self.sucessos += other.sucessos
         self.falhas += other.falhas
         self.ja_existia += other.ja_existia
+        self.paginas_com_falha.extend(other.paginas_com_falha)
+
+    def resumo(self) -> str:
+        if self.pulado:
+            return f'{self.tipo_midia}: pulado ({self.pulado})'
+        return (
+            f'{self.tipo_midia}: processados={self.processados} sucessos={self.sucessos} '
+            f'falhas={self.falhas} ja_existia={self.ja_existia} '
+            f'paginas_com_falha={self.paginas_com_falha}'
+        )
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -162,8 +225,9 @@ def registrar_falha_importacao(
         'traceback': traceback_text,
     }
 
+    ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with ERROR_LOG_PATH.open('a', encoding='utf-8') as handle:
-        handle.write(json.dumps(record, ensure_ascii=False, default=str))
+        handle.write(ocultar_segredos(json.dumps(record, ensure_ascii=False, default=str)))
         handle.write('\n')
 
     logger.error(
@@ -171,7 +235,7 @@ def registrar_falha_importacao(
         titulo or identificador or 'item_sem_identificador',
         tipo_midia,
         origem,
-        exc,
+        ocultar_segredos(str(exc)),
     )
 
 

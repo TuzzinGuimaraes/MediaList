@@ -1070,5 +1070,7 @@ INSERT INTO generos (nome_genero, descricao, aplicavel_a) VALUES
 -- ============================================
 
 CREATE USER IF NOT EXISTS 'media_app_user'@'%' IDENTIFIED BY 'MediaList@2025!Secure';
-GRANT ALL PRIVILEGES ON medialist_db.* TO 'media_app_user'@'%';
+-- Grants mínimos: só DML e EXECUTE (procedures). DDL fica com o root.
+-- Bancos existentes: `make db-grants`.
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON medialist_db.* TO 'media_app_user'@'%';
 FLUSH PRIVILEGES;

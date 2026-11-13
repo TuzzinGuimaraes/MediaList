@@ -2,12 +2,49 @@
 Blueprint de moderação.
 """
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
+import decorators
 from database import execute_query
 from decorators import moderator_or_admin_required
 
 moderacao_bp = Blueprint('moderacao', __name__)
+
+# Nível de acesso (CONTEXT.md): usuario < moderador < admin.
+ORDEM_NIVEL = {'usuario': 1, 'moderador': 2, 'admin': 3}
+
+
+def _nivel(user_id):
+    """Nível efetivo: o mais alto entre os Grupos do usuário."""
+    nivel = decorators.get_user_permissions(user_id).get('nivel_acesso')
+    return ORDEM_NIVEL.get(nivel, 1)
+
+
+def _alterar_status(target_user_id, ativo):
+    """Ativa/desativa respeitando a hierarquia: ninguém altera a si mesmo e só
+    se age sobre quem tem Nível estritamente menor (admin só cai por admin)."""
+    ator = get_jwt_identity()
+    if target_user_id == ator:
+        return jsonify({'erro': 'Você não pode alterar o próprio status'}), 403
+
+    alvo = execute_query("SELECT id_usuario FROM usuarios WHERE id_usuario = %s", (target_user_id,))
+    if alvo is None:
+        return jsonify({'erro': 'Erro ao consultar usuário'}), 500
+    if not alvo:
+        return jsonify({'erro': 'Usuário não encontrado'}), 404
+
+    if _nivel(target_user_id) >= _nivel(ator):
+        return jsonify({'erro': 'Só é possível moderar usuários com nível de acesso menor que o seu'}), 403
+
+    query = (
+        "UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s" if ativo
+        else "UPDATE usuarios SET ativo = FALSE WHERE id_usuario = %s"
+    )
+    if execute_query(query, (target_user_id,), fetch=False) is None:
+        return jsonify({'erro': 'Erro ao atualizar usuário'}), 500
+
+    mensagem = 'Usuário ativado com sucesso' if ativo else 'Usuário desativado com sucesso'
+    return jsonify({'mensagem': mensagem}), 200
 
 
 @moderacao_bp.route('/avaliacoes', methods=['GET'])
@@ -79,8 +116,7 @@ def listar_usuarios_moderacao():
 def desativar_usuario(target_user_id):
     """Desativar usuário."""
     try:
-        execute_query("UPDATE usuarios SET ativo = FALSE WHERE id_usuario = %s", (target_user_id,), fetch=False)
-        return jsonify({'mensagem': 'Usuário desativado com sucesso'}), 200
+        return _alterar_status(target_user_id, ativo=False)
     except Exception as exc:
         print(f"Erro ao desativar usuário: {exc}")
         return jsonify({'erro': 'Erro ao desativar usuário'}), 500
@@ -92,8 +128,7 @@ def desativar_usuario(target_user_id):
 def ativar_usuario(target_user_id):
     """Ativar usuário."""
     try:
-        execute_query("UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s", (target_user_id,), fetch=False)
-        return jsonify({'mensagem': 'Usuário ativado com sucesso'}), 200
+        return _alterar_status(target_user_id, ativo=True)
     except Exception as exc:
         print(f"Erro ao ativar usuário: {exc}")
         return jsonify({'erro': 'Erro ao ativar usuário'}), 500

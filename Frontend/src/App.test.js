@@ -1,9 +1,9 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('./testRouterMock'), { virtual: true });
-
 import App from './App';
+
+jest.mock('react-router-dom', () => require('./testRouterMock'), { virtual: true });
 
 jest.mock('./contexts/ApiContext', () => ({
     ApiProvider: ({ children, onUnauthorized }) => (

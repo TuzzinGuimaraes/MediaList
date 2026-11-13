@@ -1,13 +1,15 @@
 """
 MediaList API.
 """
+import logging
 import os
+import re
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from config import JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY, token_blocklist
+from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY, token_blocklist
 from database import get_db_connection, init_mongodb
 from routes import (
     animes_bp,
@@ -24,8 +26,32 @@ from routes import (
     utils_bp,
 )
 
+# Front web em dev roda em localhost/127.0.0.1, em qualquer porta.
+ORIGEM_LOCAL = re.compile(r'^https?://(localhost|127\.0\.0\.1)(:\d+)?$')
+
+
+def configurar_cors(flask_app, em_producao, cors_origins=None):
+    """CORS desligado em produção (front e API no mesmo domínio).
+
+    Em dev aceita só origens locais mais as de CORS_ORIGINS (separadas por
+    vírgula). Apps nativos não mandam Origin e não dependem de CORS.
+    """
+    if em_producao:
+        return
+    extras = [origem.strip() for origem in (cors_origins or '').split(',') if origem.strip()]
+    CORS(flask_app, origins=[ORIGEM_LOCAL, *extras])
+
+
+def debug_ativo():
+    return os.getenv('APP_DEBUG', 'false').lower() == 'true'
+
+
 app = Flask(__name__)
-CORS(app)
+configurar_cors(app, EM_PRODUCAO, os.getenv('CORS_ORIGINS'))
+
+# Sem handler no root, mensagens INFO dos módulos (ex. token de recuperação
+# em dev) não aparecem em lugar nenhum.
+logging.basicConfig(level=logging.INFO)
 
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = JWT_ACCESS_TOKEN_EXPIRES
@@ -66,6 +92,19 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     return jwt_payload['jti'] in token_blocklist
 
 
+@jwt.token_verification_loader
+def token_serve_para_a_rota(jwt_header, jwt_payload):
+    """Token de recuperação de senha só vale em /auth/redefinir-senha."""
+    if jwt_payload.get('tipo') == 'recuperacao_senha':
+        return request.endpoint == 'auth.redefinir_senha'
+    return True
+
+
+@jwt.token_verification_failed_loader
+def token_fora_da_rota(jwt_header, jwt_payload):
+    return jsonify({'erro': 'Token inválido para esta operação'}), 401
+
+
 @app.errorhandler(404)
 def not_found(_error):
     return jsonify({'erro': 'Endpoint não encontrado'}), 404
@@ -89,7 +128,7 @@ def forbidden(_error):
 if __name__ == '__main__':
     host = os.getenv('APP_HOST', '0.0.0.0')
     port = int(os.getenv('APP_PORT', '5000'))
-    debug = os.getenv('APP_DEBUG', 'true').lower() == 'true'
+    debug = debug_ativo()
 
     print("=" * 70)
     print("🚀 MediaList API")

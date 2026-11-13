@@ -180,7 +180,7 @@ function Outlet() {
     return React.useContext(OutletContext);
 }
 
-function NavLink({ to, className, children, end, onClick }) {
+function NavLink({ to, className, children, end, onClick, ...rest }) {
     const router = React.useContext(RouterContext);
     const normalized = normalizeRoute(to);
     const isActive = end
@@ -190,6 +190,7 @@ function NavLink({ to, className, children, end, onClick }) {
 
     return (
         <a
+            {...rest}
             href={to}
             className={resolvedClassName}
             onClick={(event) => {

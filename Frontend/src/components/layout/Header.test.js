@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('../../testRouterMock'), { virtual: true });
-
 import { MemoryRouter } from '../../testRouterMock';
 
 import Header from './Header';
+
+jest.mock('react-router-dom', () => require('../../testRouterMock'), { virtual: true });
 
 jest.mock('../../contexts/AuthContext', () => ({
     useAuth: jest.fn(),
@@ -95,10 +95,10 @@ describe('Header', () => {
 
         renderHeader('/');
 
-        fireEvent.click(document.querySelector('.lucide-bell').closest('button'));
+        fireEvent.click(screen.getByRole('button', { name: 'Notificações' }));
 
         expect(await screen.findByText('Nova notificação')).toBeInTheDocument();
-        expect(document.querySelector('a[href="/admin"]')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
         await waitFor(() => expect(apiCall).toHaveBeenCalled());
     });
 });

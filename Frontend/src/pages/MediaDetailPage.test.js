@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
-
 import { MemoryRouter, Route, Routes } from '../testRouterMock';
 
 import MediaDetailPage from './MediaDetailPage';
+
+jest.mock('react-router-dom', () => require('../testRouterMock'), { virtual: true });
 
 jest.mock('../contexts/ApiContext', () => ({
     useApi: jest.fn(),
@@ -111,12 +111,29 @@ describe('MediaDetailPage', () => {
     test('lida com midia inexistente', async () => {
         jest.spyOn(console, 'error').mockImplementation(() => {});
         useApi.mockReturnValue({
-            apiCall: jest.fn().mockRejectedValue(new Error('404')),
+            apiCall: jest.fn().mockRejectedValue(
+                Object.assign(new Error('Mídia não encontrada'), { status: 404 })
+            ),
         });
 
         renderPage();
 
         expect(await screen.findByText('Mídia não encontrada')).toBeInTheDocument();
         console.error.mockRestore();
+    });
+
+    test('falha ao carregar a midia mostra erro em vez de nao encontrada', async () => {
+        useApi.mockReturnValue({
+            apiCall: jest.fn().mockImplementation((endpoint) => (
+                endpoint === '/midias/MID-1'
+                    ? Promise.reject(new Error('Erro de conexão com o servidor.'))
+                    : Promise.resolve({})
+            )),
+        });
+
+        renderPage();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Erro de conexão com o servidor.');
+        expect(screen.queryByText('Mídia não encontrada')).not.toBeInTheDocument();
     });
 });

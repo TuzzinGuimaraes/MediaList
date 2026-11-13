@@ -116,6 +116,7 @@ const Header = () => {
                     <div className="relative">
                         <button
                             onClick={handleBellClick}
+                            aria-label="Notificações"
                             className="text-text-secondary hover:text-text-bright transition-colors relative"
                         >
                             <Bell size={20} />
@@ -172,6 +173,7 @@ const Header = () => {
                     {(permissions?.pode_moderar || permissions?.nivel_acesso === 'admin') && (
                         <NavLink
                             to="/admin"
+                            aria-label="Admin"
                             className={navLinkClass}
                         >
                             <Shield size={20} />

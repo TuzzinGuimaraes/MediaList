@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import database
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
+import database
 from decorators import permission_required
 from repositories import MidiaRepository
 from schemas import AnimeSchema, JogoSchema, MangaSchema, ValidationError
@@ -61,7 +61,11 @@ def _carregar_atualizacoes(id_midia: str) -> list[dict]:
 
 
 def _criar_atualizacao_midia(id_midia: str):
-    if database.mongo_db is None or database.atualizacoes_collection is None or database.notificacoes_collection is None:
+    if (
+        database.mongo_db is None
+        or database.atualizacoes_collection is None
+        or database.notificacoes_collection is None
+    ):
         return jsonify({'erro': 'MongoDB não disponível'}), 503
 
     midia = midia_repository.buscar_por_id(id_midia)

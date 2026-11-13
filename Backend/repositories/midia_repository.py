@@ -292,7 +292,9 @@ class MidiaRepository:
         }
         return f" ORDER BY {order_by.get(ordem or 'nota_media', order_by['nota_media'])}"
 
-    def buscar_por_tipo(self, tipo: str | None, pagina: int = 1, limite: int = 20, filtros: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def buscar_por_tipo(
+        self, tipo: str | None, pagina: int = 1, limite: int = 20, filtros: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         where_clause, params = self._build_filters(tipo, filtros)
         offset = max(pagina - 1, 0) * limite
         query = f"""
@@ -551,7 +553,9 @@ class ListaRepository(MidiaRepository):
     #: Campos booleanos, que chegam do JSON como 0/1 com frequência.
     CAMPOS_BOOLEANOS = frozenset({'favorito', 'privado'})
 
-    def obter_lista_usuario(self, id_usuario: str, tipo: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def obter_lista_usuario(
+        self, id_usuario: str, tipo: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
         query = f"""
             {self.BASE_SELECT},
             lu.id_lista,

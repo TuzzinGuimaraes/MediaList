@@ -49,10 +49,12 @@ const MediaDetailPage = () => {
     const [listaItem, setListaItem] = useState(null);
     const [distribuicao, setDistribuicao] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [erro, setErro] = useState('');
     const [listEditorOpen, setListEditorOpen] = useState(false);
 
     const carregarMidia = useCallback(async () => {
         setLoading(true);
+        setErro('');
         try {
             const [midiaData, avalData, listaData, distData] = await Promise.all([
                 apiCall(`/midias/${id}`),
@@ -76,6 +78,7 @@ const MediaDetailPage = () => {
             setListaItem(item || null);
         } catch (error) {
             console.error('Erro ao carregar mídia:', error);
+            if (error.status !== 404) setErro(error.message || 'Erro ao carregar mídia.');
         } finally {
             setLoading(false);
         }
@@ -105,6 +108,15 @@ const MediaDetailPage = () => {
         return (
             <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-10 w-10 border-4 border-accent-blue border-t-transparent"></div>
+            </div>
+        );
+    }
+
+    if (erro) {
+        return (
+            <div className="text-center py-20">
+                <p role="alert" className="text-accent-red">{erro}</p>
+                <button onClick={() => navigate(-1)} className="text-accent-blue mt-4 text-sm">Voltar</button>
             </div>
         );
     }

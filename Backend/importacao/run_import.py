@@ -9,7 +9,7 @@ import sys
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
 from importacao.importar_mangas import importar_mangas
-from importacao.utils import ImportStats, logger, registrar_falha_importacao
+from importacao.utils import ImportStats, configurar_log, logger, registrar_falha_importacao
 
 
 def executar_importacao(tipo_midia: str, origem: str, funcao, *args, **kwargs) -> tuple[ImportStats, bool]:
@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--paginas', type=int, default=20, help='Número de páginas a importar')
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
     args = parser.parse_args()
+    configurar_log()
 
     resumo = []
     houve_erro_fatal = False
@@ -56,16 +57,15 @@ def main():
 
     if args.tipo in ('jogo', 'todos'):
         print('=== Importando Jogos (RAWG) ===')
-        stats, erro_fatal = executar_importacao('jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers)
+        stats, erro_fatal = executar_importacao(
+            'jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers
+        )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
 
     print('=== Resumo da importação ===')
     for stats in resumo:
-        print(
-            f"{stats.tipo_midia}: processados={stats.processados} "
-            f"sucessos={stats.sucessos} falhas={stats.falhas} ja_existia={stats.ja_existia}"
-        )
+        print(stats.resumo())
 
     if houve_erro_fatal:
         sys.exit(1)
