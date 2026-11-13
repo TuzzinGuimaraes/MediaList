@@ -1,3 +1,8 @@
+from decimal import Decimal
+
+import pytest
+
+import banco
 import database
 from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
@@ -7,7 +12,7 @@ from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
-from .helpers import FakeMongoCollection
+from .helpers import FakeBanco, FakeMongoCollection
 
 
 def test_get_avaliacoes_lista_vazia(client, monkeypatch):
@@ -21,19 +26,11 @@ def test_get_avaliacoes_lista_vazia(client, monkeypatch):
 
 
 def test_post_avaliacao_cria_registro(client, auth_headers, monkeypatch):
-    respostas = [
-        [],
-        [{'id_avaliacao': 'AVL-1'}],
-        [{'nota_media': 9.0, 'total_avaliacoes': 4}],
-    ]
-
-    def fake_execute(_query, _params=None, fetch=True):
-        if not fetch:
-            return None
-        return respostas.pop(0)
-
+    fake = FakeBanco({
+        'INSERT INTO avaliacoes': {'id_avaliacao': 'AVL-1'},
+        'vw_notas_midia': {'nota_media': Decimal('9.00'), 'total_avaliacoes': 4},
+    }).instalar(monkeypatch, avaliacoes_routes)
     monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
-    monkeypatch.setattr(avaliacoes_routes, 'execute_query', fake_execute)
 
     response = client.post('/api/avaliacoes', headers=auth_headers, json={
         'id_midia': 'MID-1',
@@ -45,11 +42,36 @@ def test_post_avaliacao_cria_registro(client, auth_headers, monkeypatch):
     assert response.status_code == 201
     assert data['id_avaliacao'] == 'AVL-1'
     assert data['nota_media_atualizada'] == 9.0
+    assert data['total_avaliacoes'] == 4
+    # INSERT e leitura da Nota média na mesma transação.
+    assert fake.transacoes == 1
+
+
+@pytest.mark.parametrize('nota', [10, 0])
+def test_post_avaliacao_com_nota_nos_extremos_grava(client, auth_headers, monkeypatch, nota):
+    """10 não cabia no DECIMAL(3,2) do MySQL e 0 era recusado por `not nota`."""
+    fake = FakeBanco({
+        'INSERT INTO avaliacoes': {'id_avaliacao': 'AVL-10'},
+        'vw_notas_midia': {'nota_media': Decimal(nota), 'total_avaliacoes': 1},
+    }).instalar(monkeypatch, avaliacoes_routes)
+    monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
+
+    response = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': nota})
+
+    assert response.status_code == 201
+    assert response.get_json()['nota_media_atualizada'] == nota
+    assert fake.sql('INSERT INTO avaliacoes')[0][2][2] == nota
+
+
+def test_post_avaliacao_sem_nota_responde_400(client, auth_headers):
+    response = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1'})
+
+    assert response.status_code == 400
 
 
 def test_post_avaliacao_rejeita_duplicada(client, auth_headers, monkeypatch):
     monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
-    monkeypatch.setattr(avaliacoes_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_avaliacao': 'AVL-1'}])
+    FakeBanco({'SELECT id_avaliacao': {'id_avaliacao': 'AVL-1'}}).instalar(monkeypatch, avaliacoes_routes)
 
     response = client.post('/api/avaliacoes', headers=auth_headers, json={
         'id_midia': 'MID-1',
@@ -60,8 +82,8 @@ def test_post_avaliacao_rejeita_duplicada(client, auth_headers, monkeypatch):
 
 
 def test_put_avaliacao_restringe_edicao_ao_autor(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(
-        avaliacoes_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_usuario': 'USR-OUTRO', 'id_midia': 'MID-1'}]
+    FakeBanco({'FROM avaliacoes': {'id_usuario': 'USR-OUTRO', 'id_midia': 'MID-1'}}).instalar(
+        monkeypatch, avaliacoes_routes
     )
 
     response = client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': 7})
@@ -70,28 +92,18 @@ def test_put_avaliacao_restringe_edicao_ao_autor(client, auth_headers, monkeypat
 
 
 def test_delete_avaliacao_permite_moderador(client, auth_headers, monkeypatch):
-    chamadas = []
-
-    def fake_execute(query, params=None, fetch=True):
-        chamadas.append((query, params, fetch))
-        if query.startswith('SELECT id_usuario'):
-            return [{'id_usuario': 'USR-OUTRO'}]
-        return None
-
-    monkeypatch.setattr(avaliacoes_routes, 'execute_query', fake_execute)
+    fake = FakeBanco({'SELECT id_usuario': {'id_usuario': 'USR-OUTRO'}}).instalar(monkeypatch, avaliacoes_routes)
     monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _user_id: {'pode_moderar': 1})
 
     response = client.delete('/api/avaliacoes/AVL-1', headers=auth_headers)
 
     assert response.status_code == 200
-    assert any(query.startswith('DELETE FROM avaliacoes') for query, _params, _fetch in chamadas)
+    assert fake.sql('DELETE FROM avaliacoes')
 
 
 def test_get_usuario_perfil_retorna_dados(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(
-        usuario_routes,
-        'execute_query',
-        lambda *_args, **_kwargs: [{'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}],
+    FakeBanco({'vw_perfil_usuario': {'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}}).instalar(
+        monkeypatch, usuario_routes
     )
 
     response = client.get('/api/usuario/perfil', headers=auth_headers)
@@ -101,15 +113,18 @@ def test_get_usuario_perfil_retorna_dados(client, auth_headers, monkeypatch):
 
 
 def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(usuario_routes, 'call_procedure', lambda *_args, **_kwargs: [
+    fake = FakeBanco({'FROM lista_usuarios': [
         {'tipo': 'anime', 'total_midias': 2, 'concluidos': 1, 'em_andamento': 1, 'favoritos': 1},
         {'tipo': 'jogo', 'total_midias': 3, 'concluidos': 2, 'em_andamento': 1, 'favoritos': 0},
-    ])
+    ]}).instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/estatisticas', headers=auth_headers)
 
     data = response.get_json()
     assert response.status_code == 200
+    # Era a procedure obter_estatisticas_usuario: agora é consulta da aplicação.
+    assert 'CALL' not in fake.chamadas[0][1]
+    assert fake.chamadas[0][2] == ('USR-TEST-0001',)
     assert data['resumo'] == {
         'total_midias': 5,
         'concluidos': 3,
@@ -119,30 +134,43 @@ def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch
 
 
 def test_utils_generos_filtra_por_tipo(client, monkeypatch):
-    chamadas = []
-    monkeypatch.setattr(
-        utils_routes,
-        'execute_query',
-        lambda query, params=None, fetch=True: chamadas.append((query, params)) or [{'nome_genero': 'Ação'}],
-    )
+    fake = FakeBanco({'FROM generos': [{'nome_genero': 'Ação'}]}).instalar(monkeypatch, utils_routes)
 
     response = client.get('/api/generos?tipo=anime')
 
     assert response.status_code == 200
     assert response.get_json()['generos'][0]['nome_genero'] == 'Ação'
-    # O filtro é só FIND_IN_SET; o LIKE '%tipo%' que existia aqui era redundante
-    # e casava substrings ('nim' encontrava 'anime').
-    assert chamadas[0][1] == ('anime',)
+    assert fake.chamadas[0][2] == ('anime',)
 
 
 def test_utils_health_reporta_estado_conectado(client, monkeypatch):
-    monkeypatch.setattr(utils_routes, 'execute_query', lambda *_args, **_kwargs: [{'test': 1}])
+    FakeBanco({'SELECT 1': {'ok': 1}}).instalar(monkeypatch, utils_routes)
     database.mongo_db = object()
 
     response = client.get('/api/health')
 
     assert response.status_code == 200
-    assert response.get_json()['status'] == 'healthy'
+    assert response.get_json() == {'status': 'healthy', 'postgres': 'connected', 'mongodb': 'connected'}
+
+
+def test_utils_health_sem_postgres_responde_503(client, monkeypatch):
+    FakeBanco({'SELECT 1': banco.Indisponivel('fora')}).instalar(monkeypatch, utils_routes)
+    database.mongo_db = object()
+
+    response = client.get('/api/health')
+
+    assert response.status_code == 503
+    assert response.get_json()['postgres'] == 'disconnected'
+
+
+def test_utils_health_sem_mongo_fica_degradado(client, monkeypatch):
+    FakeBanco({'SELECT 1': {'ok': 1}}).instalar(monkeypatch, utils_routes)
+    database.mongo_db = None
+
+    response = client.get('/api/health')
+
+    assert response.status_code == 200
+    assert response.get_json()['status'] == 'degraded'
 
 
 def test_preferencias_cria_defaults_quando_nao_existirem(client, auth_headers):
@@ -204,7 +232,7 @@ def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
 
 def test_moderacao_lista_usuarios_para_admin(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(moderacao_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_usuario': 'USR-1'}])
+    FakeBanco({'FROM usuarios': [{'id_usuario': 'USR-1'}]}).instalar(monkeypatch, moderacao_routes)
 
     response = client.get('/api/moderacao/usuarios', headers=admin_headers)
 
@@ -232,39 +260,25 @@ def test_rotas_de_tipo_listam_e_validam_payload(client, admin_headers, monkeypat
     assert client.post('/api/jogos', headers=admin_headers, json={}).status_code == 400
 
 
-def test_generos_serializa_coluna_set_do_mysql(client, monkeypatch):
-    """`aplicavel_a` chega como set do conector; sem conversão o jsonify quebra."""
-    from routes import utils as utils_routes
-
-    monkeypatch.setattr(
-        utils_routes,
-        'execute_query',
-        lambda *_args, **_kwargs: [
-            {'id_genero': 1, 'nome_genero': 'Ação', 'aplicavel_a': {'jogo', 'anime', 'manga'}},
-        ],
-    )
+def test_generos_devolve_aplicavel_a_como_lista(client, monkeypatch):
+    """`aplicavel_a` é text[] no PostgreSQL e sai como lista no JSON."""
+    FakeBanco({'FROM generos': [
+        {'id_genero': 1, 'nome_genero': 'Ação', 'aplicavel_a': ['anime', 'manga', 'jogo']},
+    ]}).instalar(monkeypatch, utils_routes)
 
     response = client.get('/api/generos')
 
     assert response.status_code == 200
-    assert response.get_json()['generos'][0]['aplicavel_a'] == ['anime', 'jogo', 'manga']
+    assert response.get_json()['generos'][0]['aplicavel_a'] == ['anime', 'manga', 'jogo']
 
 
 def test_generos_filtra_por_tipo_sem_casar_substring(client, monkeypatch):
-    """'?tipo=nim' não pode casar com 'anime': o filtro é por elemento inteiro."""
-    from routes import utils as utils_routes
-
-    consultas = []
-
-    def fake_execute_query(query, params=None, fetch=True):
-        consultas.append((query, params))
-        return []
-
-    monkeypatch.setattr(utils_routes, 'execute_query', fake_execute_query)
+    """'?tipo=nim' não pode casar com 'anime': o filtro é por elemento do array."""
+    fake = FakeBanco().instalar(monkeypatch, utils_routes)
 
     client.get('/api/generos?tipo=anime')
 
-    query, params = consultas[0]
-    assert 'FIND_IN_SET' in query
+    _metodo, query, params = fake.chamadas[0]
+    assert 'aplicavel_a @> ARRAY[%s]' in query
     assert 'LIKE' not in query
     assert params == ('anime',)

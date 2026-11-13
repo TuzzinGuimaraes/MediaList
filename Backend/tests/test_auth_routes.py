@@ -2,18 +2,22 @@ import logging
 
 from werkzeug.security import generate_password_hash
 
+import banco
 from config import token_blocklist
 from routes import auth as auth_routes
 
-from .helpers import FakeConnection, FakeCursor
+from .helpers import FakeBanco
+
+
+def _banco(monkeypatch, respostas=None):
+    return FakeBanco(respostas).instalar(monkeypatch, auth_routes)
 
 
 def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
-    # fetchone na ordem em que a rota consulta: id do usuário, depois id do grupo.
-    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-0001'}, {'id_grupo': 3}])
-    connection = FakeConnection(cursor)
-
-    monkeypatch.setattr(auth_routes, 'get_db_connection', lambda: connection)
+    fake = _banco(monkeypatch, {
+        'INSERT INTO usuarios ': {'id_usuario': 'USR-0001'},
+        'FROM grupos_usuarios': {'id_grupo': 3},
+    })
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste',
@@ -24,31 +28,21 @@ def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
 
     assert response.status_code == 201
     assert response.get_json()['id_usuario'] == 'USR-0001'
-    assert connection.committed is True
-    assert connection.rolled_back is False
-    assert any('INSERT INTO usuarios' in query for query, _params in cursor.executed)
+    # Usuário, busca do grupo e vínculo na mesma transação.
+    assert fake.transacoes == 1
 
     # O grupo é localizado por nome, nunca por id fixo.
-    busca_grupo = [
-        (query, params) for query, params in cursor.executed
-        if 'FROM grupos_usuarios' in query
-    ]
-    assert busca_grupo and busca_grupo[0][1] == (auth_routes.GRUPO_PADRAO,)
+    busca_grupo = fake.sql('FROM grupos_usuarios')
+    assert busca_grupo and busca_grupo[0][2] == (auth_routes.GRUPO_PADRAO,)
 
-    # E o vínculo é criado na mesma transação, com o id que veio da busca.
-    vinculo = [
-        (query, params) for query, params in cursor.executed
-        if 'INSERT INTO usuarios_grupos' in query
-    ]
-    assert vinculo and vinculo[0][1] == ('USR-0001', 3)
+    # E o vínculo é criado com o id que veio do INSERT ... RETURNING.
+    vinculo = fake.sql('INSERT INTO usuarios_grupos')
+    assert vinculo and vinculo[0][2] == ('USR-0001', 3)
 
 
 def test_registro_aborta_se_grupo_padrao_nao_existe(client, monkeypatch):
     """Sem grupo padrão o usuário ficaria sem permissão alguma: melhor não criar."""
-    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-0002'}, None])
-    connection = FakeConnection(cursor)
-
-    monkeypatch.setattr(auth_routes, 'get_db_connection', lambda: connection)
+    fake = _banco(monkeypatch, {'INSERT INTO usuarios ': {'id_usuario': 'USR-0002'}})
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste',
@@ -57,8 +51,20 @@ def test_registro_aborta_se_grupo_padrao_nao_existe(client, monkeypatch):
     })
 
     assert response.status_code == 500
-    assert connection.committed is False
-    assert connection.rolled_back is True
+    assert fake.sql('INSERT INTO usuarios_grupos') == []
+
+
+def test_registro_com_email_ja_cadastrado_responde_409(client, monkeypatch):
+    _banco(monkeypatch, {'INSERT INTO usuarios ': banco.Conflito('Registro já existe', 'usuarios_email_key')})
+
+    response = client.post('/api/auth/registro', json={
+        'nome_completo': 'Teste',
+        'email': 'repetido@example.com',
+        'senha': '123456',
+    })
+
+    assert response.status_code == 409
+    assert response.get_json()['erro'] == 'Email já cadastrado'
 
 
 def test_registro_rejeita_payload_incompleto(client):
@@ -69,21 +75,13 @@ def test_registro_rejeita_payload_incompleto(client):
 
 
 def test_login_autentica_e_retorna_token(client, monkeypatch):
-    monkeypatch.setattr(
-        auth_routes,
-        'execute_query',
-        lambda query, params=None, fetch=True: (
-            [{
-                'id_usuario': 'USR-LOGIN-1',
-                'nome_completo': 'Usuário Login',
-                'email': 'user@example.com',
-                'senha_hash': generate_password_hash('senha123'),
-                'ativo': True,
-            }]
-            if query.startswith('SELECT id_usuario')
-            else None
-        ),
-    )
+    fake = _banco(monkeypatch, {'FROM usuarios WHERE email': {
+        'id_usuario': 'USR-LOGIN-1',
+        'nome_completo': 'Usuário Login',
+        'email': 'user@example.com',
+        'senha_hash': generate_password_hash('senha123'),
+        'ativo': True,
+    }})
     monkeypatch.setattr(auth_routes, 'get_user_permissions', lambda _user_id: {
         'nivel_acesso': 'usuario',
         'grupos': 'Usuários',
@@ -103,16 +101,19 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
     assert data['token'] == data['access_token']
     assert data['usuario']['id'] == 'USR-LOGIN-1'
     assert data['usuario']['nivel_acesso'] == 'usuario'
+    # Último acesso é escrito pela aplicação no login (era trigger no MySQL).
+    ultimo_acesso = fake.sql('SET ultimo_acesso = now()')
+    assert ultimo_acesso and ultimo_acesso[0][2] == ('USR-LOGIN-1',)
 
 
 def test_login_rejeita_senha_invalida(client, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_args, **_kwargs: [{
+    _banco(monkeypatch, {'FROM usuarios': {
         'id_usuario': 'USR-LOGIN-1',
         'nome_completo': 'Usuário Login',
         'email': 'user@example.com',
         'senha_hash': generate_password_hash('correta'),
         'ativo': True,
-    }])
+    }})
 
     response = client.post('/api/auth/login', json={
         'email': 'user@example.com',
@@ -124,12 +125,12 @@ def test_login_rejeita_senha_invalida(client, monkeypatch):
 
 
 def test_me_retorna_usuario_autenticado(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_args, **_kwargs: [{
+    _banco(monkeypatch, {'FROM usuarios': {
         'id_usuario': 'USR-TEST-0001',
         'nome_completo': 'Usuário Atual',
         'email': 'atual@example.com',
         'foto_perfil': None,
-    }])
+    }})
 
     response = client.get('/api/auth/me', headers=auth_headers)
 
@@ -152,7 +153,7 @@ def test_logout_revoga_token(client, make_token):
 
 
 def test_esqueci_senha_email_inexistente_nao_vaza_informacao(client, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_args, **_kwargs: [])
+    _banco(monkeypatch)
 
     response = client.post('/api/auth/esqueci-senha', json={'email': 'naoexiste@example.com'})
 
@@ -161,10 +162,7 @@ def test_esqueci_senha_email_inexistente_nao_vaza_informacao(client, monkeypatch
 
 
 def test_redefinir_senha_com_token_valido(client, make_token, monkeypatch):
-    chamadas = []
-    monkeypatch.setattr(
-        auth_routes, 'execute_query', lambda query, params=None, fetch=True: chamadas.append((query, params, fetch))
-    )
+    fake = _banco(monkeypatch)
 
     token = make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})
     response = client.post(
@@ -175,8 +173,22 @@ def test_redefinir_senha_com_token_valido(client, make_token, monkeypatch):
 
     assert response.status_code == 200
     assert response.get_json()['mensagem'] == 'Senha redefinida com sucesso!'
-    assert chamadas[0][0].startswith('UPDATE usuarios SET senha_hash')
-    assert chamadas[0][1][1] == 'USR-RESET-1'
+    _metodo, sql, params = fake.chamadas[0]
+    assert sql.startswith('UPDATE usuarios SET senha_hash')
+    assert params[1] == 'USR-RESET-1'
+
+
+def test_redefinir_senha_de_usuario_inexistente_nao_responde_sucesso(client, make_token, monkeypatch):
+    _banco(monkeypatch, {'UPDATE usuarios SET senha_hash': 0})
+
+    token = make_token('USR-SUMIU-1', {'tipo': 'recuperacao_senha'})
+    response = client.post(
+        '/api/auth/redefinir-senha',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'nova_senha': 'novaSenha123'},
+    )
+
+    assert response.status_code == 404
 
 
 def test_redefinir_senha_rejeita_token_de_tipo_errado(client, auth_headers):
@@ -203,7 +215,7 @@ USUARIO_RECUPERACAO = {
 
 
 def test_esqueci_senha_email_existente_nao_devolve_token(client, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+    _banco(monkeypatch, {'FROM usuarios': USUARIO_RECUPERACAO})
 
     response = client.post('/api/auth/esqueci-senha', json={'email': 'esquecida@example.com'})
 
@@ -212,7 +224,7 @@ def test_esqueci_senha_email_existente_nao_devolve_token(client, monkeypatch):
 
 
 def test_esqueci_senha_email_inexistente_nao_devolve_token(client, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [])
+    _banco(monkeypatch)
 
     response = client.post('/api/auth/esqueci-senha', json={'email': 'naoexiste@example.com'})
 
@@ -227,7 +239,7 @@ def _token_do_log(caplog):
 
 
 def test_esqueci_senha_em_dev_registra_token_no_log(client, monkeypatch, caplog):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+    _banco(monkeypatch, {'FROM usuarios': USUARIO_RECUPERACAO})
     monkeypatch.setattr(auth_routes, 'EM_PRODUCAO', False)
     caplog.set_level(logging.INFO)
 
@@ -238,7 +250,7 @@ def test_esqueci_senha_em_dev_registra_token_no_log(client, monkeypatch, caplog)
 
 
 def test_esqueci_senha_em_producao_nao_registra_token(client, monkeypatch, caplog, capsys):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: [USUARIO_RECUPERACAO])
+    _banco(monkeypatch, {'FROM usuarios': USUARIO_RECUPERACAO})
     monkeypatch.setattr(auth_routes, 'EM_PRODUCAO', True)
     caplog.set_level(logging.DEBUG)
 
@@ -266,7 +278,7 @@ def test_token_de_recuperacao_recusado_na_lista(client, make_token):
 
 
 def test_token_de_recuperacao_vale_uma_vez(client, make_token, monkeypatch):
-    monkeypatch.setattr(auth_routes, 'execute_query', lambda *_a, **_k: None)
+    _banco(monkeypatch)
     headers = {'Authorization': f"Bearer {make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})}"}
 
     primeira = client.post('/api/auth/redefinir-senha', headers=headers, json={'nova_senha': 'novaSenha123'})

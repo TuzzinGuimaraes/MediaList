@@ -1,7 +1,10 @@
+import decorators
 import smoke_mongo
 import smoke_permissions
 import smoke_postgres
 from decorators import get_user_permissions
+
+from .helpers import FakeBanco
 
 
 def test_postgres_smoke_report(monkeypatch):
@@ -101,9 +104,11 @@ def test_mongo_smoke_report(monkeypatch):
 
 
 def test_permissions_smoke_report(monkeypatch):
-    monkeypatch.setattr(smoke_permissions, 'execute_query', lambda *_args, **_kwargs: [
+    FakeBanco({'FROM usuarios LIMIT 5': [
         {'id_usuario': 'USR-1', 'nome_completo': 'User 1', 'email': 'u1@example.com'},
-    ])
+    ]}).instalar(monkeypatch, smoke_permissions)
+    # O usuário inexistente passa pela função real, com o banco sem linha nenhuma.
+    FakeBanco().instalar(monkeypatch, decorators)
     monkeypatch.setattr(smoke_permissions, 'get_user_permissions', lambda user_id: (
         {
             'nivel_acesso': 'usuario',
@@ -111,8 +116,8 @@ def test_permissions_smoke_report(monkeypatch):
             'pode_criar': 1,
             'pode_editar': 1,
         }
-        if user_id != 'USR-FAKE-00000'
-        else get_user_permissions('USR-FAKE-00000')
+        if user_id != smoke_permissions.USUARIO_INEXISTENTE
+        else get_user_permissions(user_id)
     ))
 
     report = smoke_permissions.run_checks()

@@ -1,40 +1,12 @@
-from datetime import date, datetime
-from decimal import Decimal
+from repositories import midia_repository as modulo
+from repositories.midia_repository import ListaRepository, MidiaRepository, _serialize_row
 
-from mysql.connector import IntegrityError
-
-from repositories.midia_repository import (
-    ENTRADA_DUPLICADA,
-    ListaRepository,
-    MidiaRepository,
-    _serialize_row,
-    _serialize_value,
-)
-
-from .helpers import FakeConnection, FakeCursor
-
-
-class CursorQueFalha(FakeCursor):
-    """Cursor que devolve o erro do driver na primeira escrita."""
-
-    def __init__(self, erro):
-        super().__init__()
-        self.erro = erro
-
-    def execute(self, query, params=()):
-        super().execute(query, params)
-        raise self.erro
-
-
-def test_serialize_value_converte_decimal_e_datas():
-    assert _serialize_value(Decimal('9.5')) == 9.5
-    assert _serialize_value(date(2026, 4, 2)) == '2026-04-02'
-    assert _serialize_value(datetime(2026, 4, 2, 10, 30, 0)) == '2026-04-02T10:30:00'
+from .helpers import FakeBanco
 
 
 def test_serialize_row_gera_generos_lista():
     row = _serialize_row({
-        'nota_media': Decimal('8.7'),
+        'nota_media': 8.7,
         'generos': 'Ação, Drama, Fantasia',
     })
 
@@ -58,10 +30,11 @@ def test_build_filters_monta_clausulas_por_tipo():
     })
 
     assert 'tm.nome_tipo = %s' in where
-    assert 'm.titulo_portugues LIKE %s' in where
+    assert 'm.titulo_portugues ILIKE %s' in where
     assert 'j.status_jogo = %s' in where
-    assert 'j.plataformas LIKE %s' in where
-    assert 'j.desenvolvedor LIKE %s' in where
+    # Plataforma é elemento do text[], não substring de um CSV.
+    assert 'j.plataformas @> ARRAY[%s]::text[]' in where
+    assert 'j.desenvolvedor ILIKE %s' in where
     assert 'j.modo_jogo = %s' in where
     assert params == [
         'jogo',
@@ -70,10 +43,14 @@ def test_build_filters_monta_clausulas_por_tipo():
         '%zelda%',
         'Aventura',
         'lancado',
-        '%Switch%',
+        'Switch',
         '%Nintendo%',
         'single',
     ]
+
+
+def test_ordem_por_nota_media_poe_sem_avaliacao_no_fim():
+    assert 'n.nota_media DESC NULLS LAST' in MidiaRepository()._order_clause('nota_media')
 
 
 def test_buscar_por_id_combina_campos_base_e_tipo(monkeypatch):
@@ -91,7 +68,25 @@ def test_buscar_por_id_combina_campos_base_e_tipo(monkeypatch):
 
     assert result == {'id_midia': 'MID-1', 'tipo': 'anime'}
     assert 'LEFT JOIN animes' in capturado['query']
+    # Nota média e Total de avaliações vêm da view, não de colunas de midias.
+    assert 'JOIN vw_notas_midia n' in capturado['query']
     assert capturado['params'] == ['MID-1', 'anime']
+
+
+def test_inserir_jogo_grava_plataformas_como_lista(monkeypatch):
+    fake = FakeBanco({'INSERT INTO midias': {'id_midia': 'MID-J'}}).instalar(monkeypatch, modulo)
+
+    id_midia = MidiaRepository().inserir_midia_base('jogo', {
+        'titulo_original': 'Jogo',
+        'plataformas': 'PC, Switch ,',
+        'generos': [1, 2],
+    })
+
+    assert id_midia == 'MID-J'
+    _metodo, sql, params = fake.sql('INSERT INTO jogos')[0]
+    assert params == ('MID-J', ['PC', 'Switch'])
+    assert len(fake.sql('INSERT INTO midias_generos')) == 2
+    assert fake.transacoes == 1
 
 
 def test_obter_item_usuario_retorna_item(monkeypatch):
@@ -106,56 +101,41 @@ def test_obter_item_usuario_retorna_item(monkeypatch):
 
 
 def test_criar_item_insere_colunas_conhecidas_e_devolve_o_id(monkeypatch):
-    cursor = FakeCursor(fetchone_results=[('LST-9',)])
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+    fake = FakeBanco({'INSERT INTO lista_usuarios': {'id_lista': 'LST-9'}}).instalar(monkeypatch, modulo)
 
-    repo = ListaRepository()
-    id_lista = repo.criar_item('USR-1', 'MID-1', {
+    id_lista = ListaRepository().criar_item('USR-1', 'MID-1', {
         'status_consumo': 'assistindo',
         'progresso_atual': 3,
         'favorito': 1,
         'campo_invalido': 'ignorar',
     })
 
-    query, params = cursor.executed[0]
+    _metodo, query, params = fake.chamadas[0]
     assert id_lista == 'LST-9'
     assert 'INSERT INTO lista_usuarios' in query
     assert 'campo_invalido' not in query
-    assert params == ('USR-1', 'MID-1', 'assistindo', 3, True)
+    # O total do Item é copiado da Mídia na criação (antes, trigger do MySQL).
+    assert 'progresso_total' in query and 'numero_episodios' in query
+    assert params == ('USR-1', 'MID-1', 'MID-1', 'assistindo', 3, True)
 
 
-def test_criar_item_traduz_a_unique_key_em_none(monkeypatch):
-    """`uk_usuario_midia` barrando é conflito de domínio, não erro de MySQL."""
-    erro = IntegrityError('duplicate')
-    erro.errno = ENTRADA_DUPLICADA
-    connection = FakeConnection(CursorQueFalha(erro))
-    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+def test_criar_item_ja_existente_devolve_none(monkeypatch):
+    """A unique key barrando (ON CONFLICT sem linha) é conflito de domínio, não erro."""
+    FakeBanco({'INSERT INTO lista_usuarios': None}).instalar(monkeypatch, modulo)
 
-    repo = ListaRepository()
-
-    assert repo.criar_item('USR-1', 'MID-1', {'status_consumo': 'assistindo'}) is None
-    assert connection.rolled_back is True
+    assert ListaRepository().criar_item('USR-1', 'MID-1', {'status_consumo': 'assistindo'}) is None
 
 
 def test_remover_item_diz_se_apagou_alguma_linha(monkeypatch):
-    cursor = FakeCursor()
-    cursor.rowcount = 0
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+    FakeBanco({'DELETE FROM lista_usuarios': 0}).instalar(monkeypatch, modulo)
 
-    repo = ListaRepository()
-
-    assert repo.remover_item('LST-1', 'USR-1') is False
+    assert ListaRepository().remover_item('LST-1', 'USR-1') is False
 
 
 def test_atualizar_campos_persiste_apenas_colunas_permitidas(monkeypatch):
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr('repositories.midia_repository.get_db_connection', lambda: connection)
+    fake = FakeBanco().instalar(monkeypatch, modulo)
 
-    repo = ListaRepository()
-    result = repo.atualizar_campos('LST-1', {
+    result = ListaRepository().atualizar_campos('LST-1', {
         'status_consumo': 'assistindo',
         'nota_usuario': None,
         'favorito': 1,
@@ -165,7 +145,7 @@ def test_atualizar_campos_persiste_apenas_colunas_permitidas(monkeypatch):
         'campo_invalido': 'ignorar',
     })
 
-    query, params = cursor.executed[0]
+    _metodo, query, params = fake.chamadas[0]
     assert result is True
     assert 'status_consumo = %s' in query
     assert 'nota_usuario = NULL' in query
@@ -176,7 +156,6 @@ def test_atualizar_campos_persiste_apenas_colunas_permitidas(monkeypatch):
     # O total pertence à Mídia: o Item não o recebe do cliente.
     assert 'progresso_total' not in query
     assert params == ('assistindo', True, 'Teste', False, 'LST-1')
-
 
 
 def test_lista_do_usuario_em_ordem_alfabetica_do_titulo_exibido(monkeypatch):

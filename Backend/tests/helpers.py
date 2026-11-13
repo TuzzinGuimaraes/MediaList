@@ -1,49 +1,67 @@
+import uuid
+from contextlib import contextmanager
+
 from repositories.midia_repository import ListaRepository
 
+INTERFACE_BANCO = ('consultar', 'consultar_um', 'executar', 'transacao')
 
-class FakeCursor:
-    def __init__(self, fetchone_results=None, fetchall_results=None):
-        self.fetchone_results = list(fetchone_results or [])
-        self.fetchall_results = list(fetchall_results or [])
-        self.executed = []
-        self.rowcount = 1
-        self.closed = False
 
-    def execute(self, query, params=()):
-        self.executed.append((query, params))
+class FakeBanco:
+    """A interface do módulo `banco` em memória, para os testes de rota.
 
-    def fetchone(self):
-        if self.fetchone_results:
-            return self.fetchone_results.pop(0)
+    `respostas` mapeia um trecho do SQL para o que a chamada devolve: o valor,
+    uma função `(sql, params) -> valor` ou uma exceção, que é levantada. Vence o
+    primeiro trecho contido no SQL. Sem resposta, `consultar` devolve [],
+    `consultar_um` None e `executar` 1.
+    """
+
+    def __init__(self, respostas=None):
+        self.respostas = dict(respostas or {})
+        #: (método, sql, params) na ordem em que chegaram.
+        self.chamadas = []
+        self.transacoes = 0
+
+    def _responder(self, metodo, sql, params):
+        self.chamadas.append((metodo, sql, params))
+        for trecho, valor in self.respostas.items():
+            if trecho in sql:
+                if isinstance(valor, BaseException):
+                    raise valor
+                return valor(sql, params) if callable(valor) else valor
         return None
 
-    def fetchall(self):
-        if self.fetchall_results:
-            return self.fetchall_results.pop(0)
-        return []
+    def consultar(self, sql, params=None):
+        resposta = self._responder('consultar', sql, params)
+        if resposta is None:
+            return []
+        return list(resposta) if isinstance(resposta, list) else [resposta]
 
-    def close(self):
-        self.closed = True
+    def consultar_um(self, sql, params=None):
+        resposta = self._responder('consultar_um', sql, params)
+        if isinstance(resposta, list):
+            return resposta[0] if resposta else None
+        return resposta
 
+    def executar(self, sql, params=None):
+        resposta = self._responder('executar', sql, params)
+        return 1 if resposta is None else resposta
 
-class FakeConnection:
-    def __init__(self, cursor):
-        self._cursor = cursor
-        self.committed = False
-        self.rolled_back = False
-        self.closed = False
+    @contextmanager
+    def transacao(self):
+        self.transacoes += 1
+        yield self
 
-    def cursor(self, dictionary=False):
-        return self._cursor
+    def sql(self, trecho):
+        """As chamadas cujo SQL contém o trecho, como (método, sql, params)."""
+        return [chamada for chamada in self.chamadas if trecho in chamada[1]]
 
-    def commit(self):
-        self.committed = True
-
-    def rollback(self):
-        self.rolled_back = True
-
-    def close(self):
-        self.closed = True
+    def instalar(self, monkeypatch, *modulos):
+        """Troca, em cada módulo, os nomes da interface que ele importou."""
+        for modulo in modulos:
+            for nome in INTERFACE_BANCO:
+                if hasattr(modulo, nome):
+                    monkeypatch.setattr(modulo, nome, getattr(self, nome))
+        return self
 
 
 class FakeMidiaRepository:
@@ -245,19 +263,19 @@ class FakeRefreshTokenRepository:
         self.tokens = {}
         self.usuarios_ativos = dict(usuarios_ativos or {})
         self._sequencia = 0
-        #: Métodos que levantam RefreshTokenIndisponivel, como banco fora do ar.
+        #: Métodos que levantam banco.Indisponivel, como banco fora do ar.
         self.indisponivel = set()
         #: Quando True, `rotacionar` perde a corrida para outra requisição.
         self.perder_corrida = False
 
     def _checar(self, metodo):
         if metodo in self.indisponivel:
-            from repositories import RefreshTokenIndisponivel
-            raise RefreshTokenIndisponivel(f'{metodo}: banco indisponível')
+            from banco import Indisponivel
+            raise Indisponivel(f'{metodo}: banco indisponível')
 
     def _proximo_id(self):
         self._sequencia += 1
-        return f'RFT-{self._sequencia}'
+        return str(uuid.UUID(int=self._sequencia))
 
     def criar(self, id_usuario, familia, token_hash, expira_em):
         id_refresh = self._proximo_id()
