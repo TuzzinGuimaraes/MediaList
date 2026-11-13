@@ -5,7 +5,8 @@ A regra "**Progresso** atinge o total → **Concluído**" tinha dois autores: a 
 depois, desfazendo na mesma requisição a decisão que a procedure acabara de tomar. O autor
 do **Estado de consumo** passa a ser um só: o módulo `Backend/dominio/lista_pessoal.py`,
 que faz uma escrita por requisição. As procedures `adicionar_midia_lista` e
-`atualizar_progresso_midia` saíram do `Banco DDL.sql`; nada na aplicação as chamava mais.
+`atualizar_progresso_midia` saíram do `Banco DDL.sql` (o schema da época; hoje são as
+migrações em `Backend/migrations`, ADR-0007); nada na aplicação as chamava mais.
 
 É a mesma escolha do ADR-0002 pelo mesmo motivo: a regra depende do **Tipo de mídia**, que
 a aplicação conhece, e barrar a escrita errada antes que ela aconteça vale mais do que
@@ -23,7 +24,9 @@ não do `progresso_total` denormalizado do Item, que deixa de ser gravável pela
 pertencer à Mídia. E **Jogo** aceita `progresso_atual` (as horas do editor) sem nunca derivar
 Concluído dele: horas não medem Progresso.
 
-Preço aceito: o `Banco DDL.sql` não tem mecanismo de migração incremental, então aplicar
-esta remoção é manual (`make db-dump` → editar → `make db-schema` → `make db-restore`) até
-que exista um. O teste de contrato em `Backend/tests/test_sql_contract.py` afirma que as
-procedures saíram e que os triggers continuam.
+Preço aceito, na época: o `Banco DDL.sql` não tinha mecanismo de migração incremental, então
+aplicar esta remoção era manual até que existisse um. Esse mecanismo veio com o ADR-0007:
+o `Banco DDL.sql` saiu, o schema é versionado em `Backend/migrations` (Alembic) e a
+baseline nasceu sem procedures e sem os triggers de progresso (ADR-0009: a aplicação
+valida). O teste de contrato em `Backend/tests/test_sql_contract.py` afirma que não há
+procedures no schema.
