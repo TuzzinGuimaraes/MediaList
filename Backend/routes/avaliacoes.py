@@ -1,15 +1,15 @@
 """
 Blueprint de avaliações.
 
-A escala da nota (0 a 10, uma casa) é garantida pelo CHECK do banco: fora dela,
-a gravação levanta `Integridade` e a resposta é 400. A validação no domínio é
-do ticket 13.
+A escala da nota (0 a 10, uma casa) é regra do domínio (`dominio.nota`): fora
+dela a resposta é 400 e nada é gravado. O CHECK do banco fica como rede de segurança.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from banco import consultar_um, executar, transacao
 from decorators import get_user_permissions
+from dominio.nota import NotaInvalida, ler_nota
 from repositories import MidiaRepository
 
 avaliacoes_bp = Blueprint('avaliacoes', __name__)
@@ -17,6 +17,10 @@ avaliacoes_bp = Blueprint('avaliacoes', __name__)
 midia_repository = MidiaRepository()
 
 NOTAS_DA_MIDIA = "SELECT nota_media, total_avaliacoes FROM vw_notas_midia WHERE id_midia = %s"
+
+
+def _nota_invalida(erro: NotaInvalida):
+    return jsonify({'erro': str(erro), 'detalhes': {'nota': str(erro)}}), 400
 
 
 @avaliacoes_bp.route('/<string:id_midia>', methods=['GET'])
@@ -36,8 +40,13 @@ def criar_avaliacao():
     id_midia = data.get('id_midia') or data.get('id_anime')
 
     # Nota 0 é nota: só ausência é recusada aqui.
-    if not id_midia or data.get('nota') is None or isinstance(data.get('nota'), bool):
+    if not id_midia or data.get('nota') is None:
         return jsonify({'erro': 'ID da mídia e nota são obrigatórios'}), 400
+
+    try:
+        nota = ler_nota(data['nota'])
+    except NotaInvalida as erro:
+        return _nota_invalida(erro)
 
     if not midia_repository.buscar_por_id(id_midia):
         return jsonify({'erro': 'Mídia não encontrada'}), 404
@@ -56,7 +65,7 @@ def criar_avaliacao():
             VALUES (%s, %s, %s, %s, %s)
             RETURNING id_avaliacao
             """,
-            (user_id, id_midia, data['nota'], data.get('titulo_avaliacao'), data.get('texto_avaliacao')),
+            (user_id, id_midia, nota, data.get('titulo_avaliacao'), data.get('texto_avaliacao')),
         )
         notas = t.consultar_um(NOTAS_DA_MIDIA, (id_midia,)) or {}
 
@@ -80,6 +89,12 @@ def editar_avaliacao(avaliacao_id):
     atual = consultar_um("SELECT id_usuario, id_midia FROM avaliacoes WHERE id_avaliacao = %s", (avaliacao_id,))
     if not atual or atual['id_usuario'] != user_id:
         return jsonify({'erro': 'Avaliação não encontrada ou sem permissão'}), 403
+
+    if 'nota' in data:
+        try:
+            data['nota'] = ler_nota(data['nota'])
+        except NotaInvalida as erro:
+            return _nota_invalida(erro)
 
     fields = []
     params = []

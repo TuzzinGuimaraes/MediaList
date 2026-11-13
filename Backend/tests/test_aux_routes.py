@@ -69,6 +69,41 @@ def test_post_avaliacao_sem_nota_responde_400(client, auth_headers):
     assert response.status_code == 400
 
 
+@pytest.mark.parametrize('nota', [8.55, 10.5, -1, 'oito', True])
+def test_post_avaliacao_fora_da_escala_responde_400_sem_gravar(client, auth_headers, monkeypatch, nota):
+    fake = FakeBanco().instalar(monkeypatch, avaliacoes_routes)
+    monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
+
+    response = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': nota})
+
+    assert response.status_code == 400
+    assert response.get_json()['erro'] == 'A nota vai de 0 a 10, com no máximo uma casa decimal'
+    assert response.get_json()['detalhes'] == {'nota': 'A nota vai de 0 a 10, com no máximo uma casa decimal'}
+    assert not fake.sql('INSERT INTO avaliacoes')
+
+
+def test_post_avaliacao_com_uma_casa_grava_a_nota(client, auth_headers, monkeypatch):
+    fake = FakeBanco({'INSERT INTO avaliacoes': {'id_avaliacao': 'AVL-1'}}).instalar(monkeypatch, avaliacoes_routes)
+    monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
+
+    response = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': '8,5'})
+
+    assert response.status_code == 201
+    assert fake.sql('INSERT INTO avaliacoes')[0][2][2] == 8.5
+
+
+def test_put_avaliacao_fora_da_escala_responde_400_sem_gravar(client, auth_headers, monkeypatch):
+    fake = FakeBanco({'FROM avaliacoes': {'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1'}}).instalar(
+        monkeypatch, avaliacoes_routes
+    )
+
+    response = client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': 8.55})
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'nota': 'A nota vai de 0 a 10, com no máximo uma casa decimal'}
+    assert not fake.sql('UPDATE avaliacoes')
+
+
 def test_post_avaliacao_rejeita_duplicada(client, auth_headers, monkeypatch):
     monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
     FakeBanco({'SELECT id_avaliacao': {'id_avaliacao': 'AVL-1'}}).instalar(monkeypatch, avaliacoes_routes)
