@@ -76,6 +76,10 @@ MYSQL_CONFIG = {
     'database': os.getenv('DB_NAME', 'medialist_db'),
     'charset': 'utf8mb4',
     'use_unicode': True,
+    # Transição (ticket 11): DB_HOST aponta para o PostgreSQL, que não responde
+    # ao handshake do MySQL. Sem timeout, o /api/health trava e o backend fica
+    # unhealthy. Sai com o MySQL no ticket 10.
+    'connection_timeout': 3,
 }
 
 
