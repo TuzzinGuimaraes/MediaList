@@ -103,16 +103,21 @@ def test_put_avaliacao_fora_da_escala_responde_400_sem_gravar(client, auth_heade
     assert not fake.sql('UPDATE avaliacoes')
 
 
-def test_post_avaliacao_rejeita_duplicada(client, auth_headers, monkeypatch):
+def test_post_avaliacao_repetida_responde_409_pela_unique(client, auth_headers, monkeypatch):
+    """Sem SELECT prévio: a UNIQUE (id_usuario, id_midia) decide, inclusive na corrida."""
     monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
-    FakeBanco({'SELECT id_avaliacao': {'id_avaliacao': 'AVL-1'}}).instalar(monkeypatch, avaliacoes_routes)
+    fake = FakeBanco({
+        'INSERT INTO avaliacoes': banco.Conflito('Registro já existe', 'uk_avaliacoes_usuario_midia'),
+    }).instalar(monkeypatch, avaliacoes_routes)
 
     response = client.post('/api/avaliacoes', headers=auth_headers, json={
         'id_midia': 'MID-1',
         'nota': 8,
     })
 
-    assert response.status_code == 400
+    assert response.status_code == 409
+    assert response.get_json() == {'erro': 'Você já avaliou esta mídia'}
+    assert not fake.sql('SELECT id_avaliacao')
 
 
 def test_put_avaliacao_restringe_edicao_ao_autor(client, auth_headers, monkeypatch):

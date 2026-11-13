@@ -223,7 +223,7 @@ describe('Avaliações no detalhe da Mídia', () => {
   it('mostra o erro da API sem fechar o formulário', async () => {
     simularFetch({
       ...rotas([]),
-      'POST /avaliacoes': { status: 400, corpo: { erro: 'Você já avaliou esta mídia' } },
+      'POST /avaliacoes': { status: 409, corpo: { erro: 'Você já avaliou esta mídia' } },
     });
 
     await abrirDetalhe();
