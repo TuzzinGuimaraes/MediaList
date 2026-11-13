@@ -58,7 +58,7 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
 /** Linha do Item na aba Lista. Tocar abre o editor; o stepper muda o Progresso direto. */
 export function LinhaItem({ item, editar, mudarProgresso }: Props) {
   const titulo = tituloDaMidia(item);
-  const nota = item.nota_usuario != null && item.nota_usuario !== '' ? String(Number(item.nota_usuario)) : null;
+  const nota = item.nota_usuario != null ? String(item.nota_usuario) : null;
   return (
     <View accessibilityLabel={`Item ${titulo}`} className="flex-row items-center gap-3 px-4 py-2">
       <Pressable

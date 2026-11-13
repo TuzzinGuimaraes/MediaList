@@ -9,7 +9,7 @@ describe('notasDaMidia', () => {
   });
 
   it('jogo traz a nota da RAWG', () => {
-    expect(notasDaMidia({ nota_media: null, nota_fonte: '9.0', origem_nota: 'RAWG' })).toEqual([
+    expect(notasDaMidia({ nota_media: null, nota_fonte: 9, origem_nota: 'RAWG' })).toEqual([
       { rotulo: 'Nota RAWG', curto: 'RAWG', valor: '9.0' },
     ]);
   });
@@ -39,7 +39,7 @@ describe('notasDaMidia', () => {
 describe('notaDeRanking', () => {
   it('é a Nota média, senão a Nota da fonte, senão null', () => {
     expect(notaDeRanking({ nota_media: 6, nota_fonte: 9 })).toBe(6);
-    expect(notaDeRanking({ nota_media: null, nota_fonte: '9.5' })).toBe(9.5);
+    expect(notaDeRanking({ nota_media: null, nota_fonte: 9.5 })).toBe(9.5);
     expect(notaDeRanking({ nota_media: null, nota_fonte: null })).toBeNull();
   });
 });

@@ -167,9 +167,9 @@ export type DadosItem = {
 type ItemDaApi = {
   status_consumo: string;
   progresso_atual: number | null;
-  nota_usuario: number | string | null;
-  favorito?: boolean | number | null;
-  privado?: boolean | number | null;
+  nota_usuario: number | null;
+  favorito?: boolean | null;
+  privado?: boolean | null;
   data_inicio?: string | null;
   data_conclusao?: string | null;
   total_rewatches?: number | null;
@@ -193,7 +193,7 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
   return {
     status_consumo: item.status_consumo,
     progresso: String(item.progresso_atual ?? 0),
-    nota: item.nota_usuario == null || item.nota_usuario === '' ? '' : String(Number(item.nota_usuario)),
+    nota: item.nota_usuario == null ? '' : String(item.nota_usuario),
     favorito: Boolean(item.favorito),
     privado: Boolean(item.privado),
     inicio: formatarData(item.data_inicio) ?? '',
