@@ -1,105 +1,49 @@
 """
-Blueprint de Preferências
-Endpoints para preferências do usuário (MongoDB)
+Blueprint de Preferências: `usuarios.preferencias` (jsonb).
+
+O jsonb guarda só o que o Usuário mudou; a leitura completa com os padrões.
 """
-from datetime import datetime
+import json
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-import database
+from banco import consultar_um, executar
 
 preferencias_bp = Blueprint('preferencias', __name__)
+
+PADROES = {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
+TIPOS = {'tema': str, 'idioma': str, 'notificacoes_ativas': bool}
+
 
 @preferencias_bp.route('', methods=['GET'])
 @jwt_required()
 def obter_preferencias():
-    """Obter preferências do usuário"""
-    if database.mongo_db is None or database.preferencias_collection is None:
-        return jsonify({
-            'preferencias': {
-                'tema': 'light',
-                'idioma': 'pt-BR',
-                'notificacoes_ativas': True
-            }
-        }), 200
+    """Preferências do Usuário, com os padrões no que ele não mudou."""
+    user_id = get_jwt_identity()
+    linha = consultar_um('SELECT preferencias FROM usuarios WHERE id_usuario = %s', (user_id,))
+    if linha is None:
+        return jsonify({'erro': 'Usuário não encontrado'}), 404
 
-    try:
-        user_id = get_jwt_identity()
-
-        preferencias = database.preferencias_collection.find_one(
-            {'id_usuario': user_id},
-            {'_id': 0}
-        )
-
-        if not preferencias:
-            # Criar preferências padrão
-            preferencias_padrao = {
-                'id_usuario': user_id,
-                'tema': 'light',
-                'idioma': 'pt-BR',
-                'notificacoes_ativas': True,
-                'data_criacao': datetime.now(),
-                'data_atualizacao': datetime.now()
-            }
-            database.preferencias_collection.insert_one(preferencias_padrao)
-            preferencias = preferencias_padrao
-
-        return jsonify({'preferencias': preferencias}), 200
-    except Exception as e:
-        print(f"Erro ao obter preferências: {e}")
-        return jsonify({
-            'preferencias': {
-                'tema': 'light',
-                'idioma': 'pt-BR',
-                'notificacoes_ativas': True
-            }
-        }), 200
+    salvas = {campo: valor for campo, valor in linha['preferencias'].items() if campo in PADROES}
+    return jsonify({'preferencias': {'id_usuario': user_id, **PADROES, **salvas}}), 200
 
 
 @preferencias_bp.route('', methods=['PUT'])
 @jwt_required()
 def atualizar_preferencias():
-    """Atualizar preferências do usuário"""
-    if database.mongo_db is None or database.preferencias_collection is None:
-        return jsonify({'mensagem': 'Preferências salvas localmente (MongoDB indisponível)'}), 200
+    """Grava os campos permitidos; os outros ficam como estão."""
+    data = request.get_json(silent=True) or {}
+    mudancas = {campo: data[campo] for campo in PADROES if campo in data}
+    if not mudancas:
+        return jsonify({'erro': 'Nenhuma preferência válida fornecida'}), 400
 
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
+    errados = [campo for campo, valor in mudancas.items() if not isinstance(valor, TIPOS[campo])]
+    if errados:
+        return jsonify({'erro': f"Tipo inválido em: {', '.join(errados)}"}), 400
 
-        # Validar campos permitidos
-        campos_permitidos = ['tema', 'idioma', 'notificacoes_ativas']
-        preferencias_update = {}
-
-        for campo in campos_permitidos:
-            if campo in data:
-                preferencias_update[campo] = data[campo]
-
-        if not preferencias_update:
-            return jsonify({'erro': 'Nenhuma preferência válida fornecida'}), 400
-
-        # Adicionar timestamp
-        preferencias_update['data_atualizacao'] = datetime.now()
-
-        # Atualizar ou criar
-        result = database.preferencias_collection.update_one(
-            {'id_usuario': user_id},
-            {
-                '$set': preferencias_update,
-                '$setOnInsert': {
-                    'id_usuario': user_id,
-                    'data_criacao': datetime.now()
-                }
-            },
-            upsert=True
-        )
-
-        return jsonify({
-            'mensagem': 'Preferências atualizadas com sucesso!',
-            'modificado': result.modified_count > 0 or result.upserted_id is not None
-        }), 200
-    except Exception as e:
-        print(f"Erro ao atualizar preferências: {e}")
-        return jsonify({'erro': 'Erro ao atualizar preferências'}), 500
-
+    linhas = executar(
+        'UPDATE usuarios SET preferencias = preferencias || %s::jsonb WHERE id_usuario = %s',
+        (json.dumps(mudancas), get_jwt_identity()),
+    )
+    return jsonify({'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': linhas > 0}), 200

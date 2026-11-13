@@ -79,6 +79,31 @@ describe('ListEditorModal', () => {
         expect(onSave).toHaveBeenCalledTimes(1);
     });
 
+    test('Nota pessoal vai de 0 a 10 com passo 0,1', () => {
+        render(
+            <ListEditorModal isOpen={true} onClose={() => {}} midia={midiaAnime} listaItem={null} onSave={() => {}} />
+        );
+
+        const nota = screen.getByPlaceholderText('0');
+        expect(nota).toHaveAttribute('min', '0');
+        expect(nota).toHaveAttribute('max', '10');
+        expect(nota).toHaveAttribute('step', '0.1');
+    });
+
+    test.each(['8.55', '10.5', '-1'])('Nota pessoal %s fora da escala não chega à API', async (valor) => {
+        const apiCall = jest.fn().mockResolvedValue({});
+        useApi.mockReturnValue({ apiCall });
+        render(
+            <ListEditorModal isOpen={true} onClose={() => {}} midia={midiaAnime} listaItem={null} onSave={() => {}} />
+        );
+
+        fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: valor } });
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('A nota vai de 0 a 10, com no máximo uma casa decimal.');
+        expect(apiCall).not.toHaveBeenCalled();
+    });
+
     test('monta payload correto para criacao e impede submit duplicado enquanto saving', async () => {
         let resolveRequest;
         const apiCall = jest.fn().mockImplementation(() => new Promise((resolve) => {

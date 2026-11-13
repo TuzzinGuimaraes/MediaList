@@ -1,16 +1,42 @@
-import type { Midia, MidiaResumo } from '../api/tipos';
+import type { Midia, MidiaResumo, NotasDaMidia } from '../api/tipos';
 
 export function tituloDaMidia(midia: Pick<MidiaResumo, 'titulo_portugues' | 'titulo_original'>): string {
   return midia.titulo_portugues || midia.titulo_original;
 }
 
+/** Uma nota pronta para a tela: rótulo inteiro (detalhe, leitor de tela) e curto (card). */
+export type NotaExibida = { rotulo: string; curto: string; valor: string };
+
+/** Rótulo da Nota média na tela. */
+export const ROTULO_NOTA_MEDIA = 'Nota dos Usuários';
+
+const comUmaCasa = (nota: number) => nota.toFixed(1);
+
 /**
- * A Nota média deriva só de Avaliações. A Importação grava em `nota_media` a nota da
- * fonte externa, então sem Avaliações não há Nota média a mostrar, venha o que vier.
+ * As notas que a Mídia mostra (CONTEXT.md: Nota média, Nota da fonte), cada uma com o seu
+ * rótulo: a Nota média ("Nota dos Usuários") só existe com Avaliações, e o backend a manda
+ * null sem elas; a Nota da fonte leva o nome da fonte ("Nota AniList", "Nota RAWG").
+ * Sem nenhuma das duas, lista vazia.
  */
-export function notaMedia(midia: Pick<Midia, 'nota_media' | 'total_avaliacoes'>): string | null {
-  if (!midia.total_avaliacoes || midia.nota_media == null) return null;
-  return Number(midia.nota_media).toFixed(1);
+export function notasDaMidia(midia: NotasDaMidia): NotaExibida[] {
+  const notas: NotaExibida[] = [];
+  if (midia.nota_media != null) {
+    notas.push({ rotulo: ROTULO_NOTA_MEDIA, curto: 'Usuários', valor: comUmaCasa(midia.nota_media) });
+  }
+  if (midia.nota_fonte != null) {
+    const fonte = midia.origem_nota;
+    notas.push({
+      rotulo: fonte ? `Nota ${fonte}` : 'Nota da fonte',
+      curto: fonte ?? 'Fonte',
+      valor: comUmaCasa(midia.nota_fonte),
+    });
+  }
+  return notas;
+}
+
+/** "Mais bem avaliadas": a Nota média, senão a Nota da fonte (mesma regra do backend). */
+export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fonte'>): number | null {
+  return midia.nota_media ?? midia.nota_fonte ?? null;
 }
 
 type Atributo = [rotulo: string, valor: string | number | null];

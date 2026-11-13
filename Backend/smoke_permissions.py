@@ -1,10 +1,13 @@
-"""Teste rapido e deterministico da funcao get_user_permissions."""
+"""Teste rapido e deterministico da funcao get_user_permissions contra o PostgreSQL."""
 from __future__ import annotations
 
 import sys
 
-from database import execute_query
+from banco import consultar
 from decorators import get_user_permissions
+
+#: uuid que nenhum Usuário tem (os ids são uuidv7).
+USUARIO_INEXISTENTE = '00000000-0000-0000-0000-000000000000'
 
 
 def run_checks() -> dict:
@@ -15,7 +18,7 @@ def run_checks() -> dict:
         'fallback_ok': False,
     }
 
-    usuarios = execute_query("SELECT id_usuario, nome_completo, email FROM usuarios LIMIT 5") or []
+    usuarios = consultar("SELECT id_usuario, nome_completo, email FROM usuarios LIMIT 5")
     report['usuarios_consultados'] = len(usuarios)
 
     for usuario in usuarios:
@@ -25,7 +28,7 @@ def run_checks() -> dict:
 
     # Usuário inexistente não pode receber poder algum: a ausência de grupo
     # nunca concede mais do que a presença de um.
-    perms_fallback = get_user_permissions("USR-FAKE-00000")
+    perms_fallback = get_user_permissions(USUARIO_INEXISTENTE)
     report['fallback_ok'] = bool(
         perms_fallback
         and perms_fallback.get('nivel_acesso') == 'usuario'

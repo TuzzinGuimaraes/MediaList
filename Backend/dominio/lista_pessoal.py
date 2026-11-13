@@ -2,9 +2,11 @@
 Escrita da Lista pessoal: tudo o que um Item de lista significa.
 
 O módulo é o autor do Estado de consumo (ver docs/adr/0002): validação do
-Rótulo de estado contra o Tipo de mídia, limites de Progresso, Concluído ⇔ total
-Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Os triggers
-`validar_progresso_lista*` continuam como rede de segurança do banco.
+Rótulo de estado contra o Tipo de mídia, escala da Nota pessoal, limites de Progresso, Concluído ⇔ total
+Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Esta é a única
+validação dessas regras: no PostgreSQL não há trigger de Progresso, só CHECKs
+simples (Rótulo entre os conhecidos, sem olhar o Tipo; nota de 0 a 10; contadores
+não negativos); ver docs/adr/0007 e 0009.
 
 Leitura fica de fora: a rota consulta o repositório direto. Aqui só há escrita,
 e **uma escrita por chamada** — é o que impede o estado recém-decidido de ser
@@ -16,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
+from dominio.nota import NotaInvalida, ler_nota
 from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, erro_de_rotulo, estado_de, rotulo_para
 
 OK = 'ok'
@@ -69,7 +72,7 @@ def _como_booleano(valor: Any) -> bool:
 CAMPOS_GRAVAVEIS = {
     'status_consumo': str,
     'progresso_atual': int,
-    'nota_usuario': float,
+    'nota_usuario': ler_nota,
     'favorito': _como_booleano,
     'privado': _como_booleano,
     'comentario': str,
@@ -111,6 +114,8 @@ def _validar_campos(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
 
         try:
             campos[nome] = converter(valor)
+        except NotaInvalida as erro:
+            erros[nome] = str(erro)
         except (TypeError, ValueError):
             erros[nome] = 'Valor inválido'
 

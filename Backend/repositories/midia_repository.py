@@ -3,41 +3,55 @@ Repositórios para acesso a mídias e listas.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
-from decimal import Decimal
 from typing import Any
 
-from mysql.connector import IntegrityError
-
-from database import get_db_connection
-
-#: Código do MySQL para violação de chave única (ER_DUP_ENTRY).
-ENTRADA_DUPLICADA = 1062
-
-
-def _serialize_value(value: Any) -> Any:
-    """Converte tipos do MySQL para valores compatíveis com JSON."""
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    return value
+from banco import consultar, executar, transacao
 
 
 def _serialize_row(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Acrescenta `generos_lista`. Decimal e datas ficam com o JSONProvider do app."""
     if not row:
         return None
 
-    serialized = {key: _serialize_value(value) for key, value in row.items()}
+    serialized = dict(row)
     generos = serialized.get('generos')
     serialized['generos_lista'] = [genero.strip() for genero in generos.split(',')] if generos else []
     return serialized
+
+
+def _como_lista_de_plataformas(valor: Any) -> list[str]:
+    """`plataformas` chega como texto separado por vírgula (contrato da API) e é text[] no banco."""
+    if valor is None:
+        return []
+    if isinstance(valor, str):
+        valor = valor.split(',')
+    return [str(item).strip() for item in valor if str(item).strip()]
 
 
 def _chave_alfabetica(item: dict[str, Any]) -> tuple[str, str]:
     """Título exibido (mesma regra do `tituloDaMidia` do app e do web) sem caixa, e o id_lista."""
     titulo = item.get('titulo_portugues') or item.get('titulo_original') or ''
     return titulo.casefold(), str(item.get('id_lista') or '')
+
+
+def origem_nota(nota_fonte: str) -> str:
+    """SQL da origem da Nota da fonte, pelo id externo que a Mídia tem.
+
+    Precisa de `a` (animes), `ma` (mangas) e `j` (jogos) no FROM. Sem Nota da
+    fonte não há origem: NULL.
+    """
+    return f"""
+        CASE
+            WHEN {nota_fonte} IS NULL THEN NULL
+            WHEN j.rawg_slug IS NOT NULL THEN 'RAWG'
+            WHEN COALESCE(a.anilist_id, ma.anilist_id) IS NOT NULL THEN 'AniList'
+        END
+    """
+
+
+#: "Mais bem avaliadas": a Nota média, ou a Nota da fonte quando ninguém
+#: avaliou (ticket 13). Sem nenhuma das duas, a Mídia vai para o fim.
+NOTA_DE_RANKING = 'COALESCE(n.nota_media, m.nota_fonte) DESC NULLS LAST'
 
 
 class MidiaRepository:
@@ -56,8 +70,10 @@ class MidiaRepository:
             m.titulo_portugues,
             m.sinopse,
             m.data_lancamento,
-            m.nota_media,
-            m.total_avaliacoes,
+            n.nota_media,
+            n.total_avaliacoes,
+            m.nota_fonte,
+            {origem_nota} AS origem_nota,
             m.poster_url,
             m.banner_url,
             a.status_anime,
@@ -79,7 +95,7 @@ class MidiaRepository:
             ma.anilist_id AS manga_anilist_id,
             j.desenvolvedor,
             j.publicadora,
-            j.plataformas,
+            NULLIF(array_to_string(j.plataformas, ', '), '') AS plataformas,
             j.status_jogo,
             j.modo_jogo,
             j.classificacao,
@@ -104,7 +120,7 @@ class MidiaRepository:
                 ELSE NULL
             END AS unidade_progresso,
             (
-                SELECT GROUP_CONCAT(DISTINCT g.nome_genero ORDER BY g.nome_genero SEPARATOR ', ')
+                SELECT string_agg(DISTINCT g.nome_genero, ', ' ORDER BY g.nome_genero)
                 FROM midias_generos mg
                 JOIN generos g ON g.id_genero = mg.id_genero
                 WHERE mg.id_midia = m.id_midia
@@ -114,23 +130,25 @@ class MidiaRepository:
                 FROM lista_usuarios lu
                 WHERE lu.id_midia = m.id_midia
             ) AS total_usuarios
-    """
+    """.replace('{origem_nota}', origem_nota('m.nota_fonte').strip())
 
     BASE_FROM = """
         FROM midias m
         JOIN tipo_midia tm ON tm.id_tipo = m.id_tipo
+        JOIN vw_notas_midia n ON n.id_midia = m.id_midia
         LEFT JOIN animes a ON a.id_midia = m.id_midia
         LEFT JOIN mangas ma ON ma.id_midia = m.id_midia
         LEFT JOIN jogos j ON j.id_midia = m.id_midia
     """
 
+    #: Colunas de `midias` que a API grava. A Nota média não está aqui: ela é
+    #: calculada das Avaliações (vw_notas_midia), e a Nota da fonte só a Importação grava.
     BASE_FIELDS = {
         'titulo_original': 'titulo_original',
         'titulo_ingles': 'titulo_ingles',
         'titulo_portugues': 'titulo_portugues',
         'sinopse': 'sinopse',
         'data_lancamento': 'data_lancamento',
-        'nota_media': 'nota_media',
         'poster_url': 'poster_url',
         'banner_url': 'banner_url',
     }
@@ -179,38 +197,15 @@ class MidiaRepository:
     }
 
     def _fetch_all(self, query: str, params: tuple[Any, ...] | list[Any] | None = None) -> list[dict[str, Any]]:
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
-
-        try:
-            cursor = connection.cursor(dictionary=True)
-            cursor.execute(query, params or ())
-            rows = cursor.fetchall()
-            cursor.close()
-            return [_serialize_row(row) for row in rows]
-        finally:
-            connection.close()
+        return [_serialize_row(row) for row in consultar(query, params)]
 
     def _fetch_one(self, query: str, params: tuple[Any, ...] | list[Any] | None = None) -> dict[str, Any] | None:
         results = self._fetch_all(query, params)
         return results[0] if results else None
 
     def _execute(self, query: str, params: tuple[Any, ...] | list[Any] | None = None) -> int:
-        """Executa e comita um comando, devolvendo quantas linhas ele afetou."""
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
-
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params or ())
-            connection.commit()
-            afetadas = cursor.rowcount
-            cursor.close()
-            return afetadas
-        finally:
-            connection.close()
+        """Executa um comando e devolve quantas linhas ele afetou."""
+        return executar(query, params)
 
     def _build_filters(self, tipo: str | None, filtros: dict[str, Any] | None) -> tuple[str, list[Any]]:
         filtros = filtros or {}
@@ -223,7 +218,7 @@ class MidiaRepository:
 
         if filtros.get('busca'):
             termo = f"%{filtros['busca']}%"
-            clauses.append("(m.titulo_portugues LIKE %s OR m.titulo_original LIKE %s OR m.sinopse LIKE %s)")
+            clauses.append("(m.titulo_portugues ILIKE %s OR m.titulo_original ILIKE %s OR m.sinopse ILIKE %s)")
             params.extend([termo, termo, termo])
 
         if filtros.get('genero'):
@@ -259,11 +254,11 @@ class MidiaRepository:
                 params.append(status)
 
         if filtros.get('autor'):
-            clauses.append("ma.autor LIKE %s")
+            clauses.append("ma.autor ILIKE %s")
             params.append(f"%{filtros['autor']}%")
 
         if filtros.get('estudio'):
-            clauses.append("a.estudio LIKE %s")
+            clauses.append("a.estudio ILIKE %s")
             params.append(f"%{filtros['estudio']}%")
 
         if filtros.get('demografia'):
@@ -271,11 +266,12 @@ class MidiaRepository:
             params.append(filtros['demografia'])
 
         if filtros.get('plataforma'):
-            clauses.append("j.plataformas LIKE %s")
-            params.append(f"%{filtros['plataforma']}%")
+            # Elemento inteiro do text[] (índice GIN), não substring.
+            clauses.append("j.plataformas @> ARRAY[%s]::text[]")
+            params.append(filtros['plataforma'])
 
         if filtros.get('desenvolvedor'):
-            clauses.append("j.desenvolvedor LIKE %s")
+            clauses.append("j.desenvolvedor ILIKE %s")
             params.append(f"%{filtros['desenvolvedor']}%")
 
         if filtros.get('modo_jogo'):
@@ -283,20 +279,23 @@ class MidiaRepository:
             params.append(filtros['modo_jogo'])
 
         if filtros.get('artista'):
-            clauses.append("ma.artista LIKE %s")
+            clauses.append("ma.artista ILIKE %s")
             params.append(f"%{filtros['artista']}%")
 
         return (" WHERE " + " AND ".join(clauses)) if clauses else "", params
 
     def _order_clause(self, ordem: str | None) -> str:
+        # "Mais bem avaliadas" usa a Nota da fonte quando não há Nota média
+        # (NOTA_DE_RANKING). O id desempata, para a paginação não repetir nem
+        # pular Mídias.
         order_by = {
-            'nota_media': 'm.nota_media DESC, total_usuarios DESC',
-            'data_lancamento': 'm.data_lancamento DESC',
+            'nota_media': f'{NOTA_DE_RANKING}, total_usuarios DESC',
+            'data_lancamento': 'm.data_lancamento DESC NULLS LAST',
             'titulo': 'COALESCE(m.titulo_portugues, m.titulo_original) ASC',
-            'mais_adicionados': 'total_usuarios DESC, m.nota_media DESC',
-            'popularidade': 'total_usuarios DESC, m.nota_media DESC',
+            'mais_adicionados': f'total_usuarios DESC, {NOTA_DE_RANKING}',
+            'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
         }
-        return f" ORDER BY {order_by.get(ordem or 'nota_media', order_by['nota_media'])}"
+        return f" ORDER BY {order_by.get(ordem or 'nota_media', order_by['nota_media'])}, m.id_midia"
 
     def buscar_por_tipo(
         self, tipo: str | None, pagina: int = 1, limite: int = 20, filtros: dict[str, Any] | None = None
@@ -330,152 +329,94 @@ class MidiaRepository:
     def buscar_por_titulo(self, termo: str, tipo: str | None = None) -> list[dict[str, Any]]:
         return self.buscar_por_tipo(tipo, pagina=1, limite=50, filtros={'busca': termo, 'ordem': 'titulo'})
 
-    def _get_tipo_id(self, cursor, tipo: str) -> int:
-        cursor.execute("SELECT id_tipo FROM tipo_midia WHERE nome_tipo = %s", (tipo,))
-        row = cursor.fetchone()
-        if not row:
-            raise ValueError('Tipo de mídia inválido')
-        return row[0]
+    def _valor_de_coluna(self, column: str, valor: Any) -> Any:
+        return _como_lista_de_plataformas(valor) if column == 'plataformas' else valor
 
-    def _insert_generos(self, cursor, id_midia: str, generos: list[int] | None, replace: bool = False) -> None:
+    def _gravar_generos(self, t, id_midia: str, generos: list[int] | None, replace: bool = False) -> None:
         if generos is None:
             return
 
         if replace:
-            cursor.execute("DELETE FROM midias_generos WHERE id_midia = %s", (id_midia,))
+            t.executar("DELETE FROM midias_generos WHERE id_midia = %s", (id_midia,))
 
         for genero_id in generos:
-            cursor.execute(
-                "INSERT IGNORE INTO midias_generos (id_midia, id_genero) VALUES (%s, %s)",
+            t.executar(
+                "INSERT INTO midias_generos (id_midia, id_genero) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                 (id_midia, genero_id),
             )
 
     def inserir_midia_base(self, tipo: str, dados: dict[str, Any]) -> str:
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
-
         config = self.TYPE_CONFIG[tipo]
 
-        try:
-            cursor = connection.cursor()
-            id_tipo = self._get_tipo_id(cursor, tipo)
+        base_columns = ['id_tipo']
+        base_params: list[Any] = [tipo]
+        for field, column in self.BASE_FIELDS.items():
+            if field in dados:
+                base_columns.append(column)
+                base_params.append(dados[field])
 
-            base_columns = []
-            base_values = []
-            base_params = []
-            for field, column in self.BASE_FIELDS.items():
-                if field in dados:
-                    base_columns.append(column)
-                    base_values.append("%s")
-                    base_params.append(dados[field])
+        valores = ['(SELECT id_tipo FROM tipo_midia WHERE nome_tipo = %s)'] + ['%s'] * (len(base_columns) - 1)
 
-            base_columns.insert(0, 'id_tipo')
-            base_values.insert(0, '%s')
-            base_params.insert(0, id_tipo)
-
-            cursor.execute(
-                f"INSERT INTO midias ({', '.join(base_columns)}) VALUES ({', '.join(base_values)})",
+        with transacao() as t:
+            criada = t.consultar_um(
+                f"INSERT INTO midias ({', '.join(base_columns)}) VALUES ({', '.join(valores)}) RETURNING id_midia",
                 tuple(base_params),
             )
-
-            cursor.execute(
-                """
-                SELECT id_midia
-                FROM midias
-                WHERE id_tipo = %s AND titulo_original = %s
-                ORDER BY data_criacao DESC
-                LIMIT 1
-                """,
-                (id_tipo, dados['titulo_original']),
-            )
-            row = cursor.fetchone()
-            if not row:
-                raise RuntimeError('Falha ao recuperar mídia criada')
-
-            id_midia = row[0]
+            id_midia = criada['id_midia']
 
             child_columns = ['id_midia']
-            child_values = ['%s']
-            child_params = [id_midia]
+            child_params: list[Any] = [id_midia]
             for field, column in config['fields'].items():
                 if field in dados:
                     child_columns.append(column)
-                    child_values.append('%s')
-                    child_params.append(dados[field])
+                    child_params.append(self._valor_de_coluna(column, dados[field]))
 
-            cursor.execute(
-                f"INSERT INTO {config['table']} ({', '.join(child_columns)}) VALUES ({', '.join(child_values)})",
+            t.executar(
+                f"INSERT INTO {config['table']} ({', '.join(child_columns)}) "
+                f"VALUES ({', '.join(['%s'] * len(child_columns))})",
                 tuple(child_params),
             )
-            self._insert_generos(cursor, id_midia, dados.get('generos'))
-            connection.commit()
-            cursor.close()
+            self._gravar_generos(t, id_midia, dados.get('generos'))
             return id_midia
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
 
     def atualizar_midia_base(self, id_midia: str, dados: dict[str, Any]) -> bool:
         existente = self.buscar_por_id(id_midia)
         if not existente:
             return False
 
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
-
         tipo = existente['tipo']
         config = self.TYPE_CONFIG[tipo]
 
-        try:
-            cursor = connection.cursor()
+        base_updates = []
+        base_params: list[Any] = []
+        for field, column in self.BASE_FIELDS.items():
+            if field in dados:
+                base_updates.append(f"{column} = %s")
+                base_params.append(dados[field])
 
-            base_updates = []
-            base_params = []
-            for field, column in self.BASE_FIELDS.items():
-                if field in dados:
-                    base_updates.append(f"{column} = %s")
-                    base_params.append(dados[field])
+        child_updates = []
+        child_params: list[Any] = []
+        for field, column in config['fields'].items():
+            if field in dados:
+                child_updates.append(f"{column} = %s")
+                child_params.append(self._valor_de_coluna(column, dados[field]))
 
+        with transacao() as t:
             if base_updates:
-                base_params.append(id_midia)
-                cursor.execute(
+                t.executar(
                     f"UPDATE midias SET {', '.join(base_updates)} WHERE id_midia = %s",
-                    tuple(base_params),
+                    (*base_params, id_midia),
                 )
-
-            child_updates = []
-            child_params = []
-            for field, column in config['fields'].items():
-                if field in dados:
-                    child_updates.append(f"{column} = %s")
-                    child_params.append(dados[field])
-
             if child_updates:
-                child_params.append(id_midia)
-                cursor.execute(
+                t.executar(
                     f"UPDATE {config['table']} SET {', '.join(child_updates)} WHERE id_midia = %s",
-                    tuple(child_params),
+                    (*child_params, id_midia),
                 )
-
-            self._insert_generos(cursor, id_midia, dados.get('generos'), replace=True if 'generos' in dados else False)
-            connection.commit()
-            cursor.close()
-            return True
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
+            self._gravar_generos(t, id_midia, dados.get('generos'), replace='generos' in dados)
+        return True
 
     def deletar_midia(self, id_midia: str) -> bool:
-        if not self.buscar_por_id(id_midia):
-            return False
-        self._execute("DELETE FROM midias WHERE id_midia = %s", (id_midia,))
-        return True
+        return self._execute("DELETE FROM midias WHERE id_midia = %s", (id_midia,)) > 0
 
     def obter_avaliacoes(self, id_midia: str) -> list[dict[str, Any]]:
         query = """
@@ -533,17 +474,28 @@ class JogoRepository(MidiaRepository):
         return self.buscar_por_tipo('jogo', pagina=1, limite=50, filtros={'plataforma': plataforma})
 
 
+#: Total da Mídia que o Item copia ao ser criado (antes, o trigger
+#: `before_insert_lista`): episódios do anime, capítulos do mangá, NULL no jogo.
+TOTAL_DA_MIDIA = """
+    SELECT COALESCE(a.numero_episodios, ma.numero_capitulos)
+    FROM midias m
+    LEFT JOIN animes a ON a.id_midia = m.id_midia
+    LEFT JOIN mangas ma ON ma.id_midia = m.id_midia
+    WHERE m.id_midia = %s
+"""
+
+
 class ListaRepository(MidiaRepository):
     """CRUD dos itens da lista do usuário.
 
     As regras do Item de lista vivem em `dominio.lista_pessoal`; aqui só há
-    persistência. `id_lista`, `codigo_lista` e o `progresso_total` inicial são
-    preenchidos pelo trigger `before_insert_lista`.
+    persistência. `id_lista` vem do banco (uuidv7); `progresso_total` é copiado
+    da Mídia na criação, pela própria aplicação.
     """
 
     #: Colunas de `lista_usuarios` que a aplicação grava, na ordem do UPDATE.
     #: `progresso_total` não está aqui: o total pertence à Mídia, e no Item ele é
-    #: denormalização que o trigger `before_insert_lista` preenche.
+    #: a cópia gravada em `criar_item`.
     COLUNAS_GRAVAVEIS = (
         'status_consumo',
         'progresso_atual',
@@ -602,86 +554,53 @@ class ListaRepository(MidiaRepository):
     def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
         """Insere o Item e devolve o `id_lista`, ou None se já existia.
 
-        A unique key `uk_usuario_midia` é o que garante uma Mídia por Usuário;
-        o erro do driver é traduzido aqui para que o MySQL não vaze pela costura.
+        A unique key (usuário, mídia) é o que garante uma Mídia por Usuário:
+        `ON CONFLICT DO NOTHING` sem linha devolvida é o Item já existente.
         """
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
-
-        colunas = ['id_usuario', 'id_midia']
-        params: list[Any] = [id_usuario, id_midia]
+        colunas = ['id_usuario', 'id_midia', 'progresso_total']
+        valores = ['%s', '%s', f'({TOTAL_DA_MIDIA})']
+        params: list[Any] = [id_usuario, id_midia, id_midia]
         for campo in self.COLUNAS_GRAVAVEIS:
             if campo not in campos or campos[campo] is None:
                 continue
             colunas.append(campo)
+            valores.append('%s')
             params.append(self._valor_de(campo, campos[campo]))
 
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                f"INSERT INTO lista_usuarios ({', '.join(colunas)}) "
-                f"VALUES ({', '.join(['%s'] * len(colunas))})",
+        with transacao() as t:
+            criado = t.consultar_um(
+                f"INSERT INTO lista_usuarios ({', '.join(colunas)}) VALUES ({', '.join(valores)}) "
+                "ON CONFLICT (id_usuario, id_midia) DO NOTHING RETURNING id_lista",
                 tuple(params),
             )
-            cursor.execute(
-                "SELECT id_lista FROM lista_usuarios WHERE id_usuario = %s AND id_midia = %s",
-                (id_usuario, id_midia),
-            )
-            row = cursor.fetchone()
-            connection.commit()
-            cursor.close()
-            return row[0] if row else None
-        except IntegrityError as exc:
-            connection.rollback()
-            if getattr(exc, 'errno', None) == ENTRADA_DUPLICADA:
-                return None
-            raise
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
+        return criado['id_lista'] if criado else None
 
     def atualizar_campos(self, id_lista: str, campos: dict[str, Any]) -> bool:
         """Grava os campos num Item. False quando não havia nada a gravar."""
-        connection = get_db_connection()
-        if not connection:
-            raise RuntimeError('Erro ao conectar ao banco')
+        fields = []
+        params = []
 
-        try:
-            cursor = connection.cursor()
-            fields = []
-            params = []
+        for campo in self.COLUNAS_GRAVAVEIS:
+            if campo not in campos:
+                continue
 
-            for campo in self.COLUNAS_GRAVAVEIS:
-                if campo not in campos:
-                    continue
+            if campo == 'nota_usuario' and campos[campo] in (None, ''):
+                fields.append("nota_usuario = NULL")
+                continue
 
-                if campo == 'nota_usuario' and campos[campo] in (None, ''):
-                    fields.append("nota_usuario = NULL")
-                    continue
+            fields.append(f"{campo} = %s")
+            params.append(self._valor_de(campo, campos[campo]))
 
-                fields.append(f"{campo} = %s")
-                params.append(self._valor_de(campo, campos[campo]))
+        if not fields:
+            return False
 
-            if not fields:
-                return False
-
-            fields.append("data_atualizacao = NOW()")
-            params.append(id_lista)
-            cursor.execute(
-                f"UPDATE lista_usuarios SET {', '.join(fields)} WHERE id_lista = %s",
-                tuple(params),
-            )
-            connection.commit()
-            cursor.close()
-            return True
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
+        # data_atualizacao fica com o trigger do banco.
+        params.append(id_lista)
+        executar(
+            f"UPDATE lista_usuarios SET {', '.join(fields)} WHERE id_lista = %s",
+            tuple(params),
+        )
+        return True
 
     def _valor_de(self, campo: str, valor: Any) -> Any:
         return bool(valor) if campo in self.CAMPOS_BOOLEANOS else valor

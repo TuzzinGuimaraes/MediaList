@@ -1,55 +1,44 @@
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:18
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-3308}:3306"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_ROOT_HOST: "%"
-    command:
-      - --default-authentication-plugin=mysql_native_password
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+      # O POSTGRES_USER é o dono do banco: roda as migrações (serviço migrate).
+      POSTGRES_USER: ${DB_OWNER_USER:-medialist_owner}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-medialist-owner-dev}
+      POSTGRES_DB: ${DB_NAME:-medialist_db}
+      # Usuário da aplicação, só DML, criado pelo docker/postgres-init num volume novo.
+      DB_USER: ${DB_USER:-media_app_user}
+      DB_PASSWORD: ${DB_PASSWORD:-MediaList@2025!Secure}
     volumes:
-      - mysql_data:/var/lib/mysql
-      - "./Banco DDL.sql:/docker-entrypoint-initdb.d/01-medialist.sql:ro"
+      # A imagem 18 guarda os dados em /var/lib/postgresql/18/docker.
+      - postgres_data:/var/lib/postgresql
+      - "./docker/postgres-init:/docker-entrypoint-initdb.d:ro"
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 25s
+      retries: 20
+      start_period: 10s
 
-  mongodb:
-    image: mongo:latest
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+  # One-shot: aplica as migrações com o dono e sai. O backend só sobe depois.
+  migrate:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-senha123}
-      # Usuário da aplicação, criado pelo script de init num volume novo.
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-medialist_updates_db}
-      MONGO_APP_USER: ${MONGO_APP_USER:-medialist_app}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-medialist-app-dev}
-    volumes:
-      - mongodb_data:/data/db
-      - "./docker/mongo-init:/docker-entrypoint-initdb.d:ro"
-
-  mongo-express:
-    image: mongo-express:latest
-    restart: unless-stopped
-    profiles: ["dev"]
-    ports:
-      - "127.0.0.1:${MONGO_EXPRESS_PORT:-8081}:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-senha123}
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-senha123}@mongodb:27017/
-      ME_CONFIG_BASICAUTH: "false"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-medialist_db}
+      DB_OWNER_USER: ${DB_OWNER_USER:-medialist_owner}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-medialist-owner-dev}
     depends_on:
-      - mongodb
+      postgres:
+        condition: service_healthy
 
   backend:
     build:
@@ -62,13 +51,11 @@ services:
       APP_DEBUG: "false"
       APP_ENV: ${APP_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME:-medialist_db}
       DB_USER: ${DB_USER:-media_app_user}
       DB_PASSWORD: ${DB_PASSWORD:-MediaList@2025!Secure}
-      MONGO_URI: mongodb://${MONGO_APP_USER:-medialist_app}:${MONGO_APP_PASSWORD:-medialist-app-dev}@mongodb:27017/${MONGO_DB_NAME:-medialist_updates_db}?authSource=${MONGO_DB_NAME:-medialist_updates_db}
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-medialist_updates_db}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-sua-chave-secreta-super-segura}
       JWT_ACCESS_TOKEN_DAYS: ${JWT_ACCESS_TOKEN_DAYS:-1}
       JWT_REFRESH_TOKEN_DAYS: ${JWT_REFRESH_TOKEN_DAYS:-30}
@@ -81,10 +68,10 @@ services:
     volumes:
       - "./Backend/importacao_logs:/app/importacao_logs"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
-      mongodb:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5)\""]
       interval: 20s
@@ -112,5 +99,4 @@ services:
       start_period: 10s
 
 volumes:
-  mysql_data:
-  mongodb_data:
+  postgres_data:

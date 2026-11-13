@@ -91,11 +91,6 @@ def test_sessao_http_desiste_do_429_apos_limite_de_tentativas():
 
 
 
-class _ConexaoFalsa:
-    def close(self):
-        pass
-
-
 def _rodar_main(monkeypatch, *argv):
     import sys
 
@@ -116,7 +111,6 @@ def test_pagina_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
 
     for modulo in (importar_animes, importar_mangas):
         monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
-        monkeypatch.setattr(modulo, 'get_connection', _ConexaoFalsa)
 
     _rodar_main(monkeypatch, '--tipo', 'anime')
     _rodar_main(monkeypatch, '--tipo', 'manga')
@@ -135,7 +129,6 @@ def _preparar_jogos(monkeypatch, tmp_path, sessao, chave=CHAVE):
 
     monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
     monkeypatch.setattr(importar_jogos, 'RAWG_API_KEY', chave)
-    monkeypatch.setattr(importar_jogos, 'get_connection', _ConexaoFalsa)
     monkeypatch.setattr(importar_jogos, 'criar_sessao_http', lambda **kw: sessao)
     return importar_jogos
 
@@ -154,18 +147,17 @@ def test_pagina_de_jogos_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_pa
 def test_sem_chave_rawg_jogos_sao_pulados_e_import_all_nao_sai_com_erro(monkeypatch, capsys, tmp_path, caplog):
     from importacao import importar_animes, importar_mangas
 
-    def sem_banco():
-        raise AssertionError('jogos sem chave não devem abrir conexão')
+    def sem_banco(*args):
+        raise AssertionError('jogos sem chave não devem gravar no banco')
 
     importar_jogos = _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(None), chave='')
-    monkeypatch.setattr(importar_jogos, 'get_connection', sem_banco)
+    monkeypatch.setattr(importar_jogos, 'salvar_jogo', sem_banco)
 
     def fonte(tipo, paginas, **kwargs):
         yield {'pagina': 1, 'itens': [], 'erro': None}
 
     for modulo in (importar_animes, importar_mangas):
         monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
-        monkeypatch.setattr(modulo, 'get_connection', _ConexaoFalsa)
 
     with caplog.at_level('WARNING'):
         _rodar_main(monkeypatch, '--tipo', 'todos')  # SystemExit(1) aqui falha o teste
@@ -224,11 +216,6 @@ def test_config_da_importacao_vem_do_config_do_backend():
     import config
     from importacao import config as config_importacao
 
-    assert config_importacao.DB_HOST == config.MYSQL_CONFIG['host']
-    assert config_importacao.DB_PORT == config.MYSQL_CONFIG['port']
-    assert config_importacao.DB_NAME == config.MYSQL_CONFIG['database']
-    assert config_importacao.DB_USER == config.MYSQL_CONFIG['user']
-    assert config_importacao.DB_PASSWORD == config.MYSQL_CONFIG['password']
     assert config_importacao.ANILIST_URL == config.ANILIST_API_URL
     assert config_importacao.RAWG_API_KEY == config.RAWG_API_KEY
     assert config_importacao.RAWG_BASE_URL == config.RAWG_API_URL

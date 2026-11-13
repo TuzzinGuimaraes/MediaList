@@ -8,18 +8,18 @@ export type NivelAcesso = 'admin' | 'moderador' | 'usuario';
 
 /** `usuario` da resposta de POST /auth/login. */
 export type UsuarioSessao = {
-  /** Ex.: "USR-20261106-01003". */
+  /** uuid. */
   id: string;
   nome: string;
   email: string;
   nivel_acesso: NivelAcesso;
   grupos: string | null;
-  /** O MySQL devolve 0/1. */
+  /** 0 ou 1: a rota manda o MAX(CASE ... THEN 1 ELSE 0) dos Grupos do Usuário. */
   permissoes: {
-    pode_criar: boolean | number;
-    pode_editar: boolean | number;
-    pode_deletar: boolean | number;
-    pode_moderar: boolean | number;
+    pode_criar: number;
+    pode_editar: number;
+    pode_deletar: number;
+    pode_moderar: number;
   };
 };
 
@@ -54,27 +54,24 @@ export type RespostaMe = {
   };
 };
 
-/** Somas e médias do MySQL (DECIMAL) chegam como texto: "1", "7.00". */
-type NumeroOuTexto = number | string;
-
 /** GET /usuario/estatisticas: uma linha por Tipo de mídia presente na Lista pessoal. */
 export type RespostaEstatisticas = {
   estatisticas: {
     tipo: string;
     label: string;
-    total_midias: NumeroOuTexto;
-    concluidos: NumeroOuTexto;
-    em_andamento: NumeroOuTexto;
+    total_midias: number;
+    concluidos: number;
+    em_andamento: number;
     /** Média das Notas pessoais do Tipo; null se nenhuma foi dada. */
-    nota_media: NumeroOuTexto | null;
-    favoritos: NumeroOuTexto;
-    progresso_total_consumido: NumeroOuTexto;
+    nota_media: number | null;
+    favoritos: number;
+    progresso_total_consumido: number;
   }[];
   resumo: {
-    total_midias: NumeroOuTexto;
-    concluidos: NumeroOuTexto;
-    em_andamento: NumeroOuTexto;
-    favoritos: NumeroOuTexto;
+    total_midias: number;
+    concluidos: number;
+    em_andamento: number;
+    favoritos: number;
   };
 };
 
@@ -88,9 +85,22 @@ export type RespostaPermissoes = {
 
 
 
+/** Fonte da Nota da fonte, derivada do id externo da Mídia. */
+export type OrigemNota = 'AniList' | 'RAWG';
+
+/**
+ * As notas de uma Mídia. `nota_media` é a média das Avaliações, null sem elas;
+ * `nota_fonte` é a do AniList/RAWG, gravada pela Importação. As duas vêm como número.
+ */
+export type NotasDaMidia = {
+  nota_media: number | null;
+  nota_fonte?: number | null;
+  origem_nota?: OrigemNota | null;
+};
+
 /** A Mídia como vem nas listagens (GET /midias, /midias/trending). */
-export type MidiaResumo = {
-  /** Ex.: "MID-ANM-2026-20053". */
+export type MidiaResumo = NotasDaMidia & {
+  /** uuid. */
   id_midia: string;
   tipo: TipoMidia;
   /** "Anime", "Mangá", "Jogo". */
@@ -98,7 +108,6 @@ export type MidiaResumo = {
   titulo_original: string;
   titulo_portugues: string | null;
   poster_url: string | null;
-  /** Pode vir preenchida pela Importação mesmo sem Avaliações: ver `notaMedia`. */
   nota_media: number | null;
   total_usuarios: number;
 };
@@ -107,13 +116,11 @@ export type MidiaResumo = {
 export type CartaoMidia = Pick<
   MidiaResumo,
   'id_midia' | 'tipo' | 'tipo_label' | 'titulo_original' | 'titulo_portugues' | 'poster_url'
->;
+> &
+  NotasDaMidia;
 
-/**
- * Linha de GET /midias/populares (view vw_midias_populares). A rota não serializa
- * DECIMAL: `nota_media` chega como string ("9.10").
- */
-export type MidiaPopular = Omit<MidiaResumo, 'nota_media'> & { nota_media: string | null };
+/** Linha de GET /midias/populares (view vw_midias_populares); não traz `total_avaliacoes`. */
+export type MidiaPopular = MidiaResumo;
 
 /** GET /midias/trending e GET /midias/populares. */
 export type RespostaMidias<M = MidiaResumo> = { midias: M[] };
@@ -125,7 +132,8 @@ export type Midia = MidiaResumo & {
   /** "2023-09-29". */
   data_lancamento: string | null;
   banner_url: string | null;
-  total_avaliacoes: number;
+  /** null quando a Mídia não tem Avaliações (como `nota_media`). */
+  total_avaliacoes: number | null;
   /** "Aventura, Drama" ou null; `generos_lista` é a mesma coisa já separada. */
   generos: string | null;
   generos_lista: string[];
@@ -156,7 +164,7 @@ export type RespostaDistribuicao = {
 export type Avaliacao = {
   id_avaliacao: string;
   id_usuario: string;
-  /** DECIMAL(3,2) de 0 a 10. */
+  /** De 0 a 10, uma casa. */
   nota: number;
 };
 
@@ -169,11 +177,10 @@ export type ItemLista = Midia & {
   status_consumo: string;
   progresso_atual: number | null;
   progresso_total: number | null;
-  /** Nota pessoal; pode chegar como texto (DECIMAL). */
-  nota_usuario: NumeroOuTexto | null;
-  /** O MySQL devolve 0/1. */
-  favorito?: boolean | number;
-  privado?: boolean | number;
+  /** Nota pessoal, de 0 a 10 com uma casa. */
+  nota_usuario: number | null;
+  favorito?: boolean;
+  privado?: boolean;
   /** "2026-10-01" ou null. */
   data_inicio?: string | null;
   data_conclusao?: string | null;
@@ -184,7 +191,7 @@ export type ItemLista = Midia & {
 
 export type RespostaLista = { lista: ItemLista[] };
 
-/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em RFC 1123 ("Fri, 06 Nov 2026 10:00:00 GMT"). */
+/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em ISO 8601 ("2026-11-06T10:00:00+00:00"). */
 export type Noticia = {
   titulo: string;
   conteudo: string;
@@ -225,7 +232,7 @@ export type PaginaMidias = {
   tipo: TipoMidia | null;
 };
 
-/** Item de GET /generos?tipo=. `aplicavel_a` é o SET do MySQL já como lista. */
+/** Item de GET /generos?tipo=. `aplicavel_a` é o text[] do banco, como lista. */
 export type Genero = {
   id_genero: number;
   nome_genero: string;

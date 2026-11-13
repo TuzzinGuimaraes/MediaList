@@ -106,12 +106,9 @@ export function contarPorEstado(
 
 /** Média das Notas pessoais dadas; null se nenhum Item tem nota. */
 export function mediaNotasPessoais(
-  itens: readonly { nota_usuario: number | string | null }[],
+  itens: readonly { nota_usuario: number | null }[],
 ): number | null {
-  const notas = itens
-    .filter((i) => i.nota_usuario !== null && i.nota_usuario !== '')
-    .map((i) => Number(i.nota_usuario))
-    .filter((n) => Number.isFinite(n));
+  const notas = itens.map((i) => i.nota_usuario).filter((n): n is number => n !== null);
   if (notas.length === 0) return null;
   return notas.reduce((soma, n) => soma + n, 0) / notas.length;
 }

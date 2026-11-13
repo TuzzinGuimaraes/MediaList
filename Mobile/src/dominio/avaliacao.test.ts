@@ -11,7 +11,7 @@ describe('validarAvaliacao', () => {
   });
 
   it('aceita vírgula como separador decimal', () => {
-    expect(validarAvaliacao({ ...valida, nota: '7,25' })).toMatchObject({ ok: true, dados: { nota: 7.25 } });
+    expect(validarAvaliacao({ ...valida, nota: '7,5' })).toMatchObject({ ok: true, dados: { nota: 7.5 } });
   });
 
   it('título e texto são opcionais: vazios vão como null', () => {
@@ -26,13 +26,19 @@ describe('validarAvaliacao', () => {
     expect(validarAvaliacao({ ...valida, nota: 'nove' })).toEqual({ ok: false, erro: 'Informe a nota.' });
   });
 
-  it('recusa nota fora da faixa que o banco grava (maior que 0, até 9,99)', () => {
-    const erro = { ok: false, erro: 'A nota vai de 0,01 a 9,99.' };
-    expect(validarAvaliacao({ ...valida, nota: '0' })).toEqual(erro);
+  it('aceita de 0 a 10 com uma casa decimal', () => {
+    expect(validarAvaliacao({ ...valida, nota: '0' })).toMatchObject({ ok: true, dados: { nota: 0 } });
+    expect(validarAvaliacao({ ...valida, nota: '10' })).toMatchObject({ ok: true, dados: { nota: 10 } });
+    expect(validarAvaliacao({ ...valida, nota: '9,9' })).toMatchObject({ ok: true, dados: { nota: 9.9 } });
+  });
+
+  it('recusa nota fora da escala, sem arredondar', () => {
+    const erro = { ok: false, erro: 'A nota vai de 0 a 10, com no máximo uma casa decimal.' };
+    expect(validarAvaliacao({ ...valida, nota: '8,55' })).toEqual(erro);
+    expect(validarAvaliacao({ ...valida, nota: '9.99' })).toEqual(erro);
     expect(validarAvaliacao({ ...valida, nota: '-1' })).toEqual(erro);
-    expect(validarAvaliacao({ ...valida, nota: '10' })).toEqual(erro);
-    expect(validarAvaliacao({ ...valida, nota: '9.99' })).toMatchObject({ ok: true });
-    expect(validarAvaliacao({ ...valida, nota: '0.01' })).toMatchObject({ ok: true });
+    expect(validarAvaliacao({ ...valida, nota: '10.1' })).toEqual(erro);
+    expect(validarAvaliacao({ ...valida, nota: '1e1' })).toEqual(erro);
   });
 
   it('recusa título com mais de 200 caracteres', () => {

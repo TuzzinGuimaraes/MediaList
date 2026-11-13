@@ -2,7 +2,10 @@
 estritamente menor que o seu, nunca a si mesmo."""
 import pytest
 
+from banco import Indisponivel
 from routes import moderacao as moderacao_routes
+
+from .helpers import FakeBanco
 
 NIVEIS = {
     'USR-ADMIN-0001': 'admin',
@@ -22,16 +25,17 @@ def banco(monkeypatch):
         nivel = NIVEIS.get(user_id, 'usuario')
         return {'nivel_acesso': nivel, 'pode_moderar': 1 if nivel != 'usuario' else 0}
 
-    def fake_execute(query, params=None, fetch=True):
-        if query.lstrip().startswith('SELECT'):
-            return [{'id_usuario': params[0]}] if params[0] in NIVEIS else []
+    def alvo(_sql, params):
+        return {'id_usuario': params[0]} if params[0] in NIVEIS else None
+
+    def update(sql, params):
         if estado['falhar_update']:
-            return None
-        estado['updates'].append((query, params))
-        return 0  # lastrowid de um UPDATE
+            raise Indisponivel('Banco indisponível')
+        estado['updates'].append((sql, params))
+        return 1
 
     monkeypatch.setattr('decorators.get_user_permissions', fake_permissions)
-    monkeypatch.setattr(moderacao_routes, 'execute_query', fake_execute)
+    FakeBanco({'SELECT id_usuario': alvo, 'UPDATE usuarios': update}).instalar(monkeypatch, moderacao_routes)
     return estado
 
 
@@ -98,4 +102,4 @@ def test_falha_no_banco_nao_responde_sucesso(client, make_token, banco):
     resposta = client.put(
         '/api/moderacao/usuarios/USR-COMUM-0001/desativar', headers=_headers(make_token, 'USR-ADMIN-0001'),
     )
-    assert resposta.status_code == 500
+    assert resposta.status_code == 503

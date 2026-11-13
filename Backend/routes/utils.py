@@ -1,145 +1,121 @@
 """
 Blueprint de utilidades.
 """
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-import database
-from database import execute_query
+from banco import consultar, consultar_um, executar
+from repositories.midia_repository import origem_nota
+
+logger = logging.getLogger(__name__)
 
 utils_bp = Blueprint('utils', __name__)
 
 
-def _serializar_genero(genero: dict) -> dict:
-    """Converte `aplicavel_a` de SET do MySQL para lista.
-
-    O conector devolve colunas SET como `set` do Python, que o jsonify não
-    serializa — sem esta conversão a rota inteira responde 500. A lista também
-    é a forma correta no JSON: um gênero se aplica a um conjunto de tipos.
-    """
-    aplicavel_a = genero.get('aplicavel_a')
-    if isinstance(aplicavel_a, (set, frozenset)):
-        genero = {**genero, 'aplicavel_a': sorted(aplicavel_a)}
-    return genero
-
-
 @utils_bp.route('/generos', methods=['GET'])
 def listar_generos():
-    """Listar gêneros, opcionalmente filtrando por tipo."""
-    try:
-        tipo = request.args.get('tipo')
-        if tipo:
-            # FIND_IN_SET casa o elemento inteiro. Um LIKE '%tipo%' aqui daria
-            # falso positivo — '?tipo=nim' casaria com 'anime'.
-            generos = execute_query(
-                "SELECT * FROM generos WHERE FIND_IN_SET(%s, aplicavel_a) > 0 ORDER BY nome_genero",
-                (tipo,),
-            )
-        else:
-            generos = execute_query("SELECT * FROM generos ORDER BY nome_genero")
-        return jsonify({'generos': [_serializar_genero(g) for g in (generos or [])]}), 200
-    except Exception as exc:
-        print(f"Erro ao listar gêneros: {exc}")
-        return jsonify({'erro': 'Erro ao buscar gêneros'}), 500
+    """Listar gêneros, opcionalmente filtrando por tipo.
+
+    `aplicavel_a` é text[] e sai como lista no JSON. O filtro casa o elemento
+    inteiro (índice GIN): '?tipo=nim' não casa com 'anime'.
+    """
+    tipo = request.args.get('tipo')
+    if tipo:
+        generos = consultar(
+            "SELECT * FROM generos WHERE aplicavel_a @> ARRAY[%s]::text[] ORDER BY nome_genero",
+            (tipo,),
+        )
+    else:
+        generos = consultar("SELECT * FROM generos ORDER BY nome_genero")
+    return jsonify({'generos': generos}), 200
 
 
 @utils_bp.route('/notificacoes', methods=['GET'])
 @jwt_required()
 def obter_notificacoes():
-    """Obter notificações do usuário."""
-    if database.mongo_db is None or database.notificacoes_collection is None:
-        return jsonify({'notificacoes': []}), 200
+    """As 50 Notificações mais recentes do Usuário; `?nao_lidas=true` só as não lidas.
 
-    try:
-        user_id = get_jwt_identity()
-        apenas_nao_lidas = request.args.get('nao_lidas', 'false').lower() == 'true'
-
-        filtro = {'id_usuario': user_id}
-        if apenas_nao_lidas:
-            filtro['lida'] = False
-
-        notificacoes = list(
-            database.notificacoes_collection.find(filtro, {'_id': 0}).sort('data_criacao', -1).limit(50)
-        )
-        return jsonify({'notificacoes': notificacoes}), 200
-    except Exception as exc:
-        print(f"Erro ao obter notificações: {exc}")
-        return jsonify({'notificacoes': []}), 200
+    Título, tipo e Mídia vêm da Atualização de mídia que a Notificação entrega.
+    `anime_nome` repete `midia_nome` para o web antigo.
+    """
+    apenas_nao_lidas = request.args.get('nao_lidas', 'false').lower() == 'true'
+    notificacoes = consultar(
+        """
+        SELECT n.id_usuario, a.id_midia, t.nome_tipo AS tipo_midia,
+               a.tipo_atualizacao AS tipo, a.titulo,
+               COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS midia_nome,
+               COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS anime_nome,
+               'Novidade em ' || t.nome_tipo || ' da sua lista: '
+                   || COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS mensagem,
+               n.lida, n.data_criacao
+        FROM notificacoes n
+        JOIN atualizacoes_midia a ON a.id_atualizacao = n.id_atualizacao
+        JOIN midias m ON m.id_midia = a.id_midia
+        JOIN tipo_midia t ON t.id_tipo = m.id_tipo
+        WHERE n.id_usuario = %s AND (NOT %s OR NOT n.lida)
+        ORDER BY n.data_criacao DESC, n.id_notificacao DESC
+        LIMIT 50
+        """,
+        (get_jwt_identity(), apenas_nao_lidas),
+    )
+    return jsonify({'notificacoes': notificacoes}), 200
 
 
 @utils_bp.route('/notificacoes/marcar-todas-lidas', methods=['PUT'])
 @jwt_required()
 def marcar_todas_lidas():
-    """Marcar notificações como lidas."""
-    if database.mongo_db is None or database.notificacoes_collection is None:
-        return jsonify({'mensagem': 'MongoDB não disponível'}), 200
-
-    try:
-        user_id = get_jwt_identity()
-        result = database.notificacoes_collection.update_many(
-            {'id_usuario': user_id, 'lida': False},
-            {'$set': {'lida': True}},
-        )
-        return jsonify({'mensagem': f'{result.modified_count} notificações marcadas como lidas'}), 200
-    except Exception as exc:
-        print(f"Erro ao marcar notificações: {exc}")
-        return jsonify({'erro': 'Erro ao marcar notificações'}), 500
+    """Marcar como lidas todas as Notificações do Usuário."""
+    marcadas = executar(
+        'UPDATE notificacoes SET lida = true WHERE id_usuario = %s AND NOT lida',
+        (get_jwt_identity(),),
+    )
+    return jsonify({'mensagem': f'{marcadas} notificações marcadas como lidas'}), 200
 
 
 @utils_bp.route('/health', methods=['GET'])
 def health_check():
-    """Verificar saúde do sistema."""
+    """Saúde do sistema: 200 com o PostgreSQL de pé, 503 sem ele."""
     try:
-        mysql_ok = False
-        try:
-            result = execute_query("SELECT 1 as test")
-            mysql_ok = result is not None
-        except Exception:
-            pass
+        postgres_ok = consultar_um('SELECT 1 AS ok') == {'ok': 1}
+    except Exception:
+        logger.warning('Health: PostgreSQL inacessível', exc_info=True)
+        postgres_ok = False
 
-        mongodb_ok = database.mongo_db is not None
-        return jsonify({
-            'status': 'healthy' if mysql_ok else 'degraded',
-            'mysql': 'connected' if mysql_ok else 'disconnected',
-            'mongodb': 'connected' if mongodb_ok else 'disconnected',
-        }), 200
-    except Exception as exc:
-        return jsonify({'status': 'unhealthy', 'erro': str(exc)}), 500
+    if not postgres_ok:
+        return jsonify({'status': 'unhealthy', 'postgres': 'disconnected'}), 503
+    return jsonify({'status': 'healthy', 'postgres': 'connected'}), 200
+
+
+#: Popularidade primeiro; a nota (Nota média, senão a da fonte) desempata.
+POPULARES = f"""
+    SELECT p.*, {origem_nota('p.nota_fonte')} AS origem_nota
+    FROM vw_midias_populares p
+    LEFT JOIN animes a ON a.id_midia = p.id_midia
+    LEFT JOIN mangas ma ON ma.id_midia = p.id_midia
+    LEFT JOIN jogos j ON j.id_midia = p.id_midia
+    WHERE %(tipo)s::text IS NULL OR p.tipo = %(tipo)s
+    ORDER BY p.total_usuarios DESC, COALESCE(p.nota_media, p.nota_fonte) DESC NULLS LAST, p.id_midia
+    LIMIT 20
+"""
 
 
 @utils_bp.route('/midias/populares', methods=['GET'])
 def midias_populares():
     """Mídias mais populares."""
-    try:
-        tipo = request.args.get('tipo')
-        if tipo:
-            query = "SELECT * FROM vw_midias_populares WHERE tipo = %s LIMIT 20"
-            midias = execute_query(query, (tipo,))
-        else:
-            midias = execute_query("SELECT * FROM vw_midias_populares LIMIT 20")
-        return jsonify({'midias': midias or []}), 200
-    except Exception as exc:
-        print(f"Erro ao buscar populares: {exc}")
-        return jsonify({'erro': 'Erro ao buscar mídias populares'}), 500
+    midias = consultar(POPULARES, {'tipo': request.args.get('tipo') or None})
+    return jsonify({'midias': midias}), 200
 
 
 @utils_bp.route('/animes/populares', methods=['GET'])
 def animes_populares():
     """Compatibilidade para populares de animes."""
-    try:
-        animes = execute_query("SELECT * FROM vw_midias_populares WHERE tipo = 'anime' LIMIT 20")
-        return jsonify({'animes': animes or []}), 200
-    except Exception as exc:
-        print(f"Erro ao buscar animes populares: {exc}")
-        return jsonify({'erro': 'Erro ao buscar animes populares'}), 500
+    animes = consultar(POPULARES, {'tipo': 'anime'})
+    return jsonify({'animes': animes}), 200
 
 
 @utils_bp.route('/animes/temporada', methods=['GET'])
 def animes_temporada():
     """Animes da temporada atual."""
-    try:
-        animes = execute_query("SELECT * FROM vw_animes_temporada_atual")
-        return jsonify({'animes': animes or []}), 200
-    except Exception as exc:
-        print(f"Erro ao buscar temporada: {exc}")
-        return jsonify({'erro': 'Erro ao buscar animes da temporada'}), 500
+    return jsonify({'animes': consultar("SELECT * FROM vw_animes_temporada_atual")}), 200

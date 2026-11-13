@@ -13,7 +13,12 @@ jest.mock('../contexts/SessionContext', () => ({
 
 jest.mock('recharts', () => ({
     ResponsiveContainer: ({ children }) => <div>{children}</div>,
-    BarChart: ({ children }) => <div>{children}</div>,
+    BarChart: ({ children, data = [] }) => (
+        <div>
+            {data.filter(d => d.name).map(d => <span key={d.name}>{`barra:${d.name}`}</span>)}
+            {children}
+        </div>
+    ),
     Bar: () => <div>bar</div>,
     XAxis: () => null,
     YAxis: () => null,
@@ -62,6 +67,31 @@ describe('StatsPage', () => {
 
         fireEvent.click(screen.getAllByText('Genres')[0]);
         expect(screen.getByText('Genre Distribution')).toBeInTheDocument();
+    });
+
+    test('genres exibe genero vindo como objeto com nome_genero', async () => {
+        useSession.mockReturnValue({ sessao: 'animanga' });
+        useApi.mockReturnValue({
+            apiCall: jest.fn().mockImplementation((endpoint) => {
+                if (endpoint === '/usuario/estatisticas') {
+                    return Promise.resolve({
+                        resumo: { total_midias: 1, concluidos: 0, em_andamento: 1, favoritos: 0 },
+                        estatisticas: [{ tipo: 'anime', total_midias: 1, concluidos: 0, em_andamento: 1, favoritos: 0 }],
+                    });
+                }
+                return Promise.resolve({
+                    lista: [
+                        { tipo: 'anime', status_consumo: 'assistindo', generos: [{ id_genero: 1, nome_genero: 'Mecha' }] },
+                    ],
+                });
+            }),
+        });
+
+        render(<StatsPage />);
+
+        expect((await screen.findAllByText('Anime Stats')).length).toBeGreaterThan(0);
+        fireEvent.click(screen.getAllByText('Genres')[0]);
+        expect(screen.getByText('barra:Mecha')).toBeInTheDocument();
     });
 
     test('renderiza platforms apenas para jogos e lida com lista vazia', async () => {

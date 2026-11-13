@@ -38,6 +38,5 @@ logout, o access token revogado volta a valer se o processo reiniciar, até expi
 não é novo e fica fora deste ADR. Linhas expiradas e revogadas não são apagadas; a tabela
 cresce com os logins até que exista uma limpeza. Se o banco ainda não tiver a tabela, o
 login funciona e devolve `refresh_token: null`, para que o web não quebre num banco não
-migrado. Bancos existentes ganham a tabela com `make db-migrate-refresh` (script
-`Banco migracao 0006 refresh tokens.sql`), porque o `Banco DDL.sql` ainda não tem
-mecanismo de migração incremental (ADR-0004).
+migrado. A tabela está na baseline das migrações em `Backend/migrations` (ADR-0007), que
+substituíram o `Banco DDL.sql` e o script avulso `Banco migracao 0006 refresh tokens.sql`.

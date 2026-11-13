@@ -1,6 +1,8 @@
 """Regras de escrita do Item de lista (ver CONTEXT.md: Item de lista, Progresso)."""
 from datetime import date
 
+import pytest
+
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, OK, ListaPessoal
 
 from .helpers import FakeListaRepository, FakeMidiaRepository
@@ -462,6 +464,27 @@ def test_atualizar_converte_booleanos_e_nota():
     assert repo.escritas == [(
         'atualizar_campos', 'LST-1', {'favorito': True, 'privado': False, 'nota_usuario': 7.0},
     )]
+
+
+@pytest.mark.parametrize('nota', [8.55, 10.5, -1, 'oito'])
+def test_nota_pessoal_fora_da_escala_e_recusada_e_nada_e_gravado(nota):
+    modulo, repo = _com_item()
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'nota_usuario': nota, 'favorito': True})
+
+    assert resultado.codigo == INVALIDO
+    assert resultado.detalhes == {'nota_usuario': 'A nota vai de 0 a 10, com no máximo uma casa decimal'}
+    assert repo.escritas == []
+
+
+def test_adicionar_com_nota_pessoal_fora_da_escala_e_recusado():
+    modulo, repo = _modulo()
+
+    resultado = modulo.adicionar(DONO, {'id_midia': 'MID-ANIME', 'status_consumo': 'planejado', 'nota_usuario': 8.55})
+
+    assert resultado.codigo == INVALIDO
+    assert 'nota_usuario' in resultado.detalhes
+    assert repo.escritas == []
 
 
 def test_nota_vazia_apaga_a_nota():

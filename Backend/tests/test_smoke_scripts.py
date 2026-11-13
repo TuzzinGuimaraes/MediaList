@@ -1,85 +1,70 @@
-import smoke_mongo
-import smoke_mysql_connection
+import decorators
 import smoke_permissions
+import smoke_postgres
 from decorators import get_user_permissions
 
+from .helpers import FakeBanco
 
-def test_mysql_smoke_report(monkeypatch):
+
+def test_postgres_smoke_report(monkeypatch):
+    respostas = {
+        'simple_query': {'test': 1},
+        'tables': {'total': 21},
+        'groups': {'total': 0},
+        'users': {'total': 0},
+        'migration': {'version_num': '0003_dados_iniciais'},
+        'create': {'pode': False},
+    }
+    por_sql = {smoke_postgres.CONSULTAS[chave]: valor for chave, valor in respostas.items()}
+
+    class FakeCursor:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
     class FakeConnection:
-        def close(self):
-            return None
+        def execute(self, query):
+            return FakeCursor(por_sql[query])
 
-    monkeypatch.setattr(smoke_mysql_connection, 'get_db_connection', lambda: FakeConnection())
-    monkeypatch.setattr(
-        smoke_mysql_connection,
-        'execute_query',
-        lambda query: (
-            [{'test': 1}]
-            if query == 'SELECT 1 as test'
-            else [{'Tables_in_medialist_db': 'usuarios'}]
-            if query == 'SHOW TABLES'
-            else [{'nome_grupo': 'Administradores', 'nivel_acesso': 'admin'}]
-            if query == 'SELECT * FROM grupos_usuarios'
-            else [{'total': 0}]
-        ),
-    )
+        def __enter__(self):
+            return self
 
-    report = smoke_mysql_connection.run_checks()
+        def __exit__(self, *_exc):
+            return False
+
+    monkeypatch.setattr(smoke_postgres, '_conectar', lambda: FakeConnection())
+
+    report = smoke_postgres.run_checks()
 
     assert report['connection_ok'] is True
     assert report['simple_query_ok'] is True
     assert report['tables_ok'] is True
     assert report['groups_ok'] is False
     assert report['users_table_ok'] is True
+    assert report['migrated_ok'] is True
+    assert report['no_ddl_ok'] is True
 
 
-def test_mongo_smoke_report(monkeypatch):
-    class FakeCollection:
-        def __init__(self):
-            self.inserted = []
-            self.deleted = []
+def test_postgres_smoke_sem_conexao(monkeypatch):
+    def falha():
+        raise smoke_postgres.psycopg.OperationalError('recusada')
 
-        def insert_one(self, item):
-            self.inserted.append(item)
+    monkeypatch.setattr(smoke_postgres, '_conectar', falha)
 
-        def delete_one(self, item):
-            self.deleted.append(item)
+    report = smoke_postgres.run_checks()
 
-    class FakeDatabase(dict):
-        def __getitem__(self, key):
-            if key not in self:
-                self[key] = FakeCollection()
-            return dict.__getitem__(self, key)
-
-    class FakeMongoClient:
-        def __init__(self, *_args, **_kwargs):
-            self.databases = {'medialist_updates_db': FakeDatabase()}
-
-        def server_info(self):
-            return {'ok': 1}
-
-        def list_database_names(self):
-            return list(self.databases.keys())
-
-        def __getitem__(self, key):
-            return self.databases.setdefault(key, FakeDatabase())
-
-    monkeypatch.setattr(smoke_mongo, 'MongoClient', FakeMongoClient)
-
-    report = smoke_mongo.run_checks()
-
-    assert report == {
-        'server_ok': True,
-        'insert_ok': True,
-        'cleanup_ok': True,
-        'database_names': ['medialist_updates_db'],
-    }
+    assert report['connection_ok'] is False
+    assert smoke_postgres.main() == 1
 
 
 def test_permissions_smoke_report(monkeypatch):
-    monkeypatch.setattr(smoke_permissions, 'execute_query', lambda *_args, **_kwargs: [
+    FakeBanco({'FROM usuarios LIMIT 5': [
         {'id_usuario': 'USR-1', 'nome_completo': 'User 1', 'email': 'u1@example.com'},
-    ])
+    ]}).instalar(monkeypatch, smoke_permissions)
+    # O usuário inexistente passa pela função real, com o banco sem linha nenhuma.
+    FakeBanco().instalar(monkeypatch, decorators)
     monkeypatch.setattr(smoke_permissions, 'get_user_permissions', lambda user_id: (
         {
             'nivel_acesso': 'usuario',
@@ -87,8 +72,8 @@ def test_permissions_smoke_report(monkeypatch):
             'pode_criar': 1,
             'pode_editar': 1,
         }
-        if user_id != 'USR-FAKE-00000'
-        else get_user_permissions('USR-FAKE-00000')
+        if user_id != smoke_permissions.USUARIO_INEXISTENTE
+        else get_user_permissions(user_id)
     ))
 
     report = smoke_permissions.run_checks()

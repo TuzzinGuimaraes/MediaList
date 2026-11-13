@@ -3,6 +3,7 @@
 // (ADR 0002, 0004, 0009); aqui servem para o otimista do stepper e o editor.
 
 import { formatarData } from './datas';
+import { lerNota } from './nota';
 import {
   type EstadoConsumo,
   estadoDe,
@@ -166,9 +167,9 @@ export type DadosItem = {
 type ItemDaApi = {
   status_consumo: string;
   progresso_atual: number | null;
-  nota_usuario: number | string | null;
-  favorito?: boolean | number | null;
-  privado?: boolean | number | null;
+  nota_usuario: number | null;
+  favorito?: boolean | null;
+  privado?: boolean | null;
   data_inicio?: string | null;
   data_conclusao?: string | null;
   total_rewatches?: number | null;
@@ -192,7 +193,7 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
   return {
     status_consumo: item.status_consumo,
     progresso: String(item.progresso_atual ?? 0),
-    nota: item.nota_usuario == null || item.nota_usuario === '' ? '' : String(Number(item.nota_usuario)),
+    nota: item.nota_usuario == null ? '' : String(item.nota_usuario),
     favorito: Boolean(item.favorito),
     privado: Boolean(item.privado),
     inicio: formatarData(item.data_inicio) ?? '',
@@ -201,9 +202,6 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
     comentario: item.comentario ?? '',
   };
 }
-
-/** `nota_usuario` é DECIMAL(3,2): acima de 9,99 o banco recusa (e o backend responde 500). */
-export const NOTA_PESSOAL_MAXIMA = 9.99;
 
 const INTEIRO = /^\d+$/;
 
@@ -260,12 +258,9 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   }
 
   let nota: number | null = null;
-  const textoNota = f.nota.trim().replace(',', '.');
-  if (textoNota) {
-    nota = Number(textoNota);
-    if (Number.isNaN(nota) || nota < 0 || nota > NOTA_PESSOAL_MAXIMA) {
-      return falha('A Nota pessoal vai de 0 a 9,99.');
-    }
+  if (f.nota.trim()) {
+    nota = lerNota(f.nota);
+    if (nota === null) return falha('A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.');
   }
 
   const textoRecontagem = f.recontagem.trim() || '0';

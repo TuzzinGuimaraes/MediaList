@@ -1,4 +1,3 @@
-import database
 from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
 from routes import jogos as jogos_routes
@@ -7,21 +6,14 @@ from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
-from .helpers import FakeMongoCollection
+from .helpers import FakeBanco
 
 
 def test_put_avaliacao_atualiza_campos_e_retorna_nota_media(client, auth_headers, monkeypatch):
-    chamadas = []
-
-    def fake_execute(query, params=None, fetch=True):
-        chamadas.append((query, params, fetch))
-        if query.startswith('SELECT id_usuario, id_midia'):
-            return [{'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1'}]
-        if query.startswith('SELECT nota_media'):
-            return [{'nota_media': 8.7}]
-        return None
-
-    monkeypatch.setattr(avaliacoes_routes, 'execute_query', fake_execute)
+    fake = FakeBanco({
+        'SELECT id_usuario, id_midia': {'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1'},
+        'vw_notas_midia': {'nota_media': 8.7, 'total_avaliacoes': 3},
+    }).instalar(monkeypatch, avaliacoes_routes)
 
     response = client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={
         'nota': 9,
@@ -30,17 +22,11 @@ def test_put_avaliacao_atualiza_campos_e_retorna_nota_media(client, auth_headers
 
     assert response.status_code == 200
     assert response.get_json()['nota_media_atualizada'] == 8.7
-    assert any(query.startswith('UPDATE avaliacoes SET') for query, _params, _fetch in chamadas)
+    assert fake.sql('UPDATE avaliacoes SET')
 
 
 def test_delete_avaliacao_bloqueia_usuario_sem_permissao(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(
-        avaliacoes_routes,
-        'execute_query',
-        lambda query, params=None, fetch=True: (
-            [{'id_usuario': 'USR-OUTRO'}] if query.startswith('SELECT id_usuario') else None
-        ),
-    )
+    FakeBanco({'SELECT id_usuario': {'id_usuario': 'USR-OUTRO'}}).instalar(monkeypatch, avaliacoes_routes)
     monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _user_id: {'pode_moderar': 0})
 
     response = client.delete('/api/avaliacoes/AVL-1', headers=auth_headers)
@@ -66,7 +52,7 @@ def test_usuario_permissoes_retorna_payload(client, auth_headers, monkeypatch):
 
 
 def test_usuario_perfil_retorna_404_quando_view_nao_tem_registro(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(usuario_routes, 'execute_query', lambda *_args, **_kwargs: [])
+    FakeBanco().instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/perfil', headers=auth_headers)
 
@@ -74,52 +60,9 @@ def test_usuario_perfil_retorna_404_quando_view_nao_tem_registro(client, auth_he
     assert response.get_json()['erro'] == 'Perfil não encontrado'
 
 
-def test_preferencias_update_salva_campos_validos(client, auth_headers):
-    preferencias = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True},
-    ])
-    database.mongo_db = object()
-    database.preferencias_collection = preferencias
-
-    response = client.put('/api/preferencias', headers=auth_headers, json={
-        'tema': 'dark',
-        'notificacoes_ativas': False,
-    })
-
-    assert response.status_code == 200
-    assert response.get_json()['modificado'] is True
-    assert preferencias.items[0]['tema'] == 'dark'
-    assert preferencias.items[0]['notificacoes_ativas'] is False
-
-
-def test_noticias_lista_registros_do_mongo(client):
-    noticias = FakeMongoCollection([
-        {'titulo': 'Notícia A', 'categoria': 'geral'},
-        {'titulo': 'Notícia B', 'categoria': 'anime'},
-    ])
-    database.mongo_db = object()
-    database.noticias_collection = noticias
-
-    response = client.get('/api/noticias?limite=1')
-
-    assert response.status_code == 200
-    assert response.get_json()['noticias'][0]['titulo'] == 'Notícia A'
-
-
-def test_noticias_rejeita_criacao_sem_titulo(client, admin_headers, monkeypatch):
-    database.mongo_db = object()
-    database.noticias_collection = FakeMongoCollection()
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-
-    response = client.post('/api/noticias', headers=admin_headers, json={'conteudo': 'Sem título'})
-
-    assert response.status_code == 400
-    assert response.get_json()['erro'] == 'Título é obrigatório'
-
-
 def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(moderacao_routes, 'execute_query', lambda *_args, **_kwargs: [{'id_avaliacao': 'AVL-1'}])
+    FakeBanco({'FROM avaliacoes': [{'id_avaliacao': 'AVL-1'}]}).instalar(monkeypatch, moderacao_routes)
 
     response = client.get('/api/moderacao/avaliacoes', headers=admin_headers)
 
@@ -127,46 +70,11 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
 
 
-def test_utils_notificacoes_filtra_nao_lidas(client, auth_headers):
-    notificacoes = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Lida', 'lida': True},
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova', 'lida': False},
-        {'id_usuario': 'USR-OUTRO', 'titulo': 'Outro usuário', 'lida': False},
-    ])
-    database.mongo_db = object()
-    database.notificacoes_collection = notificacoes
-
-    response = client.get('/api/notificacoes?nao_lidas=true', headers=auth_headers)
-
-    assert response.status_code == 200
-    assert response.get_json()['notificacoes'] == [{'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova', 'lida': False}]
-
-
-def test_utils_marcar_todas_lidas_atualiza_documentos(client, auth_headers):
-    notificacoes = FakeMongoCollection([
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova 1', 'lida': False},
-        {'id_usuario': 'USR-TEST-0001', 'titulo': 'Nova 2', 'lida': False},
-    ])
-    database.mongo_db = object()
-    database.notificacoes_collection = notificacoes
-
-    response = client.put('/api/notificacoes/marcar-todas-lidas', headers=auth_headers)
-
-    assert response.status_code == 200
-    assert all(item['lida'] is True for item in notificacoes.items)
-    assert '2 notificações' in response.get_json()['mensagem']
-
-
 def test_utils_populares_e_temporada_consultam_views(client, monkeypatch):
-    chamadas = []
-
-    def fake_execute(query, params=None, fetch=True):
-        chamadas.append((query, params, fetch))
-        if 'vw_animes_temporada_atual' in query:
-            return [{'id_midia': 'MID-TEMP'}]
-        return [{'id_midia': 'MID-POP'}]
-
-    monkeypatch.setattr(utils_routes, 'execute_query', fake_execute)
+    fake = FakeBanco({
+        'vw_animes_temporada_atual': [{'id_midia': 'MID-TEMP'}],
+        'vw_midias_populares': [{'id_midia': 'MID-POP'}],
+    }).instalar(monkeypatch, utils_routes)
 
     response_populares = client.get('/api/midias/populares?tipo=anime')
     response_animes_populares = client.get('/api/animes/populares')
@@ -177,8 +85,8 @@ def test_utils_populares_e_temporada_consultam_views(client, monkeypatch):
     assert response_temporada.status_code == 200
     assert response_populares.get_json()['midias'][0]['id_midia'] == 'MID-POP'
     assert response_temporada.get_json()['animes'][0]['id_midia'] == 'MID-TEMP'
-    assert any('vw_midias_populares' in query for query, _params, _fetch in chamadas)
-    assert any('vw_animes_temporada_atual' in query for query, _params, _fetch in chamadas)
+    assert fake.sql('vw_midias_populares')
+    assert fake.sql('vw_animes_temporada_atual')
 
 
 def test_animes_crud_e_atualizacao(client, admin_headers, monkeypatch):

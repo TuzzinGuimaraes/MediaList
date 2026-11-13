@@ -11,6 +11,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from threading import Lock
 
@@ -263,6 +264,27 @@ def formatar_data_parcial(data_raw: str | None) -> str | None:
     if len(partes) == 2:
         return f'{partes[0]}-{partes[1]}-01'
     return data_raw
+
+
+_NOTA_MAXIMA = Decimal('10.0')
+
+
+def _nota_fonte(valor, fator: Decimal) -> Decimal | None:
+    """Nota da fonte na escala 0..10 com uma casa (numeric(3,1)); 0 ou ausente é sem nota."""
+    if not valor:
+        return None
+    nota = (Decimal(str(valor)) * fator).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+    return min(nota, _NOTA_MAXIMA)
+
+
+def nota_fonte_anilist(mean_score: int | None) -> Decimal | None:
+    """meanScore do AniList (0..100) / 10."""
+    return _nota_fonte(mean_score, Decimal('0.1'))
+
+
+def nota_fonte_rawg(rating: float | None) -> Decimal | None:
+    """rating da RAWG (0..5) * 2. A RAWG manda 0 para jogo sem avaliações."""
+    return _nota_fonte(rating, Decimal('2'))
 
 
 def formatar_data_anilist(start_date: dict | None) -> str | None:

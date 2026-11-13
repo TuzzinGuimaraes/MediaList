@@ -6,11 +6,24 @@ from flask_jwt_extended import create_access_token
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-import database
+import banco
 from app import app as flask_app
 from config import token_blocklist
 
 from .helpers import FakeRefreshTokenRepository
+
+
+def _sem_banco_real():
+    raise RuntimeError('Teste tentou abrir o PostgreSQL real: troque a interface do módulo banco (FakeBanco)')
+
+
+@pytest.fixture(autouse=True)
+def banco_isolado(monkeypatch):
+    """Nenhum teste abre o pool de verdade sem pedir: test_banco.py troca a URL."""
+    banco.fechar()
+    monkeypatch.setattr(banco, 'database_url', _sem_banco_real)
+    yield
+    banco.fechar()
 
 
 @pytest.fixture
@@ -19,11 +32,6 @@ def app():
     yield flask_app
 
     token_blocklist.clear()
-    database.mongo_db = None
-    database.noticias_collection = None
-    database.atualizacoes_collection = None
-    database.notificacoes_collection = None
-    database.preferencias_collection = None
 
 
 @pytest.fixture
@@ -34,7 +42,7 @@ def client(app):
 @pytest.fixture(autouse=True)
 def refresh_tokens(monkeypatch):
     """Tabela de refresh tokens em memória para todo teste: o login grava nela,
-    e nenhum teste de rota deve escrever no MySQL de verdade."""
+    e nenhum teste de rota deve escrever no PostgreSQL de verdade."""
     from routes import auth as auth_routes
 
     falso = FakeRefreshTokenRepository()
