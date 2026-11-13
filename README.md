@@ -6,7 +6,7 @@ Sistema full stack para catálogo, listas pessoais, avaliações e notícias de 
 - mangás
 - jogos
 
-O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, MySQL e MongoDB orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
+O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend, PostgreSQL e MongoDB orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
 
 ## Visão geral
 
@@ -51,7 +51,7 @@ Além disso, o sistema oferece:
 
 ### Banco e serviços
 
-- MySQL 8
+- PostgreSQL 18, com migrações versionadas (Alembic)
 - MongoDB
 - mongo-express opcional via profile de desenvolvimento
 - Docker Compose na raiz para toda a stack
@@ -85,8 +85,6 @@ Além disso, o sistema oferece:
 │   └── package.json
 ├── docs/adr/
 ├── .env.example
-├── Banco DDL.sql
-├── Banco migracao 0006 refresh tokens.sql
 ├── CONTEXT.md
 ├── docker-compose.yml
 ├── Makefile
@@ -127,11 +125,11 @@ Isso sobe:
 
 - `frontend` em `http://localhost:3005`
 - `backend` em `http://localhost:5000`
-- `mysql` em `localhost:3308`
+- `postgres` em `localhost:5433` (`POSTGRES_PORT`)
 - `mongodb` em `localhost:27017`
 
-Na primeira subida com volume vazio, o MySQL aplica automaticamente o schema de [Banco DDL.sql](Banco%20DDL.sql).
-Esse bootstrap cria apenas a estrutura do banco e os dados estruturais minimos do sistema, sem catalogo pre-populado de midias.
+Antes do backend, o serviço one-shot `migrate` roda `alembic upgrade head` com o usuário dono do banco
+(migrações em [Backend/migrations](Backend/migrations)). Elas criam a estrutura e os dados estruturais minimos do sistema, sem catalogo pre-populado de midias.
 
 ### 3. Suba ferramentas auxiliares de desenvolvimento, se quiser
 
@@ -165,20 +163,21 @@ O frontend é buildado em [Frontend/Dockerfile](Frontend/Dockerfile) e servido p
 
 O backend é empacotado em [Backend/Dockerfile](Backend/Dockerfile) e executado com Gunicorn, como usuário sem root (`app`, UID 1000). No Compose, ele conversa com:
 
-- MySQL em `mysql:3306`
+- PostgreSQL em `postgres:5432`
 - MongoDB em `mongodb:27017`
 
 ### Banco de dados
 
-O schema principal está em [Banco DDL.sql](Banco%20DDL.sql). Ele cria:
+O schema é versionado com Alembic em [Backend/migrations](Backend/migrations), em SQL puro. A baseline cria:
 
-- database `medialist_db`
-- usuário `media_app_user`
-- tabelas centrais e especializadas
-- triggers
-- procedures
-- views
-- dados estruturais iniciais, como grupos de usuarios e generos
+- tabelas centrais e especializadas, com FKs, CHECKs e UNIQUE
+- triggers só de `data_atualizacao`
+- views de leitura (inclusive `vw_notas_midia`, com Nota média e Total de avaliações)
+- dados estruturais iniciais, como tipos, grupos de usuarios e generos
+
+Usuários: o dono (`DB_OWNER_USER`) roda as migrações; o da aplicação (`DB_USER`) só tem
+SELECT/INSERT/UPDATE/DELETE, criado por [docker/postgres-init](docker/postgres-init) no primeiro start com volume vazio.
+Revisão nova: `make db-revision MSG="..."`; aplicar: `make db-migrate`.
 
 O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser populado pelos importadores em [Backend/importacao](Backend/importacao).
 
@@ -192,10 +191,11 @@ Se preferir rodar frontend e backend no host, mantendo apenas os bancos no Docke
 make install
 ```
 
-### 2. Suba MySQL e MongoDB
+### 2. Suba PostgreSQL e MongoDB
 
 ```bash
-docker compose up -d mysql mongodb
+docker compose up -d postgres mongodb
+make db-migrate
 ```
 
 ### 3. Rode o backend
@@ -214,7 +214,7 @@ make frontend-dev
 
 Nesse modo:
 
-- o backend local usa `localhost:3308` e `localhost:27017`
+- o backend local usa `localhost:5433` e `localhost:27017`
 - o frontend local usa `http://localhost:5000/api` no modo desenvolvimento
 
 ## Comandos principais
@@ -223,17 +223,17 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 
 | Comando | O que faz |
 |---|---|
-| `make services-up` | Sobe frontend, backend, MySQL e MongoDB |
+| `make services-up` | Sobe frontend, backend, PostgreSQL e MongoDB |
 | `make services-up-dev` | Sobe o stack completo e habilita `mongo-express` |
 | `make compose-build` | Rebuilda as imagens Docker de backend e frontend |
 | `make services-down` | Derruba os containers do stack |
 | `make services-logs` | Mostra logs do Docker Compose |
-| `make db-schema` | Reaplica `Banco DDL.sql` no MySQL do Docker |
-| `make db-migrate-refresh` | Cria a tabela `refresh_tokens` num banco existente |
-| `make db-shell` | Abre o cliente MySQL dentro do container |
-| `make db-dump` | Gera um dump SQL completo em `./dumps` |
-| `make db-restore DUMP_FILE=...` | Restaura um dump SQL no MySQL do Docker |
-| `make smoke-mysql` | Executa o smoke test de MySQL no container backend |
+| `make db-migrate` | Aplica as migrações pendentes (serviço `migrate`) |
+| `make db-revision MSG=...` | Cria uma revisão nova em `Backend/migrations/versions` |
+| `make db-shell` | Abre o `psql` dentro do container |
+| `make db-dump` | Gera um dump (`pg_dump -Fc`) em `./dumps` |
+| `make db-restore DUMP_FILE=...` | Restaura um dump com `pg_restore` |
+| `make smoke-postgres` | Executa o smoke test de PostgreSQL no container backend |
 | `make smoke-mongo` | Executa o smoke test de MongoDB no container backend |
 | `make smoke-permissions` | Executa o smoke test de permissões no container backend |
 | `make smoke` | Executa os três smoke tests no container backend |
@@ -264,7 +264,7 @@ Depois de subir o projeto com banco vazio, rode a importacao para popular o cata
 - RAWG
   - jogos
 
-## Backup e restore do MySQL
+## Backup e restore do PostgreSQL
 
 ### Gerar dump
 
@@ -272,24 +272,24 @@ Depois de subir o projeto com banco vazio, rode a importacao para popular o cata
 make db-dump
 ```
 
-Por padrão, o arquivo é salvo em `./dumps/medialist_YYYYMMDD_HHMMSS.sql`.
+Por padrão, o arquivo é salvo em `./dumps/medialist_YYYYMMDD_HHMMSS.dump`.
 
 Se quiser definir o nome manualmente:
 
 ```bash
-make db-dump DUMP_FILE=$(pwd)/dumps/meu_dump.sql
+make db-dump DUMP_FILE=$(pwd)/dumps/meu_dump.dump
 ```
 
 ### Restaurar dump
 
 ```bash
-make db-restore DUMP_FILE=$(pwd)/dumps/meu_dump.sql
+make db-restore DUMP_FILE=$(pwd)/dumps/meu_dump.dump
 ```
 
 Observação:
 
-- o restore recria o banco configurado em `DB_NAME` antes de importar o dump;
-- isso sobrescreve completamente o conteúdo atual do banco MySQL do projeto.
+- o restore apaga e recria os objetos do dump (`pg_restore --clean`) no banco `DB_NAME`;
+- isso sobrescreve o conteúdo atual do banco PostgreSQL do projeto.
 ### Entrypoints
 
 Via `make`:
