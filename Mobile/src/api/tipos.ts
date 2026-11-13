@@ -184,7 +184,7 @@ export type ItemLista = Midia & {
 
 export type RespostaLista = { lista: ItemLista[] };
 
-/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em RFC 1123 ("Fri, 06 Nov 2026 10:00:00 GMT"). */
+/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em ISO 8601 ("2026-11-06T10:00:00+00:00"). */
 export type Noticia = {
   titulo: string;
   conteudo: string;
