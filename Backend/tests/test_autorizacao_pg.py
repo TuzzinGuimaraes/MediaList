@@ -145,3 +145,39 @@ def test_token_com_identidade_que_nao_e_uuid_da_401(client, pg, app):
         token = create_access_token(identity='USR-NAO-E-UUID')
 
     assert client.get('/api/auth/me', headers=_bearer(token)).status_code == 401
+
+
+
+@pytest.fixture
+def admin(entrar):
+    """Access token de um Usuário no Grupo Administradores."""
+    id_admin, access, _refresh = entrar()
+    banco.executar(
+        "INSERT INTO usuarios_grupos (id_usuario, id_grupo) "
+        "SELECT %s, id_grupo FROM grupos_usuarios WHERE nome_grupo = 'Administradores'",
+        (id_admin,),
+    )
+    return access
+
+
+def test_desativar_derruba_o_access_e_o_refresh_do_usuario(client, entrar, admin):
+    id_alvo, access, refresh = entrar()
+
+    resposta = client.put(f'/api/moderacao/usuarios/{id_alvo}/desativar', headers=_bearer(admin))
+    assert resposta.status_code == 200
+
+    assert client.get('/api/lista', headers=_bearer(access)).status_code == 401
+    renovacao = client.post('/api/auth/refresh', json={'refresh_token': refresh})
+    assert (renovacao.status_code, renovacao.get_json()['erro']) == (403, 'Usuário desativado')
+
+
+def test_reativar_nao_ressuscita_a_sessao_derrubada_pela_moderacao(client, entrar, admin):
+    id_alvo, access, refresh = entrar()
+    client.put(f'/api/moderacao/usuarios/{id_alvo}/desativar', headers=_bearer(admin))
+
+    assert client.put(f'/api/moderacao/usuarios/{id_alvo}/ativar', headers=_bearer(admin)).status_code == 200
+
+    # O access volta a valer até expirar (não foi revogado, só recusado enquanto
+    # desativado); o refresh morreu na desativação, então a sessão acaba nele.
+    assert client.get('/api/lista', headers=_bearer(access)).status_code == 200
+    assert client.post('/api/auth/refresh', json={'refresh_token': refresh}).status_code == 401

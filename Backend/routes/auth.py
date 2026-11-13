@@ -187,6 +187,13 @@ def refresh():
     if not atual:
         return jsonify({'erro': 'Refresh token inválido'}), 401
 
+    if not atual['usuario_ativo']:
+        # Antes da checagem de revogado: desativar pela moderação já revoga os
+        # refresh do Usuário, e a resposta continua a do login (403). A família
+        # é revogada para que reativar a conta exija um login novo.
+        refresh_token_repository.revogar_familia(atual['familia'])
+        return jsonify({'erro': 'Usuário desativado'}), 403
+
     if atual['revogado']:
         # Já trocado por um sucessor: alguém está reapresentando um token
         # velho. Não dá para saber se é o ladrão ou a vítima, então a
@@ -198,12 +205,6 @@ def refresh():
 
     if atual['expira_em'] <= datetime.now(timezone.utc):
         return jsonify({'erro': 'Refresh token expirado'}), 401
-
-    if not atual['usuario_ativo']:
-        # Mesmo status e mensagem do login. A família é revogada para que
-        # reativar a conta exija um login novo, não ressuscite a sessão.
-        refresh_token_repository.revogar_familia(atual['familia'])
-        return jsonify({'erro': 'Usuário desativado'}), 403
 
     novo_token, novo_hash, expira_em = _novo_refresh()
     if not refresh_token_repository.rotacionar(atual['id_refresh'], novo_hash, expira_em):
