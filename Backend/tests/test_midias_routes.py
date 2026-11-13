@@ -1,7 +1,7 @@
 import database
 from routes import midias as midias_routes
 
-from .helpers import FakeConnection, FakeCursor, FakeMongoCollection
+from .helpers import FakeBanco, FakeMongoCollection
 
 
 def test_get_midias_repassa_filtros_ao_repository(client, monkeypatch):
@@ -111,10 +111,10 @@ def test_post_atualizacao_cria_notificacoes(client, admin_headers, monkeypatch):
         'tipo': 'anime',
         'titulo_portugues': 'Anime X',
     })
-    monkeypatch.setattr(database, 'execute_query', lambda *_args, **_kwargs: [
+    FakeBanco({'FROM lista_usuarios': [
         {'id_usuario': 'USR-1'},
         {'id_usuario': 'USR-2'},
-    ])
+    ]}).instalar(monkeypatch, midias_routes)
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
 
     response = client.post('/api/midias/MID-1/atualizacoes', headers=admin_headers, json={
@@ -131,12 +131,10 @@ def test_post_atualizacao_cria_notificacoes(client, admin_headers, monkeypatch):
 
 
 def test_get_distribuicao_retorna_agregacao(client, monkeypatch):
-    cursor = FakeCursor(fetchall_results=[[
+    FakeBanco({'FROM lista_usuarios': [
         {'status_consumo': 'assistindo', 'total': 3},
         {'status_consumo': 'completo', 'total': 1},
-    ]])
-    connection = FakeConnection(cursor)
-    monkeypatch.setattr(midias_routes.database, 'get_db_connection', lambda: connection)
+    ]}).instalar(monkeypatch, midias_routes)
 
     response = client.get('/api/midias/MID-1/distribuicao')
 

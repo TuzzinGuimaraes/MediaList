@@ -7,4 +7,4 @@ select = ["E", "F", "I", "B"]
 
 [lint.isort]
 # Módulos do próprio Backend (rodam com Backend/ no sys.path).
-known-first-party = ["app", "config", "database", "decorators", "dominio", "importacao", "repositories", "routes", "schemas", "tests"]
+known-first-party = ["app", "banco", "config", "database", "decorators", "dominio", "importacao", "parametros", "repositories", "routes", "schemas", "tests"]

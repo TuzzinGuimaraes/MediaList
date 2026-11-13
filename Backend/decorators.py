@@ -6,7 +6,7 @@ from functools import wraps
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 
-from database import execute_query
+from banco import consultar_um
 
 # Permissões de quem não tem grupo nenhum. A ausência de grupo nunca concede
 # mais do que a presença de um: sem grupo, sem poder.
@@ -25,8 +25,7 @@ def get_user_permissions(user_id):
 
     Vence o mais privilegiado: o usuário tem um poder se qualquer grupo seu o
     concede, e o nível efetivo é o mais alto entre os grupos. O nível é
-    ordenado explicitamente porque MAX() sobre o ENUM ordena pelo índice de
-    declaração ('admin' = 1 ... 'usuario' = 3) e devolveria o menor privilégio.
+    ordenado explicitamente: MAX() sobre o texto ordenaria alfabeticamente.
     """
     query = """
         SELECT CASE MAX(CASE gu.nivel_acesso
@@ -39,7 +38,7 @@ def get_user_permissions(user_id):
                    WHEN 2 THEN 'moderador'
                    ELSE 'usuario'
                END as nivel_acesso,
-               GROUP_CONCAT(DISTINCT gu.nome_grupo SEPARATOR ', ') as grupos,
+               string_agg(DISTINCT gu.nome_grupo, ', ') as grupos,
                MAX(CASE WHEN gu.pode_criar = TRUE THEN 1 ELSE 0 END) as pode_criar,
                MAX(CASE WHEN gu.pode_editar = TRUE THEN 1 ELSE 0 END) as pode_editar,
                MAX(CASE WHEN gu.pode_deletar = TRUE THEN 1 ELSE 0 END) as pode_deletar,
@@ -50,13 +49,14 @@ def get_user_permissions(user_id):
         WHERE u.id_usuario = %s
         GROUP BY u.id_usuario
     """
-    result = execute_query(query, (user_id,))
+    result = consultar_um(query, (user_id,))
 
-    # Usuário inexistente, sem grupo, ou banco indisponível: nada é concedido.
-    if not result or not result[0]['grupos']:
+    # Usuário inexistente ou sem grupo: nada é concedido. Banco fora do ar
+    # levanta (503), em vez de virar "sem permissão".
+    if not result or not result['grupos']:
         return dict(SEM_PERMISSOES)
 
-    return result[0]
+    return result
 
 
 def permission_required(permission_name):

@@ -1,15 +1,21 @@
 """Refresh token rotativo (ADR-0006), pelo cliente Flask.
 
-O banco entra por duas costuras: `execute_query`/`get_user_permissions` para o
-login (como em test_auth_routes.py) e o repositório de refresh tokens, trocado
-por uma tabela em memória.
+O banco entra por duas costuras: a interface do módulo `banco` (FakeBanco) e
+`get_user_permissions` para o login (como em test_auth_routes.py), e o
+repositório de refresh tokens, trocado por uma tabela em memória.
 """
-from datetime import datetime
+import os
+import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from werkzeug.security import generate_password_hash
 
+import banco
+from repositories import refresh_token_repository as repositorio
 from routes import auth as auth_routes
+
+from .helpers import FakeBanco
 
 ID_USUARIO = 'USR-REFRESH-1'
 
@@ -22,21 +28,13 @@ def tokens(refresh_tokens):
 
 @pytest.fixture
 def login(client, monkeypatch, tokens):
-    monkeypatch.setattr(
-        auth_routes,
-        'execute_query',
-        lambda query, params=None, fetch=True: (
-            [{
-                'id_usuario': ID_USUARIO,
-                'nome_completo': 'Usuário Refresh',
-                'email': 'refresh@example.com',
-                'senha_hash': generate_password_hash('senha123'),
-                'ativo': True,
-            }]
-            if query.startswith('SELECT id_usuario')
-            else None
-        ),
-    )
+    FakeBanco({'FROM usuarios WHERE email': {
+        'id_usuario': ID_USUARIO,
+        'nome_completo': 'Usuário Refresh',
+        'email': 'refresh@example.com',
+        'senha_hash': generate_password_hash('senha123'),
+        'ativo': True,
+    }}).instalar(monkeypatch, auth_routes)
     monkeypatch.setattr(auth_routes, 'get_user_permissions', lambda _user_id: {
         'nivel_acesso': 'usuario',
         'grupos': 'Usuários',
@@ -73,6 +71,13 @@ def test_refresh_token_nunca_e_guardado_em_claro(login, tokens):
     linha = next(iter(tokens.tokens.values()))
     assert data['refresh_token'] not in linha.values()
     assert linha['id_usuario'] == ID_USUARIO
+
+
+def test_familia_do_login_e_um_uuid(login, tokens):
+    login()
+
+    linha = next(iter(tokens.tokens.values()))
+    assert str(uuid.UUID(linha['familia'])) == linha['familia']
 
 
 
@@ -137,7 +142,7 @@ def test_refresh_desconhecido_ou_ausente_da_401(client, corpo):
 def test_refresh_expirado_da_401(client, login, tokens):
     original = login()['refresh_token']
     for linha in tokens.tokens.values():
-        linha['expira_em'] = datetime(2000, 1, 1)
+        linha['expira_em'] = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
     assert _refresh(client, original).status_code == 401
 
@@ -208,25 +213,25 @@ def _familia_viva(tokens):
     return any(not linha['revogado'] for linha in tokens.tokens.values())
 
 
-def test_banco_indisponivel_na_busca_da_500_sem_revogar(client, login, tokens):
+def test_banco_indisponivel_na_busca_da_503_sem_revogar(client, login, tokens):
     original = login()['refresh_token']
     tokens.indisponivel.add('buscar_por_hash')
 
     response = _refresh(client, original)
 
-    assert response.status_code == 500
+    assert response.status_code == 503
     assert _familia_viva(tokens)
     tokens.indisponivel.clear()
     assert _refresh(client, original).status_code == 200
 
 
-def test_falha_na_rotacao_da_500_sem_revogar(client, login, tokens):
+def test_falha_na_rotacao_da_503_sem_revogar(client, login, tokens):
     original = login()['refresh_token']
     tokens.indisponivel.add('rotacionar')
 
     response = _refresh(client, original)
 
-    assert response.status_code == 500
+    assert response.status_code == 503
     assert _familia_viva(tokens)
     tokens.indisponivel.clear()
     assert _refresh(client, original).status_code == 200
@@ -243,80 +248,80 @@ def test_corrida_perdida_na_rotacao_revoga_a_familia(client, login, tokens):
 
 
 # ============================================
-# Repositório: infraestrutura vira exceção, ausência vira None
+# Repositório: ausência vira None, banco fora levanta
 # ============================================
 
-class _CursorQuebrado:
-    def execute(self, *_args, **_kwargs):
-        raise RuntimeError('conexão perdida')
+def test_repositorio_criar_com_banco_fora_devolve_none(monkeypatch):
+    """O login segue sem refresh (ADR-0006)."""
+    FakeBanco({'INSERT INTO refresh_tokens': banco.Indisponivel('fora')}).instalar(monkeypatch, repositorio)
 
-    def close(self):
-        pass
-
-
-def _repo(monkeypatch, connection):
-    from repositories import refresh_token_repository as modulo
-    monkeypatch.setattr(modulo, 'get_db_connection', lambda: connection)
-    return modulo.RefreshTokenRepository()
+    familia = str(uuid.uuid4())
+    assert repositorio.RefreshTokenRepository().criar('USR-1', familia, 'h' * 64, datetime.now(timezone.utc)) is None
 
 
 @pytest.mark.parametrize('metodo,args', [
     ('buscar_por_hash', ('hash',)),
-    ('rotacionar', ('RFT-1', 'hash', datetime(2100, 1, 1))),
+    ('rotacionar', ('RFT-1', 'hash', datetime(2100, 1, 1, tzinfo=timezone.utc))),
 ])
-def test_repositorio_sem_conexao_levanta_indisponivel(monkeypatch, metodo, args):
-    from repositories import RefreshTokenIndisponivel
-    repo = _repo(monkeypatch, None)
+def test_repositorio_com_banco_fora_levanta_indisponivel(monkeypatch, metodo, args):
+    FakeBanco({'refresh_tokens': banco.Indisponivel('fora')}).instalar(monkeypatch, repositorio)
 
-    with pytest.raises(RefreshTokenIndisponivel):
-        getattr(repo, metodo)(*args)
-
-
-@pytest.mark.parametrize('metodo,args', [
-    ('buscar_por_hash', ('hash',)),
-    ('rotacionar', ('RFT-1', 'hash', datetime(2100, 1, 1))),
-])
-def test_repositorio_com_erro_de_query_levanta_indisponivel(monkeypatch, metodo, args):
-    from repositories import RefreshTokenIndisponivel
-
-    from .helpers import FakeConnection
-    connection = FakeConnection(_CursorQuebrado())
-    repo = _repo(monkeypatch, connection)
-
-    with pytest.raises(RefreshTokenIndisponivel):
-        getattr(repo, metodo)(*args)
-    assert connection.closed
+    with pytest.raises(banco.Indisponivel):
+        getattr(repositorio.RefreshTokenRepository(), metodo)(*args)
 
 
 def test_repositorio_busca_inexistente_devolve_none(monkeypatch):
-    from .helpers import FakeConnection, FakeCursor
-    repo = _repo(monkeypatch, FakeConnection(FakeCursor()))
+    FakeBanco().instalar(monkeypatch, repositorio)
 
-    assert repo.buscar_por_hash('hash') is None
+    assert repositorio.RefreshTokenRepository().buscar_por_hash('hash') is None
 
 
 def test_repositorio_rotacao_de_token_ja_revogado_devolve_none(monkeypatch):
-    from .helpers import FakeConnection, FakeCursor
-    cursor = FakeCursor()
-    connection = FakeConnection(cursor)
-    repo = _repo(monkeypatch, connection)
+    fake = FakeBanco().instalar(monkeypatch, repositorio)
 
-    assert repo.rotacionar('RFT-1', 'hash', datetime(2100, 1, 1)) is None
-    assert len(cursor.executed) == 1  # só o SELECT ... FOR UPDATE
-    assert connection.rolled_back
+    assert repositorio.RefreshTokenRepository().rotacionar('RFT-1', 'hash', datetime(2100, 1, 1)) is None
+    assert len(fake.chamadas) == 1  # só o SELECT ... FOR UPDATE
 
 
-def test_repositorio_rotacao_insere_sucessor_e_revoga_o_atual(monkeypatch):
-    from .helpers import FakeConnection, FakeCursor
-    cursor = FakeCursor(fetchone_results=[{'id_usuario': 'USR-1', 'familia': 'FAM-1'}])
-    connection = FakeConnection(cursor)
-    repo = _repo(monkeypatch, connection)
+# ============================================
+# Repositório contra o PostgreSQL real (TEST_DATABASE_URL)
+# ============================================
 
-    novo_id = repo.rotacionar('RFT-1', 'hash-novo', datetime(2100, 1, 1))
+TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
 
-    assert novo_id.startswith('RFT-')
-    insert, update = cursor.executed[1], cursor.executed[2]
-    assert 'INSERT INTO refresh_tokens' in insert[0]
-    assert insert[1] == (novo_id, 'hash-novo', 'USR-1', 'FAM-1', datetime(2100, 1, 1))
-    assert update[1] == (novo_id, 'RFT-1')
-    assert connection.committed and connection.closed
+
+@pytest.fixture
+def pg_usuario(monkeypatch):
+    if not TEST_DATABASE_URL:
+        pytest.skip('TEST_DATABASE_URL ausente: sem PostgreSQL para o repositório')
+    banco.fechar()
+    monkeypatch.setattr(banco, 'database_url', lambda: TEST_DATABASE_URL)
+    email = f'refresh-{uuid.uuid4().hex}@exemplo.test'
+    id_usuario = banco.consultar_um(
+        "INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES ('Refresh', %s, 'x') RETURNING id_usuario",
+        (email,),
+    )['id_usuario']
+    yield id_usuario
+    banco.executar('DELETE FROM usuarios WHERE id_usuario = %s', (id_usuario,))
+    banco.fechar()
+
+
+def test_repositorio_real_rotaciona_na_mesma_familia(pg_usuario):
+    repo = repositorio.RefreshTokenRepository()
+    familia = str(uuid.uuid4())
+    expira = datetime.now(timezone.utc) + timedelta(days=1)
+
+    primeiro = repo.criar(pg_usuario, familia, 'a' * 64, expira)
+    segundo = repo.rotacionar(primeiro, 'b' * 64, expira)
+
+    assert uuid.UUID(primeiro) and uuid.UUID(segundo)
+    antigo = repo.buscar_por_hash('a' * 64)
+    novo = repo.buscar_por_hash('b' * 64)
+    assert antigo['revogado'] is True and antigo['substituido_por'] == segundo
+    assert novo['familia'] == familia and novo['revogado'] is False and novo['usuario_ativo'] is True
+    assert novo['expira_em'] > datetime.now(timezone.utc)
+    # O antigo já foi trocado: rotacionar de novo perde a corrida.
+    assert repo.rotacionar(primeiro, 'c' * 64, expira) is None
+
+    repo.revogar_familia(familia)
+    assert repo.buscar_por_hash('b' * 64)['revogado'] is True

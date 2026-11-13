@@ -36,7 +36,8 @@ jobs:
             Backend/requirements-dev.txt
 
       # pytest e ruff ficam fora da imagem de produção e rodam no runner. O
-      # contrato SQL roda contra o PostgreSQL do compose, já migrado.
+      # contrato SQL, o módulo banco e os repositórios rodam contra o
+      # PostgreSQL do compose, já migrado.
       - name: Install backend dependencies
         working-directory: Backend
         run: pip install -r requirements-dev.txt
@@ -78,11 +79,11 @@ jobs:
             python -m coverage report --format=markdown || echo "Resumo de cobertura indisponível."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # smoke_permissions.py volta quando as rotas falarem PostgreSQL (ticket 10).
       - name: Run backend smoke scripts
         run: |
           docker compose exec -T backend python smoke_postgres.py
           docker compose exec -T backend python smoke_mongo.py
+          docker compose exec -T backend python smoke_permissions.py
 
       - name: Shutdown stack
         if: always()

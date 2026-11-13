@@ -83,15 +83,11 @@ def _erro_legivel(detalhes: dict) -> str:
 @jwt_required()
 def obter_lista_usuario():
     """Obter lista do usuário autenticado, com filtro por tipo."""
-    try:
-        user_id = get_jwt_identity()
-        tipo = request.args.get('tipo')
-        status = request.args.get('status') or request.args.get('status_consumo')
-        lista = lista_repository.obter_lista_usuario(user_id, tipo=tipo, status=status)
-        return jsonify({'lista': lista or []}), 200
-    except Exception as exc:
-        print(f"Erro ao obter lista: {exc}")
-        return jsonify({'erro': 'Erro ao buscar lista'}), 500
+    user_id = get_jwt_identity()
+    tipo = request.args.get('tipo')
+    status = request.args.get('status') or request.args.get('status_consumo')
+    lista = lista_repository.obter_lista_usuario(user_id, tipo=tipo, status=status)
+    return jsonify({'lista': lista or []}), 200
 
 
 @lista_bp.route('/<string:target_user_id>', methods=['GET'])
@@ -108,14 +104,10 @@ def obter_lista_usuario_por_id(target_user_id):
 @jwt_required()
 def adicionar_midia_lista():
     """Adicionar mídia à lista do usuário."""
-    try:
-        user_id = get_jwt_identity()
-        payload = _normalizar_payload_lista(request.get_json(silent=True))
-        resultado = lista_pessoal.adicionar(user_id, payload)
-        return _resposta(resultado, 'Mídia adicionada à lista!', status_ok=201)
-    except Exception as exc:
-        print(f"Erro ao adicionar à lista: {exc}")
-        return jsonify({'erro': f'Erro ao adicionar mídia: {exc}'}), 500
+    user_id = get_jwt_identity()
+    payload = _normalizar_payload_lista(request.get_json(silent=True))
+    resultado = lista_pessoal.adicionar(user_id, payload)
+    return _resposta(resultado, 'Mídia adicionada à lista!', status_ok=201)
 
 
 @lista_bp.route('', methods=['POST'])
@@ -133,44 +125,32 @@ def atualizar_progresso(lista_id):
     O progresso é o motivo da chamada: sem ele não há o que fazer. O resto —
     teto, promoção a Concluído, dono do Item — é decisão do módulo.
     """
-    try:
-        user_id = get_jwt_identity()
-        payload = _normalizar_payload_lista(request.get_json(silent=True))
-        if 'progresso_atual' not in payload:
-            return jsonify({
-                'erro': 'Progresso é obrigatório',
-                'detalhes': {'progresso_atual': 'Campo obrigatório'},
-            }), 400
+    user_id = get_jwt_identity()
+    payload = _normalizar_payload_lista(request.get_json(silent=True))
+    if 'progresso_atual' not in payload:
+        return jsonify({
+            'erro': 'Progresso é obrigatório',
+            'detalhes': {'progresso_atual': 'Campo obrigatório'},
+        }), 400
 
-        resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
-        return _resposta(resultado, 'Progresso atualizado com sucesso!')
-    except Exception as exc:
-        print(f"Erro ao atualizar progresso: {exc}")
-        return jsonify({'erro': f'Erro ao atualizar: {exc}'}), 500
+    resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+    return _resposta(resultado, 'Progresso atualizado com sucesso!')
 
 
 @lista_bp.route('/<string:lista_id>', methods=['PUT'])
 @jwt_required()
 def atualizar_item_lista(lista_id):
     """Atualizar item da lista."""
-    try:
-        user_id = get_jwt_identity()
-        payload = _normalizar_payload_lista(request.get_json(silent=True))
-        resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
-        return _resposta(resultado, 'Lista atualizada com sucesso!')
-    except Exception as exc:
-        print(f"Erro ao atualizar lista: {exc}")
-        return jsonify({'erro': f'Erro ao atualizar: {exc}'}), 500
+    user_id = get_jwt_identity()
+    payload = _normalizar_payload_lista(request.get_json(silent=True))
+    resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+    return _resposta(resultado, 'Lista atualizada com sucesso!')
 
 
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
 @jwt_required()
 def remover_item_lista(lista_id):
     """Remover item da lista."""
-    try:
-        user_id = get_jwt_identity()
-        resultado = lista_pessoal.remover(user_id, lista_id)
-        return _resposta(resultado, 'Mídia removida da lista')
-    except Exception as exc:
-        print(f"Erro ao remover da lista: {exc}")
-        return jsonify({'erro': 'Erro ao remover mídia'}), 500
+    user_id = get_jwt_identity()
+    resultado = lista_pessoal.remover(user_id, lista_id)
+    return _resposta(resultado, 'Mídia removida da lista')

@@ -2,12 +2,15 @@
 Blueprint de Preferências
 Endpoints para preferências do usuário (MongoDB)
 """
+import logging
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 import database
+
+logger = logging.getLogger(__name__)
 
 preferencias_bp = Blueprint('preferencias', __name__)
 
@@ -46,8 +49,8 @@ def obter_preferencias():
             preferencias = preferencias_padrao
 
         return jsonify({'preferencias': preferencias}), 200
-    except Exception as e:
-        print(f"Erro ao obter preferências: {e}")
+    except Exception:
+        logger.exception('Erro ao obter preferências')
         return jsonify({
             'preferencias': {
                 'tema': 'light',
@@ -99,7 +102,7 @@ def atualizar_preferencias():
             'mensagem': 'Preferências atualizadas com sucesso!',
             'modificado': result.modified_count > 0 or result.upserted_id is not None
         }), 200
-    except Exception as e:
-        print(f"Erro ao atualizar preferências: {e}")
+    except Exception:
+        logger.exception('Erro ao atualizar preferências')
         return jsonify({'erro': 'Erro ao atualizar preferências'}), 500
 

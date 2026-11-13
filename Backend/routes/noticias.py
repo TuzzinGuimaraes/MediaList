@@ -1,6 +1,7 @@
 """
 Blueprint de Notícias
 """
+import logging
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -8,6 +9,9 @@ from flask_jwt_extended import jwt_required
 
 import database
 from decorators import permission_required
+from parametros import POR_PAGINA_MAX, ler_int
+
+logger = logging.getLogger(__name__)
 
 noticias_bp = Blueprint('noticias', __name__)
 
@@ -16,21 +20,18 @@ def listar_noticias():
     """Listar notícias"""
     # Acessar via módulo para pegar valor atualizado
     if database.mongo_db is None or database.noticias_collection is None:
-        print("⚠️ MongoDB ou noticias_collection é None no endpoint de listagem")
         return jsonify({'noticias': []}), 200
 
+    limite = ler_int('limite', 10, minimo=1, maximo=POR_PAGINA_MAX)
     try:
-        limite = int(request.args.get('limite', 10))
-
         noticias = list(database.noticias_collection.find(
             {},
             {'_id': 0}
         ).sort('data_publicacao', -1).limit(limite))
 
-        print(f"✅ Notícias encontradas: {len(noticias)}")
         return jsonify({'noticias': noticias}), 200
-    except Exception as e:
-        print(f"❌ Erro ao listar notícias: {e}")
+    except Exception:
+        logger.exception('Erro ao listar notícias')
         return jsonify({'noticias': []}), 200
 
 
@@ -66,7 +67,7 @@ def criar_noticia():
             'mensagem': 'Notícia criada!',
             'id': str(result.inserted_id)
         }), 201
-    except Exception as e:
-        print(f"Erro ao criar notícia: {e}")
+    except Exception:
+        logger.exception('Erro ao criar notícia')
         return jsonify({'erro': 'Erro ao criar notícia'}), 500
 

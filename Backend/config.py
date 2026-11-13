@@ -67,7 +67,8 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_ACCESS_TOKEN_DAYS',
 # tabela `refresh_tokens`, então expira e é revogado no banco.
 REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv('JWT_REFRESH_TOKEN_DAYS', '30')))
 
-# Configuração MySQL
+# Só a Importação (Backend/importacao) ainda lê isto; o app fala PostgreSQL
+# pelo módulo `banco`. Sai com a Importação sobre o PostgreSQL (ticket 23).
 MYSQL_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', '3308')),
@@ -76,11 +77,14 @@ MYSQL_CONFIG = {
     'database': os.getenv('DB_NAME', 'medialist_db'),
     'charset': 'utf8mb4',
     'use_unicode': True,
-    # Transição (ticket 11): DB_HOST aponta para o PostgreSQL, que não responde
-    # ao handshake do MySQL. Sem timeout, o /api/health trava e o backend fica
-    # unhealthy. Sai com o MySQL no ticket 10.
-    'connection_timeout': 3,
 }
+
+# Pool do PostgreSQL (módulo `banco`), por processo: com N workers do gunicorn
+# o banco vê até N * DB_POOL_MAX conexões. O timeout (segundos) vale para abrir
+# conexão e para esperar uma livre no pool; estourado, a API responde 503.
+DB_POOL_MIN = int(os.getenv('DB_POOL_MIN', '1'))
+DB_POOL_MAX = int(os.getenv('DB_POOL_MAX', '10'))
+DB_POOL_TIMEOUT = float(os.getenv('DB_POOL_TIMEOUT', '5'))
 
 
 def database_url(*, dono: bool = False) -> str:

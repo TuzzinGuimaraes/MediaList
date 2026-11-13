@@ -33,7 +33,8 @@ Além disso, o sistema oferece:
 - Python 3
 - Flask
 - Gunicorn
-- `mysql-connector-python`
+- psycopg 3 + `psycopg_pool` (PostgreSQL, módulo `Backend/banco.py`)
+- `mysql-connector-python` (só a Importação, até o ticket 23)
 - `flask-jwt-extended`
 - PyMongo
 
