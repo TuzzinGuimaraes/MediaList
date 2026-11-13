@@ -206,7 +206,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           onChangeText={mudar('progresso')}
           keyboardType="number-pad"
         />
-        <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 9,99" />
+        <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 10" />
         <CampoCurto rotulo={textos.recontagem} value={form.recontagem} onChangeText={mudar('recontagem')} keyboardType="number-pad" />
       </View>
 

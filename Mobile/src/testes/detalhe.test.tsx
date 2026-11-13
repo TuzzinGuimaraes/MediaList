@@ -45,7 +45,7 @@ async function abrirDetalhe(id: string) {
 
 describe('detalhe da Mídia', () => {
   it('anime: título, sinopse, lançamento, Gêneros, episódios, Nota média e Total de avaliações', async () => {
-    const frieren = anime({ nota_media: 9.25, total_avaliacoes: 3 });
+    const frieren = anime({ nota_media: 9.25, total_avaliacoes: 3, nota_fonte: 8.4, origem_nota: 'AniList' });
     simularFetch(detalhe(frieren, { notas: [9, 9, 10] }));
 
     await abrirDetalhe(frieren.id_midia);
@@ -59,7 +59,8 @@ describe('detalhe da Mídia', () => {
     expect(screen.getByLabelText('Estúdio: MADHOUSE')).toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Capítulos/)).not.toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Plataformas/)).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Nota média: 9.3')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota dos Usuários: 9.3')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota AniList: 8.4')).toBeOnTheScreen();
     expect(screen.getByLabelText('Total de avaliações: 3')).toBeOnTheScreen();
   });
 
@@ -88,16 +89,36 @@ describe('detalhe da Mídia', () => {
     expect(screen.queryByLabelText(/^Episódios/)).not.toBeOnTheScreen();
   });
 
-  it('sem Avaliações não mostra Nota média, mesmo com nota vinda da Importação', async () => {
-    const frieren = anime({ nota_media: 9.1, total_avaliacoes: 0 });
+  it('sem Avaliações mostra só a Nota da fonte', async () => {
+    const frieren = anime({ nota_media: null, total_avaliacoes: null, nota_fonte: 9.1, origem_nota: 'AniList' });
     simularFetch(detalhe(frieren));
 
     await abrirDetalhe(frieren.id_midia);
 
     expect(await screen.findByLabelText('Total de avaliações: 0')).toBeOnTheScreen();
-    expect(screen.queryByLabelText(/^Nota média/)).not.toBeOnTheScreen();
-    expect(screen.queryByText('9.1')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Nota dos Usuários/)).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota AniList: 9.1')).toBeOnTheScreen();
     expect(screen.getByText('Ainda sem Avaliações.')).toBeOnTheScreen();
+  });
+
+  it('jogo com nota da RAWG e Avaliações mostra as duas', async () => {
+    const hollow = jogo({ nota_media: 8, total_avaliacoes: 1, nota_fonte: 9.2, origem_nota: 'RAWG' });
+    simularFetch(detalhe(hollow, { notas: [8] }));
+
+    await abrirDetalhe(hollow.id_midia);
+
+    expect(await screen.findByLabelText('Nota dos Usuários: 8.0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota RAWG: 9.2')).toBeOnTheScreen();
+  });
+
+  it('sem nenhuma nota, não mostra nota alguma', async () => {
+    const hollow = jogo({ nota_media: null, total_avaliacoes: null, nota_fonte: null, origem_nota: null });
+    simularFetch(detalhe(hollow));
+
+    await abrirDetalhe(hollow.id_midia);
+
+    expect(await screen.findByLabelText('Total de avaliações: 0')).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Nota (dos Usuários|AniList|RAWG|da fonte)/)).not.toBeOnTheScreen();
   });
 
   it('mostra a distribuição das notas das Avaliações', async () => {

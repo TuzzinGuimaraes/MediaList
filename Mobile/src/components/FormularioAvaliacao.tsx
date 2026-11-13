@@ -13,7 +13,7 @@ const textos = {
   aviso:
     'Sua Avaliação é pública: aparece para todos e entra na Nota média da Mídia. ' +
     'Ela é separada da Nota pessoal da sua Lista, e as duas podem ser diferentes.',
-  nota: 'Nota (0,01 a 9,99)',
+  nota: 'Nota (0 a 10)',
   titulo: 'Título',
   texto: 'Texto',
   publicar: 'Publicar',

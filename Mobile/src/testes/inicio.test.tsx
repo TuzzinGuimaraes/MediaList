@@ -59,6 +59,62 @@ describe('Início', () => {
     expect(within(cardJojo).getByText('Mangá')).toBeOnTheScreen();
   });
 
+  it('card mostra a Nota dos Usuários e a da fonte com rótulos distintos; sem nenhuma, nada', async () => {
+    simularFetch({
+      ...catalogo(),
+      'GET /midias/trending?tipo=anime&limite=10': {
+        status: 200,
+        corpo: {
+          midias: [
+            anime({ nota_media: 9.1, nota_fonte: 8.4, origem_nota: 'AniList' }),
+            anime({ ...fma, nota_media: null, total_avaliacoes: null, nota_fonte: null, origem_nota: null }),
+          ],
+        },
+      },
+      'GET /midias/trending?tipo=manga&limite=10': {
+        status: 200,
+        corpo: { midias: [manga({ nota_media: null, total_avaliacoes: null, nota_fonte: 7.5, origem_nota: 'AniList' })] },
+      },
+    });
+
+    await abrirLogado();
+
+    const emAlta = await screen.findByLabelText('Em alta');
+    const cardFrieren = await within(emAlta).findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    expect(cardFrieren).toHaveAccessibilityValue({ text: 'Nota dos Usuários 9.1, Nota AniList 8.4' });
+    expect(within(cardFrieren).getByText('9.1')).toBeOnTheScreen();
+    expect(within(cardFrieren).getByText('Usuários')).toBeOnTheScreen();
+    expect(within(cardFrieren).getByText('8.4')).toBeOnTheScreen();
+    expect(within(cardFrieren).getByText('AniList')).toBeOnTheScreen();
+
+    const cardJojo = within(emAlta).getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá' });
+    expect(cardJojo).toHaveAccessibilityValue({ text: 'Nota AniList 7.5' });
+    expect(within(cardJojo).queryByText('Usuários')).not.toBeOnTheScreen();
+
+    const cardFma = within(emAlta).getByRole('link', { name: 'Fullmetal Alchemist: Brotherhood, Anime' });
+    expect(within(cardFma).queryByText('Usuários')).not.toBeOnTheScreen();
+    expect(within(cardFma).queryByText('AniList')).not.toBeOnTheScreen();
+  });
+
+  it('em alta usa a Nota da fonte quando a Mídia não tem Avaliações', async () => {
+    simularFetch({
+      ...catalogo(),
+      'GET /midias/trending?tipo=manga&limite=10': {
+        status: 200,
+        corpo: { midias: [manga({ nota_media: null, total_avaliacoes: null, nota_fonte: 9.5, origem_nota: 'AniList' })] },
+      },
+    });
+
+    await abrirLogado();
+
+    const emAlta = await screen.findByLabelText('Em alta');
+    expect(within(emAlta).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
+      'JoJo no Kimyou na Bouken, Mangá',
+      'Sousou no Frieren, Anime',
+      'Fullmetal Alchemist: Brotherhood, Anime',
+    ]);
+  });
+
   it('populares ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
     simularFetch(catalogo());
 

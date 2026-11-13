@@ -81,7 +81,7 @@ describe('Avaliações no detalhe da Mídia', () => {
 
   it('criar envia o payload certo e atualiza Nota média e Total de avaliações', async () => {
     let avaliacoes: unknown[] = [];
-    let midia = anime({ nota_media: 9.1, total_avaliacoes: 0 });
+    let midia = anime({ nota_media: null, total_avaliacoes: null });
     const api = simularFetch({
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
@@ -101,7 +101,7 @@ describe('Avaliações no detalhe da Mídia', () => {
 
     expect(screen.getByText(/pública/)).toBeOnTheScreen();
     expect(screen.getByText(/Nota pessoal/)).toBeOnTheScreen();
-    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '9');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0 a 10)'), '9');
     await fireEvent.changeText(screen.getByLabelText('Título'), 'Obra-prima');
     await fireEvent.changeText(screen.getByLabelText('Texto'), 'Chorei.');
     await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
@@ -115,7 +115,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       texto_avaliacao: 'Chorei.',
     });
     expect(await screen.findByLabelText('Total de avaliações: 1')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Nota média: 9.0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota dos Usuários: 9.0')).toBeOnTheScreen();
   });
 
   it('uma Avaliação nova refaz as listagens que ordenam pela Nota média e a Lista', async () => {
@@ -133,7 +133,7 @@ describe('Avaliações no detalhe da Mídia', () => {
     const emAlta = await screen.findByLabelText('Em alta');
     await fireEvent.press(within(emAlta).getByRole('link', { name: 'Sousou no Frieren, Anime' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
-    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '9');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0 a 10)'), '9');
     const antes = {
       emAlta: api.para('GET /midias/trending?tipo=anime&limite=10').length,
       lista: api.para('GET /lista').length,
@@ -161,10 +161,10 @@ describe('Avaliações no detalhe da Mídia', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar minha Avaliação' }));
 
     expect(screen.queryByRole('button', { name: 'Escrever Avaliação' })).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Nota (0,01 a 9,99)')).toHaveDisplayValue('7');
+    expect(screen.getByLabelText('Nota (0 a 10)')).toHaveDisplayValue('7');
     expect(screen.getByLabelText('Título')).toHaveDisplayValue('Bom');
     expect(screen.getByLabelText('Texto')).toHaveDisplayValue('Gostei.');
-    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '6,5');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0 a 10)'), '6,5');
     await fireEvent.changeText(screen.getByLabelText('Título'), 'Revisto');
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
 
@@ -187,7 +187,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
       'DELETE /avaliacoes/AVL-MINHA': () => {
         avaliacoes = [];
-        midia = { ...midia, nota_media: 0, total_avaliacoes: 0 };
+        midia = { ...midia, nota_media: null, total_avaliacoes: null };
         return { status: 200, corpo: { mensagem: 'Avaliação removida com sucesso' } };
       },
     });
@@ -207,15 +207,15 @@ describe('Avaliações no detalhe da Mídia', () => {
     expect(await screen.findByLabelText('Total de avaliações: 0')).toBeOnTheScreen();
   });
 
-  it('nota fora da faixa não chega à API', async () => {
+  it('nota fora da escala (8,55) não chega à API', async () => {
     const api = simularFetch(rotas([]));
 
     await abrirDetalhe();
     await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
-    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '10');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0 a 10)'), '8,55');
     await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('A nota vai de 0,01 a 9,99.');
+    expect(screen.getByRole('alert')).toHaveTextContent('A nota vai de 0 a 10, com no máximo uma casa decimal.');
     expect(api.para('POST /avaliacoes')).toHaveLength(0);
   });
 
@@ -227,7 +227,7 @@ describe('Avaliações no detalhe da Mídia', () => {
 
     await abrirDetalhe();
     await fireEvent.press(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
-    await fireEvent.changeText(screen.getByLabelText('Nota (0,01 a 9,99)'), '8');
+    await fireEvent.changeText(screen.getByLabelText('Nota (0 a 10)'), '8');
     await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Você já avaliou esta mídia');

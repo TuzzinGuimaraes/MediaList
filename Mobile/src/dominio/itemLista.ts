@@ -3,6 +3,7 @@
 // (ADR 0002, 0004, 0009); aqui servem para o otimista do stepper e o editor.
 
 import { formatarData } from './datas';
+import { lerNota } from './nota';
 import {
   type EstadoConsumo,
   estadoDe,
@@ -202,9 +203,6 @@ export function formularioDoItem(item: ItemDaApi | null, tipo: TipoMidia): Formu
   };
 }
 
-/** `nota_usuario` é DECIMAL(3,2): acima de 9,99 o banco recusa (e o backend responde 500). */
-export const NOTA_PESSOAL_MAXIMA = 9.99;
-
 const INTEIRO = /^\d+$/;
 
 /** "dd/mm/aaaa" → "aaaa-mm-dd"; vazio → null; inválido → undefined. */
@@ -260,12 +258,9 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   }
 
   let nota: number | null = null;
-  const textoNota = f.nota.trim().replace(',', '.');
-  if (textoNota) {
-    nota = Number(textoNota);
-    if (Number.isNaN(nota) || nota < 0 || nota > NOTA_PESSOAL_MAXIMA) {
-      return falha('A Nota pessoal vai de 0 a 9,99.');
-    }
+  if (f.nota.trim()) {
+    nota = lerNota(f.nota);
+    if (nota === null) return falha('A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.');
   }
 
   const textoRecontagem = f.recontagem.trim() || '0';

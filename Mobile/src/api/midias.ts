@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
+import { notaDeRanking } from '../dominio/midia';
 import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
 import type {
@@ -38,7 +39,7 @@ export function useEmAlta(recorte: Recorte) {
     queryFn: async () =>
       (
         await porTipo<Midia>(cliente, recorte, (t) => `/midias/trending?tipo=${t}&limite=${LIMITE_EM_ALTA}`)
-      ).sort(decrescente((m) => m.nota_media)),
+      ).sort(decrescente(notaDeRanking)),
   });
 }
 

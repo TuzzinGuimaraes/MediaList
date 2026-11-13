@@ -17,14 +17,13 @@ import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import { temProgresso, totalDoItem } from '@/dominio/itemLista';
 import { formatarData } from '@/dominio/datas';
-import { atributosDoTipo, distribuicaoDeNotas, notaMedia, tituloDaMidia } from '@/dominio/midia';
+import { atributosDoTipo, distribuicaoDeNotas, notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '@/dominio/midia';
 import paleta from '@/tema/paleta';
 
 const textos = {
   voltar: 'Voltar',
   lancamento: 'Lançamento',
   generos: 'Gêneros',
-  notaMedia: 'Nota média',
   totalAvaliacoes: 'Total de avaliações',
   semAvaliacoes: 'Ainda sem Avaliações.',
   notas: 'Distribuição das notas',
@@ -98,7 +97,7 @@ function DetalheMidia() {
   let corpo: React.ReactNode;
   if (midia.data) {
     const m = midia.data;
-    const nota = notaMedia(m);
+    const notasDaObra = notasDaMidia(m);
     const lancamento = formatarData(m.data_lancamento);
     const notas = distribuicaoDeNotas((avaliacoes.data ?? []).map((a) => a.nota));
     const maiorNota = Math.max(...notas.map((n) => n.total));
@@ -129,12 +128,22 @@ function DetalheMidia() {
               <Text className="text-corpo text-text-secondary">{m.titulo_original}</Text>
             ) : null}
             <Text className="text-legenda text-text-secondary">{m.tipo_label}</Text>
-            {nota ? (
-              <View accessible accessibilityLabel={`${textos.notaMedia}: ${nota}`} className="flex-row items-center gap-1">
-                <Ionicons name="star" size={16} color={paleta.accent.yellow} />
-                <Text className="text-corpo font-bold text-accent-yellow">{nota}</Text>
+            {notasDaObra.map((n) => (
+              <View
+                key={n.rotulo}
+                accessible
+                accessibilityLabel={`${n.rotulo}: ${n.valor}`}
+                className="flex-row items-center gap-1"
+              >
+                <Ionicons
+                  name={n.rotulo === ROTULO_NOTA_MEDIA ? 'star' : 'star-outline'}
+                  size={16}
+                  color={paleta.accent.yellow}
+                />
+                <Text className="text-corpo font-bold text-accent-yellow">{n.valor}</Text>
+                <Text className="text-legenda text-text-secondary">{n.rotulo}</Text>
               </View>
-            ) : null}
+            ))}
             <Info rotulo={textos.totalAvaliacoes} valor={String(m.total_avaliacoes ?? 0)} />
           </View>
         </View>

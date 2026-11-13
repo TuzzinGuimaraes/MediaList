@@ -1,9 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import type { CartaoMidia } from '../api/tipos';
-import { tituloDaMidia } from '../dominio/midia';
+import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '../dominio/midia';
+import paleta from '../tema/paleta';
 import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
@@ -12,14 +14,20 @@ type Props = {
   largura?: number;
 };
 
-/** Pôster, título e selo do Tipo de mídia; tocar abre o detalhe da Mídia. */
+/**
+ * Pôster, título, selo do Tipo de mídia e as notas (Nota dos Usuários, Nota da fonte),
+ * cada uma com seu rótulo; tocar abre o detalhe da Mídia. As notas vão no valor de
+ * acessibilidade, para o leitor de tela anunciá-las depois do título.
+ */
 export function CardMidia({ midia, largura }: Props) {
   const titulo = tituloDaMidia(midia);
+  const notas = notasDaMidia(midia);
   return (
     <Link href={{ pathname: '/midia/[id]', params: { id: midia.id_midia } }} asChild>
       <Pressable
         accessibilityRole="link"
         accessibilityLabel={`${titulo}, ${nomeDoTipo(midia.tipo)}`}
+        accessibilityValue={notas.length ? { text: notas.map((n) => `${n.rotulo} ${n.valor}`).join(', ') } : undefined}
         className="gap-1.5 active:opacity-80"
         style={largura ? { width: largura } : { flex: 1 }}
       >
@@ -40,6 +48,19 @@ export function CardMidia({ midia, largura }: Props) {
           {titulo}
         </Text>
         <SeloTipo tipo={midia.tipo} />
+        {notas.map((n) => (
+          <View key={n.rotulo} className="flex-row items-center gap-1">
+            <Ionicons
+              name={n.rotulo === ROTULO_NOTA_MEDIA ? 'star' : 'star-outline'}
+              size={12}
+              color={paleta.accent.yellow}
+            />
+            <Text className="text-legenda font-bold text-accent-yellow">{n.valor}</Text>
+            <Text numberOfLines={1} className="text-legenda text-text-secondary">
+              {n.curto}
+            </Text>
+          </View>
+        ))}
       </Pressable>
     </Link>
   );
