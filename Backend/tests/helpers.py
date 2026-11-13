@@ -252,3 +252,8 @@ class FakeAcessoRepository:
 
     def revogado(self, jti):
         return jti in self.revogados
+
+    def usuario(self, id_usuario):
+        if id_usuario in self.inexistentes:
+            return None
+        return {'id_usuario': id_usuario, 'ativo': self.usuarios.get(id_usuario, True)}

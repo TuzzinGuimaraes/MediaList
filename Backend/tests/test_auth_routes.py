@@ -285,3 +285,23 @@ def test_token_de_recuperacao_vale_uma_vez(client, make_token, monkeypatch):
 
     assert primeira.status_code == 200
     assert segunda.status_code == 401
+
+
+
+def test_token_de_usuario_desativado_ou_inexistente_da_401(client, make_token, acesso):
+    acesso.usuarios['USR-DESATIVADO'] = False
+    acesso.inexistentes.add('USR-SUMIU')
+
+    for id_usuario in ('USR-DESATIVADO', 'USR-SUMIU'):
+        resposta = client.get('/api/auth/me', headers={'Authorization': f'Bearer {make_token(id_usuario)}'})
+        assert resposta.status_code == 401
+        assert 'Usuário inexistente ou desativado' in resposta.get_json()['erro']
+
+
+def test_banco_fora_ao_carregar_o_usuario_do_token_da_503(client, auth_headers, acesso, monkeypatch):
+    def fora(_id_usuario):
+        raise banco.Indisponivel('Banco indisponível')
+
+    monkeypatch.setattr(acesso, 'usuario', fora)
+
+    assert client.get('/api/auth/me', headers=auth_headers).status_code == 503

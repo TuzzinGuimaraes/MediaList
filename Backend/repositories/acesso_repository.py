@@ -3,12 +3,15 @@ Repositório do acesso por access token (ticket 26, ADR-0006).
 
 Blocklist persistida (`access_tokens_revogados`): o jti de um access token
 revogado antes de expirar. Vale para todos os workers e sobrevive a restart.
+E a consulta leve do Usuário do token (id + ativo), feita em toda rota com
+@jwt_required.
 """
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from banco import consultar_um, transacao
+from banco import Integridade, consultar_um, transacao
 
 
 class AcessoRepository:
@@ -28,3 +31,14 @@ class AcessoRepository:
 
     def revogado(self, jti: str) -> bool:
         return consultar_um('SELECT 1 FROM access_tokens_revogados WHERE jti = %s', (jti,)) is not None
+
+    def usuario(self, id_usuario: str) -> dict[str, Any] | None:
+        """id e `ativo` do Usuário do token, ou None se ele não existe.
+
+        Identidade que nem é uuid (token de antes da troca de banco) também
+        não existe. Banco fora levanta `Indisponivel` (503).
+        """
+        try:
+            return consultar_um('SELECT id_usuario, ativo FROM usuarios WHERE id_usuario = %s', (id_usuario,))
+        except Integridade:
+            return None

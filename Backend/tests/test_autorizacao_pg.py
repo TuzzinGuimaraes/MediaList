@@ -122,3 +122,26 @@ def test_revogar_apaga_os_revogados_ja_expirados(pg):
     assert not repo.revogado(vencido)
     assert repo.revogado(vigente)
     banco.executar('DELETE FROM access_tokens_revogados WHERE jti = %s', (vigente,))
+
+
+
+def test_token_de_usuario_apagado_da_401_em_qualquer_rota_autenticada(client, entrar):
+    id_usuario, access, refresh = entrar()
+    assert client.get('/api/auth/me', headers=_bearer(access)).status_code == 200
+
+    banco.executar('DELETE FROM usuarios WHERE id_usuario = %s', (id_usuario,))
+
+    me = client.get('/api/auth/me', headers=_bearer(access))
+    adicionar = client.post('/api/lista/adicionar', headers=_bearer(access), json={
+        'id_midia': str(uuid.uuid4()), 'status_consumo': 'planejado',
+    })
+    assert (me.status_code, adicionar.status_code) == (401, 401)
+    # O app tenta renovar e também é recusado: volta ao login.
+    assert client.post('/api/auth/refresh', json={'refresh_token': refresh}).status_code == 401
+
+
+def test_token_com_identidade_que_nao_e_uuid_da_401(client, pg, app):
+    with app.app_context():
+        token = create_access_token(identity='USR-NAO-E-UUID')
+
+    assert client.get('/api/auth/me', headers=_bearer(token)).status_code == 401

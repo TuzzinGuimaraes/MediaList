@@ -134,6 +134,23 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     return rotas_auth.acesso_repository.revogado(jwt_payload['jti'])
 
 
+@jwt.user_lookup_loader
+def usuario_do_token(jwt_header, jwt_payload):
+    """Usuário inexistente ou desativado não usa o token (ticket 26).
+
+    Sem isso o token de um Usuário apagado seguia válido até expirar, e a rota
+    falhava adiante (FK -> 400). Uma consulta por requisição autenticada.
+    """
+    usuario = rotas_auth.acesso_repository.usuario(jwt_payload['sub'])
+    return usuario if usuario and usuario['ativo'] else None
+
+
+@jwt.user_lookup_error_loader
+def usuario_sem_acesso(jwt_header, jwt_payload):
+    # 401, não 403: o cliente trata como sessão encerrada (refresh ou login).
+    return jsonify({'erro': 'Sessão inválida: Usuário inexistente ou desativado'}), 401
+
+
 @jwt.token_verification_loader
 def token_serve_para_a_rota(jwt_header, jwt_payload):
     """Token de recuperação de senha só vale em /auth/redefinir-senha."""
