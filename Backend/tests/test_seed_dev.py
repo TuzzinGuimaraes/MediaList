@@ -78,3 +78,65 @@ def test_rodar_duas_vezes_nao_duplica(pg, capsys):
     assert primeira['noticias'] == 2
     assert primeira['notificacoes'] == 2
     assert 'teste@medialist.dev / teste123' in capsys.readouterr().out
+
+
+
+def _id_do_teste():
+    return banco.consultar_um("SELECT id_usuario FROM usuarios WHERE email = 'teste@medialist.dev'")['id_usuario']
+
+
+@precisa_de_banco
+def test_lista_do_teste_cobre_todos_os_estados_de_cada_tipo(pg):
+    from repositories import ListaRepository
+
+    seed_dev.main([])
+    itens = ListaRepository().obter_lista_usuario(_id_do_teste())
+
+    assert {(i['tipo'], i['status_consumo']) for i in itens} == {
+        ('anime', 'planejado'), ('anime', 'assistindo'), ('anime', 'pausado'),
+        ('anime', 'abandonado'), ('anime', 'completo'),
+        ('manga', 'planejado'), ('manga', 'lendo'), ('manga', 'pausado'),
+        ('manga', 'abandonado'), ('manga', 'lido'),
+        ('jogo', 'na_fila'), ('jogo', 'jogando'), ('jogo', 'pausado'),
+        ('jogo', 'abandonado'), ('jogo', 'zerado'), ('jogo', 'platinado'),
+    }
+    # Concluído ⇔ Progresso = total: todo anime/mangá concluído com total está no total.
+    for item in itens:
+        if item['status_consumo'] in ('completo', 'lido') and item['progresso_total']:
+            assert item['progresso_atual'] == item['progresso_total']
+    assert any(i['tipo'] == 'manga' and i['progresso_total'] is None and i['progresso_atual'] for i in itens)
+    assert any(i['total_rewatches'] > 0 for i in itens)
+    assert any(i['privado'] for i in itens) and any(i['favorito'] for i in itens)
+
+
+
+@precisa_de_banco
+def test_recriar_refaz_os_dados_do_seed_sem_tocar_em_outro_usuario(pg, capsys):
+    seed_dev.main([])
+    id_teste_antes = _id_do_teste()
+    frieren = banco.consultar_um('SELECT id_midia FROM animes WHERE anilist_id = 154587')['id_midia']
+    with banco.transacao() as t:
+        outro = t.consultar_um(
+            "INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES ('Outro', %s, 'x') RETURNING id_usuario",
+            (f'outro-{uuid.uuid4().hex}@exemplo.test',),
+        )['id_usuario']
+        t.executar("INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo) VALUES (%s, %s, 'assistindo')",
+                   (outro, frieren))
+        t.executar('INSERT INTO avaliacoes (id_usuario, id_midia, nota) VALUES (%s, %s, 7)', (outro, frieren))
+    pg.append(outro)
+    # Um Item do teste fora do seed: o --recriar o leva junto com o Usuário.
+    banco.executar("UPDATE lista_usuarios SET comentario = 'mexido' WHERE id_usuario = %s", (id_teste_antes,))
+    antes = _contagem_do_seed()
+
+    assert seed_dev.main(['--recriar']) == 0
+
+    assert _id_do_teste() != id_teste_antes
+    assert _contagem_do_seed() == antes
+    assert banco.consultar_um(
+        "SELECT count(*) AS n FROM lista_usuarios WHERE id_usuario = %s AND comentario = 'mexido'", (_id_do_teste(),)
+    )['n'] == 0
+    assert banco.consultar_um(
+        'SELECT (SELECT count(*) FROM lista_usuarios WHERE id_usuario = %(u)s) AS itens, '
+        '(SELECT count(*) FROM avaliacoes WHERE id_usuario = %(u)s) AS avaliacoes',
+        {'u': outro},
+    ) == {'itens': 1, 'avaliacoes': 1}
