@@ -29,9 +29,8 @@ def busca(monkeypatch):
 # Parâmetros de paginação
 # ============================================
 
-@pytest.mark.parametrize('rota', ['/api/midias', '/api/animes', '/api/mangas', '/api/jogos'])
-def test_pagina_que_nao_e_numero_responde_400(client, rota):
-    response = client.get(f'{rota}?pagina=abc')
+def test_pagina_que_nao_e_numero_responde_400(client):
+    response = client.get('/api/midias?pagina=abc')
 
     assert response.status_code == 400
     assert 'pagina' in response.get_json()['erro']

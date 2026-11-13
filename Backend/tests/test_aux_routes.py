@@ -3,10 +3,7 @@ from decimal import Decimal
 import pytest
 
 import banco
-from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
-from routes import jogos as jogos_routes
-from routes import mangas as mangas_routes
 from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
@@ -220,24 +217,10 @@ def test_moderacao_lista_usuarios_para_admin(client, admin_headers, monkeypatch)
     assert response.get_json()['usuarios'][0]['id_usuario'] == 'USR-1'
 
 
-def test_rotas_de_tipo_listam_e_validam_payload(client, admin_headers, monkeypatch):
-    for repositorio, id_midia in (
-        (animes_routes.anime_repository, 'MID-A'),
-        (mangas_routes.manga_repository, 'MID-M'),
-        (jogos_routes.jogo_repository, 'MID-J'),
-    ):
-        monkeypatch.setattr(
-            repositorio, 'buscar_por_tipo', lambda *_args, _id=id_midia, **_kwargs: [{'id_midia': _id}]
-        )
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-
-    assert client.get('/api/animes').status_code == 200
-    assert client.get('/api/mangas').status_code == 200
-    assert client.get('/api/jogos').status_code == 200
-
-    assert client.post('/api/animes', headers=admin_headers, json={}).status_code == 400
-    assert client.post('/api/mangas', headers=admin_headers, json={'titulo_original': 'Teste'}).status_code == 400
-    assert client.post('/api/jogos', headers=admin_headers, json={}).status_code == 400
+@pytest.mark.parametrize('rota', ['/api/animes', '/api/mangas', '/api/jogos', '/api/animes/populares'])
+def test_rotas_por_tipo_sairam(client, rota):
+    """Ficou só /midias?tipo= (ticket 14): nenhum cliente usava as rotas por Tipo."""
+    assert client.get(rota).status_code == 404
 
 
 def test_generos_devolve_aplicavel_a_como_lista(client, monkeypatch):

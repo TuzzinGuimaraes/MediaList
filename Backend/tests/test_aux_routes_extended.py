@@ -1,7 +1,4 @@
-from routes import animes as animes_routes
 from routes import avaliacoes as avaliacoes_routes
-from routes import jogos as jogos_routes
-from routes import mangas as mangas_routes
 from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
@@ -70,103 +67,13 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
 
 
-def test_utils_populares_e_temporada_consultam_views(client, monkeypatch):
+def test_utils_populares_consulta_a_view(client, monkeypatch):
     fake = FakeBanco({
-        'vw_animes_temporada_atual': [{'id_midia': 'MID-TEMP'}],
         'vw_midias_populares': [{'id_midia': 'MID-POP'}],
     }).instalar(monkeypatch, utils_routes)
 
     response_populares = client.get('/api/midias/populares?tipo=anime')
-    response_animes_populares = client.get('/api/animes/populares')
-    response_temporada = client.get('/api/animes/temporada')
 
     assert response_populares.status_code == 200
-    assert response_animes_populares.status_code == 200
-    assert response_temporada.status_code == 200
     assert response_populares.get_json()['midias'][0]['id_midia'] == 'MID-POP'
-    assert response_temporada.get_json()['animes'][0]['id_midia'] == 'MID-TEMP'
     assert fake.sql('vw_midias_populares')
-    assert fake.sql('vw_animes_temporada_atual')
-
-
-def test_animes_crud_e_atualizacao(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(animes_routes, 'get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(animes_routes.anime_repository, 'buscar_anime_completo', lambda anime_id: {
-        'id_midia': anime_id,
-        'codigo_midia': 'ANI-001',
-    })
-    monkeypatch.setattr(animes_routes, '_carregar_atualizacoes', lambda _id: [{'titulo': 'Ep 1'}])
-    monkeypatch.setattr(animes_routes.anime_repository, 'inserir_anime', lambda _base, _payload: 'MID-A1')
-    monkeypatch.setattr(animes_routes.anime_repository, 'atualizar_anime', lambda _id, _payload: True)
-    monkeypatch.setattr(animes_routes.anime_repository, 'deletar_midia', lambda _id: True)
-    monkeypatch.setattr(animes_routes, '_criar_atualizacao_midia', lambda anime_id: ({'id_midia': anime_id}, 201))
-
-    detalhes = client.get('/api/animes/MID-A1')
-    criar = client.post('/api/animes', headers=admin_headers, json={
-        'titulo_original': 'Anime Teste',
-        'status_anime': 'finalizado',
-    })
-    editar = client.put('/api/animes/MID-A1', headers=admin_headers, json={'numero_episodios': 24})
-    deletar = client.delete('/api/animes/MID-A1', headers=admin_headers)
-    atualizacao = client.post('/api/animes/MID-A1/atualizacoes', headers=admin_headers, json={})
-
-    assert detalhes.status_code == 200
-    assert detalhes.get_json()['atualizacoes'][0]['titulo'] == 'Ep 1'
-    assert criar.status_code == 201
-    assert criar.get_json()['codigo_midia'] == 'ANI-001'
-    assert editar.status_code == 200
-    assert deletar.status_code == 200
-    assert atualizacao.status_code == 201
-
-
-def test_mangas_endpoints_de_busca_e_criacao(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(
-        mangas_routes.manga_repository, 'buscar_manga_completo', lambda manga_id: {'id_midia': manga_id}
-    )
-    monkeypatch.setattr(mangas_routes.manga_repository, 'buscar_por_autor', lambda autor: [{'autor': autor}])
-    monkeypatch.setattr(
-        mangas_routes.manga_repository, 'buscar_por_demografia', lambda demografia: [{'demografia': demografia}]
-    )
-    monkeypatch.setattr(mangas_routes.manga_repository, 'inserir_manga', lambda _base, _payload: 'MID-M1')
-
-    detalhes = client.get('/api/mangas/MID-M1')
-    por_autor = client.get('/api/mangas/autor/Urasawa')
-    por_demografia = client.get('/api/mangas/demografia/seinen')
-    criar = client.post('/api/mangas', headers=admin_headers, json={
-        'titulo_original': 'Manga Teste',
-        'autor': 'Autor Teste',
-        'status_manga': 'finalizado',
-        'demografia': 'seinen',
-    })
-
-    assert detalhes.status_code == 200
-    assert por_autor.status_code == 200
-    assert por_autor.get_json()['mangas'][0]['autor'] == 'Urasawa'
-    assert por_demografia.status_code == 200
-    assert por_demografia.get_json()['mangas'][0]['demografia'] == 'seinen'
-    assert criar.status_code == 201
-
-
-def test_jogos_endpoints_de_busca_e_criacao(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    monkeypatch.setattr(jogos_routes.jogo_repository, 'buscar_jogo_completo', lambda jogo_id: {'id_midia': jogo_id})
-    monkeypatch.setattr(
-        jogos_routes.jogo_repository, 'buscar_por_plataforma', lambda plataforma: [{'plataforma': plataforma}]
-    )
-    monkeypatch.setattr(jogos_routes.jogo_repository, 'inserir_jogo', lambda _base, _payload: 'MID-J1')
-
-    detalhes = client.get('/api/jogos/MID-J1')
-    por_plataforma = client.get('/api/jogos/plataforma/Switch')
-    criar = client.post('/api/jogos', headers=admin_headers, json={
-        'titulo_original': 'Jogo Teste',
-        'status_jogo': 'lancado',
-        'modo_jogo': 'single',
-        'plataformas': 'Switch',
-    })
-
-    assert detalhes.status_code == 200
-    assert por_plataforma.status_code == 200
-    assert por_plataforma.get_json()['jogos'][0]['plataforma'] == 'Switch'
-    assert criar.status_code == 201

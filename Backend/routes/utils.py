@@ -106,16 +106,3 @@ def midias_populares():
     """Mídias mais populares."""
     midias = consultar(POPULARES, {'tipo': request.args.get('tipo') or None})
     return jsonify({'midias': midias}), 200
-
-
-@utils_bp.route('/animes/populares', methods=['GET'])
-def animes_populares():
-    """Compatibilidade para populares de animes."""
-    animes = consultar(POPULARES, {'tipo': 'anime'})
-    return jsonify({'animes': animes}), 200
-
-
-@utils_bp.route('/animes/temporada', methods=['GET'])
-def animes_temporada():
-    """Animes da temporada atual."""
-    return jsonify({'animes': consultar("SELECT * FROM vw_animes_temporada_atual")}), 200
