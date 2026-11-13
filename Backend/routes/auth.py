@@ -13,15 +13,17 @@ from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, j
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from banco import Conflito, consultar_um, executar, transacao
-from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES, token_blocklist
+from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
 from decorators import get_user_permissions
-from repositories import RefreshTokenRepository
+from repositories import AcessoRepository, RefreshTokenRepository
 
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
 refresh_token_repository = RefreshTokenRepository()
+# Também consultado pelos callbacks do JWT em app.py.
+acesso_repository = AcessoRepository()
 
 # Grupo atribuído a todo novo cadastro. Localizado por nome: a ordem em que o
 # schema semeia os grupos não é contrato, e um id fixo transforma qualquer
@@ -56,6 +58,10 @@ def _emitir_refresh(id_usuario):
     if not refresh_token_repository.criar(id_usuario, familia, token_hash, expira_em):
         return None
     return token
+
+def _revogar_access(claims):
+    """Blocklist persistida: o jti fica recusado até o token expirar."""
+    acesso_repository.revogar(claims['jti'], datetime.fromtimestamp(claims['exp'], timezone.utc))
 
 # ============================================
 # AUTENTICAÇÃO
@@ -230,7 +236,7 @@ def obter_usuario_atual():
 @jwt_required()
 def logout():
     """Fazer logout e revogar o token"""
-    token_blocklist.add(get_jwt()['jti'])
+    _revogar_access(get_jwt())
 
     # Opcional: o app manda o refresh do aparelho para encerrar a sessão
     # de verdade. Só revoga token do próprio usuário.
@@ -295,6 +301,6 @@ def redefinir_senha():
         return jsonify({'erro': 'Usuário não encontrado'}), 404
 
     # Uso único: o mesmo token não redefine a senha de novo.
-    token_blocklist.add(claims['jti'])
+    _revogar_access(claims)
 
     return jsonify({'mensagem': 'Senha redefinida com sucesso!'}), 200

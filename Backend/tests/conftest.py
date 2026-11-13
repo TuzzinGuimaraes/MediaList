@@ -8,9 +8,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 import banco
 from app import app as flask_app
-from config import token_blocklist
 
-from .helpers import FakeRefreshTokenRepository
+from .helpers import FakeAcessoRepository, FakeRefreshTokenRepository
 
 
 def _sem_banco_real():
@@ -29,9 +28,7 @@ def banco_isolado(monkeypatch):
 @pytest.fixture
 def app():
     flask_app.config.update(TESTING=True)
-    yield flask_app
-
-    token_blocklist.clear()
+    return flask_app
 
 
 @pytest.fixture
@@ -47,6 +44,17 @@ def refresh_tokens(monkeypatch):
 
     falso = FakeRefreshTokenRepository()
     monkeypatch.setattr(auth_routes, 'refresh_token_repository', falso)
+    return falso
+
+
+@pytest.fixture(autouse=True)
+def acesso(monkeypatch):
+    """Blocklist e Usuários em memória para todo teste: os callbacks do JWT
+    consultam o repositório em cada rota autenticada."""
+    from routes import auth as auth_routes
+
+    falso = FakeAcessoRepository()
+    monkeypatch.setattr(auth_routes, 'acesso_repository', falso)
     return falso
 
 

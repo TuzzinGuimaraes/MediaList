@@ -3,7 +3,6 @@ import logging
 from werkzeug.security import generate_password_hash
 
 import banco
-from config import token_blocklist
 from routes import auth as auth_routes
 
 from .helpers import FakeBanco
@@ -145,11 +144,11 @@ def test_me_sem_token_retorna_401(client):
 
 
 def test_logout_revoga_token(client, make_token):
-    token = make_token('USR-LOGOUT-1')
-    response = client.post('/api/auth/logout', headers={'Authorization': f'Bearer {token}'})
+    headers = {'Authorization': f'Bearer {make_token("USR-LOGOUT-1")}'}
+    response = client.post('/api/auth/logout', headers=headers)
 
     assert response.status_code == 200
-    assert len(token_blocklist) == 1
+    assert client.get('/api/auth/me', headers=headers).status_code == 401
 
 
 def test_esqueci_senha_email_inexistente_nao_vaza_informacao(client, monkeypatch):
