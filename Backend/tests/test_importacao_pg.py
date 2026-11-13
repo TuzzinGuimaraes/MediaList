@@ -191,3 +191,38 @@ def test_reimportar_nao_toca_em_avaliacoes_nem_itens(pg):
         'SELECT status_consumo, progresso_atual, progresso_total FROM lista_usuarios WHERE id_midia = %s',
         (id_midia,),
     ) == [{'status_consumo': 'assistindo', 'progresso_atual': 3, 'progresso_total': 12}]
+
+
+
+def test_duas_importacoes_da_mesma_chave_ao_mesmo_tempo_gravam_uma_midia(pg):
+    """A que perde a corrida esbarra na UNIQUE da chave, desfaz tudo e atualiza a da outra."""
+    import threading
+
+    import psycopg
+
+    anilist_id = _anilist_id()
+    outra = psycopg.connect(TEST_DATABASE_URL)
+    # A "outra importação": criou a Mídia e a filha, e ainda não fez commit.
+    id_outra = outra.execute(
+        "INSERT INTO midias (id_tipo, titulo_original) SELECT id_tipo, 'Outra' FROM tipo_midia "
+        "WHERE nome_tipo = 'anime' RETURNING id_midia"
+    ).fetchone()[0]
+    outra.execute('INSERT INTO animes (id_midia, anilist_id) VALUES (%s, %s)', (id_outra, anilist_id))
+    pg['midias'].append(str(id_outra))
+
+    resultado = {}
+    importacao = threading.Thread(target=lambda: resultado.update(db.salvar_anime(_anime(anilist_id), [])))
+    importacao.start()
+    importacao.join(timeout=1)
+    assert importacao.is_alive()  # esperando a UNIQUE da chave
+    outra.commit()
+    outra.close()
+    importacao.join(timeout=10)
+
+    assert resultado == {'id_midia': str(id_outra), 'ja_existia': True}
+    assert banco.consultar_um(
+        'SELECT count(*) AS n FROM midias m JOIN tipo_midia t USING (id_tipo) '
+        "WHERE t.nome_tipo = 'anime' AND m.titulo_portugues = 'Primeiro título' AND NOT EXISTS ("
+        'SELECT 1 FROM animes a WHERE a.id_midia = m.id_midia)'
+    )['n'] == 0
+    assert _midia(str(id_outra)) == {'titulo_portugues': 'Primeiro título', 'nota_fonte': Decimal('8.7')}
