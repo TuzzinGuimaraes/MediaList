@@ -1,7 +1,7 @@
 import uuid
 from contextlib import contextmanager
 
-from repositories.midia_repository import ListaRepository
+from repositories.itens_lista import COLUNAS_GRAVAVEIS
 
 INTERFACE_BANCO = ('consultar', 'consultar_um', 'executar', 'transacao')
 
@@ -64,26 +64,87 @@ class FakeBanco:
         return self
 
 
-class FakeMidiaRepository:
-    """Catálogo em memória, na forma que `MidiaRepository.buscar_por_id` devolve."""
+class FakeCatalogo:
+    """Catálogo em memória, na costura de `Catalogo`; registra as chamadas.
 
-    def __init__(self, midias=None):
-        #: id_midia -> dict com pelo menos `tipo` e `progresso_total_padrao`.
+    `midias`: id_midia -> dict com pelo menos `tipo` (e `progresso_total_padrao`
+    para a Lista pessoal), na forma que `Catalogo.obter` devolve.
+    """
+
+    def __init__(self, midias=None, generos=None, populares=None, distribuicao=None):
         self.midias = midias if midias is not None else {}
+        self._generos = list(generos or [])
+        self._populares = list(populares or [])
+        self._distribuicao = list(distribuicao or [])
+        #: (operação, *argumentos) na ordem em que chegaram.
+        self.chamadas = []
 
-    def buscar_por_id(self, id_midia, expected_type=None):
+    def obter(self, id_midia):
         midia = self.midias.get(id_midia)
-        if not midia:
-            return None
-        if expected_type and midia.get('tipo') != expected_type:
-            return None
-        return dict(midia, id_midia=id_midia)
+        return dict(midia, id_midia=id_midia) if midia else None
+
+    def buscar(self, tipo=None, pagina=1, limite=20, filtros=None):
+        self.chamadas.append(('buscar', tipo, pagina, limite, filtros))
+        midias = [dict(m, id_midia=i) for i, m in self.midias.items() if not tipo or m.get('tipo') == tipo]
+        return midias[(pagina - 1) * limite:pagina * limite]
+
+    def populares(self, tipo=None):
+        self.chamadas.append(('populares', tipo))
+        return [m for m in self._populares if not tipo or m.get('tipo') == tipo]
+
+    def generos(self, tipo=None):
+        self.chamadas.append(('generos', tipo))
+        return [g for g in self._generos if not tipo or tipo in g.get('aplicavel_a', [])]
+
+    def distribuicao(self, id_midia):
+        self.chamadas.append(('distribuicao', id_midia))
+        return list(self._distribuicao)
+
+    def atualizar(self, id_midia, dados):
+        self.chamadas.append(('atualizar', id_midia, dados))
+        if id_midia not in self.midias:
+            return False
+        self.midias[id_midia].update(dados)
+        return True
+
+    def apagar(self, id_midia):
+        self.chamadas.append(('apagar', id_midia))
+        return self.midias.pop(id_midia, None) is not None
 
 
-class FakeListaRepository:
+class FakeAtualizacoes:
+    """Atualizações de mídia e Notificações em memória, na costura de `Atualizacoes`."""
+
+    def __init__(self, recentes=None, notificacoes=None, notificados=0):
+        self._recentes = list(recentes or [])
+        self._notificacoes = list(notificacoes or [])
+        self._notificados = notificados
+        self.chamadas = []
+
+    def recentes(self, id_midia):
+        self.chamadas.append(('recentes', id_midia))
+        return list(self._recentes)
+
+    def publicar(self, id_midia, tipo_midia, tipo, titulo, descricao=None, dados_adicionais=None):
+        self.chamadas.append(('publicar', id_midia, tipo_midia, tipo, titulo, descricao, dados_adicionais))
+        return self._notificados
+
+    def notificacoes(self, id_usuario, apenas_nao_lidas=False):
+        self.chamadas.append(('notificacoes', id_usuario, apenas_nao_lidas))
+        return [n for n in self._notificacoes if not apenas_nao_lidas or not n.get('lida')]
+
+    def marcar_todas_lidas(self, id_usuario):
+        self.chamadas.append(('marcar_todas_lidas', id_usuario))
+        marcadas = [n for n in self._notificacoes if not n.get('lida')]
+        for notificacao in marcadas:
+            notificacao['lida'] = True
+        return len(marcadas)
+
+
+class FakeItensLista:
     """CRUD de Item de lista em memória, com a unique key (usuário, mídia).
 
-    Espelha a costura de `ListaRepository`: cinco métodos, uma escrita por
+    Espelha a costura de `ItensLista` que o domínio usa: cinco métodos, uma escrita por
     chamada, e o total da Mídia entrando em `obter_item_por_id` pelo catálogo.
     """
 
@@ -102,7 +163,7 @@ class FakeListaRepository:
         """Só as colunas que o repositório real sabe gravar, como ele faz."""
         return {
             campo: valor for campo, valor in campos.items()
-            if campo in ListaRepository.COLUNAS_GRAVAVEIS
+            if campo in COLUNAS_GRAVAVEIS
         }
 
     def criar_item(self, id_usuario, id_midia, campos):
@@ -257,3 +318,50 @@ class FakeAcessoRepository:
         if id_usuario in self.inexistentes:
             return None
         return {'id_usuario': id_usuario, 'ativo': self.usuarios.get(id_usuario, True)}
+
+
+
+class FakeAvaliacaoRepository:
+    """Tabela `avaliacoes` em memória, na costura de `AvaliacaoRepository`.
+
+    A UNIQUE (usuário, mídia) levanta `banco.Conflito`, como o banco; as notas
+    devolvidas são a média das Avaliações da Mídia, como `vw_notas_midia`.
+    """
+
+    def __init__(self, avaliacoes=None):
+        #: id_avaliacao -> linha de avaliacoes.
+        self.avaliacoes = dict(avaliacoes or {})
+        self._sequencia = len(self.avaliacoes)
+
+    def _notas(self, id_midia):
+        notas = [a['nota'] for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+        if not notas:
+            return {'nota_media': None, 'total_avaliacoes': None}
+        return {'nota_media': sum(notas) / len(notas), 'total_avaliacoes': len(notas)}
+
+    def listar(self, id_midia):
+        return [dict(a) for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+
+    def criar(self, id_usuario, id_midia, nota, titulo, texto):
+        from banco import Conflito
+
+        if any(a['id_usuario'] == id_usuario and a['id_midia'] == id_midia for a in self.avaliacoes.values()):
+            raise Conflito('Registro já existe', 'uk_avaliacoes_usuario_midia')
+        self._sequencia += 1
+        id_avaliacao = f'AVL-{self._sequencia}'
+        self.avaliacoes[id_avaliacao] = {
+            'id_avaliacao': id_avaliacao, 'id_usuario': id_usuario, 'id_midia': id_midia,
+            'nota': nota, 'titulo_avaliacao': titulo, 'texto_avaliacao': texto,
+        }
+        return {'id_avaliacao': id_avaliacao, **self._notas(id_midia)}
+
+    def obter(self, id_avaliacao):
+        linha = self.avaliacoes.get(id_avaliacao)
+        return {'id_usuario': linha['id_usuario'], 'id_midia': linha['id_midia']} if linha else None
+
+    def atualizar(self, id_avaliacao, id_midia, campos):
+        self.avaliacoes[id_avaliacao].update(campos)
+        return self._notas(id_midia)
+
+    def apagar(self, id_avaliacao):
+        return self.avaliacoes.pop(id_avaliacao, None) is not None

@@ -1,35 +1,8 @@
-from routes import avaliacoes as avaliacoes_routes
 from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 from routes import utils as utils_routes
 
-from .helpers import FakeBanco
-
-
-def test_put_avaliacao_atualiza_campos_e_retorna_nota_media(client, auth_headers, monkeypatch):
-    fake = FakeBanco({
-        'SELECT id_usuario, id_midia': {'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1'},
-        'vw_notas_midia': {'nota_media': 8.7, 'total_avaliacoes': 3},
-    }).instalar(monkeypatch, avaliacoes_routes)
-
-    response = client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={
-        'nota': 9,
-        'titulo_avaliacao': 'Atualizada',
-    })
-
-    assert response.status_code == 200
-    assert response.get_json()['nota_media_atualizada'] == 8.7
-    assert fake.sql('UPDATE avaliacoes SET')
-
-
-def test_delete_avaliacao_bloqueia_usuario_sem_permissao(client, auth_headers, monkeypatch):
-    FakeBanco({'SELECT id_usuario': {'id_usuario': 'USR-OUTRO'}}).instalar(monkeypatch, avaliacoes_routes)
-    monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _user_id: {'pode_moderar': 0})
-
-    response = client.delete('/api/avaliacoes/AVL-1', headers=auth_headers)
-
-    assert response.status_code == 403
-    assert response.get_json()['erro'] == 'Sem permissão para deletar esta avaliação'
+from .helpers import FakeBanco, FakeCatalogo
 
 
 def test_usuario_permissoes_retorna_payload(client, auth_headers, monkeypatch):
@@ -67,13 +40,13 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
 
 
-def test_utils_populares_consulta_a_view(client, monkeypatch):
-    fake = FakeBanco({
-        'vw_midias_populares': [{'id_midia': 'MID-POP'}],
-    }).instalar(monkeypatch, utils_routes)
+def test_populares_repassa_o_tipo_ao_catalogo(client, monkeypatch):
+    catalogo = FakeCatalogo(populares=[{'id_midia': 'MID-POP', 'tipo': 'anime'}, {'id_midia': 'MID-J', 'tipo': 'jogo'}])
+    monkeypatch.setattr(utils_routes, 'catalogo', catalogo)
 
-    response_populares = client.get('/api/midias/populares?tipo=anime')
+    por_tipo = client.get('/api/midias/populares?tipo=anime')
+    todas = client.get('/api/midias/populares')
 
-    assert response_populares.status_code == 200
-    assert response_populares.get_json()['midias'][0]['id_midia'] == 'MID-POP'
-    assert fake.sql('vw_midias_populares')
+    assert (por_tipo.status_code, por_tipo.get_json()) == (200, {'midias': [{'id_midia': 'MID-POP', 'tipo': 'anime'}]})
+    assert len(todas.get_json()['midias']) == 2
+    assert catalogo.chamadas == [('populares', 'anime'), ('populares', None)]

@@ -87,10 +87,10 @@ def _id_do_teste():
 
 @precisa_de_banco
 def test_lista_do_teste_cobre_todos_os_estados_de_cada_tipo(pg):
-    from repositories import ListaRepository
+    from repositories import ItensLista
 
     seed_dev.main([])
-    itens = ListaRepository().obter_lista_usuario(_id_do_teste())
+    itens = ItensLista().listar(_id_do_teste())
 
     assert {(i['tipo'], i['status_consumo']) for i in itens} == {
         ('anime', 'planejado'), ('anime', 'assistindo'), ('anime', 'pausado'),

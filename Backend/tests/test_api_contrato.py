@@ -10,19 +10,14 @@ from routes import avaliacoes as avaliacoes_routes
 from routes import midias as midias_routes
 from routes import usuario as usuario_routes
 
-from .helpers import FakeBanco
+from .helpers import FakeBanco, FakeCatalogo
 
 
 @pytest.fixture
 def busca(monkeypatch):
-    chamadas = []
-
-    def fake_buscar(tipo, pagina, limite, filtros):
-        chamadas.append({'tipo': tipo, 'pagina': pagina, 'limite': limite})
-        return []
-
-    monkeypatch.setattr(midias_routes.midia_repository, 'buscar_por_tipo', fake_buscar)
-    return chamadas
+    catalogo = FakeCatalogo()
+    monkeypatch.setattr(midias_routes, 'catalogo', catalogo)
+    return catalogo
 
 
 # ============================================
@@ -47,14 +42,14 @@ def test_por_pagina_acima_do_teto_vira_50(client, busca):
 
     assert response.status_code == 200
     assert response.get_json()['por_pagina'] == 50
-    assert busca[0]['limite'] == 50
+    assert busca.chamadas[0][3] == 50
 
 
 def test_paginacao_padrao(client, busca):
     response = client.get('/api/midias')
 
     assert response.get_json()['pagina'] == 1
-    assert busca[0] == {'tipo': None, 'pagina': 1, 'limite': 20}
+    assert busca.chamadas[0][1:4] == (None, 1, 20)
 
 
 def test_limite_invalido_no_trending_responde_400(client):
@@ -69,8 +64,16 @@ AVALIACAO = {'id_midia': '0190a3b2-0000-7000-8000-000000000001', 'nota': 8}
 
 
 @pytest.fixture
-def com_midia(monkeypatch):
-    monkeypatch.setattr(avaliacoes_routes.midia_repository, 'buscar_por_id', lambda _id: {'id_midia': _id})
+def avaliacao_que_falha(monkeypatch):
+    """O módulo de Avaliação levantando o erro que o banco levantaria."""
+    def _instalar(erro):
+        class Falha:
+            def criar(self, *_args):
+                raise erro
+
+        monkeypatch.setattr(avaliacoes_routes, 'avaliacoes', Falha())
+
+    return _instalar
 
 
 @pytest.mark.parametrize('erro, status', [
@@ -78,8 +81,8 @@ def com_midia(monkeypatch):
     (banco.Integridade('Dados inválidos'), 400),
     (banco.Indisponivel('Banco indisponível'), 503),
 ])
-def test_erro_de_banco_ao_gravar_nao_vira_201(client, auth_headers, monkeypatch, com_midia, erro, status):
-    FakeBanco({'INSERT INTO avaliacoes': erro}).instalar(monkeypatch, avaliacoes_routes)
+def test_erro_de_banco_ao_gravar_nao_vira_201(client, auth_headers, avaliacao_que_falha, erro, status):
+    avaliacao_que_falha(erro)
 
     response = client.post('/api/avaliacoes', headers=auth_headers, json=AVALIACAO)
 
@@ -87,10 +90,8 @@ def test_erro_de_banco_ao_gravar_nao_vira_201(client, auth_headers, monkeypatch,
     assert 'erro' in response.get_json()
 
 
-def test_erro_inesperado_responde_500_sem_detalhe(client, auth_headers, monkeypatch, com_midia, caplog):
-    FakeBanco({'INSERT INTO avaliacoes': RuntimeError('relation "avaliacoes" segredo interno')}).instalar(
-        monkeypatch, avaliacoes_routes
-    )
+def test_erro_inesperado_responde_500_sem_detalhe(client, auth_headers, avaliacao_que_falha, caplog):
+    avaliacao_que_falha(RuntimeError('relation "avaliacoes" segredo interno'))
 
     response = client.post('/api/avaliacoes', headers=auth_headers, json=AVALIACAO)
 
