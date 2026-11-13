@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { guardarSessao } from '../auth/armazenamento';
 import { type Requisicao, type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
@@ -75,6 +76,9 @@ const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${
 const linha = (titulo: string) => screen.findByLabelText(`Item ${titulo}`);
 
 describe('aba Lista', () => {
+  // Desfaz o Platform.OS e os espiões do teste de teclado do Android.
+  afterEach(() => jest.restoreAllMocks());
+
   it('abas por Estado de consumo com contador, filtradas pelo Recorte; Platinado também conta em Concluído', async () => {
     servidor([
       item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 }),
@@ -288,6 +292,30 @@ describe('aba Lista', () => {
       comentario: 'Panteão feito',
     });
     expect(screen.queryByLabelText('Editor do Item de lista')).not.toBeOnTheScreen();
+  });
+
+  it('Android: o editor sobe com o teclado e rola até o campo em foco, com o rodapé visível', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const rolar = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    // O campo em foco, como o RN o mede dentro do conteúdo rolável do sheet.
+    jest.spyOn(TextInput.State, 'currentlyFocusedInput').mockReturnValue({
+      measureLayout: (_relativo: unknown, medido: (x: number, y: number, w: number, h: number) => void) => medido(0, 420, 100, 40),
+    } as never);
+    servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 })]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
+    const sheet = screen.getByLabelText('Editor do Item de lista');
+    expect(sheet).toHaveStyle({ marginBottom: 0 });
+
+    await act(async () => DeviceEventEmitter.emit('keyboardDidShow', { endCoordinates: { height: 300, screenY: 500 } }));
+
+    expect(sheet).toHaveStyle({ marginBottom: 300 });
+    expect(rolar).toHaveBeenLastCalledWith({ y: 408, animated: true });
+    expect(within(sheet).getByRole('button', { name: 'Salvar' })).toBeOnTheScreen();
+
+    await act(async () => DeviceEventEmitter.emit('keyboardDidHide', { endCoordinates: { height: 0, screenY: 800 } }));
+    expect(sheet).toHaveStyle({ marginBottom: 0 });
   });
 
   it('editor valida antes de enviar', async () => {
