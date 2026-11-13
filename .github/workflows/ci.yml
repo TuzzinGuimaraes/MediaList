@@ -35,8 +35,8 @@ jobs:
             Backend/requirements.txt
             Backend/requirements-dev.txt
 
-      # pytest e ruff ficam fora da imagem de produção; a suíte não usa banco e
-      # roda no runner com as dependências de desenvolvimento.
+      # pytest e ruff ficam fora da imagem de produção e rodam no runner. O
+      # contrato SQL roda contra o PostgreSQL do compose, já migrado.
       - name: Install backend dependencies
         working-directory: Backend
         run: pip install -r requirements-dev.txt
@@ -45,8 +45,26 @@ jobs:
         working-directory: Backend
         run: ruff check --output-format=github .
 
+      - name: Validate Docker Compose
+        run: docker compose config > /dev/null
+
+      - name: Build backend image
+        run: docker compose build backend migrate
+
+      # --wait espera o postgres healthy, o migrate (alembic upgrade head)
+      # terminar com sucesso e o healthcheck do backend.
+      - name: Start postgres, migrate and backend
+        run: docker compose up -d --wait --wait-timeout 180 postgres migrate mongodb backend
+
+      - name: Migration logs
+        if: ${{ !cancelled() }}
+        run: docker compose logs migrate
+
+      # Usuário da aplicação (só DML), com os defaults do compose.
       - name: Run backend pytest suite
         working-directory: Backend
+        env:
+          TEST_DATABASE_URL: postgresql://media_app_user:MediaList%402025%21Secure@127.0.0.1:5433/medialist_db
         run: pytest -q --cov --cov-report=term
 
       # Cobertura é só relatório: não há limite mínimo que bloqueie o merge.
@@ -60,21 +78,11 @@ jobs:
             python -m coverage report --format=markdown || echo "Resumo de cobertura indisponível."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate Docker Compose
-        run: docker compose config > /dev/null
-
-      - name: Build backend image
-        run: docker compose build backend
-
-      # --wait espera o healthcheck do MySQL e do backend antes dos smoke.
-      - name: Start backend dependencies
-        run: docker compose up -d --wait --wait-timeout 180 mysql mongodb backend
-
+      # smoke_permissions.py volta quando as rotas falarem PostgreSQL (ticket 10).
       - name: Run backend smoke scripts
         run: |
-          docker compose exec -T backend python smoke_mysql_connection.py
+          docker compose exec -T backend python smoke_postgres.py
           docker compose exec -T backend python smoke_mongo.py
-          docker compose exec -T backend python smoke_permissions.py
 
       - name: Shutdown stack
         if: always()
