@@ -100,6 +100,14 @@ def test_erro_de_sql_propaga_sem_traducao(pg):
     assert not isinstance(erro.value, banco.ErroDeBanco)
 
 
+def test_statement_timeout_propaga_sem_virar_indisponivel(pg):
+    from psycopg import errors
+
+    with pytest.raises(errors.QueryCanceled), banco.transacao() as t:
+        t.executar("SET LOCAL statement_timeout = '20ms'")
+        t.consultar('SELECT pg_sleep(1)')
+
+
 def test_transacao_confirma_tudo_no_fim(pg):
     email = _email(pg)
 
