@@ -2,7 +2,7 @@
 MediaList API.
 
 Importar este módulo não conecta em nada: o pool do PostgreSQL abre na
-primeira consulta (módulo `banco`) e o Mongo no primeiro request.
+primeira consulta (módulo `banco`).
 """
 import json
 import logging
@@ -18,7 +18,6 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from werkzeug.exceptions import HTTPException
 
-import database
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY, token_blocklist
 from parametros import ErroEntrada
@@ -126,11 +125,6 @@ app.register_blueprint(noticias_bp, url_prefix='/api/noticias')
 app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')
 app.register_blueprint(preferencias_bp, url_prefix='/api/preferencias')
 app.register_blueprint(utils_bp, url_prefix='/api')
-
-
-@app.before_request
-def conectar_mongodb():
-    database.garantir_mongodb()
 
 
 @jwt.token_in_blocklist_loader

@@ -43,16 +43,10 @@ EM_PRODUCAO = APP_ENV == 'production'
 # iniciar (ver _validar_segredos_de_producao, no fim do módulo).
 _JWT_SECRET_DEV = 'sua-chave-secreta-super-segura'
 _DB_PASSWORD_DEV = 'MediaList@2025!Secure'
-_MONGO_URI_DEV = (
-    'mongodb://medialist_app:medialist-app-dev@localhost:27017/'
-    'medialist_updates_db?authSource=medialist_updates_db'
-)
 _SEGREDOS_CONHECIDOS = {
     'JWT_SECRET_KEY': {_JWT_SECRET_DEV, 'troque-esta-chave-em-producao'},
     'DB_PASSWORD': {_DB_PASSWORD_DEV},
 }
-# Senhas default do Mongo (root antigo e usuário da aplicação em dev).
-_SENHAS_MONGO_CONHECIDAS = ('senha123', 'medialist-app-dev')
 
 
 def _env(nome, default):
@@ -104,11 +98,6 @@ def database_url(*, dono: bool = False) -> str:
     name = _env('DB_NAME', 'medialist_db')
     return f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
 
-# Configuração MongoDB: usuário da aplicação com readWrite só no MONGO_DB_NAME,
-# nunca o root (ver docker/mongo-init/01-app-user.js).
-MONGO_URI = _env('MONGO_URI', _MONGO_URI_DEV)
-MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'medialist_updates_db')
-
 # Configurações das APIs de importação
 ANILIST_API_URL = os.getenv('ANILIST_API_URL', 'https://graphql.anilist.co')
 RAWG_API_KEY = os.getenv('RAWG_API_KEY', '')
@@ -127,12 +116,6 @@ def _problemas_de_producao():
             problemas.append(f'{nome} ausente')
         elif valor in conhecidos:
             problemas.append(f'{nome} igual a um default conhecido')
-
-    uri = os.getenv('MONGO_URI')
-    if not uri:
-        problemas.append('MONGO_URI ausente')
-    elif any(f':{senha}@' in uri for senha in _SENHAS_MONGO_CONHECIDAS):
-        problemas.append('MONGO_URI usa uma senha default conhecida')
     return problemas
 
 
