@@ -20,28 +20,27 @@ NPM ?= npm
 
 DOCKER_COMPOSE ?= docker compose
 IMPORT_WORKERS ?= 8
-DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).sql
+DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 .PHONY: help install install-backend install-frontend install-mobile compose-build services-up services-up-dev \
-	services-down services-logs db-schema db-migrate-refresh db-grants mongo-app-user db-shell backend-dev frontend-dev smoke-mysql \
+	services-down services-logs db-migrate db-revision mongo-app-user db-shell backend-dev frontend-dev smoke-postgres \
 	smoke-mongo smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
 	lint-mobile build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
-	@printf "  make services-up       Sobe frontend, backend, MySQL e MongoDB via Docker\n"
+	@printf "  make services-up       Sobe frontend, backend, PostgreSQL e MongoDB via Docker\n"
 	@printf "  make services-up-dev   Sobe o stack completo e habilita mongo-express\n"
 	@printf "  make compose-build     Rebuilda as imagens Docker de backend e frontend\n"
-	@printf "  make db-schema         Reaplica Banco DDL.sql no MySQL do Docker\n"
-	@printf "  make db-migrate-refresh Cria a tabela refresh_tokens num banco existente\n"
-	@printf "  make db-grants         Reduz o usuário do app no MySQL a SELECT/INSERT/UPDATE/DELETE/EXECUTE\n"
+	@printf "  make db-migrate        Aplica as migrações pendentes (alembic upgrade head, serviço migrate)\n"
+	@printf "  make db-revision MSG=\"...\" Cria uma revisão nova em Backend/migrations/versions\n"
 	@printf "  make mongo-app-user    Cria/atualiza o usuário do app no MongoDB (volume existente)\n"
-	@printf "  make db-shell          Abre o cliente MySQL dentro do container\n"
-	@printf "  make db-dump          Gera um dump SQL completo em ./dumps\n"
-	@printf "  make db-restore       Restaura um dump com DUMP_FILE=/caminho/arquivo.sql\n"
-	@printf "  make smoke-mysql       Executa o smoke test de MySQL no container backend\n"
+	@printf "  make db-shell          Abre o psql (usuário dono) dentro do container\n"
+	@printf "  make db-dump           Gera um dump (pg_dump -Fc) em ./dumps\n"
+	@printf "  make db-restore        Restaura um dump com DUMP_FILE=/caminho/arquivo.dump\n"
+	@printf "  make smoke-postgres    Executa o smoke test de PostgreSQL no container backend\n"
 	@printf "  make smoke-mongo       Executa o smoke test de MongoDB no container backend\n"
 	@printf "  make smoke-permissions Executa o script de permissões no container backend\n"
 	@printf "  make import-animes     Importa animes no container backend\n"
@@ -60,7 +59,7 @@ help:
 	@printf "  make build-frontend    Gera a build do frontend no host\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
-	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, MYSQL_PORT, MONGO_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
+	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, POSTGRES_PORT, MONGO_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
 
 install: install-backend install-frontend install-mobile
 
@@ -77,7 +76,7 @@ compose-build:
 	$(DOCKER_COMPOSE) build backend frontend
 
 services-up:
-	$(DOCKER_COMPOSE) up -d mysql mongodb backend frontend
+	$(DOCKER_COMPOSE) up -d postgres mongodb backend frontend
 
 services-up-dev:
 	$(DOCKER_COMPOSE) --profile dev up -d
@@ -88,19 +87,16 @@ services-down:
 services-logs:
 	$(DOCKER_COMPOSE) logs -f
 
-db-schema:
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(ROOT_DIR)/Banco DDL.sql"
+# One-shot: o serviço migrate roda `alembic upgrade head` com o usuário dono.
+db-migrate:
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) run --rm --build migrate
 
-db-migrate-refresh:
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(ROOT_DIR)/Banco migracao 0006 refresh tokens.sql"
-
-# Idempotente. Lê DB_USER/DB_NAME do .env, como o compose.
-db-grants:
-	$(DOCKER_COMPOSE) up -d mysql
-	set -a; [ -f "$(ROOT_DIR)/.env" ] && . "$(ROOT_DIR)/.env"; set +a; \
-	$(DOCKER_COMPOSE) exec -T -e APP_DB_USER="$${DB_USER:-media_app_user}" -e APP_DB_NAME="$${DB_NAME:-medialist_db}" mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "REVOKE ALL PRIVILEGES, GRANT OPTION FROM '\''$$APP_DB_USER'\''@'\''%'\''; GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON \`$$APP_DB_NAME\`.* TO '\''$$APP_DB_USER'\''@'\''%'\''; FLUSH PRIVILEGES; SHOW GRANTS FOR '\''$$APP_DB_USER'\''@'\''%'\'';"'
+# Gera o arquivo da revisão no host (Backend/migrations/versions); o SQL é
+# escrito à mão em op.execute. Ex.: make db-revision MSG="cria tabela x"
+db-revision:
+	@test -n "$(MSG)" || (printf "Defina MSG=\"descricao da revisao\"\n" && exit 1)
+	cd "$(BACKEND_DIR)" && $(PYTHON) -m alembic revision -m "$(MSG)"
 
 # Idempotente. Mesmo script do init do volume novo (docker/mongo-init).
 mongo-app-user:
@@ -109,43 +105,45 @@ mongo-app-user:
 	$(DOCKER_COMPOSE) exec -T -e MONGO_DB_NAME="$${MONGO_DB_NAME:-medialist_updates_db}" -e MONGO_APP_USER="$${MONGO_APP_USER:-medialist_app}" -e MONGO_APP_PASSWORD="$${MONGO_APP_PASSWORD:-medialist-app-dev}" mongodb sh -c 'until mongosh --quiet --eval "db.runCommand({ping: 1})" > /dev/null 2>&1; do sleep 2; done; exec mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --file /dev/stdin' < "$(ROOT_DIR)/docker/mongo-init/01-app-user.js"
 
 db-shell:
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) exec mysql sh -lc 'exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"'
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) exec postgres sh -c 'exec psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
+# Formato custom do pg_dump (-Fc): restaura com pg_restore, inclusive seletivo.
 db-dump:
 	mkdir -p "$(DUMP_DIR)"
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysqldump -uroot -p"$$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --databases "$${DB_NAME:-medialist_db}"' > "$(DUMP_FILE)"
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) exec -T postgres sh -c 'exec pg_dump -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -Fc' > "$(DUMP_FILE)"
 	@printf "Dump criado em: %s\n" "$(DUMP_FILE)"
 
+# Substitui o conteúdo do banco pelo do dump (--clean --if-exists), mantendo os
+# grants do usuário da aplicação, que vêm dos default privileges do dono.
 db-restore:
-	@test -n "$(DUMP_FILE)" || (printf "Defina DUMP_FILE=/caminho/arquivo.sql\n" && exit 1)
+	@test -n "$(DUMP_FILE)" || (printf "Defina DUMP_FILE=/caminho/arquivo.dump\n" && exit 1)
 	@test -f "$(DUMP_FILE)" || (printf "Arquivo de dump não encontrado: %s\n" "$(DUMP_FILE)" && exit 1)
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'until mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent > /dev/null 2>&1; do sleep 2; done; exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS \`$${DB_NAME:-medialist_db}\`; CREATE DATABASE \`$${DB_NAME:-medialist_db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"'
-	$(DOCKER_COMPOSE) exec -T mysql sh -lc 'exec mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$(DUMP_FILE)"
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) exec -T postgres sh -c 'exec pg_restore -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists --no-owner --role="$$POSTGRES_USER" --exit-on-error' < "$(DUMP_FILE)"
 	@printf "Dump restaurado a partir de: %s\n" "$(DUMP_FILE)"
 
 backend-dev:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	cd "$(BACKEND_DIR)" && $(PYTHON) app.py
 
 frontend-dev:
 	cd "$(FRONTEND_DIR)" && $(NPM) start
 
-smoke-mysql:
-	$(DOCKER_COMPOSE) up -d mysql
-	$(DOCKER_COMPOSE) run --rm backend python smoke_mysql_connection.py
+smoke-postgres:
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) run --rm backend python smoke_postgres.py
 
 smoke-mongo:
 	$(DOCKER_COMPOSE) up -d mongodb
 	$(DOCKER_COMPOSE) run --rm backend python smoke_mongo.py
 
 smoke-permissions:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	$(DOCKER_COMPOSE) run --rm backend python smoke_permissions.py
 
-smoke: smoke-mysql smoke-mongo smoke-permissions
+smoke: smoke-postgres smoke-mongo smoke-permissions
 
 test-backend:
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m pytest -q
@@ -175,19 +173,19 @@ build-frontend:
 build: build-frontend
 
 import-animes:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo anime --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-mangas:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo manga --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-jogos:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo jogo --paginas 100 --workers $(IMPORT_WORKERS)
 
 import-all:
-	$(DOCKER_COMPOSE) up -d mysql mongodb
+	$(DOCKER_COMPOSE) up -d postgres mongodb
 	$(DOCKER_COMPOSE) run --rm backend python -m importacao.run_import --tipo todos --paginas 100 --workers $(IMPORT_WORKERS)
 
 clean-frontend:

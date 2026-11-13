@@ -1,25 +1,44 @@
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:18
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-3308}:3306"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_ROOT_HOST: "%"
-    command:
-      - --default-authentication-plugin=mysql_native_password
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+      # O POSTGRES_USER é o dono do banco: roda as migrações (serviço migrate).
+      POSTGRES_USER: ${DB_OWNER_USER:-medialist_owner}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-medialist-owner-dev}
+      POSTGRES_DB: ${DB_NAME:-medialist_db}
+      # Usuário da aplicação, só DML, criado pelo docker/postgres-init num volume novo.
+      DB_USER: ${DB_USER:-media_app_user}
+      DB_PASSWORD: ${DB_PASSWORD:-MediaList@2025!Secure}
     volumes:
-      - mysql_data:/var/lib/mysql
-      - "./Banco DDL.sql:/docker-entrypoint-initdb.d/01-medialist.sql:ro"
+      # A imagem 18 guarda os dados em /var/lib/postgresql/18/docker.
+      - postgres_data:/var/lib/postgresql
+      - "./docker/postgres-init:/docker-entrypoint-initdb.d:ro"
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 25s
+      retries: 20
+      start_period: 10s
+
+  # One-shot: aplica as migrações com o dono e sai. O backend só sobe depois.
+  migrate:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-medialist_db}
+      DB_OWNER_USER: ${DB_OWNER_USER:-medialist_owner}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-medialist-owner-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   mongodb:
     image: mongo:latest
@@ -62,8 +81,8 @@ services:
       APP_DEBUG: "false"
       APP_ENV: ${APP_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME:-medialist_db}
       DB_USER: ${DB_USER:-media_app_user}
       DB_PASSWORD: ${DB_PASSWORD:-MediaList@2025!Secure}
@@ -81,8 +100,10 @@ services:
     volumes:
       - "./Backend/importacao_logs:/app/importacao_logs"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mongodb:
         condition: service_started
     healthcheck:
@@ -112,5 +133,5 @@ services:
       start_period: 10s
 
 volumes:
-  mysql_data:
+  postgres_data:
   mongodb_data:
