@@ -3,8 +3,10 @@ Escrita da Lista pessoal: tudo o que um Item de lista significa.
 
 O módulo é o autor do Estado de consumo (ver docs/adr/0002): validação do
 Rótulo de estado contra o Tipo de mídia, escala da Nota pessoal, limites de Progresso, Concluído ⇔ total
-Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Os triggers
-`validar_progresso_lista*` continuam como rede de segurança do banco.
+Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Esta é a única
+validação dessas regras: no PostgreSQL não há trigger de Progresso, só CHECKs
+simples (Rótulo entre os conhecidos, sem olhar o Tipo; nota de 0 a 10; contadores
+não negativos); ver docs/adr/0007 e 0009.
 
 Leitura fica de fora: a rota consulta o repositório direto. Aqui só há escrita,
 e **uma escrita por chamada** — é o que impede o estado recém-decidido de ser

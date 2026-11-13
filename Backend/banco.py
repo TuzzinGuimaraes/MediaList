@@ -13,7 +13,8 @@ Fora de uma `transacao()`, cada chamada é a sua própria transação.
 Erros do banco viram exceções tipadas que o errorhandler do app traduz:
 `Conflito` (UNIQUE) -> 409, `Integridade` (FK, CHECK, NOT NULL e valor fora do
 tipo, como um uuid malformado) -> 400, `Indisponivel` (sem conexão) -> 503. O
-resto (SQL errado, permissão) propaga como está e vira 500.
+resto (SQL errado, permissão, deadlock, falha de serialização, consulta
+cancelada) propaga como está e vira 500.
 
 O pool abre na primeira consulta, nunca no import: `import app` não conecta em
 nada. UUIDs voltam como texto, que é como a API e o JWT os tratam.
@@ -68,6 +69,13 @@ _INTEGRIDADE = (
     psycopg.DataError,  # classe 22: uuid malformado, número fora da escala, data inválida
 )
 
+# Erros operacionais com o banco no ar: propagam como estão (500), não viram Indisponivel.
+_PROPAGAM = (
+    errors.DeadlockDetected,
+    errors.SerializationFailure,
+    errors.QueryCanceled,
+)
+
 _pool: ConnectionPool | None = None
 _trava = threading.Lock()
 
@@ -93,9 +101,6 @@ def _obter_pool() -> ConnectionPool:
                     name='medialist',
                 )
                 pool.open(wait=False)
-                # Fecha antes do fim do interpretador: as threads do pool não
-                # podem mais ser juntadas no __del__ durante o shutdown.
-                atexit.register(fechar)
                 _pool = pool
     return _pool
 
@@ -113,6 +118,12 @@ def fechar() -> None:
             _pool = None
 
 
+# Fecha antes do fim do interpretador: as threads do pool não podem mais ser
+# juntadas no __del__ durante o shutdown. Um registro só, no import, por mais
+# pools que o processo abra e feche.
+atexit.register(fechar)
+
+
 @contextmanager
 def _traduzir_erros() -> Iterator[None]:
     try:
@@ -121,6 +132,15 @@ def _traduzir_erros() -> Iterator[None]:
         raise Conflito('Registro já existe', exc.diag.constraint_name) from exc
     except _INTEGRIDADE as exc:
         raise Integridade('Dados inválidos', exc.diag.constraint_name) from exc
+    except _PROPAGAM as exc:
+        # São OperationalError, mas o banco está no ar: deadlock e falha de
+        # serialização vêm de concorrência, cancelamento de statement_timeout ou
+        # pg_cancel_backend. Viram 500 com este log, não 503. A marca evita o
+        # log duplo quando o erro atravessa a Transacao e a transacao() de fora.
+        if not getattr(exc, '_medialist_registrado', False):
+            exc._medialist_registrado = True
+            logger.error('Erro do banco (%s, SQLSTATE %s): %s', type(exc).__name__, exc.sqlstate, exc)
+        raise
     except (psycopg.OperationalError, PoolTimeout) as exc:
         logger.warning('Banco indisponível: %s', exc)
         raise Indisponivel('Banco indisponível') from exc

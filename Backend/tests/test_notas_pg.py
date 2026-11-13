@@ -127,3 +127,17 @@ def test_nota_media_recalculada_ao_criar_editar_e_apagar_avaliacao(pg, prefixo, 
     client.delete(f'/api/avaliacoes/{id_bia}', headers=cabecalho[bia])
     # Sem Avaliações a Nota média é NULL (não 0); a Nota da fonte fica.
     assert notas() == (None, None, 5.0)
+
+
+
+def test_avaliacao_repetida_responde_409_e_nao_muda_a_nota(pg, prefixo, client, make_token):  # noqa: F811
+    anime = _midia(pg, 'anime', prefixo, anilist_id=_anilist_id())
+    ana = _usuario(pg)
+    cabecalho = {'Authorization': f'Bearer {make_token(ana)}'}
+
+    assert client.post('/api/avaliacoes', headers=cabecalho, json={'id_midia': anime, 'nota': 8}).status_code == 201
+    repetida = client.post('/api/avaliacoes', headers=cabecalho, json={'id_midia': anime, 'nota': 3})
+
+    assert repetida.status_code == 409
+    assert repetida.get_json() == {'erro': 'Você já avaliou esta mídia'}
+    assert client.get(f'/api/midias/{anime}').get_json()['nota_media'] == 8.0

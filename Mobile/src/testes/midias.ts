@@ -94,7 +94,7 @@ export function jogo(dados: Record<string, unknown> = {}) {
   };
 }
 
-/** Linha de vw_midias_populares: subconjunto dos campos, com DECIMAL como string. */
+/** Linha de vw_midias_populares: subconjunto dos campos, como a API manda (números como número). */
 type Fixture = ReturnType<typeof anime> | ReturnType<typeof manga> | ReturnType<typeof jogo>;
 
 export function popular(midia: Fixture, total_usuarios: number) {
@@ -105,10 +105,10 @@ export function popular(midia: Fixture, total_usuarios: number) {
     titulo_original: midia.titulo_original,
     titulo_portugues: midia.titulo_portugues,
     poster_url: midia.poster_url,
-    nota_media: midia.nota_media.toFixed(2),
+    nota_media: midia.nota_media,
     total_usuarios,
-    usuarios_concluiram: '0',
-    total_favoritos: '0',
+    usuarios_concluiram: 0,
+    total_favoritos: 0,
     generos: midia.generos,
   };
 }

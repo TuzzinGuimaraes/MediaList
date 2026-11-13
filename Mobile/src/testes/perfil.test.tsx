@@ -13,15 +13,15 @@ const me = {
 };
 const permissoes = { status: 200, corpo: { permissoes: { nivel_acesso: 'usuario', grupos: 'Usuários' } } };
 
-// Formato real de GET /usuario/estatisticas: as somas do MySQL chegam como texto.
+// Formato real de GET /usuario/estatisticas: contagens e somas como inteiro, nota_media como número ou null.
 const estatisticas = {
   status: 200,
   corpo: {
     estatisticas: [
-      { tipo: 'anime', label: 'Anime', total_midias: 2, concluidos: '1', em_andamento: '1', nota_media: '7.00', favoritos: 0, progresso_total_consumido: '0' },
-      { tipo: 'jogo', label: 'Jogo', total_midias: 3, concluidos: '3', em_andamento: '0', nota_media: '9.00', favoritos: 1, progresso_total_consumido: '0' },
+      { tipo: 'anime', label: 'Anime', total_midias: 2, concluidos: 1, em_andamento: 1, nota_media: 7, favoritos: 0, progresso_total_consumido: 0 },
+      { tipo: 'jogo', label: 'Jogo', total_midias: 3, concluidos: 3, em_andamento: 0, nota_media: 9, favoritos: 1, progresso_total_consumido: 0 },
     ],
-    resumo: { total_midias: 5, concluidos: '4', em_andamento: '1', favoritos: 1 },
+    resumo: { total_midias: 5, concluidos: 4, em_andamento: 1, favoritos: 1 },
   },
 };
 

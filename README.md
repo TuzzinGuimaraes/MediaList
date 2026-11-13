@@ -161,14 +161,16 @@ O schema é versionado com Alembic em [Backend/migrations](Backend/migrations), 
 - dados estruturais iniciais, como tipos, grupos de usuarios e generos
 
 Usuários: o dono (`DB_OWNER_USER`) roda as migrações; o da aplicação (`DB_USER`) só tem
-SELECT/INSERT/UPDATE/DELETE, criado por [docker/postgres-init](docker/postgres-init) no primeiro start com volume vazio.
+SELECT/INSERT/UPDATE/DELETE, criado por [docker/postgres-init](docker/postgres-init). O PostgreSQL só roda
+esse init no primeiro start com volume vazio; num volume que já existe (usuário novo, grants perdidos),
+`make db-grants` reaplica o mesmo script como dono, e pode rodar quantas vezes precisar.
 Revisão nova: `make db-revision MSG="..."`; aplicar: `make db-migrate`.
 
 O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser populado pelos importadores em [Backend/importacao](Backend/importacao).
 
 ## Desenvolvimento local
 
-Se preferir rodar frontend e backend no host, mantendo apenas os bancos no Docker:
+Se preferir rodar frontend e backend no host, mantendo só o PostgreSQL no Docker:
 
 ### 1. Instale as dependências locais
 
@@ -199,7 +201,7 @@ make frontend-dev
 
 Nesse modo:
 
-- o backend local usa `localhost:5433` e `localhost:27017`
+- o backend local usa o PostgreSQL em `localhost:5433`
 - o frontend local usa `http://localhost:5000/api` no modo desenvolvimento
 
 ## Comandos principais
@@ -215,6 +217,7 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make db-migrate` | Aplica as migrações pendentes (serviço `migrate`) |
 | `make db-revision MSG=...` | Cria uma revisão nova em `Backend/migrations/versions` |
 | `make db-shell` | Abre o `psql` dentro do container |
+| `make db-grants` | Reaplica o usuário da aplicação e os grants num banco existente |
 | `make db-dump` | Gera um dump (`pg_dump -Fc`) em `./dumps` |
 | `make db-restore DUMP_FILE=...` | Restaura um dump com `pg_restore` |
 | `make smoke-postgres` | Executa o smoke test de PostgreSQL no container backend |

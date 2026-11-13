@@ -137,6 +137,33 @@ def test_jogo_grava_plataformas_como_array_e_reimporta_pelo_slug(pg):
     )['aplicavel_a'] == ['jogo']
 
 
+def test_genero_novo_do_anime_vale_para_anime_e_manga_nao_para_jogo(pg):
+    """Como no seed: gêneros só do AniList (Ecchi, Mahou Shoujo) não entram em /generos?tipo=jogo."""
+    novo = f'Gênero PG {uuid.uuid4().hex[:8]}'
+    pg['generos'].append(novo)
+
+    _salvar(pg, db.salvar_anime, _anime(_anilist_id()), [novo])
+
+    assert banco.consultar_um(
+        'SELECT aplicavel_a FROM generos WHERE nome_genero = %s', (novo,)
+    )['aplicavel_a'] == ['anime', 'manga']
+
+
+def test_genero_existente_ganha_o_tipo_que_passa_a_usa_lo(pg):
+    novo = f'Gênero PG {uuid.uuid4().hex[:8]}'
+    pg['generos'].append(novo)
+    _salvar(pg, db.salvar_anime, _anime(_anilist_id()), [novo])
+
+    _salvar(pg, db.salvar_jogo, {
+        'titulo_original': 'Jogo', 'status_jogo': 'lancado', 'modo_jogo': 'single',
+        'plataformas': ['PC'], 'rawg_slug': f'jogo-pg-{uuid.uuid4().hex}',
+    }, [novo])
+
+    assert banco.consultar_um(
+        'SELECT aplicavel_a FROM generos WHERE nome_genero = %s', (novo,)
+    )['aplicavel_a'] == ['anime', 'jogo', 'manga']
+
+
 def test_reimportar_nao_toca_em_avaliacoes_nem_itens(pg):
     anilist_id = _anilist_id()
     id_midia = _salvar(pg, db.salvar_anime, _anime(anilist_id))['id_midia']

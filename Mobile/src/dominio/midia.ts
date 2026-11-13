@@ -10,7 +10,7 @@ export type NotaExibida = { rotulo: string; curto: string; valor: string };
 /** Rótulo da Nota média na tela. */
 export const ROTULO_NOTA_MEDIA = 'Nota dos Usuários';
 
-const comUmaCasa = (nota: number | string) => Number(nota).toFixed(1);
+const comUmaCasa = (nota: number) => nota.toFixed(1);
 
 /**
  * As notas que a Mídia mostra (CONTEXT.md: Nota média, Nota da fonte), cada uma com o seu
@@ -36,8 +36,7 @@ export function notasDaMidia(midia: NotasDaMidia): NotaExibida[] {
 
 /** "Mais bem avaliadas": a Nota média, senão a Nota da fonte (mesma regra do backend). */
 export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fonte'>): number | null {
-  const nota = midia.nota_media ?? midia.nota_fonte;
-  return nota == null ? null : Number(nota);
+  return midia.nota_media ?? midia.nota_fonte ?? null;
 }
 
 type Atributo = [rotulo: string, valor: string | number | null];

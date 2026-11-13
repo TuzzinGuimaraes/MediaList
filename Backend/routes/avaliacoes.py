@@ -7,7 +7,7 @@ dela a resposta é 400 e nada é gravado. O CHECK do banco fica como rede de seg
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from banco import consultar_um, executar, transacao
+from banco import Conflito, consultar_um, executar, transacao
 from decorators import get_user_permissions
 from dominio.nota import NotaInvalida, ler_nota
 from repositories import MidiaRepository
@@ -51,23 +51,21 @@ def criar_avaliacao():
     if not midia_repository.buscar_por_id(id_midia):
         return jsonify({'erro': 'Mídia não encontrada'}), 404
 
-    if consultar_um(
-        "SELECT id_avaliacao FROM avaliacoes WHERE id_usuario = %s AND id_midia = %s",
-        (user_id, id_midia),
-    ):
-        return jsonify({'erro': 'Você já avaliou esta mídia'}), 400
-
-    # Uma corrida entre a checagem e o INSERT esbarra na unique key: Conflito, 409.
-    with transacao() as t:
-        avaliacao = t.consultar_um(
-            """
-            INSERT INTO avaliacoes (id_usuario, id_midia, nota, titulo_avaliacao, texto_avaliacao)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id_avaliacao
-            """,
-            (user_id, id_midia, nota, data.get('titulo_avaliacao'), data.get('texto_avaliacao')),
-        )
-        notas = t.consultar_um(NOTAS_DA_MIDIA, (id_midia,)) or {}
+    # Avaliação repetida: quem decide é a UNIQUE (id_usuario, id_midia), sem
+    # SELECT antes, então a corrida entre dois POSTs também cai aqui.
+    try:
+        with transacao() as t:
+            avaliacao = t.consultar_um(
+                """
+                INSERT INTO avaliacoes (id_usuario, id_midia, nota, titulo_avaliacao, texto_avaliacao)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id_avaliacao
+                """,
+                (user_id, id_midia, nota, data.get('titulo_avaliacao'), data.get('texto_avaliacao')),
+            )
+            notas = t.consultar_um(NOTAS_DA_MIDIA, (id_midia,)) or {}
+    except Conflito:
+        return jsonify({'erro': 'Você já avaliou esta mídia'}), 409
 
     return jsonify({
         'mensagem': 'Avaliação criada com sucesso!',

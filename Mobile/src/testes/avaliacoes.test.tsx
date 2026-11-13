@@ -91,7 +91,7 @@ describe('Avaliações no detalhe da Mídia', () => {
         midia = { ...midia, nota_media: 9, total_avaliacoes: 1 };
         return {
           status: 201,
-          corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA', nota_media_atualizada: '9.00', total_avaliacoes: 1 },
+          corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA', nota_media_atualizada: 9, total_avaliacoes: 1 },
         };
       },
     });
@@ -153,7 +153,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
       'PUT /avaliacoes/AVL-MINHA': (req) => {
         avaliacoes = [avaliacao(), minha({ nota: 6.5, titulo_avaliacao: 'Revisto' })];
-        return { status: 200, corpo: { mensagem: 'Avaliação atualizada com sucesso!', nota_media_atualizada: '7.50' } };
+        return { status: 200, corpo: { mensagem: 'Avaliação atualizada com sucesso!', nota_media_atualizada: 7.5 } };
       },
     });
 
@@ -223,7 +223,7 @@ describe('Avaliações no detalhe da Mídia', () => {
   it('mostra o erro da API sem fechar o formulário', async () => {
     simularFetch({
       ...rotas([]),
-      'POST /avaliacoes': { status: 400, corpo: { erro: 'Você já avaliou esta mídia' } },
+      'POST /avaliacoes': { status: 409, corpo: { erro: 'Você já avaliou esta mídia' } },
     });
 
     await abrirDetalhe();

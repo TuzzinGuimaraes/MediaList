@@ -9,6 +9,8 @@ grava só a Nota da fonte (`nota_fonte`).
 """
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from banco import Transacao, transacao
 
 _BASE = (
@@ -16,25 +18,38 @@ _BASE = (
     'data_lancamento', 'nota_fonte', 'poster_url', 'banner_url',
 )
 
-# Tipo -> (tabela filha, chave da fonte, colunas da filha, aplicavel_a dos gêneros novos)
+class _Tipo(NamedTuple):
+    """Como cada Tipo de mídia é gravado."""
+
+    tabela: str  # tabela filha de `midias`
+    chave: str  # chave da fonte, UNIQUE na filha: o upsert é por ela
+    colunas: tuple[str, ...]  # colunas próprias da filha
+    aplicavel_a: list[str]  # `generos.aplicavel_a` de um gênero que a Importação cria
+
+
+# aplicavel_a: anime e mangá vêm do AniList e dividem gêneros, como no seed
+# (Romance, Mecha, Isekai valem para '{anime,manga}'). Um gênero novo do AniList
+# (Ecchi, Mahou Shoujo) não vale para jogo, senão aparece em /generos?tipo=jogo.
+# Se outro Tipo passar a usar um gênero que já existe, o tipo entra no
+# aplicavel_a dele (ver o ON CONFLICT em _salvar).
 _TIPOS = {
-    'anime': (
-        'animes', 'anilist_id',
-        ('status_anime', 'numero_episodios', 'duracao_episodio', 'classificacao_etaria',
-         'trailer_url', 'estudio', 'fonte_original'),
-        ['anime', 'manga', 'jogo'],
+    'anime': _Tipo(
+        tabela='animes', chave='anilist_id',
+        colunas=('status_anime', 'numero_episodios', 'duracao_episodio', 'classificacao_etaria',
+                 'trailer_url', 'estudio', 'fonte_original'),
+        aplicavel_a=['anime', 'manga'],
     ),
-    'manga': (
-        'mangas', 'anilist_id',
-        ('status_manga', 'numero_capitulos', 'numero_volumes', 'autor', 'artista',
-         'publicadora_original', 'revista', 'demografia'),
-        ['anime', 'manga', 'jogo'],
+    'manga': _Tipo(
+        tabela='mangas', chave='anilist_id',
+        colunas=('status_manga', 'numero_capitulos', 'numero_volumes', 'autor', 'artista',
+                 'publicadora_original', 'revista', 'demografia'),
+        aplicavel_a=['anime', 'manga'],
     ),
-    'jogo': (
-        'jogos', 'rawg_slug',
-        ('desenvolvedor', 'publicadora', 'plataformas', 'status_jogo', 'modo_jogo',
-         'classificacao', 'trailer_url'),
-        ['jogo'],
+    'jogo': _Tipo(
+        tabela='jogos', chave='rawg_slug',
+        colunas=('desenvolvedor', 'publicadora', 'plataformas', 'status_jogo', 'modo_jogo',
+                 'classificacao', 'trailer_url'),
+        aplicavel_a=['jogo'],
     ),
 }
 
@@ -51,7 +66,8 @@ def _atualizar_base(t: Transacao, id_midia: str, valores: dict) -> None:
 
 
 def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
-    tabela, chave, colunas, aplicavel_a = _TIPOS[tipo]
+    config = _TIPOS[tipo]
+    tabela, chave, colunas = config.tabela, config.chave, config.colunas
     if not dados.get(chave):
         raise ValueError(f'{tipo} sem {chave}: não há como reimportar sem duplicar')
 
@@ -63,7 +79,8 @@ def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
         existente = t.consultar_um(
             f'SELECT id_midia FROM {tabela} WHERE {chave} = %(chave)s', {'chave': valores[chave]}
         )
-        if existente:
+        ja_existia = existente is not None
+        if ja_existia:
             id_midia = existente['id_midia']
             _atualizar_base(t, id_midia, valores)
         else:
@@ -87,13 +104,16 @@ def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
             # fica a Mídia dela, atualizada; a que acabamos de criar sai.
             t.executar('DELETE FROM midias WHERE id_midia = %s', (id_midia,))
             _atualizar_base(t, gravado, valores)
-            existente = True
+            ja_existia = True
 
         for nome in dict.fromkeys(g.strip() for g in generos if g and g.strip()):
+            # Gênero que já existe ganha este Tipo no aplicavel_a, se ainda não tem.
             t.executar(
                 'INSERT INTO generos (nome_genero, aplicavel_a) VALUES (%s, %s) '
-                'ON CONFLICT (nome_genero) DO NOTHING',
-                (nome, aplicavel_a),
+                'ON CONFLICT (nome_genero) DO UPDATE SET aplicavel_a = ARRAY('
+                'SELECT DISTINCT unnest(generos.aplicavel_a || EXCLUDED.aplicavel_a) ORDER BY 1) '
+                'WHERE NOT generos.aplicavel_a @> EXCLUDED.aplicavel_a',
+                (nome, config.aplicavel_a),
             )
             t.executar(
                 'INSERT INTO midias_generos (id_midia, id_genero) '
@@ -102,7 +122,7 @@ def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
                 (gravado, nome),
             )
 
-    return {'id_midia': gravado, 'ja_existia': bool(existente)}
+    return {'id_midia': gravado, 'ja_existia': ja_existia}
 
 
 def salvar_anime(dados: dict, generos: list[str]) -> dict:
