@@ -4,6 +4,7 @@ Configurações centrais da aplicação.
 import os
 import sys
 from datetime import timedelta
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -76,6 +77,24 @@ MYSQL_CONFIG = {
     'charset': 'utf8mb4',
     'use_unicode': True,
 }
+
+
+def database_url(*, dono: bool = False) -> str:
+    """URL do PostgreSQL (postgresql://user:pass@host:port/name).
+
+    Por padrão usa o usuário da aplicação (DB_USER/DB_PASSWORD, só DML). Com
+    `dono=True`, para as migrações, usa DB_OWNER_USER/DB_OWNER_PASSWORD quando
+    definidos. Usuário e senha vão escapados: '@', ':' e '/' não quebram a URL.
+    """
+    user = _env('DB_USER', 'media_app_user')
+    password = _env('DB_PASSWORD', _DB_PASSWORD_DEV)
+    if dono and os.getenv('DB_OWNER_USER'):
+        user = os.environ['DB_OWNER_USER']
+        password = os.getenv('DB_OWNER_PASSWORD', '')
+    host = _env('DB_HOST', 'localhost')
+    port = _env('DB_PORT', '5433')
+    name = _env('DB_NAME', 'medialist_db')
+    return f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
 
 # Configuração MongoDB: usuário da aplicação com readWrite só no MONGO_DB_NAME,
 # nunca o root (ver docker/mongo-init/01-app-user.js).
