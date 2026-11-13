@@ -4,7 +4,7 @@ Importador de animes via AniList.
 from __future__ import annotations
 
 from importacao.anilist import importar_do_anilist
-from importacao.db import get_connection, inserir_midia_genero, inserir_ou_atualizar_anime, upsert_genero
+from importacao.db import salvar_anime
 from importacao.utils import (
     ERROR_LOG_PATH,
     ImportStats,
@@ -12,6 +12,7 @@ from importacao.utils import (
     criar_sessao_http,
     formatar_data_anilist,
     logger,
+    nota_fonte_anilist,
     registrar_falha_importacao,
     remover_html,
     truncar,
@@ -56,51 +57,40 @@ SOURCE_MAP = {
 }
 
 
-def processar_e_inserir_anime(anime: dict, conn, genero_cache: dict[str, int] | None = None):
-    """Processa um item do AniList e persiste no banco."""
-    try:
-        trailer_url = None
-        if anime.get('trailer') and anime['trailer'].get('site', '').lower() == 'youtube':
-            trailer_url = f"https://www.youtube.com/watch?v={anime['trailer']['id']}"
+def processar_e_inserir_anime(anime: dict):
+    """Processa um item do AniList e grava no banco (uma transação por Mídia)."""
+    trailer_url = None
+    if anime.get('trailer') and anime['trailer'].get('site', '').lower() == 'youtube':
+        trailer_url = f"https://www.youtube.com/watch?v={anime['trailer']['id']}"
 
-        dados = {
-            'titulo_original': anime['title'].get('native') or anime['title'].get('romaji'),
-            'titulo_ingles': anime['title'].get('english'),
-            'titulo_portugues': anime['title'].get('romaji') or anime['title'].get('english'),
-            'sinopse': truncar(remover_html(anime.get('description')), 1000),
-            'data_lancamento': formatar_data_anilist(anime.get('startDate')),
-            'status_anime': STATUS_MAP.get(anime.get('status'), 'aguardando'),
-            'numero_episodios': anime.get('episodes'),
-            'duracao_episodio': anime.get('duration'),
-            'classificacao_etaria': '18' if anime.get('isAdult') else None,
-            'nota_media': round((anime.get('meanScore') or 0) / 10, 2) if anime.get('meanScore') else None,
-            'poster_url': anime.get('coverImage', {}).get('large'),
-            'banner_url': anime.get('bannerImage'),
-            'estudio': (anime.get('studios', {}).get('nodes') or [{}])[0].get('name'),
-            'fonte_original': SOURCE_MAP.get(anime.get('source')),
-            'trailer_url': trailer_url,
-            'anilist_id': anime.get('id'),
-        }
+    dados = {
+        'titulo_original': anime['title'].get('native') or anime['title'].get('romaji'),
+        'titulo_ingles': anime['title'].get('english'),
+        'titulo_portugues': anime['title'].get('romaji') or anime['title'].get('english'),
+        'sinopse': truncar(remover_html(anime.get('description')), 1000),
+        'data_lancamento': formatar_data_anilist(anime.get('startDate')),
+        'status_anime': STATUS_MAP.get(anime.get('status'), 'aguardando'),
+        'numero_episodios': anime.get('episodes'),
+        'duracao_episodio': anime.get('duration'),
+        'classificacao_etaria': '18' if anime.get('isAdult') else None,
+        'nota_fonte': nota_fonte_anilist(anime.get('meanScore')),
+        'poster_url': anime.get('coverImage', {}).get('large'),
+        'banner_url': anime.get('bannerImage'),
+        'estudio': (anime.get('studios', {}).get('nodes') or [{}])[0].get('name'),
+        'fonte_original': SOURCE_MAP.get(anime.get('source')),
+        'trailer_url': trailer_url,
+        'anilist_id': anime.get('id'),
+    }
+    generos = [GENERO_MAP.get(genero, genero) for genero in anime.get('genres', [])]
 
-        result = inserir_ou_atualizar_anime(conn, dados)
-        for genero in anime.get('genres', []):
-            nome_genero = GENERO_MAP.get(genero, genero)
-            genero_id = upsert_genero(conn, nome_genero, 'anime,manga,jogo', genero_cache=genero_cache)
-            inserir_midia_genero(conn, result['id_midia'], genero_id)
-
-        conn.commit()
-        logger.info("Anime importado: %s (%s)", dados['titulo_original'], result['id_midia'])
-        return result
-    except Exception:
-        conn.rollback()
-        raise
+    result = salvar_anime(dados, generos)
+    logger.info("Anime importado: %s (%s)", dados['titulo_original'], result['id_midia'])
+    return result
 
 
 def importar_animes(paginas: int = 20):
     """Executa a importação em lote de animes."""
     stats = ImportStats(tipo_midia='anime', origem='AniList')
-    conn = get_connection()
-    genero_cache: dict[str, int] = {}
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
 
@@ -120,7 +110,7 @@ def importar_animes(paginas: int = 20):
 
             for item in pagina['itens']:
                 try:
-                    result = processar_e_inserir_anime(item, conn, genero_cache)
+                    result = processar_e_inserir_anime(item)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                 except Exception as exc:
                     stats.registrar_falha()
@@ -140,4 +130,3 @@ def importar_animes(paginas: int = 20):
         return stats
     finally:
         session.close()
-        conn.close()

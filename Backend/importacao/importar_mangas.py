@@ -4,7 +4,7 @@ Importador de mangás via AniList.
 from __future__ import annotations
 
 from importacao.anilist import importar_do_anilist
-from importacao.db import get_connection, inserir_midia_genero, inserir_ou_atualizar_manga, upsert_genero
+from importacao.db import salvar_manga
 from importacao.utils import (
     ERROR_LOG_PATH,
     ImportStats,
@@ -12,6 +12,7 @@ from importacao.utils import (
     criar_sessao_http,
     formatar_data_anilist,
     logger,
+    nota_fonte_anilist,
     registrar_falha_importacao,
     remover_html,
     truncar,
@@ -67,55 +68,44 @@ def _extrair_autoria(staff: dict | None) -> tuple[str | None, str | None]:
     return autor, artista or autor
 
 
-def processar_e_inserir_manga(manga: dict, conn, genero_cache: dict[str, int] | None = None):
-    """Processa um item do AniList e persiste no banco."""
-    try:
-        autor, artista = _extrair_autoria(manga.get('staff'))
-        demografia = None
-        generos = []
+def processar_e_inserir_manga(manga: dict):
+    """Processa um item do AniList e grava no banco (uma transação por Mídia)."""
+    autor, artista = _extrair_autoria(manga.get('staff'))
+    demografia = None
+    generos = []
 
-        for genero in manga.get('genres', []):
-            if genero in DEMOGRAFIA_MAP and not demografia:
-                demografia = DEMOGRAFIA_MAP[genero]
-            else:
-                generos.append(GENERO_MAP.get(genero, genero))
+    for genero in manga.get('genres', []):
+        if genero in DEMOGRAFIA_MAP and not demografia:
+            demografia = DEMOGRAFIA_MAP[genero]
+        else:
+            generos.append(GENERO_MAP.get(genero, genero))
 
-        dados = {
-            'titulo_original': manga['title'].get('native') or manga['title'].get('romaji'),
-            'titulo_ingles': manga['title'].get('english'),
-            'titulo_portugues': manga['title'].get('romaji') or manga['title'].get('english'),
-            'sinopse': truncar(remover_html(manga.get('description')), 1000),
-            'data_lancamento': formatar_data_anilist(manga.get('startDate')),
-            'nota_media': round((manga.get('meanScore') or 0) / 10, 2) if manga.get('meanScore') else None,
-            'poster_url': manga.get('coverImage', {}).get('large'),
-            'banner_url': manga.get('bannerImage'),
-            'status_manga': STATUS_MAP.get(manga.get('status'), 'aguardando'),
-            'numero_capitulos': manga.get('chapters'),
-            'numero_volumes': manga.get('volumes'),
-            'autor': autor,
-            'artista': artista,
-            'demografia': demografia,
-            'anilist_id': manga.get('id'),
-        }
+    dados = {
+        'titulo_original': manga['title'].get('native') or manga['title'].get('romaji'),
+        'titulo_ingles': manga['title'].get('english'),
+        'titulo_portugues': manga['title'].get('romaji') or manga['title'].get('english'),
+        'sinopse': truncar(remover_html(manga.get('description')), 1000),
+        'data_lancamento': formatar_data_anilist(manga.get('startDate')),
+        'nota_fonte': nota_fonte_anilist(manga.get('meanScore')),
+        'poster_url': manga.get('coverImage', {}).get('large'),
+        'banner_url': manga.get('bannerImage'),
+        'status_manga': STATUS_MAP.get(manga.get('status'), 'aguardando'),
+        'numero_capitulos': manga.get('chapters'),
+        'numero_volumes': manga.get('volumes'),
+        'autor': autor,
+        'artista': artista,
+        'demografia': demografia,
+        'anilist_id': manga.get('id'),
+    }
 
-        result = inserir_ou_atualizar_manga(conn, dados)
-        for genero in generos:
-            genero_id = upsert_genero(conn, genero, 'anime,manga,jogo', genero_cache=genero_cache)
-            inserir_midia_genero(conn, result['id_midia'], genero_id)
-
-        conn.commit()
-        logger.info("Mangá importado: %s (%s)", dados['titulo_original'], result['id_midia'])
-        return result
-    except Exception:
-        conn.rollback()
-        raise
+    result = salvar_manga(dados, generos)
+    logger.info("Mangá importado: %s (%s)", dados['titulo_original'], result['id_midia'])
+    return result
 
 
 def importar_mangas(paginas: int = 20):
     """Executa a importação em lote de mangás."""
     stats = ImportStats(tipo_midia='manga', origem='AniList')
-    conn = get_connection()
-    genero_cache: dict[str, int] = {}
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
 
@@ -135,7 +125,7 @@ def importar_mangas(paginas: int = 20):
 
             for item in pagina['itens']:
                 try:
-                    result = processar_e_inserir_manga(item, conn, genero_cache)
+                    result = processar_e_inserir_manga(item)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                 except Exception as exc:
                     stats.registrar_falha()
@@ -155,4 +145,3 @@ def importar_mangas(paginas: int = 20):
         return stats
     finally:
         session.close()
-        conn.close()

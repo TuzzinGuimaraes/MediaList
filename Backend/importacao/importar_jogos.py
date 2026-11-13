@@ -6,7 +6,7 @@ from __future__ import annotations
 from threading import local
 
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
-from importacao.db import get_connection, inserir_midia_genero, inserir_ou_atualizar_jogo, upsert_genero
+from importacao.db import salvar_jogo
 from importacao.utils import (
     ERROR_LOG_PATH,
     ImportStats,
@@ -14,6 +14,7 @@ from importacao.utils import (
     criar_sessao_http,
     executar_em_paralelo,
     logger,
+    nota_fonte_rawg,
     registrar_falha_importacao,
     truncar,
 )
@@ -47,9 +48,9 @@ GENERO_MAP = {
 RAWG_THREAD_LOCAL = local()
 
 
-def normalizar_plataformas(plataformas_rawg: list) -> str:
+def normalizar_plataformas(plataformas_rawg: list) -> list[str]:
     nomes = [PLATAFORMAS_MAP.get(p['platform']['name'], p['platform']['name']) for p in plataformas_rawg]
-    return ', '.join(nomes[:6])
+    return nomes[:6]
 
 
 def buscar_detalhe_jogo(slug: str, session, rate_limiter: RateLimiter) -> dict | None:
@@ -79,52 +80,38 @@ def _obter_sessao_rawg_worker():
     return session
 
 
-def processar_e_inserir_jogo(
-    basico: dict,
-    detalhe: dict,
-    conn,
-    genero_cache: dict[str, int] | None = None,
-):
-    """Processa um jogo do RAWG e persiste no banco."""
-    try:
-        tags = [tag['name'].lower().replace('-', '').replace(' ', '') for tag in detalhe.get('tags', [])]
-        if 'singleplayer' in tags and 'multiplayer' in tags:
-            modo_jogo = 'ambos'
-        elif 'multiplayer' in tags:
-            modo_jogo = 'multi'
-        else:
-            modo_jogo = 'single'
+def processar_e_inserir_jogo(basico: dict, detalhe: dict):
+    """Processa um jogo do RAWG e grava no banco (uma transação por Mídia)."""
+    tags = [tag['name'].lower().replace('-', '').replace(' ', '') for tag in detalhe.get('tags', [])]
+    if 'singleplayer' in tags and 'multiplayer' in tags:
+        modo_jogo = 'ambos'
+    elif 'multiplayer' in tags:
+        modo_jogo = 'multi'
+    else:
+        modo_jogo = 'single'
 
-        esrb = (basico.get('esrb_rating') or {}).get('name')
-        dados = {
-            'titulo_original': basico['name'],
-            'titulo_portugues': basico.get('name'),
-            'sinopse': truncar(detalhe.get('description_raw'), 1000),
-            'data_lancamento': basico.get('released'),
-            'nota_media': round((basico.get('rating') or 0) * 2, 2) if basico.get('rating') else None,
-            'poster_url': basico.get('background_image'),
-            'desenvolvedor': (detalhe.get('developers') or [{}])[0].get('name'),
-            'publicadora': (detalhe.get('publishers') or [{}])[0].get('name'),
-            'plataformas': normalizar_plataformas(basico.get('platforms', [])),
-            'status_jogo': 'lancado' if basico.get('released') else 'em_desenvolvimento',
-            'modo_jogo': modo_jogo,
-            'classificacao': f'ESRB: {esrb}' if esrb else None,
-            'rawg_slug': basico.get('slug'),
-            'trailer_url': None,
-        }
+    esrb = (basico.get('esrb_rating') or {}).get('name')
+    dados = {
+        'titulo_original': basico['name'],
+        'titulo_portugues': basico.get('name'),
+        'sinopse': truncar(detalhe.get('description_raw'), 1000),
+        'data_lancamento': basico.get('released'),
+        'nota_fonte': nota_fonte_rawg(basico.get('rating')),
+        'poster_url': basico.get('background_image'),
+        'desenvolvedor': (detalhe.get('developers') or [{}])[0].get('name'),
+        'publicadora': (detalhe.get('publishers') or [{}])[0].get('name'),
+        'plataformas': normalizar_plataformas(basico.get('platforms') or []),
+        'status_jogo': 'lancado' if basico.get('released') else 'em_desenvolvimento',
+        'modo_jogo': modo_jogo,
+        'classificacao': f'ESRB: {esrb}' if esrb else None,
+        'rawg_slug': basico.get('slug'),
+        'trailer_url': None,
+    }
+    generos = [GENERO_MAP.get(genero['name'], genero['name']) for genero in basico.get('genres', [])]
 
-        result = inserir_ou_atualizar_jogo(conn, dados)
-        for genero in basico.get('genres', []):
-            nome_genero = GENERO_MAP.get(genero['name'], genero['name'])
-            genero_id = upsert_genero(conn, nome_genero, 'jogo', genero_cache=genero_cache)
-            inserir_midia_genero(conn, result['id_midia'], genero_id)
-
-        conn.commit()
-        logger.info("Jogo importado: %s (%s)", dados['titulo_original'], result['id_midia'])
-        return result
-    except Exception:
-        conn.rollback()
-        raise
+    result = salvar_jogo(dados, generos)
+    logger.info("Jogo importado: %s (%s)", dados['titulo_original'], result['id_midia'])
+    return result
 
 
 def importar_jogos(paginas: int = 25, workers: int = 4):
@@ -135,8 +122,6 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
         logger.warning('Importação de jogos pulada: RAWG_API_KEY não configurada.')
         return stats
 
-    conn = get_connection()
-    genero_cache: dict[str, int] = {}
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.25)
 
@@ -187,7 +172,7 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
                     if not detalhe:
                         raise LookupError('Detalhes do jogo não retornados pela API')
 
-                    result = processar_e_inserir_jogo(jogo_basico, detalhe, conn, genero_cache)
+                    result = processar_e_inserir_jogo(jogo_basico, detalhe)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                 except Exception as exc:
                     stats.registrar_falha()
@@ -210,4 +195,3 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
         return stats
     finally:
         session.close()
-        conn.close()
