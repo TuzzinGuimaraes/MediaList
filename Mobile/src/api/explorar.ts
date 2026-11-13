@@ -5,7 +5,7 @@ import type { PaginaMidias, RespostaGeneros, TipoMidia } from './tipos';
 
 export const POR_PAGINA = 24;
 
-/** Valores de `ordem` aceitos por GET /midias (Backend/repositories/midia_repository.py). */
+/** Valores de `ordem` aceitos por GET /midias (ORDENS em Backend/repositories/catalogo.py). */
 export type Ordem = 'nota_media' | 'titulo' | 'data_lancamento' | 'mais_adicionados';
 
 export type FiltrosBusca = {

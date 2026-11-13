@@ -1,6 +1,6 @@
-"""SQL dos repositórios e das consultas das rotas contra o PostgreSQL real.
+"""Catálogo e Lista pessoal (persistência) contra o PostgreSQL real.
 
-Pega o que os testes com FakeBanco não pegam: SQL que o PostgreSQL recusa.
+O que os testes de rota, que trocam esses módulos, não alcançam: o SQL de verdade.
 Usa TEST_DATABASE_URL (usuário da aplicação, schema migrado); sem ela, pula.
 Cada teste apaga o que gravou.
 """
@@ -12,7 +12,7 @@ import pytest
 
 import banco
 from decorators import get_user_permissions
-from repositories import ListaRepository, MidiaRepository
+from repositories import Catalogo, ItensLista
 from routes.usuario import ESTATISTICAS_POR_TIPO
 
 TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
@@ -51,7 +51,7 @@ def _usuario(pg, grupo='Usuários'):
 
 
 def _midia(pg, tipo, **dados):
-    id_midia = MidiaRepository().inserir_midia_base(tipo, {'titulo_original': f'PG {uuid.uuid4().hex}', **dados})
+    id_midia = Catalogo().criar(tipo, {'titulo_original': f'PG {uuid.uuid4().hex}', **dados})
     pg['midias'].append(id_midia)
     return id_midia
 
@@ -60,7 +60,7 @@ def test_midia_criada_sai_com_notas_nulas_e_plataformas_em_texto(pg):
     acao = banco.consultar_um("SELECT id_genero FROM generos WHERE nome_genero = 'Ação'")['id_genero']
     id_jogo = _midia(pg, 'jogo', plataformas='PC, Switch', generos=[acao], data_lancamento='2024-05-01')
 
-    jogo = MidiaRepository().buscar_por_id(id_jogo)
+    jogo = Catalogo().obter(id_jogo)
 
     assert jogo['tipo'] == 'jogo'
     assert jogo['nota_media'] is None and jogo['total_avaliacoes'] is None
@@ -77,15 +77,15 @@ def test_listagem_com_todos_os_filtros_roda_no_postgres(pg, ordem):
         'busca': 'pg ', 'plataforma': 'Switch', 'desenvolvedor': 'nintendo', 'modo_jogo': 'single',
         'status': 'lancado', 'ordem': ordem,
     }
-    resultado = MidiaRepository().buscar_por_tipo('jogo', pagina=1, limite=50, filtros=filtros)
+    resultado = Catalogo().buscar('jogo', pagina=1, limite=50, filtros=filtros)
 
     assert id_jogo in [m['id_midia'] for m in resultado]
     # Plataforma casa o elemento inteiro, não substring.
-    parcial = MidiaRepository().buscar_por_tipo('jogo', limite=50, filtros={'plataforma': 'Swi'})
+    parcial = Catalogo().buscar('jogo', limite=50, filtros={'plataforma': 'Swi'})
     assert id_jogo not in [m['id_midia'] for m in parcial]
     sem_tipo = {'busca': 'x', 'status': 'lancado', 'autor': 'a', 'estudio': 'b', 'demografia': 'seinen',
                 'artista': 'c', 'genero': 'Ação', 'ordem': ordem}
-    assert MidiaRepository().buscar_por_tipo(None, pagina=2, limite=5, filtros=sem_tipo) == []
+    assert Catalogo().buscar(None, pagina=2, limite=5, filtros=sem_tipo) == []
 
 
 def test_nota_media_vem_das_avaliacoes_e_ordena_com_nulls_last(pg):
@@ -96,10 +96,10 @@ def test_nota_media_vem_das_avaliacoes_e_ordena_com_nulls_last(pg):
         'INSERT INTO avaliacoes (id_usuario, id_midia, nota) VALUES (%s, %s, 10)', (usuario, avaliada)
     )
 
-    midia = MidiaRepository().buscar_por_id(avaliada)
+    midia = Catalogo().obter(avaliada)
     assert midia['nota_media'] == Decimal('10.00') and midia['total_avaliacoes'] == 1
 
-    listagem = MidiaRepository().buscar_por_tipo('anime', limite=50, filtros={'ordem': 'nota_media'})
+    listagem = Catalogo().buscar('anime', limite=50, filtros={'ordem': 'nota_media'})
     ids = [m['id_midia'] for m in listagem]
     if sem_nota in ids:
         assert ids.index(avaliada) < ids.index(sem_nota)
@@ -109,7 +109,7 @@ def test_item_copia_o_total_da_midia_e_nao_duplica(pg):
     anime = _midia(pg, 'anime', numero_episodios=12)
     jogo = _midia(pg, 'jogo')
     usuario = _usuario(pg)
-    repo = ListaRepository()
+    repo = ItensLista()
 
     id_lista = repo.criar_item(usuario, anime, {'status_consumo': 'assistindo', 'favorito': 1})
     id_jogo = repo.criar_item(usuario, jogo, {'status_consumo': 'jogando'})
@@ -122,7 +122,7 @@ def test_item_copia_o_total_da_midia_e_nao_duplica(pg):
     assert repo.criar_item(usuario, anime, {'status_consumo': 'planejado'}) is None
 
     assert repo.atualizar_campos(id_lista, {'progresso_atual': 12, 'status_consumo': 'completo', 'nota_usuario': None})
-    lista = repo.obter_lista_usuario(usuario)
+    lista = repo.listar(usuario)
     assert {i['id_lista'] for i in lista} == {id_lista, id_jogo}
 
     estatisticas = banco.consultar(ESTATISTICAS_POR_TIPO, (usuario,))
@@ -147,12 +147,61 @@ def test_permissoes_compoem_grupos_e_usuario_inexistente_nao_ganha_nada(pg):
 
 def test_atualizar_e_deletar_midia(pg):
     id_manga = _midia(pg, 'manga', numero_capitulos=10, autor='Urasawa')
-    repo = MidiaRepository()
+    repo = Catalogo()
 
-    assert repo.atualizar_midia_base(id_manga, {'titulo_portugues': 'Monstro', 'numero_capitulos': 162, 'generos': []})
-    manga = repo.buscar_por_id(id_manga, expected_type='manga')
+    assert repo.atualizar(id_manga, {'titulo_portugues': 'Monstro', 'numero_capitulos': 162, 'generos': []})
+    manga = repo.obter(id_manga)
     assert manga['titulo_portugues'] == 'Monstro' and manga['progresso_total_padrao'] == 162
-    assert repo.buscar_por_tipo('manga', filtros={'autor': 'urasawa'})
+    assert repo.buscar('manga', filtros={'autor': 'urasawa'})
 
-    assert repo.deletar_midia(id_manga) is True
-    assert repo.deletar_midia(id_manga) is False
+    assert repo.apagar(id_manga) is True
+    assert repo.apagar(id_manga) is False
+
+
+
+def test_generos_casam_o_tipo_inteiro_e_populares_e_distribuicao_rodam(pg):
+    anime = _midia(pg, 'anime', numero_episodios=3)
+    usuario = _usuario(pg)
+    ItensLista().criar_item(usuario, anime, {'status_consumo': 'assistindo'})
+    catalogo = Catalogo()
+
+    assert catalogo.generos('nim') == []
+    assert {'anime'} <= {t for g in catalogo.generos('anime') for t in g['aplicavel_a']}
+    assert len(catalogo.generos()) >= len(catalogo.generos('jogo'))
+    assert all(m['tipo'] == 'jogo' for m in catalogo.populares('jogo'))
+    assert len(catalogo.populares()) <= 20
+    assert catalogo.distribuicao(anime) == [{'status_consumo': 'assistindo', 'total': 1}]
+
+
+def test_lista_em_ordem_alfabetica_do_titulo_exibido(pg):
+    """Título exibido = português, senão original; sem caixa; editar não muda a posição (ticket 28)."""
+    usuario = _usuario(pg)
+    itens = ItensLista()
+    titulos = [('banana', 'Z'), (None, 'Celeste'), ('', 'Akira'), ('Banana', 'A')]
+    ids = {}
+    for portugues, original in titulos:
+        id_midia = _midia(pg, 'jogo', titulo_original=original, titulo_portugues=portugues)
+        ids[original] = itens.criar_item(usuario, id_midia, {'status_consumo': 'jogando'})
+
+    ordem = [i['titulo_portugues'] or i['titulo_original'] for i in itens.listar(usuario)]
+
+    assert [o.casefold() for o in ordem] == ['akira', 'banana', 'banana', 'celeste']
+    bananas = sorted([ids['Z'], ids['A']])
+    assert [i['id_lista'] for i in itens.listar(usuario)][1:3] == bananas
+
+
+def test_item_grava_so_colunas_conhecidas_e_nota_vazia_apaga(pg):
+    anime = _midia(pg, 'anime', numero_episodios=12)
+    usuario = _usuario(pg)
+    itens = ItensLista()
+
+    id_lista = itens.criar_item(usuario, anime, {
+        'status_consumo': 'assistindo', 'nota_usuario': 7.5, 'progresso_total': 99, 'campo_invalido': 'x',
+    })
+    assert itens.atualizar_campos(id_lista, {'campo_invalido': 1}) is False
+    assert itens.atualizar_campos(id_lista, {'nota_usuario': '', 'privado': 1, 'progresso_total': 99})
+
+    [item] = itens.listar(usuario)
+    assert (item['nota_usuario'], item['privado'], item['progresso_total']) == (None, True, 12)
+    assert itens.obter_item_usuario(usuario, anime)['id_lista'] == id_lista
+    assert itens.listar(usuario, tipo='jogo') == [] and itens.listar(usuario, status='completo') == []

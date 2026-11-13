@@ -9,7 +9,7 @@ import uuid
 import pytest
 
 import banco
-from repositories import MidiaRepository
+from repositories import Catalogo
 
 TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
 
@@ -57,7 +57,7 @@ def _usuario(pg, grupo='Usuários', nome='PG'):
 
 
 def _anime(pg):
-    id_midia = MidiaRepository().inserir_midia_base(
+    id_midia = Catalogo().criar(
         'anime', {'titulo_original': f'PG {uuid.uuid4().hex}', 'titulo_portugues': 'Anime PG'},
     )
     pg['midias'].append(id_midia)

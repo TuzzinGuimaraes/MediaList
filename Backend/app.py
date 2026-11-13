@@ -21,13 +21,11 @@ from werkzeug.exceptions import HTTPException
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
 from parametros import ErroEntrada
+from routes import auth as rotas_auth
 from routes import (
-    animes_bp,
     auth_bp,
     avaliacoes_bp,
-    jogos_bp,
     lista_bp,
-    mangas_bp,
     midias_bp,
     moderacao_bp,
     noticias_bp,
@@ -35,7 +33,6 @@ from routes import (
     usuario_bp,
     utils_bp,
 )
-from routes import auth as rotas_auth
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +113,6 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(usuario_bp, url_prefix='/api/usuario')
 
 app.register_blueprint(midias_bp, url_prefix='/api/midias')
-app.register_blueprint(animes_bp, url_prefix='/api/animes')
-app.register_blueprint(mangas_bp, url_prefix='/api/mangas')
-app.register_blueprint(jogos_bp, url_prefix='/api/jogos')
 
 app.register_blueprint(lista_bp, url_prefix='/api/lista')
 app.register_blueprint(avaliacoes_bp, url_prefix='/api/avaliacoes')

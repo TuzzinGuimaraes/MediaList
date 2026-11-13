@@ -359,16 +359,6 @@ Observações:
 - `GET /api/midias/<id_midia>/distribuicao`
 - `GET /api/midias/trending`
 
-### Rotas específicas por tipo
-
-- `GET|POST /api/animes`
-- `GET|PUT|DELETE /api/animes/<id>`
-- `GET|POST /api/mangas`
-- `GET /api/mangas/autor/<autor>`
-- `GET /api/mangas/demografia/<demografia>`
-- `GET|POST /api/jogos`
-- `GET /api/jogos/plataforma/<plataforma>`
-
 ### Lista e avaliações
 
 - `GET /api/lista`

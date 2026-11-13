@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from routes import noticias as noticias_routes
 
-from .helpers import FakeBanco
+from .helpers import FakeAtualizacoes, FakeBanco
 
 ADMIN = {'nivel_acesso': 'admin'}
 
@@ -99,10 +99,16 @@ NOTIFICACAO = {
 }
 
 
-def test_notificacoes_do_usuario_logado_mais_recentes_primeiro(client, auth_headers, monkeypatch):
+def _instalar_atualizacoes(monkeypatch, **dados):
     from routes import utils as utils_routes
 
-    fake = FakeBanco({'FROM notificacoes': [NOTIFICACAO]}).instalar(monkeypatch, utils_routes)
+    falso = FakeAtualizacoes(**dados)
+    monkeypatch.setattr(utils_routes, 'atualizacoes', falso)
+    return falso
+
+
+def test_notificacoes_do_usuario_logado_com_data_iso(client, auth_headers, monkeypatch):
+    falso = _instalar_atualizacoes(monkeypatch, notificacoes=[NOTIFICACAO])
 
     response = client.get('/api/notificacoes', headers=auth_headers)
 
@@ -110,20 +116,16 @@ def test_notificacoes_do_usuario_logado_mais_recentes_primeiro(client, auth_head
     assert response.get_json() == {
         'notificacoes': [{**NOTIFICACAO, 'data_criacao': '2026-11-13T09:30:00+00:00'}],
     }
-    _, sql, params = fake.sql('FROM notificacoes')[0]
-    assert params == ('USR-TEST-0001', False)
-    assert 'LIMIT 50' in sql
+    assert falso.chamadas == [('notificacoes', 'USR-TEST-0001', False)]
 
 
 def test_notificacoes_nao_lidas_filtra_pelas_nao_lidas(client, auth_headers, monkeypatch):
-    from routes import utils as utils_routes
-
-    fake = FakeBanco().instalar(monkeypatch, utils_routes)
+    falso = _instalar_atualizacoes(monkeypatch, notificacoes=[{**NOTIFICACAO, 'lida': True}])
 
     response = client.get('/api/notificacoes?nao_lidas=true', headers=auth_headers)
 
     assert response.get_json() == {'notificacoes': []}
-    assert fake.sql('FROM notificacoes')[0][2] == ('USR-TEST-0001', True)
+    assert falso.chamadas == [('notificacoes', 'USR-TEST-0001', True)]
 
 
 def test_notificacoes_exigem_login(client):
@@ -131,16 +133,13 @@ def test_notificacoes_exigem_login(client):
 
 
 def test_marcar_todas_lidas_conta_as_do_usuario_logado(client, auth_headers, monkeypatch):
-    from routes import utils as utils_routes
-
-    fake = FakeBanco({'UPDATE notificacoes': 2}).instalar(monkeypatch, utils_routes)
+    falso = _instalar_atualizacoes(monkeypatch, notificacoes=[dict(NOTIFICACAO), dict(NOTIFICACAO)])
 
     response = client.put('/api/notificacoes/marcar-todas-lidas', headers=auth_headers)
 
     assert response.status_code == 200
     assert response.get_json() == {'mensagem': '2 notificações marcadas como lidas'}
-    assert fake.sql('UPDATE notificacoes')[0][2] == ('USR-TEST-0001',)
-
+    assert falso.chamadas == [('marcar_todas_lidas', 'USR-TEST-0001')]
 
 
 def _instalar_preferencias(monkeypatch, respostas=None):

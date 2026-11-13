@@ -8,20 +8,20 @@ duplicada em três lugares antes. A única exigência que sobra do lado HTTP é 
 que cada endpoint pede do corpo — `/progresso` sem progresso não é chamada —,
 que é contrato do endpoint, não do Item.
 
-A leitura é a exceção: `obter_lista_usuario` consulta o repositório direto,
-porque não decide nada.
+A leitura é a exceção: `obter_lista_usuario` lê de `itens_lista` direto,
+porque não decide nada. Os testes trocam `lista_pessoal` e `itens_lista`.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
-from repositories import ListaRepository, MidiaRepository
+from repositories.catalogo import Catalogo
+from repositories.itens_lista import ItensLista
 
 lista_bp = Blueprint('lista', __name__)
 
-lista_repository = ListaRepository()
-midia_repository = MidiaRepository()
-lista_pessoal = ListaPessoal(lista_repository, midia_repository)
+itens_lista = ItensLista()
+lista_pessoal = ListaPessoal(itens_lista, Catalogo())
 
 #: Nomes antigos que os clientes ainda mandam -> nome canônico do campo. Só o
 #: adaptador os conhece: o módulo trabalha com um nome por campo.
@@ -86,8 +86,7 @@ def obter_lista_usuario():
     user_id = get_jwt_identity()
     tipo = request.args.get('tipo')
     status = request.args.get('status') or request.args.get('status_consumo')
-    lista = lista_repository.obter_lista_usuario(user_id, tipo=tipo, status=status)
-    return jsonify({'lista': lista or []}), 200
+    return jsonify({'lista': itens_lista.listar(user_id, tipo=tipo, status=status)}), 200
 
 
 @lista_bp.route('/<string:target_user_id>', methods=['GET'])

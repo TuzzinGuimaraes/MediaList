@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 
 import banco
-from repositories import MidiaRepository
+from repositories import Catalogo
 
 from .test_repositorios_pg import TEST_DATABASE_URL, _usuario, pg  # noqa: F401 (fixture)
 
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _midia(pg, tipo, prefixo, nota_fonte=None, **dados):  # noqa: F811
-    id_midia = MidiaRepository().inserir_midia_base(
+    id_midia = Catalogo().criar(
         tipo, {'titulo_original': f'{prefixo} {uuid.uuid4().hex}', **dados}
     )
     pg['midias'].append(id_midia)
@@ -49,16 +49,16 @@ def test_midia_sai_com_nota_da_fonte_e_a_origem_dela(pg, prefixo):  # noqa: F811
     manga = _midia(pg, 'manga', prefixo, nota_fonte=7, anilist_id=_anilist_id(), autor='X')
     jogo = _midia(pg, 'jogo', prefixo, nota_fonte=9.1, rawg_slug=f'jogo-{uuid.uuid4().hex}')
     sem_fonte = _midia(pg, 'anime', prefixo)
-    repo = MidiaRepository()
+    repo = Catalogo()
 
-    assert (repo.buscar_por_id(anime)['nota_fonte'], repo.buscar_por_id(anime)['origem_nota']) == (
+    assert (repo.obter(anime)['nota_fonte'], repo.obter(anime)['origem_nota']) == (
         Decimal('8.4'), 'AniList',
     )
-    assert repo.buscar_por_id(manga)['origem_nota'] == 'AniList'
-    assert (repo.buscar_por_id(jogo)['nota_fonte'], repo.buscar_por_id(jogo)['origem_nota']) == (Decimal('9.1'), 'RAWG')
-    assert (repo.buscar_por_id(sem_fonte)['nota_fonte'], repo.buscar_por_id(sem_fonte)['origem_nota']) == (None, None)
+    assert repo.obter(manga)['origem_nota'] == 'AniList'
+    assert (repo.obter(jogo)['nota_fonte'], repo.obter(jogo)['origem_nota']) == (Decimal('9.1'), 'RAWG')
+    assert (repo.obter(sem_fonte)['nota_fonte'], repo.obter(sem_fonte)['origem_nota']) == (None, None)
     # A Nota da fonte não vira Nota média.
-    assert repo.buscar_por_id(anime)['nota_media'] is None
+    assert repo.obter(anime)['nota_media'] is None
 
 
 def test_mais_bem_avaliadas_usa_a_nota_da_fonte_como_fallback(pg, prefixo):  # noqa: F811
@@ -70,7 +70,7 @@ def test_mais_bem_avaliadas_usa_a_nota_da_fonte_como_fallback(pg, prefixo):  # n
     _avaliar(usuario, media_alta_fonte_baixa, 9.5)
     _avaliar(usuario, media_baixa, 6)
 
-    listagem = MidiaRepository().buscar_por_tipo('anime', limite=50, filtros={'busca': prefixo, 'ordem': 'nota_media'})
+    listagem = Catalogo().buscar('anime', limite=50, filtros={'busca': prefixo, 'ordem': 'nota_media'})
 
     assert [m['id_midia'] for m in listagem] == [media_alta_fonte_baixa, so_fonte, media_baixa, sem_nota]
 

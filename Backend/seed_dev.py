@@ -32,7 +32,7 @@ from werkzeug.security import generate_password_hash
 import banco
 from dominio.lista_pessoal import ListaPessoal
 from importacao.db import salvar_anime, salvar_jogo, salvar_manga
-from repositories import ListaRepository, MidiaRepository
+from repositories import Catalogo, ItensLista
 
 # ---------------------------------------------------------------------------
 # Dados fixos
@@ -358,11 +358,11 @@ def _semear_usuarios(rel: Relatorio) -> dict[str, str]:
 
 
 def _semear_itens(rel: Relatorio, id_teste: str, midias: dict) -> None:
-    lista_repository = ListaRepository()
-    lista = ListaPessoal(lista_repository, MidiaRepository())
+    itens = ItensLista()
+    lista = ListaPessoal(itens, Catalogo())
     for midia, payload in ITENS_DO_TESTE:
         id_midia = midias[midia]
-        if lista_repository.obter_item_usuario(id_teste, id_midia):
+        if itens.obter_item_usuario(id_teste, id_midia):
             rel.contar('Itens de lista', False)
             continue
         resultado = lista.adicionar(id_teste, {**payload, 'id_midia': id_midia})

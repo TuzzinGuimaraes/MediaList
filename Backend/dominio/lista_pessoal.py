@@ -8,7 +8,7 @@ validação dessas regras: no PostgreSQL não há trigger de Progresso, só CHEC
 simples (Rótulo entre os conhecidos, sem olhar o Tipo; nota de 0 a 10; contadores
 não negativos); ver docs/adr/0007 e 0009.
 
-Leitura fica de fora: a rota consulta o repositório direto. Aqui só há escrita,
+Leitura fica de fora: a rota lê de `repositories.itens_lista` direto. Aqui só há escrita,
 e **uma escrita por chamada** — é o que impede o estado recém-decidido de ser
 atropelado por um segundo UPDATE na mesma requisição.
 """
@@ -200,9 +200,10 @@ def _concluido_segue_o_progresso(
 class ListaPessoal:
     """Operações de escrita sobre os Itens da Lista pessoal de um Usuário."""
 
-    def __init__(self, lista_repository, midia_repository):
-        self._lista = lista_repository
-        self._midias = midia_repository
+    def __init__(self, itens, catalogo):
+        """`itens` grava e lê os Itens (`ItensLista`); `catalogo.obter` dá o Tipo e o total da Mídia."""
+        self._lista = itens
+        self._catalogo = catalogo
 
     def adicionar(self, id_usuario: str, payload: dict[str, Any] | None) -> Resultado:
         """Põe uma Mídia na Lista do Usuário. Item já existente é conflito."""
@@ -217,7 +218,7 @@ class ListaPessoal:
         if erros:
             return Resultado(INVALIDO, erros)
 
-        midia = self._midias.buscar_por_id(id_midia)
+        midia = self._catalogo.obter(id_midia)
         if not midia:
             return _invalido('id_midia', 'Mídia não encontrada')
 

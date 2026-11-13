@@ -2,21 +2,17 @@
 Exports dos repositórios.
 """
 from .acesso_repository import AcessoRepository
-from .midia_repository import (
-    AnimeRepository,
-    JogoRepository,
-    ListaRepository,
-    MangaRepository,
-    MidiaRepository,
-)
+from .atualizacoes import Atualizacoes
+from .avaliacoes import AvaliacaoRepository
+from .catalogo import Catalogo
+from .itens_lista import ItensLista
 from .refresh_token_repository import RefreshTokenRepository
 
 __all__ = [
     'AcessoRepository',
-    'MidiaRepository',
-    'AnimeRepository',
-    'MangaRepository',
-    'JogoRepository',
-    'ListaRepository',
+    'Atualizacoes',
+    'AvaliacaoRepository',
+    'Catalogo',
+    'ItensLista',
     'RefreshTokenRepository',
 ]

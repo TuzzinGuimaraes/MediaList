@@ -5,7 +5,7 @@ import pytest
 
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, OK, ListaPessoal
 
-from .helpers import FakeListaRepository, FakeMidiaRepository
+from .helpers import FakeCatalogo, FakeItensLista
 
 DONO = 'USR-1'
 OUTRO = 'USR-2'
@@ -36,8 +36,8 @@ def _item(**over):
 def _modulo(itens=None, midias=None):
     """Módulo com repositórios em memória; devolve também o de lista, para inspeção."""
     midias = _catalogo() if midias is None else midias
-    lista = FakeListaRepository(midias=midias, itens=itens)
-    return ListaPessoal(lista, FakeMidiaRepository(midias)), lista
+    lista = FakeItensLista(midias=midias, itens=itens)
+    return ListaPessoal(lista, FakeCatalogo(midias)), lista
 
 
 def _com_item(**over):
@@ -391,8 +391,8 @@ def test_sem_total_conhecido_concluido_e_progresso_nao_se_mexem():
     midias = _catalogo()
     midias['MID-MANGA'] = {'tipo': 'manga', 'progresso_total_padrao': None}
     item = _item(id_midia='MID-MANGA', status_consumo='lido', progresso_atual=50)
-    lista = FakeListaRepository(midias=midias, itens={'LST-1': item})
-    modulo = ListaPessoal(lista, FakeMidiaRepository(midias))
+    lista = FakeItensLista(midias=midias, itens={'LST-1': item})
+    modulo = ListaPessoal(lista, FakeCatalogo(midias))
 
     modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 40})
     assert lista.itens['LST-1']['status_consumo'] == 'lido'
@@ -406,8 +406,8 @@ def test_jogo_platinado_nao_e_afetado_pelo_progresso():
     midias = _catalogo()
     midias['MID-JOGO'] = {'tipo': 'jogo', 'progresso_total_padrao': 40}
     item = _item(id_midia='MID-JOGO', status_consumo='platinado', progresso_atual=40)
-    lista = FakeListaRepository(midias=midias, itens={'LST-1': item})
-    modulo = ListaPessoal(lista, FakeMidiaRepository(midias))
+    lista = FakeItensLista(midias=midias, itens={'LST-1': item})
+    modulo = ListaPessoal(lista, FakeCatalogo(midias))
 
     modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 10})
     modulo.atualizar(DONO, 'LST-1', {'status_consumo': 'zerado'})
@@ -431,8 +431,8 @@ def test_jogo_nunca_deriva_concluido_do_progresso():
     midias = _catalogo()
     midias['MID-JOGO'] = {'tipo': 'jogo', 'progresso_total_padrao': 40}
     item = _item(id_midia='MID-JOGO', status_consumo='jogando')
-    lista = FakeListaRepository(midias=midias, itens={'LST-1': item})
-    modulo = ListaPessoal(lista, FakeMidiaRepository(midias))
+    lista = FakeItensLista(midias=midias, itens={'LST-1': item})
+    modulo = ListaPessoal(lista, FakeCatalogo(midias))
 
     resultado = modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 40})
 

@@ -41,14 +41,14 @@ def modulo(monkeypatch):
 
 
 def test_get_lista_retorna_apenas_itens_do_usuario(client, auth_headers, monkeypatch):
-    """A leitura não passa pelo módulo: a rota consulta o repositório direto."""
+    """A leitura não passa pelo módulo de domínio: a rota lê de `itens_lista` direto."""
     chamadas = []
 
-    def fake_obter_lista(user_id, tipo=None, status=None):
+    def fake_listar(user_id, tipo=None, status=None):
         chamadas.append((user_id, tipo, status))
         return [{'id_lista': 'LST-1', 'tipo': 'anime'}]
 
-    monkeypatch.setattr(lista_routes.lista_repository, 'obter_lista_usuario', fake_obter_lista)
+    monkeypatch.setattr(lista_routes.itens_lista, 'listar', fake_listar)
 
     response = client.get('/api/lista?tipo=anime&status=assistindo', headers=auth_headers)
 
@@ -142,14 +142,14 @@ def test_put_progresso_passa_pelo_modulo_e_rebaixa_o_concluido(client, auth_head
     """O stepper usa esta rota: baixar do total tira o Item de Concluído (ADR 0009)."""
     from dominio.lista_pessoal import ListaPessoal
 
-    from .helpers import FakeListaRepository, FakeMidiaRepository
+    from .helpers import FakeCatalogo, FakeItensLista
 
     midias = {'MID-1': {'tipo': 'anime', 'progresso_total_padrao': 10}}
-    lista = FakeListaRepository(midias=midias, itens={'LST-1': {
+    lista = FakeItensLista(midias=midias, itens={'LST-1': {
         'id_lista': 'LST-1', 'id_usuario': 'USR-TEST-0001', 'id_midia': 'MID-1',
         'status_consumo': 'completo', 'progresso_atual': 10, 'data_conclusao': '2026-01-02',
     }})
-    monkeypatch.setattr(lista_routes, 'lista_pessoal', ListaPessoal(lista, FakeMidiaRepository(midias)))
+    monkeypatch.setattr(lista_routes, 'lista_pessoal', ListaPessoal(lista, FakeCatalogo(midias)))
 
     response = client.put('/api/lista/LST-1/progresso', headers=auth_headers, json={'progresso_atual': 9})
 

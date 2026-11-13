@@ -1,110 +1,69 @@
 """
 Gravação da Importação no PostgreSQL (ticket 23), pelo módulo `banco`.
 
-Cada Mídia é gravada numa transação: a base em `midias`, a tabela filha do
-Tipo com upsert pela chave da fonte (`anilist_id` ou `rawg_slug`) e os gêneros.
-Reimportar atualiza a Mídia no lugar; Avaliações e Itens não são tocados. A
-Nota média não é gravada: é calculada na leitura (ticket 13); a Importação
-grava só a Nota da fonte (`nota_fonte`).
+Cada Mídia é gravada numa transação: um único comando faz o upsert da base em
+`midias` e da tabela filha do Tipo pela chave da fonte (`anilist_id` ou
+`rawg_slug`), e depois vêm os gêneros. Reimportar atualiza a Mídia no lugar;
+Avaliações e Itens não são tocados. A Nota média não é gravada: é calculada na
+leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`).
+
+O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo.
 """
 from __future__ import annotations
 
-from typing import NamedTuple
+from banco import Conflito, transacao
+from tipos_midia import COLUNAS_BASE, TIPOS, TipoMidia, valor_de_coluna
 
-from banco import Transacao, transacao
-
-_BASE = (
-    'titulo_original', 'titulo_ingles', 'titulo_portugues', 'sinopse',
-    'data_lancamento', 'nota_fonte', 'poster_url', 'banner_url',
-)
-
-class _Tipo(NamedTuple):
-    """Como cada Tipo de mídia é gravado."""
-
-    tabela: str  # tabela filha de `midias`
-    chave: str  # chave da fonte, UNIQUE na filha: o upsert é por ela
-    colunas: tuple[str, ...]  # colunas próprias da filha
-    aplicavel_a: list[str]  # `generos.aplicavel_a` de um gênero que a Importação cria
-
-
-# aplicavel_a: anime e mangá vêm do AniList e dividem gêneros, como no seed
-# (Romance, Mecha, Isekai valem para '{anime,manga}'). Um gênero novo do AniList
-# (Ecchi, Mahou Shoujo) não vale para jogo, senão aparece em /generos?tipo=jogo.
-# Se outro Tipo passar a usar um gênero que já existe, o tipo entra no
-# aplicavel_a dele (ver o ON CONFLICT em _salvar).
-_TIPOS = {
-    'anime': _Tipo(
-        tabela='animes', chave='anilist_id',
-        colunas=('status_anime', 'numero_episodios', 'duracao_episodio', 'classificacao_etaria',
-                 'trailer_url', 'estudio', 'fonte_original'),
-        aplicavel_a=['anime', 'manga'],
-    ),
-    'manga': _Tipo(
-        tabela='mangas', chave='anilist_id',
-        colunas=('status_manga', 'numero_capitulos', 'numero_volumes', 'autor', 'artista',
-                 'publicadora_original', 'revista', 'demografia'),
-        aplicavel_a=['anime', 'manga'],
-    ),
-    'jogo': _Tipo(
-        tabela='jogos', chave='rawg_slug',
-        colunas=('desenvolvedor', 'publicadora', 'plataformas', 'status_jogo', 'modo_jogo',
-                 'classificacao', 'trailer_url'),
-        aplicavel_a=['jogo'],
-    ),
-}
+#: A Importação grava a base que a API grava mais a Nota da fonte.
+_BASE = (*COLUNAS_BASE, 'nota_fonte')
 
 
 def _marcadores(colunas) -> str:
     return ', '.join(f'%({c})s' for c in colunas)
 
 
-def _atualizar_base(t: Transacao, id_midia: str, valores: dict) -> None:
-    t.executar(
-        f"UPDATE midias SET {', '.join(f'{c} = %({c})s' for c in _BASE)} WHERE id_midia = %(id_midia)s",
-        {**valores, 'id_midia': id_midia},
-    )
+def _atribuicoes(colunas) -> str:
+    return ', '.join(f'{c} = %({c})s' for c in colunas)
 
 
-def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
-    config = _TIPOS[tipo]
-    tabela, chave, colunas = config.tabela, config.chave, config.colunas
-    if not dados.get(chave):
-        raise ValueError(f'{tipo} sem {chave}: não há como reimportar sem duplicar')
+def _upsert(config: TipoMidia) -> str:
+    """Um comando: atualiza a Mídia que já tem a chave da fonte, ou cria base e filha.
 
-    valores = {c: dados.get(c) for c in (*_BASE, *colunas, chave)}
-    if tipo == 'jogo':
-        valores['plataformas'] = list(valores['plataformas'] or [])
-
-    with transacao() as t:
-        existente = t.consultar_um(
-            f'SELECT id_midia FROM {tabela} WHERE {chave} = %(chave)s', {'chave': valores[chave]}
+    Devolve (id_midia, ja_existia). Duas importações da mesma chave ao mesmo
+    tempo: as duas criam, e a segunda esbarra na UNIQUE da chave ao inserir a
+    filha (Conflito); a transação dela é desfeita inteira, sem Mídia órfã.
+    """
+    tabela, chave, colunas = config.tabela, config.chave_fonte, config.colunas
+    return f"""
+        WITH existente AS (
+            SELECT id_midia FROM {tabela} WHERE {chave} = %({chave})s
+        ), base_atualizada AS (
+            UPDATE midias SET {_atribuicoes(_BASE)}
+            WHERE id_midia = (SELECT id_midia FROM existente)
+            RETURNING id_midia
+        ), filha_atualizada AS (
+            UPDATE {tabela} SET {_atribuicoes(colunas)}
+            WHERE id_midia = (SELECT id_midia FROM existente)
+        ), criada AS (
+            INSERT INTO midias (id_tipo, {', '.join(_BASE)})
+            SELECT id_tipo, {_marcadores(_BASE)} FROM tipo_midia
+            WHERE nome_tipo = %(tipo)s AND NOT EXISTS (SELECT 1 FROM existente)
+            RETURNING id_midia
+        ), filha_criada AS (
+            INSERT INTO {tabela} (id_midia, {', '.join(config.colunas_gravaveis)})
+            SELECT id_midia, {_marcadores(config.colunas_gravaveis)} FROM criada
+            RETURNING id_midia
         )
-        ja_existia = existente is not None
-        if ja_existia:
-            id_midia = existente['id_midia']
-            _atualizar_base(t, id_midia, valores)
-        else:
-            id_midia = t.consultar_um(
-                f"INSERT INTO midias (id_tipo, {', '.join(_BASE)}) "
-                f"VALUES ((SELECT id_tipo FROM tipo_midia WHERE nome_tipo = %(tipo)s), {_marcadores(_BASE)}) "
-                'RETURNING id_midia',
-                {**valores, 'tipo': tipo},
-            )['id_midia']
+        SELECT id_midia, true AS ja_existia FROM base_atualizada
+        UNION ALL
+        SELECT id_midia, false AS ja_existia FROM filha_criada
+    """
 
-        colunas_filha = (*colunas, chave)
-        gravado = t.consultar_um(
-            f"INSERT INTO {tabela} (id_midia, {', '.join(colunas_filha)}) "
-            f'VALUES (%(id_midia)s, {_marcadores(colunas_filha)}) '
-            f"ON CONFLICT ({chave}) DO UPDATE SET {', '.join(f'{c} = EXCLUDED.{c}' for c in colunas)} "
-            'RETURNING id_midia',
-            {**valores, 'id_midia': id_midia},
-        )['id_midia']
-        if gravado != id_midia:
-            # Outra importação gravou a mesma chave entre o SELECT e o INSERT:
-            # fica a Mídia dela, atualizada; a que acabamos de criar sai.
-            t.executar('DELETE FROM midias WHERE id_midia = %s', (id_midia,))
-            _atualizar_base(t, gravado, valores)
-            ja_existia = True
+
+def _gravar(tipo: str, valores: dict, generos: list[str]) -> dict:
+    config = TIPOS[tipo]
+    with transacao() as t:
+        gravada = t.consultar_um(_upsert(config), {**valores, 'tipo': tipo})
 
         for nome in dict.fromkeys(g.strip() for g in generos if g and g.strip()):
             # Gênero que já existe ganha este Tipo no aplicavel_a, se ainda não tem.
@@ -119,10 +78,24 @@ def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
                 'INSERT INTO midias_generos (id_midia, id_genero) '
                 'SELECT %s, id_genero FROM generos WHERE nome_genero = %s '
                 'ON CONFLICT DO NOTHING',
-                (gravado, nome),
+                (gravada['id_midia'], nome),
             )
 
-    return {'id_midia': gravado, 'ja_existia': ja_existia}
+    return {'id_midia': gravada['id_midia'], 'ja_existia': gravada['ja_existia']}
+
+
+def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
+    config = TIPOS[tipo]
+    if not dados.get(config.chave_fonte):
+        raise ValueError(f'{tipo} sem {config.chave_fonte}: não há como reimportar sem duplicar')
+
+    valores = {c: valor_de_coluna(c, dados.get(c)) for c in (*_BASE, *config.colunas_gravaveis)}
+    try:
+        return _gravar(tipo, valores, generos)
+    except Conflito:
+        # Perdeu a corrida para outra importação da mesma chave, que já gravou:
+        # de novo, agora ela é a Mídia existente e é atualizada.
+        return _gravar(tipo, valores, generos)
 
 
 def salvar_anime(dados: dict, generos: list[str]) -> dict:
