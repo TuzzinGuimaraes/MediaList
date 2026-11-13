@@ -176,3 +176,23 @@ def test_atualizar_campos_persiste_apenas_colunas_permitidas(monkeypatch):
     # O total pertence à Mídia: o Item não o recebe do cliente.
     assert 'progresso_total' not in query
     assert params == ('assistindo', True, 'Teste', False, 'LST-1')
+
+
+
+def test_lista_do_usuario_em_ordem_alfabetica_do_titulo_exibido(monkeypatch):
+    """Título exibido = português, senão original; sem caixa; empate pelo id_lista.
+
+    Editar um Item não pode mudar a posição dele (ticket 28).
+    """
+    repo = ListaRepository()
+    linhas = [
+        {'id_lista': 'LST-3', 'titulo_portugues': 'banana', 'titulo_original': 'Z'},
+        {'id_lista': 'LST-1', 'titulo_portugues': None, 'titulo_original': 'Celeste'},
+        {'id_lista': 'LST-4', 'titulo_portugues': '', 'titulo_original': 'Akira'},
+        {'id_lista': 'LST-2', 'titulo_portugues': 'Banana', 'titulo_original': 'A'},
+    ]
+    monkeypatch.setattr(repo, '_fetch_all', lambda *_args, **_kwargs: list(linhas))
+
+    resultado = repo.obter_lista_usuario('USR-1')
+
+    assert [linha['id_lista'] for linha in resultado] == ['LST-4', 'LST-2', 'LST-3', 'LST-1']

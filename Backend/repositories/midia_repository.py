@@ -34,6 +34,12 @@ def _serialize_row(row: dict[str, Any] | None) -> dict[str, Any] | None:
     return serialized
 
 
+def _chave_alfabetica(item: dict[str, Any]) -> tuple[str, str]:
+    """Título exibido (mesma regra do `tituloDaMidia` do app e do web) sem caixa, e o id_lista."""
+    titulo = item.get('titulo_portugues') or item.get('titulo_original') or ''
+    return titulo.casefold(), str(item.get('id_lista') or '')
+
+
 class MidiaRepository:
     """Operações base de consulta e manutenção de mídias."""
 
@@ -588,8 +594,10 @@ class ListaRepository(MidiaRepository):
             query += " AND lu.status_consumo = %s"
             params.append(status)
 
-        query += " ORDER BY lu.data_atualizacao DESC"
-        return self._fetch_all(query, params)
+        # Ordem alfabética do título que os clientes exibem (português, senão o
+        # original), sem caixa, com o id_lista desempatando: editar um Item não o
+        # tira do lugar. Feita aqui, e não no SQL, para não depender da collation.
+        return sorted(self._fetch_all(query, params), key=_chave_alfabetica)
 
     def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
         """Insere o Item e devolve o `id_lista`, ou None se já existia.

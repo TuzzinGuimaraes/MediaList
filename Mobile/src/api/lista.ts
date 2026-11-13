@@ -20,7 +20,7 @@ function useConsultaLista() {
   };
 }
 
-/** Itens da Lista pessoal, mais recentes primeiro (ordem da API). */
+/** Itens da Lista pessoal na ordem da API (alfabética pelo título exibido); o app não reordena. */
 export function useLista() {
   return useQuery({ ...useConsultaLista(), select: (r: RespostaLista) => r.lista });
 }
