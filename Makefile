@@ -24,7 +24,7 @@ DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 .PHONY: help install install-backend install-frontend install-mobile compose-build services-up \
-	services-down services-logs db-migrate db-revision db-shell backend-dev frontend-dev smoke-postgres \
+	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
 	lint-mobile build-frontend build \
 	import-animes import-mangas import-jogos import-all clean-frontend db-dump db-restore
@@ -36,6 +36,7 @@ help:
 	@printf "  make db-migrate        Aplica as migrações pendentes (alembic upgrade head, serviço migrate)\n"
 	@printf "  make db-revision MSG=\"...\" Cria uma revisão nova em Backend/migrations/versions\n"
 	@printf "  make db-shell          Abre o psql (usuário dono) dentro do container\n"
+	@printf "  make db-grants         Reaplica o usuário da aplicação e os grants num banco existente\n"
 	@printf "  make db-dump           Gera um dump (pg_dump -Fc) em ./dumps\n"
 	@printf "  make db-restore        Restaura um dump com DUMP_FILE=/caminho/arquivo.dump\n"
 	@printf "  make smoke-postgres    Executa o smoke test de PostgreSQL no container backend\n"
@@ -95,6 +96,13 @@ db-revision:
 db-shell:
 	$(DOCKER_COMPOSE) up -d --wait postgres
 	$(DOCKER_COMPOSE) exec postgres sh -c 'exec psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+
+# Reaplica o docker/postgres-init (usuário da aplicação e grants) num volume que
+# já existe: o init do container só roda com volume vazio. Idempotente; roda
+# como o dono (POSTGRES_USER), com as variáveis do serviço postgres.
+db-grants:
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	$(DOCKER_COMPOSE) exec -T postgres sh /docker-entrypoint-initdb.d/01-app-user.sh
 
 # Formato custom do pg_dump (-Fc): restaura com pg_restore, inclusive seletivo.
 db-dump:
