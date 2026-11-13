@@ -230,13 +230,22 @@ describe('formulário do editor', () => {
     });
   });
 
+  it.each([['0', 0], ['10', 10], ['10,0', 10], ['7.5', 7.5]])('aceita a Nota pessoal %s', (nota, esperada) => {
+    expect(validarItem({ ...valido, nota }, { tipo: 'anime', total: 28 })).toMatchObject({
+      ok: true,
+      dados: { nota_usuario: esperada },
+    });
+  });
+
   it.each([
     [{ status_consumo: 'platinado' }, 'Escolha um Estado de consumo válido para o Tipo.'],
     [{ progresso: '29' }, 'O Progresso vai de 0 a 28.'],
     [{ progresso: '-1' }, 'O Progresso vai de 0 a 28.'],
     [{ progresso: '1.5' }, 'O Progresso vai de 0 a 28.'],
-    [{ nota: '10' }, 'A Nota pessoal vai de 0 a 9,99.'],
-    [{ nota: 'abc' }, 'A Nota pessoal vai de 0 a 9,99.'],
+    [{ nota: '10.5' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
+    [{ nota: '8,55' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
+    [{ nota: '-1' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
+    [{ nota: 'abc' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ recontagem: '-2' }, 'A Recontagem é um número inteiro a partir de 0.'],
     [{ inicio: '31/02/2026' }, 'Data de início inválida (dd/mm/aaaa).'],
     [{ conclusao: '2026-10-01' }, 'Data de conclusão inválida (dd/mm/aaaa).'],

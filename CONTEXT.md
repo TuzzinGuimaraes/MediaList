@@ -19,7 +19,8 @@ independente de quantos usuários a acompanham. Título, sinopse, data de lança
 e gêneros pertencem à Mídia; nada do que um usuário faz com ela pertence à Mídia.
 
 A **Nota média** e o **Total de avaliações** são as únicas exceções: são propriedades da
-Mídia derivadas das **Avaliações** que ela recebeu.
+Mídia derivadas das **Avaliações** que ela recebeu. A **Nota da fonte** também pertence à
+Mídia, mas vem da Importação, não dos Usuários.
 
 ## Tipo de mídia
 
@@ -174,6 +175,12 @@ anterior não soma Recontagem: é desfazer um toque errado, não uma nova passag
 
 ---
 
+## Escala das notas
+
+**Avaliação**, **Nota pessoal** e **Nota da fonte** usam a mesma escala: de 0 a 10, com no
+máximo uma casa decimal (8,5 vale; 8,55 é recusada, não arredondada). A **Nota média**, que
+é calculada, pode ter mais casas, e a interface a mostra com uma.
+
 ## Nota pessoal
 
 A nota que o Usuário dá a uma Mídia dentro da sua **Lista pessoal**. É só um número, sem
@@ -196,10 +203,28 @@ o que produz a sua **Nota média**.
 
 ## Nota média
 
-A média das notas das **Avaliações** de uma Mídia. É a nota pública da obra.
+A média das notas das **Avaliações** de uma Mídia. É a nota pública da obra, e na interface
+aparece como "Nota dos Usuários".
 
-Deriva exclusivamente de Avaliações: uma Mídia que ninguém avaliou não tem Nota média, mesmo
-que muitos Usuários tenham dado **Nota pessoal** a ela.
+É calculada das Avaliações, nunca gravada: criar, editar ou apagar uma Avaliação muda a Nota
+média na hora. Deriva exclusivamente de Avaliações: uma Mídia que ninguém avaliou não tem
+Nota média (nem zero), mesmo que muitos Usuários tenham dado **Nota pessoal** a ela, e mesmo
+que ela tenha **Nota da fonte**.
+
+Ordenar por "mais bem avaliadas" usa a Nota média e, quando a Mídia não tem Avaliações, a
+**Nota da fonte** no lugar dela. Mídia sem nenhuma das duas vai para o fim. Na tela, cada
+nota aparece com o seu rótulo, sem se misturarem.
+
+## Nota da fonte
+
+A nota que a fonte externa dá à Mídia: a do AniList para animes e mangás, a da RAWG para
+jogos. Chega pela **Importação**, que é a única que a grava, e cada reimportação a atualiza.
+A origem é a fonte de onde a Mídia foi importada.
+
+Não é **Nota média** (não vem de Avaliações do MediaList e não entra na conta delas) nem
+**Nota pessoal** (não pertence a nenhum Usuário). Aparece com o nome da fonte ("Nota
+AniList", "Nota RAWG"), separada da Nota média. Uma Mídia sem Nota média mostra só a Nota da
+fonte; sem nenhuma das duas, não mostra nota alguma.
 
 ## Popularidade
 

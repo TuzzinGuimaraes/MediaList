@@ -1,9 +1,11 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 
+import { notasDaMidia } from '../../constants/notas';
+
 const MediaCard = ({ midia, onClick }) => {
     const title = midia.titulo_portugues || midia.titulo_original;
-    const score = midia.nota_media ? Number(midia.nota_media).toFixed(1) : null;
+    const notas = notasDaMidia(midia);
 
     return (
         <div
@@ -17,13 +19,16 @@ const MediaCard = ({ midia, onClick }) => {
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
                 />
-                {/* Score badge */}
-                {score && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex items-center gap-1">
-                            <Star size={12} className="text-accent-yellow" fill="currentColor" />
-                            <span className="text-xs font-semibold text-white">{score}</span>
-                        </div>
+                {/* Notas: Nota dos Usuários e Nota da fonte, cada uma com seu rótulo */}
+                {notas.length > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity space-y-0.5">
+                        {notas.map((n) => (
+                            <div key={n.rotulo} role="group" aria-label={`${n.rotulo}: ${n.valor}`} className="flex items-center gap-1">
+                                <Star size={12} className="text-accent-yellow" fill={n.daFonte ? 'none' : 'currentColor'} />
+                                <span className="text-xs font-semibold text-white">{n.valor}</span>
+                                <span className="text-[10px] text-white/70 truncate">{n.rotulo}</span>
+                            </div>
+                        ))}
                     </div>
                 )}
                 {/* Airing status dot */}

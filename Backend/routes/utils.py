@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from banco import consultar, consultar_um, executar
+from repositories.midia_repository import origem_nota
 
 logger = logging.getLogger(__name__)
 
@@ -87,21 +88,30 @@ def health_check():
     return jsonify({'status': 'healthy', 'postgres': 'connected'}), 200
 
 
+#: Popularidade primeiro; a nota (Nota média, senão a da fonte) desempata.
+POPULARES = f"""
+    SELECT p.*, {origem_nota('p.nota_fonte')} AS origem_nota
+    FROM vw_midias_populares p
+    LEFT JOIN animes a ON a.id_midia = p.id_midia
+    LEFT JOIN mangas ma ON ma.id_midia = p.id_midia
+    LEFT JOIN jogos j ON j.id_midia = p.id_midia
+    WHERE %(tipo)s::text IS NULL OR p.tipo = %(tipo)s
+    ORDER BY p.total_usuarios DESC, COALESCE(p.nota_media, p.nota_fonte) DESC NULLS LAST, p.id_midia
+    LIMIT 20
+"""
+
+
 @utils_bp.route('/midias/populares', methods=['GET'])
 def midias_populares():
     """Mídias mais populares."""
-    tipo = request.args.get('tipo')
-    if tipo:
-        midias = consultar("SELECT * FROM vw_midias_populares WHERE tipo = %s LIMIT 20", (tipo,))
-    else:
-        midias = consultar("SELECT * FROM vw_midias_populares LIMIT 20")
+    midias = consultar(POPULARES, {'tipo': request.args.get('tipo') or None})
     return jsonify({'midias': midias}), 200
 
 
 @utils_bp.route('/animes/populares', methods=['GET'])
 def animes_populares():
     """Compatibilidade para populares de animes."""
-    animes = consultar("SELECT * FROM vw_midias_populares WHERE tipo = 'anime' LIMIT 20")
+    animes = consultar(POPULARES, {'tipo': 'anime'})
     return jsonify({'animes': animes}), 200
 
 

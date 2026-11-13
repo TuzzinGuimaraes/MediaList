@@ -1,11 +1,9 @@
 import type { DadosAvaliacao } from '../api/tipos';
+import { lerNota } from './nota';
 
-// Validação local do formulário de Avaliação. A faixa é a que o banco grava de fato:
-// `avaliacoes.nota` é DECIMAL(3,2) (máximo 9,99) e a rota recusa nota 0. Uma nota 10
-// passa pelo CHECK, estoura o DECIMAL e o backend responde 201 sem gravar nada.
+// Validação local do formulário de Avaliação. A escala da nota (0 a 10, uma casa) é a do
+// domínio, em `./nota`; o backend recusa o resto com 400.
 
-export const NOTA_MINIMA = 0.01;
-export const NOTA_MAXIMA = 9.99;
 export const TITULO_MAXIMO = 200;
 
 export type FormularioAvaliacao = { nota: string; titulo: string; texto: string };
@@ -14,10 +12,10 @@ export type ResultadoValidacao = { ok: true; dados: DadosAvaliacao } | { ok: fal
 
 export function validarAvaliacao(f: FormularioAvaliacao): ResultadoValidacao {
   const textoNota = f.nota.trim().replace(',', '.');
-  const nota = Number(textoNota);
-  if (!textoNota || Number.isNaN(nota)) return { ok: false, erro: 'Informe a nota.' };
-  if (nota < NOTA_MINIMA || nota > NOTA_MAXIMA) {
-    return { ok: false, erro: 'A nota vai de 0,01 a 9,99.' };
+  if (!textoNota || Number.isNaN(Number(textoNota))) return { ok: false, erro: 'Informe a nota.' };
+  const nota = lerNota(f.nota);
+  if (nota === null) {
+    return { ok: false, erro: 'A nota vai de 0 a 10, com no máximo uma casa decimal.' };
   }
   const titulo = f.titulo.trim();
   if (titulo.length > TITULO_MAXIMO) {

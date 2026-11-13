@@ -136,4 +136,40 @@ describe('MediaDetailPage', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('Erro de conexão com o servidor.');
         expect(screen.queryByText('Mídia não encontrada')).not.toBeInTheDocument();
     });
+
+    function apiComMidia(midia) {
+        return jest.fn().mockImplementation((endpoint) => {
+            if (endpoint === '/midias/MID-1') return Promise.resolve({ id_midia: 'MID-1', tipo: 'anime', titulo_portugues: 'Anime X', ...midia });
+            if (endpoint === '/avaliacoes/MID-1') return Promise.resolve({ avaliacoes: [] });
+            if (endpoint === '/lista') return Promise.resolve({ lista: [] });
+            if (endpoint === '/midias/MID-1/distribuicao') return Promise.resolve({ distribuicao: [] });
+            return Promise.resolve({});
+        });
+    }
+
+    test('mostra a Nota dos Usuários e a Nota AniList com rótulos distintos', async () => {
+        useApi.mockReturnValue({ apiCall: apiComMidia({ nota_media: 9.25, nota_fonte: 8.4, origem_nota: 'AniList' }) });
+
+        renderPage();
+
+        expect(await screen.findByLabelText('Nota dos Usuários: 9.3')).toBeInTheDocument();
+        expect(screen.getByText('Nota dos Usuários')).toBeInTheDocument();
+        expect(screen.getByLabelText('Nota AniList: 8.4')).toBeInTheDocument();
+        expect(screen.getByText('Nota AniList')).toBeInTheDocument();
+    });
+
+    test('sem Avaliações mostra só a Nota da fonte; sem nenhuma, nada', async () => {
+        useApi.mockReturnValue({ apiCall: apiComMidia({ tipo: 'jogo', nota_media: null, nota_fonte: 9, origem_nota: 'RAWG' }) });
+        const { unmount } = renderPage();
+
+        expect(await screen.findByLabelText('Nota RAWG: 9.0')).toBeInTheDocument();
+        expect(screen.queryByText('Nota dos Usuários')).not.toBeInTheDocument();
+        unmount();
+
+        useApi.mockReturnValue({ apiCall: apiComMidia({ nota_media: null, nota_fonte: null }) });
+        renderPage();
+
+        expect(await screen.findByText('Anime X')).toBeInTheDocument();
+        expect(screen.queryByLabelText(/^Nota /)).not.toBeInTheDocument();
+    });
 });

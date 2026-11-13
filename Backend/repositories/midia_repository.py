@@ -34,6 +34,26 @@ def _chave_alfabetica(item: dict[str, Any]) -> tuple[str, str]:
     return titulo.casefold(), str(item.get('id_lista') or '')
 
 
+def origem_nota(nota_fonte: str) -> str:
+    """SQL da origem da Nota da fonte, pelo id externo que a Mídia tem.
+
+    Precisa de `a` (animes), `ma` (mangas) e `j` (jogos) no FROM. Sem Nota da
+    fonte não há origem: NULL.
+    """
+    return f"""
+        CASE
+            WHEN {nota_fonte} IS NULL THEN NULL
+            WHEN j.rawg_slug IS NOT NULL THEN 'RAWG'
+            WHEN COALESCE(a.anilist_id, ma.anilist_id) IS NOT NULL THEN 'AniList'
+        END
+    """
+
+
+#: "Mais bem avaliadas": a Nota média, ou a Nota da fonte quando ninguém
+#: avaliou (ticket 13). Sem nenhuma das duas, a Mídia vai para o fim.
+NOTA_DE_RANKING = 'COALESCE(n.nota_media, m.nota_fonte) DESC NULLS LAST'
+
+
 class MidiaRepository:
     """Operações base de consulta e manutenção de mídias."""
 
@@ -52,6 +72,8 @@ class MidiaRepository:
             m.data_lancamento,
             n.nota_media,
             n.total_avaliacoes,
+            m.nota_fonte,
+            {origem_nota} AS origem_nota,
             m.poster_url,
             m.banner_url,
             a.status_anime,
@@ -108,7 +130,7 @@ class MidiaRepository:
                 FROM lista_usuarios lu
                 WHERE lu.id_midia = m.id_midia
             ) AS total_usuarios
-    """
+    """.replace('{origem_nota}', origem_nota('m.nota_fonte').strip())
 
     BASE_FROM = """
         FROM midias m
@@ -120,7 +142,7 @@ class MidiaRepository:
     """
 
     #: Colunas de `midias` que a API grava. A Nota média não está aqui: ela é
-    #: calculada das Avaliações (vw_notas_midia), e a Nota da fonte é do ticket 13.
+    #: calculada das Avaliações (vw_notas_midia), e a Nota da fonte só a Importação grava.
     BASE_FIELDS = {
         'titulo_original': 'titulo_original',
         'titulo_ingles': 'titulo_ingles',
@@ -263,15 +285,15 @@ class MidiaRepository:
         return (" WHERE " + " AND ".join(clauses)) if clauses else "", params
 
     def _order_clause(self, ordem: str | None) -> str:
-        # Sem Avaliações a Nota média é NULL e vai para o fim. A regra de "mais
-        # bem avaliadas" com a Nota da fonte é do ticket 13. O id desempata,
-        # para a paginação não repetir nem pular Mídias.
+        # "Mais bem avaliadas" usa a Nota da fonte quando não há Nota média
+        # (NOTA_DE_RANKING). O id desempata, para a paginação não repetir nem
+        # pular Mídias.
         order_by = {
-            'nota_media': 'n.nota_media DESC NULLS LAST, total_usuarios DESC',
+            'nota_media': f'{NOTA_DE_RANKING}, total_usuarios DESC',
             'data_lancamento': 'm.data_lancamento DESC NULLS LAST',
             'titulo': 'COALESCE(m.titulo_portugues, m.titulo_original) ASC',
-            'mais_adicionados': 'total_usuarios DESC, n.nota_media DESC NULLS LAST',
-            'popularidade': 'total_usuarios DESC, n.nota_media DESC NULLS LAST',
+            'mais_adicionados': f'total_usuarios DESC, {NOTA_DE_RANKING}',
+            'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
         }
         return f" ORDER BY {order_by.get(ordem or 'nota_media', order_by['nota_media'])}, m.id_midia"
 

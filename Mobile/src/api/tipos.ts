@@ -88,8 +88,21 @@ export type RespostaPermissoes = {
 
 
 
+/** Fonte da Nota da fonte, derivada do id externo da Mídia. */
+export type OrigemNota = 'AniList' | 'RAWG';
+
+/**
+ * As notas de uma Mídia. `nota_media` é a média das Avaliações, null sem elas;
+ * `nota_fonte` é a do AniList/RAWG, gravada pela Importação. DECIMAL pode vir como texto.
+ */
+export type NotasDaMidia = {
+  nota_media: NumeroOuTexto | null;
+  nota_fonte?: NumeroOuTexto | null;
+  origem_nota?: OrigemNota | null;
+};
+
 /** A Mídia como vem nas listagens (GET /midias, /midias/trending). */
-export type MidiaResumo = {
+export type MidiaResumo = NotasDaMidia & {
   /** Ex.: "MID-ANM-2026-20053". */
   id_midia: string;
   tipo: TipoMidia;
@@ -98,7 +111,6 @@ export type MidiaResumo = {
   titulo_original: string;
   titulo_portugues: string | null;
   poster_url: string | null;
-  /** Pode vir preenchida pela Importação mesmo sem Avaliações: ver `notaMedia`. */
   nota_media: number | null;
   total_usuarios: number;
 };
@@ -107,7 +119,8 @@ export type MidiaResumo = {
 export type CartaoMidia = Pick<
   MidiaResumo,
   'id_midia' | 'tipo' | 'tipo_label' | 'titulo_original' | 'titulo_portugues' | 'poster_url'
->;
+> &
+  NotasDaMidia;
 
 /**
  * Linha de GET /midias/populares (view vw_midias_populares). A rota não serializa
