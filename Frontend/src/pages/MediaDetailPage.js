@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useApi } from '../contexts/ApiContext';
 import ListEditorModal from '../components/media/ListEditorModal';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants/mediaStatus';
+import { notasDaMidia } from '../constants/notas';
 
 const blocoEspecifico = (midia) => {
     switch (midia.tipo) {
@@ -131,7 +132,7 @@ const MediaDetailPage = () => {
     }
 
     const detalhes = blocoEspecifico(midia);
-    const score = midia.nota_media ? Number(midia.nota_media).toFixed(1) : null;
+    const notas = notasDaMidia(midia);
     const totalDistribuicao = distribuicao.reduce((acc, d) => acc + (d.total || 0), 0);
 
     return (
@@ -185,13 +186,13 @@ const MediaDetailPage = () => {
 
                         {/* Stats Row */}
                         <div className="flex flex-wrap gap-4 mb-4">
-                            {score && (
-                                <div className="flex items-center gap-1.5">
-                                    <Star size={16} className="text-accent-yellow" fill="currentColor" />
-                                    <span className="font-bold text-text-bright">{score}</span>
-                                    <span className="text-xs text-text-secondary">Nota Média</span>
+                            {notas.map((n) => (
+                                <div key={n.rotulo} role="group" aria-label={`${n.rotulo}: ${n.valor}`} className="flex items-center gap-1.5">
+                                    <Star size={16} className="text-accent-yellow" fill={n.daFonte ? 'none' : 'currentColor'} />
+                                    <span className="font-bold text-text-bright">{n.valor}</span>
+                                    <span className="text-xs text-text-secondary">{n.rotulo}</span>
                                 </div>
-                            )}
+                            ))}
                             <div className="flex items-center gap-1.5">
                                 <MessageSquare size={16} className="text-accent-blue" />
                                 <span className="font-bold text-text-bright">{avaliacoes.length}</span>

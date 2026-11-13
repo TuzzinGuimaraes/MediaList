@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Heart, X } from 'lucide-react';
 import { useApi } from '../../contexts/ApiContext';
+import { MENSAGEM_ESCALA, lerNota } from '../../constants/notas';
 
 const STATUS_POR_TIPO = {
     anime: [
@@ -65,6 +66,7 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
         privado: false,
     });
     const [saving, setSaving] = useState(false);
+    const [erroNota, setErroNota] = useState(null);
 
     useEffect(() => {
         if (isOpen && midia) {
@@ -103,6 +105,13 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
     const progressoTotal = midia.numero_episodios || midia.numero_capitulos || null;
 
     const handleSave = async () => {
+        // Nota pessoal: 0 a 10 com no máximo uma casa; o resto nem chega à API.
+        const notaUsuario = form.nota_usuario === '' ? null : lerNota(form.nota_usuario);
+        if (form.nota_usuario !== '' && notaUsuario === null) {
+            setErroNota(MENSAGEM_ESCALA);
+            return;
+        }
+        setErroNota(null);
         setSaving(true);
         try {
             if (listaItem) {
@@ -110,7 +119,7 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
                     method: 'PUT',
                     body: JSON.stringify({
                         status_consumo: form.status_consumo,
-                        nota_usuario: form.nota_usuario === '' ? null : Number(form.nota_usuario),
+                        nota_usuario: notaUsuario,
                         progresso_atual: Number(form.progresso_atual),
                         favorito: form.favorito,
                         data_inicio: form.data_inicio || null,
@@ -126,7 +135,7 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
                     body: JSON.stringify({
                         id_midia: midia.id_midia,
                         status: form.status_consumo,
-                        nota_usuario: form.nota_usuario === '' ? null : Number(form.nota_usuario),
+                        nota_usuario: notaUsuario,
                         progresso_atual: Number(form.progresso_atual),
                         favorito: form.favorito,
                         data_inicio: form.data_inicio || null,
@@ -182,6 +191,9 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
 
                 {/* Form */}
                 <div className="p-4 space-y-4">
+                    {erroNota && (
+                        <p role="alert" className="text-xs text-accent-red">{erroNota}</p>
+                    )}
                     {/* Row 1: Status + Score + Progress */}
                     <div className="grid grid-cols-3 gap-3">
                         <div>
@@ -203,10 +215,11 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
                                 type="number"
                                 min="0"
                                 max="10"
-                                step="0.5"
+                                step="0.1"
                                 value={form.nota_usuario}
                                 onChange={(e) => setForm({ ...form, nota_usuario: e.target.value })}
                                 placeholder="0"
+                                aria-invalid={erroNota ? 'true' : undefined}
                                 className="w-full px-2 py-2 bg-dark-primary border border-dark-border rounded text-sm text-text-primary focus:outline-none focus:border-accent-blue"
                             />
                         </div>
