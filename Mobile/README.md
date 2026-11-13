@@ -15,6 +15,22 @@ App Expo (SDK 58) do MediaList para Android e iOS. Decisões em `docs/adr/0005-a
 
 3. Abra o Expo Go (SDK 58) e leia o QR code. Celular e computador na mesma rede.
 
+### No WSL2 (modo NAT)
+
+O celular não alcança o WSL direto. A cada reinício do WSL, rode no Windows, num PowerShell
+como administrador:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Users\user\expo-portproxy.ps1
+```
+
+O script encaminha as portas 8081 (Metro) e 5000 (API) do Windows para o IP atual do WSL,
+libera as duas no firewall e mostra o comando para iniciar o Expo com o IP do Windows na rede:
+
+```bash
+REACT_NATIVE_PACKAGER_HOSTNAME=<ip-do-windows> npx expo start --lan
+```
+
 ## URL da API
 
 Sem configuração, o app usa o host do Metro (o IP do computador que o Expo Go já
