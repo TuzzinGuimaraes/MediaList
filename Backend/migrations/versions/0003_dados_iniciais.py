@@ -65,6 +65,11 @@ def downgrade() -> None:
     # As FKs (CASCADE em midias_generos e usuarios_grupos) levam junto o que
     # apontava para estes dados; midias -> tipo_midia não tem CASCADE, então o
     # downgrade falha se ainda houver Mídias, o que é o desejado.
+    # ATENÇÃO: apagar grupos_usuarios apaga, pelo CASCADE de usuarios_grupos,
+    # os papéis de todos os Usuários (Administradores, Moderadores, Usuários).
+    # Os Usuários
+    # ficam, mas sem grupo nenhum; um upgrade de volta recria os grupos, não as
+    # associações, que precisam ser refeitas à mão.
     op.execute(
         """
         DELETE FROM generos;
