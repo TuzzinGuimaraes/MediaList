@@ -86,6 +86,13 @@ describe('aplicarProgresso (o que o backend fará, para o otimista)', () => {
     });
   });
 
+  it('reentrar em Concluído no mesmo dia da conclusão anterior não soma Recontagem', () => {
+    const item = { ...base, progresso_atual: 27, status_consumo: 'assistindo', data_conclusao: `${hoje}T00:00:00`, total_rewatches: 1 };
+    const atualizado = aplicarProgresso(item, 28, hoje);
+    expect(atualizado.status_consumo).toBe('completo');
+    expect(atualizado.total_rewatches).toBe(1);
+  });
+
   it('primeira conclusão não soma Recontagem', () => {
     const item = { ...base, progresso_atual: 27, total_rewatches: 0 };
     expect(aplicarProgresso(item, 28, hoje).total_rewatches).toBe(0);

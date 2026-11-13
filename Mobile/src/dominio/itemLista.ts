@@ -95,7 +95,11 @@ export function aplicarProgresso<
   return {
     ...novo,
     data_conclusao: hoje,
-    total_rewatches: item.data_conclusao ? (item.total_rewatches ?? 0) + 1 : item.total_rewatches,
+    // Concluir de novo no mesmo dia da conclusão anterior desfaz um toque errado: não conta.
+    total_rewatches:
+      item.data_conclusao && item.data_conclusao.slice(0, 10) !== hoje
+        ? (item.total_rewatches ?? 0) + 1
+        : item.total_rewatches,
   };
 }
 

@@ -322,6 +322,18 @@ def test_reentrar_em_concluido_soma_recontagem_e_renova_a_data():
     assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
 
 
+def test_reentrar_em_concluido_no_mesmo_dia_nao_soma_recontagem():
+    """− e + no stepper no mesmo dia desfazem um toque errado, não são nova passagem."""
+    hoje = date.today().isoformat()
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao=hoje, total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
+
+    assert repo.itens['LST-1']['status_consumo'] == 'completo'
+    assert repo.itens['LST-1']['total_rewatches'] == 1
+    assert repo.itens['LST-1']['data_conclusao'] == hoje
+
+
 def test_reentrar_em_concluido_respeita_a_data_do_payload():
     modulo, repo = _com_item(progresso_atual=23, data_conclusao='2020-01-01', total_rewatches=0)
 

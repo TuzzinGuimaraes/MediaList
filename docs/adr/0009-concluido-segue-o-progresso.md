@@ -21,6 +21,9 @@ para a tela mostrar o resultado antes da resposta:
   são afetados), nada muda.
 
 O argumento do ADR-0004 contra rebaixar era não apagar a conclusão registrada. Rebaixar não
-a apaga: a data fica, e voltar ao total conta a nova passagem na Recontagem. Preço aceito:
-tirar e repor o último episódio no stepper vira uma Recontagem a mais, que o Usuário
-corrige no editor.
+a apaga: a data fica, e voltar ao total conta a nova passagem na Recontagem. Exceção: voltar
+a Concluído no **mesmo dia** da conclusão anterior não soma, porque é desfazer um toque errado
+no stepper (− e +), não uma nova passagem. Preço aceito: um reconsumo inteiro dentro do mesmo
+dia não é contado, e o Usuário ajusta a Recontagem no editor. A Recontagem automática pode
+ser revista no futuro (por exemplo, deixar de contar sozinha), para não mostrar informação
+falsa ao Usuário.

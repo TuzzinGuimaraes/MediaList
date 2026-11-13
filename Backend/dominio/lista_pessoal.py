@@ -146,10 +146,15 @@ def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any]) -> None:
     As datas do Item descrevem a passagem mais recente (ADR 0003), então a nova
     conclusão sobrescreve a anterior, salvo data escolhida pelo Usuário.
     """
+    hoje = date.today().isoformat()
     if not _decidido(campos, item, 'data_conclusao'):
-        campos['data_conclusao'] = date.today().isoformat()
+        campos['data_conclusao'] = hoje
 
-    if item.get('data_conclusao') and not _decidido(campos, item, 'total_rewatches'):
+    # Concluir de novo no mesmo dia da conclusão anterior é desfazer um toque
+    # errado (− e + no stepper), não uma nova passagem: não conta Recontagem.
+    anterior = item.get('data_conclusao')
+    mesmo_dia = anterior is not None and str(anterior)[:10] == hoje
+    if anterior and not mesmo_dia and not _decidido(campos, item, 'total_rewatches'):
         campos['total_rewatches'] = (item.get('total_rewatches') or 0) + 1
 
 
