@@ -723,36 +723,12 @@ export interface components {
             /** Titulo Portugues */
             titulo_portugues: string | null;
         };
-        /** AvaliacaoRemovida */
-        AvaliacaoRemovida: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /**
          * CodigoErro
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
-        /** ConfirmacaoLista */
-        ConfirmacaoLista: {
-            /** Mensagem */
-            mensagem: string;
-        };
-        /** ConsultaAvaliacoes */
-        ConsultaAvaliacoes: {
-            /**
-             * Pagina
-             * @default 1
-             */
-            pagina?: number;
-            /**
-             * Por Pagina
-             * @description Acima de 50 vira 50
-             * @default 20
-             */
-            por_pagina?: number;
-        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -866,9 +842,7 @@ export interface components {
         };
         /**
          * ConsultaPaginada
-         * @description `?pagina=&por_pagina=`, com as regras de `parametros.ler_paginacao`.
-         *
-         *     Acima do teto, `por_pagina` vira o teto (não é erro). Herde para somar filtros.
+         * @description `?pagina=&por_pagina=`. Herde para somar filtros.
          */
         ConsultaPaginada: {
             /**
@@ -906,20 +880,6 @@ export interface components {
              */
             tipo?: "anime" | "manga" | "jogo";
         };
-        /** ConsultaUsuariosModeracao */
-        ConsultaUsuariosModeracao: {
-            /**
-             * Pagina
-             * @default 1
-             */
-            pagina?: number;
-            /**
-             * Por Pagina
-             * @description Acima de 50 vira 50
-             * @default 20
-             */
-            por_pagina?: number;
-        };
         /** ContagemPorRotulo */
         ContagemPorRotulo: {
             /**
@@ -956,10 +916,10 @@ export interface components {
         CorpoEdicaoAvaliacao: {
             /**
              * Nota
-             * @description De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula ("7,5")
+             * @description De 0 a 10, com no máximo uma casa decimal
              * @default null
              */
-            nota?: number | string | null;
+            nota?: number | null;
             /**
              * Texto Avaliacao
              * @default null
@@ -1191,9 +1151,9 @@ export interface components {
             id_midia: string;
             /**
              * Nota
-             * @description De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula ("7,5")
+             * @description De 0 a 10, com no máximo uma casa decimal
              */
-            nota: number | string;
+            nota: number;
             /**
              * Texto Avaliacao
              * @default null
@@ -1643,11 +1603,6 @@ export interface components {
             /** Trailer Url */
             trailer_url: string | null;
         };
-        /** MidiaAlterada */
-        MidiaAlterada: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /** MidiaDetalhe */
         MidiaDetalhe: {
             /** Artista */
@@ -1865,11 +1820,6 @@ export interface components {
             /** Titulo */
             titulo: string;
         };
-        /** NotificacoesMarcadas */
-        NotificacoesMarcadas: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /**
          * NovoItemLista
          * @description Corpo de POST /lista e /lista/adicionar.
@@ -2021,27 +1971,19 @@ export interface components {
         };
         /**
          * Permissoes
-         * @description Permissões efetivas: vence o Grupo mais privilegiado.
+         * @description Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.
          */
         Permissoes: {
-            /** Grupos */
+            /**
+             * Grupos
+             * @description Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo
+             */
             grupos: string | null;
             /**
              * Nivel Acesso
              * @enum {string}
              */
             nivel_acesso: "admin" | "moderador" | "usuario";
-            /** Pode Criar */
-            pode_criar: boolean;
-            /** Pode Deletar */
-            pode_deletar: boolean;
-            /** Pode Editar */
-            pode_editar: boolean;
-            /** Pode Moderar */
-            pode_moderar: boolean;
-        };
-        /** PermissoesDaSessao */
-        PermissoesDaSessao: {
             /** Pode Criar */
             pode_criar: boolean;
             /** Pode Deletar */
@@ -2186,11 +2128,6 @@ export interface components {
              */
             status: "healthy" | "unhealthy";
         };
-        /** StatusUsuarioAlterado */
-        StatusUsuarioAlterado: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /** UsuarioAtual */
         UsuarioAtual: {
             /** Email */
@@ -2209,25 +2146,19 @@ export interface components {
             /** Mensagem */
             mensagem: string;
         };
-        /** UsuarioDaSessao */
+        /**
+         * UsuarioDaSessao
+         * @description `id` e `nome` (e não `id_usuario`/`nome_completo`) são legado intencional: o app lê
+         *     `usuario.id` e o web lê `usuario.nome` da sessão guardada.
+         */
         UsuarioDaSessao: {
             /** Email */
             email: string;
-            /**
-             * Grupos
-             * @description Nomes dos Grupos: 'Usuários, Moderadores'
-             */
-            grupos: string | null;
             /** Id */
             id: string;
-            /**
-             * Nivel Acesso
-             * @enum {string}
-             */
-            nivel_acesso: "admin" | "moderador" | "usuario";
             /** Nome */
             nome: string;
-            permissoes: components["schemas"]["PermissoesDaSessao"];
+            permissoes: components["schemas"]["Permissoes"];
         };
         /** UsuarioModeracao */
         UsuarioModeracao: {
@@ -2778,7 +2709,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AvaliacaoRemovida"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3133,7 +3064,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3191,7 +3122,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3253,7 +3184,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3528,7 +3459,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MidiaAlterada"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3595,7 +3526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MidiaAlterada"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3880,7 +3811,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StatusUsuarioAlterado"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3947,7 +3878,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StatusUsuarioAlterado"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -4155,7 +4086,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotificacoesMarcadas"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */

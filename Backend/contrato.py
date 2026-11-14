@@ -25,13 +25,12 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from flask import current_app, jsonify, make_response, redirect, request
-from pydantic import AwareDatetime, BaseModel, BeforeValidator, Field, field_validator, model_serializer
+from pydantic import AfterValidator, AwareDatetime, BaseModel, BeforeValidator, Field, model_serializer
+from pydantic_core import PydanticCustomError
 from spectree import SecurityScheme, SpecTree
 from spectree.models import SecuritySchemeData
 from spectree.page import PAGE_TEMPLATES
 from spectree.plugins.flask_plugin import FlaskPlugin
-
-from parametros import POR_PAGINA_MAX, POR_PAGINA_PADRAO
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +125,18 @@ def _id_como_texto(valor: Any) -> Any:
     return valor
 
 
+def _numero_nao_booleano(valor: Any) -> Any:
+    # Sem isto o Pydantic aceitaria `true` como 1.0.
+    if isinstance(valor, bool):
+        raise PydanticCustomError('float_type', 'Deve ser número')
+    return valor
+
+
 #: IDs saem como texto, mesmo quando a coluna é inteira.
 Id = Annotated[str, BeforeValidator(_id_como_texto)]
-#: Avaliação, Nota pessoal, Nota média e Nota da fonte: 0 a 10 (ADR 0010).
-Nota = Annotated[float, Field(ge=0, le=10)]
+#: Avaliação, Nota pessoal, Nota média e Nota da fonte: número de 0 a 10 (ADR 0010), na
+#: entrada e na saída. A casa decimal única quem confere é `dominio.nota`.
+Nota = Annotated[float, BeforeValidator(_numero_nao_booleano), Field(ge=0, le=10)]
 #: Data sem hora, `YYYY-MM-DD`.
 Data = date
 #: Instante com fuso, ISO 8601.
@@ -141,30 +148,41 @@ def _vazio_como_ausente(valor: Any) -> Any:
     return None if isinstance(valor, str) and valor.strip() == '' else valor
 
 
-#: Parâmetro de query opcional: `?tipo=` vale como ausente, como em `parametros.ler_int`.
+#: Campo opcional em que texto vazio vale como ausente (`?tipo=` é não filtrar; no corpo, grava nulo).
 #: Uso: `tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None`.
 VazioComoAusente = BeforeValidator(_vazio_como_ausente)
+#: Texto opcional: vazio vale como ausente.
+TextoOpcional = Annotated[str | None, VazioComoAusente]
+#: Texto obrigatório e não vazio.
+Preenchido = Annotated[str, Field(min_length=1)]
+
+
+class Mensagem(BaseModel):
+    """Resposta que só confirma a operação."""
+
+    mensagem: str
 
 
 # ============================================
 # Paginação
 # ============================================
 
-class ConsultaPaginada(BaseModel):
-    """`?pagina=&por_pagina=`, com as regras de `parametros.ler_paginacao`.
+#: Teto de itens por página (e do `limite` de trending) em toda listagem.
+POR_PAGINA_MAX = 50
+POR_PAGINA_PADRAO = 20
 
-    Acima do teto, `por_pagina` vira o teto (não é erro). Herde para somar filtros.
-    """
+#: Quantidade pedida pelo cliente: de 1 em diante; acima do teto vira o teto (não é erro).
+PorPagina = Annotated[
+    int, Field(ge=1, description=f'Acima de {POR_PAGINA_MAX} vira {POR_PAGINA_MAX}'),
+    AfterValidator(lambda valor: min(valor, POR_PAGINA_MAX)),
+]
+
+
+class ConsultaPaginada(BaseModel):
+    """`?pagina=&por_pagina=`. Herde para somar filtros."""
 
     pagina: int = Field(default=1, ge=1)
-    por_pagina: int = Field(
-        default=POR_PAGINA_PADRAO, ge=1, description=f'Acima de {POR_PAGINA_MAX} vira {POR_PAGINA_MAX}',
-    )
-
-    @field_validator('por_pagina')
-    @classmethod
-    def _teto(cls, valor: int) -> int:
-        return min(valor, POR_PAGINA_MAX)
+    por_pagina: PorPagina = POR_PAGINA_PADRAO
 
 
 class Pagina[T](BaseModel):
@@ -177,8 +195,13 @@ class Pagina[T](BaseModel):
 
 
 def montar_pagina(itens: list[Any], total: int, pagina: int, por_pagina: int) -> dict[str, Any]:
-    """Corpo de `Pagina[T]`; `pagina` e `por_pagina` vêm de `ler_paginacao()` ou de `ConsultaPaginada`."""
+    """Corpo de `Pagina[T]`; `pagina` e `por_pagina` vêm da `ConsultaPaginada`."""
     return {'itens': itens, 'pagina': pagina, 'por_pagina': por_pagina, 'total': total}
+
+
+def deslocamento(query: ConsultaPaginada) -> int:
+    """O OFFSET da página pedida: quantos itens vêm antes dela."""
+    return (query.pagina - 1) * query.por_pagina
 
 
 # ============================================

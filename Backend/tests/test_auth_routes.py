@@ -123,11 +123,13 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
         'id': 'USR-LOGIN-1',
         'nome': 'Usuário Login',
         'email': 'user@example.com',
-        'nivel_acesso': 'usuario',
-        'grupos': 'Usuários',
-        'permissoes': {'pode_criar': True, 'pode_editar': True, 'pode_deletar': False, 'pode_moderar': False},
+        # As mesmas `Permissoes` de GET /usuario/permissoes.
+        'permissoes': {
+            'nivel_acesso': 'usuario', 'grupos': 'Usuários',
+            'pode_criar': True, 'pode_editar': True, 'pode_deletar': False, 'pode_moderar': False,
+        },
     }
-    assert all(type(valor) is bool for valor in data['usuario']['permissoes'].values())
+    assert all(type(data['usuario']['permissoes'][p]) is bool for p in ('pode_criar', 'pode_editar', 'pode_deletar'))
     # Último acesso é escrito pela aplicação no login (era trigger no MySQL).
     ultimo_acesso = fake.sql('SET ultimo_acesso = now()')
     assert ultimo_acesso and ultimo_acesso[0][2] == ('USR-LOGIN-1',)

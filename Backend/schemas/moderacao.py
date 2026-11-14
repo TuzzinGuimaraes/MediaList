@@ -3,19 +3,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from contrato import ConsultaPaginada, Id, Instante, Nota, TipoDeMidia
+from contrato import Id, Instante, TipoDeMidia
+from schemas.avaliacoes import CamposDaAvaliacao
 
 
-class AvaliacaoModeracao(BaseModel):
-    id_avaliacao: Id
-    id_usuario: Id
-    id_midia: Id
-    nota: Nota
-    titulo_avaliacao: str | None
-    texto_avaliacao: str | None
-    data_avaliacao: Instante
-    data_edicao: Instante | None
-    nome_completo: str = Field(description='Nome do autor')
+class AvaliacaoModeracao(CamposDaAvaliacao):
     titulo_portugues: str | None
     titulo_original: str
     tipo: TipoDeMidia
@@ -23,10 +15,6 @@ class AvaliacaoModeracao(BaseModel):
 
 class RespostaAvaliacoesModeracao(BaseModel):
     avaliacoes: list[AvaliacaoModeracao] = Field(description='As 50 mais recentes')
-
-
-class ConsultaUsuariosModeracao(ConsultaPaginada):
-    pass
 
 
 class UsuarioModeracao(BaseModel):
@@ -39,7 +27,3 @@ class UsuarioModeracao(BaseModel):
     grupos: str | None = Field(description='Nomes dos Grupos separados por vírgula; null sem Grupo')
     total_midias: int = Field(description='Itens na Lista pessoal')
     total_avaliacoes: int
-
-
-class StatusUsuarioAlterado(BaseModel):
-    mensagem: str

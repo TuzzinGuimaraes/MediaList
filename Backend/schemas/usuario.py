@@ -4,7 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from contrato import Id, Instante, Nota, TipoDeMidia
-from schemas.auth import NivelAcesso
+from schemas.auth import Permissoes
 
 
 class Perfil(BaseModel):
@@ -27,17 +27,6 @@ class Perfil(BaseModel):
 
 class RespostaPerfil(BaseModel):
     perfil: Perfil
-
-
-class Permissoes(BaseModel):
-    """Permissões efetivas: vence o Grupo mais privilegiado."""
-
-    nivel_acesso: NivelAcesso
-    grupos: str | None
-    pode_criar: bool
-    pode_editar: bool
-    pode_deletar: bool
-    pode_moderar: bool
 
 
 class RespostaPermissoes(BaseModel):

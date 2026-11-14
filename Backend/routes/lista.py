@@ -13,12 +13,11 @@ from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
 from repositories.catalogo import Catalogo
 from repositories.itens_lista import ItensLista
 from schemas.lista import (
-    ConfirmacaoLista,
     ConsultaLista,
     EdicaoItemLista,
     ItemCriado,
@@ -119,7 +118,7 @@ def adicionar_midia_lista_v2(json: NovoItemLista):
 @lista_bp.route('/<string:lista_id>/progresso', methods=['PUT'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=ConfirmacaoLista, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
 )
 def atualizar_progresso(lista_id, json: ProgressoItemLista):
     """Atualizar o Progresso de um Item.
@@ -133,7 +132,7 @@ def atualizar_progresso(lista_id, json: ProgressoItemLista):
 @lista_bp.route('/<string:lista_id>', methods=['PUT'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=ConfirmacaoLista, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
 )
 def atualizar_item_lista(lista_id, json: EdicaoItemLista):
     """Gravar os campos enviados num Item."""
@@ -144,7 +143,7 @@ def atualizar_item_lista(lista_id, json: EdicaoItemLista):
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=ConfirmacaoLista, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
 )
 def remover_item_lista(lista_id):
     """Tirar um Item da Lista pessoal."""

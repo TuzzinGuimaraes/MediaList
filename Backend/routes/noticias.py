@@ -9,7 +9,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar, consultar_um
-from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, montar_pagina
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, deslocamento, montar_pagina
 from decorators import permission_required
 from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
@@ -29,7 +29,7 @@ def listar_noticias(query: ConsultaPaginada):
         ORDER BY n.data_publicacao DESC, n.id_noticia DESC
         LIMIT %s OFFSET %s
         """,
-        (query.por_pagina, (query.pagina - 1) * query.por_pagina),
+        (query.por_pagina, deslocamento(query)),
     )
     total = consultar_um('SELECT count(*) AS total FROM noticias')['total']
     return montar_pagina(noticias, total, query.pagina, query.por_pagina)

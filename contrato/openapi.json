@@ -89,8 +89,8 @@
           "nota_media_atualizada": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -163,8 +163,8 @@
             "type": "string"
           },
           "nota": {
-            "maximum": 10,
-            "minimum": 0,
+            "ge": 0,
+            "le": 10,
             "title": "Nota",
             "type": "number"
           },
@@ -215,8 +215,8 @@
           "nota_media_atualizada": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -271,8 +271,8 @@
             "type": "string"
           },
           "nota": {
-            "maximum": 10,
-            "minimum": 0,
+            "ge": 0,
+            "le": 10,
             "title": "Nota",
             "type": "number"
           },
@@ -340,19 +340,6 @@
         "title": "AvaliacaoModeracao",
         "type": "object"
       },
-      "AvaliacaoRemovida": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "AvaliacaoRemovida",
-        "type": "object"
-      },
       "CodigoErro": {
         "description": "Código estável do erro, para o cliente decidir sem ler a mensagem.",
         "enum": [
@@ -372,38 +359,6 @@
         ],
         "title": "CodigoErro",
         "type": "string"
-      },
-      "ConfirmacaoLista": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "ConfirmacaoLista",
-        "type": "object"
-      },
-      "ConsultaAvaliacoes": {
-        "properties": {
-          "pagina": {
-            "default": 1,
-            "minimum": 1,
-            "title": "Pagina",
-            "type": "integer"
-          },
-          "por_pagina": {
-            "default": 20,
-            "description": "Acima de 50 vira 50",
-            "minimum": 1,
-            "title": "Por Pagina",
-            "type": "integer"
-          }
-        },
-        "title": "ConsultaAvaliacoes",
-        "type": "object"
       },
       "ConsultaGeneros": {
         "properties": {
@@ -649,7 +604,7 @@
         "type": "object"
       },
       "ConsultaPaginada": {
-        "description": "`?pagina=&por_pagina=`, com as regras de `parametros.ler_paginacao`.\n\nAcima do teto, `por_pagina` vira o teto (não é erro). Herde para somar filtros.",
+        "description": "`?pagina=&por_pagina=`. Herde para somar filtros.",
         "properties": {
           "pagina": {
             "default": 1,
@@ -712,25 +667,6 @@
           }
         },
         "title": "ConsultaTrending",
-        "type": "object"
-      },
-      "ConsultaUsuariosModeracao": {
-        "properties": {
-          "pagina": {
-            "default": 1,
-            "minimum": 1,
-            "title": "Pagina",
-            "type": "integer"
-          },
-          "por_pagina": {
-            "default": 20,
-            "description": "Acima de 50 vira 50",
-            "minimum": 1,
-            "title": "Por Pagina",
-            "type": "integer"
-          }
-        },
-        "title": "ConsultaUsuariosModeracao",
         "type": "object"
       },
       "ContagemPorRotulo": {
@@ -808,17 +744,16 @@
           "nota": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
-              },
-              {
-                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
+            "description": "De 0 a 10, com no máximo uma casa decimal",
             "title": "Nota"
           },
           "texto_avaliacao": {
@@ -1397,16 +1332,11 @@
             "type": "string"
           },
           "nota": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
-            "title": "Nota"
+            "description": "De 0 a 10, com no máximo uma casa decimal",
+            "ge": 0,
+            "le": 10,
+            "title": "Nota",
+            "type": "number"
           },
           "texto_avaliacao": {
             "anyOf": [
@@ -1623,6 +1553,8 @@
           "nota_usuario": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -1741,8 +1673,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2014,8 +1946,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2028,8 +1960,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2042,8 +1974,8 @@
           "nota_usuario": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2581,8 +2513,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2595,8 +2527,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2923,19 +2855,6 @@
         "title": "Midia",
         "type": "object"
       },
-      "MidiaAlterada": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "MidiaAlterada",
-        "type": "object"
-      },
       "MidiaDetalhe": {
         "properties": {
           "artista": {
@@ -3118,8 +3037,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3132,8 +3051,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3483,8 +3402,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3496,8 +3415,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3712,19 +3631,6 @@
         "title": "Notificacao",
         "type": "object"
       },
-      "NotificacoesMarcadas": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "NotificacoesMarcadas",
-        "type": "object"
-      },
       "NovoItemLista": {
         "description": "Corpo de POST /lista e /lista/adicionar.",
         "properties": {
@@ -3785,6 +3691,8 @@
           "nota_usuario": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -4029,8 +3937,8 @@
           "nota_media_usuario": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -4080,7 +3988,7 @@
         "type": "object"
       },
       "Permissoes": {
-        "description": "Permissões efetivas: vence o Grupo mais privilegiado.",
+        "description": "Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.",
         "properties": {
           "grupos": {
             "anyOf": [
@@ -4091,6 +3999,7 @@
                 "type": "null"
               }
             ],
+            "description": "Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo",
             "title": "Grupos"
           },
           "nivel_acesso": {
@@ -4128,34 +4037,6 @@
           "pode_moderar"
         ],
         "title": "Permissoes",
-        "type": "object"
-      },
-      "PermissoesDaSessao": {
-        "properties": {
-          "pode_criar": {
-            "title": "Pode Criar",
-            "type": "boolean"
-          },
-          "pode_deletar": {
-            "title": "Pode Deletar",
-            "type": "boolean"
-          },
-          "pode_editar": {
-            "title": "Pode Editar",
-            "type": "boolean"
-          },
-          "pode_moderar": {
-            "title": "Pode Moderar",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pode_criar",
-          "pode_editar",
-          "pode_deletar",
-          "pode_moderar"
-        ],
-        "title": "PermissoesDaSessao",
         "type": "object"
       },
       "Preferencias": {
@@ -4499,19 +4380,6 @@
         "title": "Saude",
         "type": "object"
       },
-      "StatusUsuarioAlterado": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "StatusUsuarioAlterado",
-        "type": "object"
-      },
       "UsuarioAtual": {
         "properties": {
           "email": {
@@ -4566,34 +4434,14 @@
         "type": "object"
       },
       "UsuarioDaSessao": {
+        "description": "`id` e `nome` (e não `id_usuario`/`nome_completo`) são legado intencional: o app lê\n`usuario.id` e o web lê `usuario.nome` da sessão guardada.",
         "properties": {
           "email": {
             "title": "Email",
             "type": "string"
           },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nomes dos Grupos: 'Usuários, Moderadores'",
-            "title": "Grupos"
-          },
           "id": {
             "title": "Id",
-            "type": "string"
-          },
-          "nivel_acesso": {
-            "enum": [
-              "admin",
-              "moderador",
-              "usuario"
-            ],
-            "title": "Nivel Acesso",
             "type": "string"
           },
           "nome": {
@@ -4601,15 +4449,13 @@
             "type": "string"
           },
           "permissoes": {
-            "$ref": "#/components/schemas/PermissoesDaSessao"
+            "$ref": "#/components/schemas/Permissoes"
           }
         },
         "required": [
           "id",
           "nome",
           "email",
-          "nivel_acesso",
-          "grupos",
           "permissoes"
         ],
         "title": "UsuarioDaSessao",
@@ -5265,7 +5111,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AvaliacaoRemovida"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5872,7 +5718,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5958,7 +5804,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6046,7 +5892,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6647,7 +6493,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MidiaAlterada"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6794,7 +6640,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MidiaAlterada"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -7185,7 +7031,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -7273,7 +7119,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -7557,7 +7403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificacoesMarcadas"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },

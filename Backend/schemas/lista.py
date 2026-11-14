@@ -1,9 +1,10 @@
 """Modelos do contrato das rotas do blueprint `lista` (ADR 0011).
 
 Os modelos de entrada só checam o formato de cada campo. As regras do Item de
-lista (Rótulo por Tipo, escala da Nota pessoal, teto do Progresso, Concluído ⇔
-total, dono) continuam em `dominio.lista_pessoal` (ADR 0009). Por isso nenhum
-campo aqui tem faixa de valores: a mensagem de recusa é a do domínio.
+lista (Rótulo por Tipo, casa decimal da Nota pessoal, teto do Progresso,
+Concluído ⇔ total, dono) continuam em `dominio.lista_pessoal` (ADR 0009). A
+exceção é a Nota pessoal, que é a `Nota` do contrato (0 a 10), a mesma da
+Avaliação.
 
 String vazia vale como ausente em todo campo opcional (`VazioComoAusente`),
 como o domínio já fazia: `nota_usuario: ''` apaga a Nota pessoal, e num campo
@@ -16,7 +17,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from contrato import Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
+from contrato import Data, Id, Instante, Nota, TextoOpcional, TipoDeMidia, VazioComoAusente
 from schemas.estado_consumo import RotuloDeEstado
 from schemas.midias import CamposDaMidia
 
@@ -37,12 +38,12 @@ class CamposDoItem(BaseModel):
     """
 
     progresso_atual: Annotated[int | None, VazioComoAusente] = None
-    nota_usuario: Annotated[float | None, VazioComoAusente] = Field(
+    nota_usuario: Annotated[Nota | None, VazioComoAusente] = Field(
         default=None, description='Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga',
     )
     favorito: Annotated[bool | None, VazioComoAusente] = None
     privado: Annotated[bool | None, VazioComoAusente] = None
-    comentario: Annotated[str | None, VazioComoAusente] = None
+    comentario: TextoOpcional = None
     data_inicio: Annotated[Data | None, VazioComoAusente] = None
     data_conclusao: Annotated[Data | None, VazioComoAusente] = None
     total_rewatches: Annotated[int | None, VazioComoAusente] = Field(default=None, description='Recontagem')
@@ -97,7 +98,3 @@ class RespostaLista(BaseModel):
 class ItemCriado(BaseModel):
     mensagem: str
     id_lista: Id
-
-
-class ConfirmacaoLista(BaseModel):
-    mensagem: str

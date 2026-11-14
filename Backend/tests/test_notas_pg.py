@@ -109,7 +109,7 @@ def test_nota_media_recalculada_ao_criar_editar_e_apagar_avaliacao(pg, prefixo, 
     criada = client.post('/api/avaliacoes', headers=cabecalho[ana], json={'id_midia': anime, 'nota': 8})
     assert criada.status_code == 201 and criada.get_json()['nota_media_atualizada'] == 8.0
     id_ana = criada.get_json()['id_avaliacao']
-    client.post('/api/avaliacoes', headers=cabecalho[bia], json={'id_midia': anime, 'nota': '9,5'})
+    client.post('/api/avaliacoes', headers=cabecalho[bia], json={'id_midia': anime, 'nota': 9.5})
     assert notas() == (8.75, 2, 5.0)
 
     editada = client.put(f'/api/avaliacoes/{id_ana}', headers=cabecalho[ana], json={'nota': 10})

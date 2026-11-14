@@ -9,7 +9,19 @@ from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import (
+    AUTENTICADO,
+    ERROS_AUTENTICADA,
+    CodigoErro,
+    ConsultaPaginada,
+    Erro,
+    Mensagem,
+    Pagina,
+    contrato,
+    deslocamento,
+    montar_pagina,
+    resposta_erro,
+)
 from decorators import get_user_permissions
 from dominio.avaliacao import CONFLITO, Avaliacoes
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO
@@ -19,8 +31,6 @@ from schemas.avaliacoes import (
     AvaliacaoCriada,
     AvaliacaoDaMidia,
     AvaliacaoEditada,
-    AvaliacaoRemovida,
-    ConsultaAvaliacoes,
     CorpoEdicaoAvaliacao,
     CorpoNovaAvaliacao,
 )
@@ -44,9 +54,9 @@ def _erro(resultado):
 
 @avaliacoes_bp.route('/<string:id_midia>', methods=['GET'])
 @contrato.validate(resp=Response(HTTP_200=Pagina[AvaliacaoDaMidia], HTTP_404=Erro), tags=['avaliacoes'])
-def listar_avaliacoes(id_midia, query: ConsultaAvaliacoes):
+def listar_avaliacoes(id_midia, query: ConsultaPaginada):
     """Uma página das Avaliações de uma Mídia, mais recentes primeiro."""
-    resultado = avaliacoes.listar(id_midia, query.pagina, query.por_pagina)
+    resultado = avaliacoes.listar(id_midia, query.por_pagina, deslocamento(query))
     if not resultado.bem_sucedido:
         return _erro(resultado)
     return montar_pagina(resultado.dados['avaliacoes'], resultado.dados['total'], query.pagina, query.por_pagina)
@@ -88,7 +98,7 @@ def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
 @avaliacoes_bp.route('/<string:avaliacao_id>', methods=['DELETE'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=AvaliacaoRemovida, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
     tags=['avaliacoes'], security=AUTENTICADO,
 )
 def deletar_avaliacao(avaliacao_id):

@@ -51,12 +51,12 @@ class Avaliacoes:
         self._avaliacoes = repositorio
         self._catalogo = catalogo
 
-    def listar(self, id_midia: str, pagina: int, por_pagina: int) -> Resultado:
+    def listar(self, id_midia: str, limite: int, deslocamento: int) -> Resultado:
         """Uma página das Avaliações da Mídia. `dados`: avaliacoes e total (todas as páginas)."""
         if not self._catalogo.obter(id_midia):
             return Resultado(NAO_ENCONTRADO, 'Mídia não encontrada')
         return Resultado(OK, dados={
-            'avaliacoes': self._avaliacoes.listar(id_midia, por_pagina, (pagina - 1) * por_pagina),
+            'avaliacoes': self._avaliacoes.listar(id_midia, limite, deslocamento),
             'total': self._avaliacoes.contar(id_midia),
         })
 

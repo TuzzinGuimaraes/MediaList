@@ -86,7 +86,7 @@ def test_listar_responde_a_pagina_com_o_total(client, modulo):
         'itens': [{**AVALIACAO, 'data_avaliacao': '2026-11-13T10:00:00Z'}],
         'pagina': 2, 'por_pagina': 5, 'total': 6,
     })
-    assert falso.chamadas == [('listar', 'MID-1', 2, 5)]
+    assert falso.chamadas == [('listar', 'MID-1', 5, 5)]  # limite e deslocamento
 
 
 def test_listar_sem_paginacao_usa_a_primeira_pagina_de_20(client, modulo):
@@ -95,7 +95,7 @@ def test_listar_sem_paginacao_usa_a_primeira_pagina_de_20(client, modulo):
     resposta = client.get('/api/avaliacoes/MID-1')
 
     assert resposta.get_json() == {'itens': [], 'pagina': 1, 'por_pagina': 20, 'total': 0}
-    assert falso.chamadas == [('listar', 'MID-1', 1, 20)]
+    assert falso.chamadas == [('listar', 'MID-1', 20, 0)]
 
 
 CODIGO_DO_ERRO = {INVALIDO: 'dados_invalidos', NEGADO: 'acesso_negado', NAO_ENCONTRADO: 'nao_encontrado',
@@ -120,7 +120,7 @@ def test_erro_do_modulo_vira_o_codigo_http_com_a_mensagem(client, auth_headers, 
 def test_invalido_com_detalhes_traz_os_detalhes(client, auth_headers, modulo):
     modulo(Resultado(INVALIDO, 'Nota inválida', {'nota': 'Nota inválida'}))
 
-    resposta = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': 11})
+    resposta = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': 8.55})
 
     assert resposta.get_json() == {
         'erro': 'Nota inválida', 'codigo': 'dados_invalidos', 'detalhes': {'nota': 'Nota inválida'}}
@@ -131,6 +131,10 @@ def test_invalido_com_detalhes_traz_os_detalhes(client, auth_headers, modulo):
     ({'nota': 8}, 'id_midia', 'Campo obrigatório'),
     ({'id_anime': 'MID-1', 'nota': 8}, 'id_midia', 'Campo obrigatório'),
     ({'id_midia': 'MID-1', 'nota': True}, 'nota', 'Tipo inválido'),
+    # A Nota de entrada é a mesma da saída (contrato.Nota): número de 0 a 10, sem texto.
+    ({'id_midia': 'MID-1', 'nota': '7,5'}, 'nota', 'Tipo inválido'),
+    ({'id_midia': 'MID-1', 'nota': 11}, 'nota', 'Deve ser menor ou igual a 10'),
+    ({'id_midia': 'MID-1', 'nota': -1}, 'nota', 'Deve ser maior ou igual a 0'),
 ])
 def test_corpo_fora_do_modelo_responde_400_sem_chamar_o_modulo(client, auth_headers, modulo, corpo, campo, motivo):
     falso = modulo(Resultado(OK))
@@ -146,9 +150,9 @@ def test_corpo_fora_do_modelo_responde_400_sem_chamar_o_modulo(client, auth_head
 def test_edicao_passa_so_os_campos_enviados(client, auth_headers, modulo):
     falso = modulo(Resultado(OK, dados={'nota_media': None, 'total_avaliacoes': None}))
 
-    client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': '7,5', 'texto_avaliacao': None, 'x': 1})
+    client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': 7.5, 'texto_avaliacao': None, 'x': 1})
 
-    assert falso.chamadas == [('editar', 'USR-TEST-0001', 'AVL-1', {'nota': '7,5', 'texto_avaliacao': None})]
+    assert falso.chamadas == [('editar', 'USR-TEST-0001', 'AVL-1', {'nota': 7.5, 'texto_avaliacao': None})]
 def test_escrita_exige_login(client, modulo):
     falso = modulo(Resultado(OK))
 

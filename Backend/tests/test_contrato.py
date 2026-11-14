@@ -18,6 +18,7 @@ from contrato import (
     Erro,
     Pagina,
     contrato,
+    deslocamento,
     detalhes_de_validacao,
     montar_pagina,
     registrar_documentacao,
@@ -125,7 +126,7 @@ def test_resposta_fora_do_modelo_em_producao_sai_como_veio_e_vai_para_o_log(app,
 
 
 def test_generos_com_tipo_vazio_e_como_sem_tipo(client, generos):
-    """Parâmetro de query vazio vale como ausente, como em `parametros.ler_int`."""
+    """Parâmetro de query vazio vale como ausente (`VazioComoAusente`)."""
     catalogo = generos()
 
     assert client.get('/api/generos?tipo=').status_code == 200
@@ -148,7 +149,7 @@ def test_montar_pagina_monta_o_envelope_e_cabe_em_pagina_do_modelo():
     assert Pagina[Genero].model_validate(corpo).model_dump(mode='json')['itens'][0]['id_genero'] == '1'
 
 
-def test_consulta_paginada_segue_as_regras_de_ler_paginacao():
+def test_consulta_paginada_comeca_na_1_e_traz_o_teto():
     assert ConsultaPaginada.model_validate({}).model_dump() == {'pagina': 1, 'por_pagina': 20}
     assert ConsultaPaginada.model_validate({'pagina': '2', 'por_pagina': '999'}).model_dump() == {
         'pagina': 2, 'por_pagina': 50,
@@ -160,6 +161,10 @@ def test_consulta_paginada_segue_as_regras_de_ler_paginacao():
         'por_pagina': 'Tipo inválido',
     }
 
+
+def test_deslocamento_e_o_offset_da_pagina():
+    assert deslocamento(ConsultaPaginada(pagina=1, por_pagina=20)) == 0
+    assert deslocamento(ConsultaPaginada(pagina=3, por_pagina=20)) == 40
 
 
 # ============================================

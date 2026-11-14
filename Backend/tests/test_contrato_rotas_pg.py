@@ -192,7 +192,7 @@ def test_lista_pessoal_do_adicionar_ao_remover(client, catalogo, pg, entrar):  #
     recusado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'platinado'})
     assert recusado.status_code == 400 and set(recusado.get_json()) == {'erro', 'codigo', 'detalhes'}
 
-    criado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status': 'assistindo'})
+    criado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'assistindo'})
     assert criado.status_code == 201
     assert set(criado.get_json()) == {'mensagem', 'id_lista'}
     id_lista = criado.get_json()['id_lista']
@@ -269,7 +269,7 @@ def test_avaliacao_do_criar_ao_apagar(client, catalogo, pg, entrar):  # noqa: F8
     assert (alheia.status_code, alheia.get_json()) == (403, negada_na_edicao)
     inexistente = client.put(f'/api/avaliacoes/{INEXISTENTE}', headers=ela, json={'nota': 1})
     assert (inexistente.status_code, inexistente.get_json()) == (403, negada_na_edicao)
-    editada = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': '9,5'})
+    editada = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': 9.5})
     assert (editada.status_code, editada.get_json()) == (
         200, {'mensagem': 'Avaliação atualizada com sucesso!', 'nota_media_atualizada': 9.5})
 

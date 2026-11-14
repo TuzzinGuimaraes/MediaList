@@ -12,7 +12,17 @@ from flask import Blueprint
 from flask_jwt_extended import jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import (
+    AUTENTICADO,
+    ERROS_COM_PERMISSAO,
+    CodigoErro,
+    Erro,
+    Mensagem,
+    Pagina,
+    contrato,
+    montar_pagina,
+    resposta_erro,
+)
 from decorators import permission_required
 from repositories.atualizacoes import Atualizacoes
 from repositories.catalogo import Catalogo
@@ -24,7 +34,6 @@ from schemas.midias import (
     CorpoAtualizacao,
     CorpoMidia,
     Midia,
-    MidiaAlterada,
     MidiaDetalhe,
     RespostaDistribuicao,
     RespostaPopulares,
@@ -90,7 +99,7 @@ def detalhes_midia(id_midia):
 @jwt_required()
 @permission_required('editar')
 @contrato.validate(
-    resp=Response(HTTP_200=MidiaAlterada, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
 def atualizar_midia(id_midia, json: CorpoMidia):
     """Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela."""
@@ -107,7 +116,7 @@ def atualizar_midia(id_midia, json: CorpoMidia):
 @jwt_required()
 @permission_required('deletar')
 @contrato.validate(
-    resp=Response(HTTP_200=MidiaAlterada, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
 def deletar_midia(id_midia):
     """Deletar mídia central."""

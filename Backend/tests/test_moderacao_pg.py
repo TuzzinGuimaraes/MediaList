@@ -42,7 +42,7 @@ def test_avaliacoes_da_moderacao_com_a_midia(client, pg, entrar):  # noqa: F811
     moderador, autora = _usuario(pg, 'Moderadores'), _usuario(pg)
     id_midia = Catalogo().criar('anime', {'titulo_original': f'PG {uuid.uuid4().hex}'})
     pg['midias'].append(id_midia)
-    client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': id_midia, 'nota': '7,5'})
+    client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': id_midia, 'nota': 7.5})
 
     resposta = client.get('/api/moderacao/avaliacoes', headers=entrar(moderador))
 

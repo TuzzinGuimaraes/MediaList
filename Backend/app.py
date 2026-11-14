@@ -22,7 +22,6 @@ from werkzeug.exceptions import HTTPException
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
 from contrato import CodigoErro, detalhes_de_validacao, registrar_documentacao, resposta_erro
-from parametros import ErroEntrada
 from routes import auth as rotas_auth
 from routes import (
     auth_bp,
@@ -215,11 +214,6 @@ def integridade(_erro):
 @app.errorhandler(Indisponivel)
 def indisponivel(_erro):
     return resposta_erro(503, CodigoErro.INDISPONIVEL, 'Serviço temporariamente indisponível')
-
-
-@app.errorhandler(ErroEntrada)
-def erro_entrada(erro):
-    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro))
 
 
 # Erros HTTP do Flask/Werkzeug (404 de rota, 405, abort(...)): status -> (código, mensagem).

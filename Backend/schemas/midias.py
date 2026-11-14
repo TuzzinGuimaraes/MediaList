@@ -12,10 +12,20 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field
 
-from contrato import ConsultaPaginada, Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
-from parametros import POR_PAGINA_MAX
+from contrato import (
+    ConsultaPaginada,
+    Data,
+    Id,
+    Instante,
+    Nota,
+    PorPagina,
+    Preenchido,
+    TextoOpcional,
+    TipoDeMidia,
+    VazioComoAusente,
+)
 from schemas.estado_consumo import RotuloDeEstado
 
 StatusAnime = Literal['em_exibicao', 'finalizado', 'aguardando', 'cancelado']
@@ -29,9 +39,6 @@ OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
 ]
 
-#: Filtro de texto opcional: vazio vale como ausente.
-Filtro = Annotated[str | None, VazioComoAusente]
-
 
 # ============================================
 # Entrada
@@ -41,42 +48,33 @@ class ConsultaMidias(ConsultaPaginada):
     """`GET /midias`: Tipo, filtros, ordem e página."""
 
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
-    busca: Filtro = None
-    genero: Filtro = Field(default=None, description='`nome_genero`')
-    status: Filtro = Field(default=None, description='Status do Catálogo; sem Tipo, o de qualquer Tipo')
-    autor: Filtro = None
-    estudio: Filtro = None
-    demografia: Filtro = None
-    plataforma: Filtro = None
-    desenvolvedor: Filtro = None
-    modo_jogo: Filtro = None
-    artista: Filtro = None
+    busca: TextoOpcional = None
+    genero: TextoOpcional = Field(default=None, description='`nome_genero`')
+    status: TextoOpcional = Field(default=None, description='Status do Catálogo; sem Tipo, o de qualquer Tipo')
+    autor: TextoOpcional = None
+    estudio: TextoOpcional = None
+    demografia: TextoOpcional = None
+    plataforma: TextoOpcional = None
+    desenvolvedor: TextoOpcional = None
+    modo_jogo: TextoOpcional = None
+    artista: TextoOpcional = None
     ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = 'nota_media'
 
 
 class ConsultaTrending(BaseModel):
     tipo: Annotated[TipoDeMidia, BeforeValidator(lambda v: v or 'anime')] = 'anime'
-    limite: int = Field(default=10, ge=1, description=f'Acima de {POR_PAGINA_MAX} vira {POR_PAGINA_MAX}')
-
-    @field_validator('limite')
-    @classmethod
-    def _teto(cls, valor: int) -> int:
-        return min(valor, POR_PAGINA_MAX)
+    limite: PorPagina = 10
 
 
 class ConsultaPopulares(BaseModel):
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
 
 
-#: Texto opcional do corpo: vazio grava NULL.
-TextoOpcional = Annotated[str | None, VazioComoAusente]
-
-
 class _CorpoMidiaBase(BaseModel):
     """Campos comuns do PUT. A Nota média e a Nota da fonte não são graváveis
     pela API (ticket 13): chegam e são ignoradas, como qualquer campo fora do modelo."""
 
-    titulo_original: Annotated[str, Field(min_length=1)] | None = None
+    titulo_original: Preenchido | None = None
     titulo_ingles: TextoOpcional = None
     titulo_portugues: TextoOpcional = None
     sinopse: TextoOpcional = None
@@ -133,8 +131,8 @@ class CorpoMidia(CorpoAnime, CorpoManga, CorpoJogo):
 
 
 class CorpoAtualizacao(BaseModel):
-    tipo: Annotated[str, Field(min_length=1, description='Tipo da Atualização: episodio, capitulo...')]
-    titulo: Annotated[str, Field(min_length=1)]
+    tipo: Preenchido = Field(description='Tipo da Atualização: episodio, capitulo...')
+    titulo: Preenchido
     descricao: str | None = None
     dados_adicionais: Annotated[dict[str, Any], BeforeValidator(lambda v: {} if v is None else v)] = Field(
         default_factory=dict,
@@ -245,10 +243,6 @@ class ContagemPorRotulo(BaseModel):
 
 class RespostaDistribuicao(BaseModel):
     distribuicao: list[ContagemPorRotulo]
-
-
-class MidiaAlterada(BaseModel):
-    mensagem: str
 
 
 class AtualizacaoPublicada(BaseModel):

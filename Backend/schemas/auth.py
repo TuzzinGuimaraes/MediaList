@@ -5,18 +5,9 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from contrato import Data, Id, VazioComoAusente
+from contrato import Data, Id, Preenchido, VazioComoAusente
 
 NivelAcesso = Literal['admin', 'moderador', 'usuario']
-
-#: Texto obrigatório e não vazio.
-Preenchido = Annotated[str, Field(min_length=1)]
-
-
-class Mensagem(BaseModel):
-    """Resposta que só confirma a operação."""
-
-    mensagem: str
 
 
 # ============================================
@@ -63,7 +54,11 @@ class UsuarioCriado(BaseModel):
     id_usuario: Id
 
 
-class PermissoesDaSessao(BaseModel):
+class Permissoes(BaseModel):
+    """Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes."""
+
+    nivel_acesso: NivelAcesso
+    grupos: str | None = Field(description="Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo")
     pode_criar: bool
     pode_editar: bool
     pode_deletar: bool
@@ -71,12 +66,13 @@ class PermissoesDaSessao(BaseModel):
 
 
 class UsuarioDaSessao(BaseModel):
+    """`id` e `nome` (e não `id_usuario`/`nome_completo`) são legado intencional: o app lê
+    `usuario.id` e o web lê `usuario.nome` da sessão guardada."""
+
     id: Id
     nome: str
     email: str
-    nivel_acesso: NivelAcesso
-    grupos: str | None = Field(description="Nomes dos Grupos: 'Usuários, Moderadores'")
-    permissoes: PermissoesDaSessao
+    permissoes: Permissoes
 
 
 class RespostaLogin(BaseModel):

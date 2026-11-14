@@ -212,6 +212,18 @@ def test_item_de_terceiro_e_inexistente_respondem_o_mesmo_403(client, auth_heade
     assert (resposta_delete.status_code, resposta_delete.get_json()) == (403, esperado)
 
 
+@pytest.mark.parametrize('nota, motivo', [(11, 'Deve ser menor ou igual a 10'), ('7,5', 'Tipo inválido')])
+def test_nota_pessoal_fora_da_escala_responde_400_antes_do_modulo(client, auth_headers, modulo, nota, motivo):
+    """A Nota pessoal de entrada é a `Nota` do contrato, a mesma da Avaliação (ADR 0010)."""
+    falso = modulo()
+
+    response = client.put('/api/lista/LST-1', headers=auth_headers, json={'nota_usuario': nota})
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'nota_usuario': motivo}
+    assert falso.chamadas == []
+
+
 def test_put_progresso_exige_o_campo_progresso(client, auth_headers, modulo):
     falso = modulo()
 
