@@ -1,19 +1,11 @@
-import path from 'node:path';
 import { userEvent } from '@testing-library/react-native';
-import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { fireEvent, screen, within } from 'expo-router/testing-library';
 import { AccessibilityInfo } from 'react-native';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { usuarioAna, simularFetch } from './fetchSimulado';
+import { simularFetch } from './fetchSimulado';
 import { anime, jogo, manga, popular } from './midias';
 import { pilulaRecorte, trocarRecorte } from './recorte';
-
-const APP = path.resolve(__dirname, '../../app');
-
-async function abrirLogado() {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: '/' });
-}
+import { abrirLogado } from './sessao';
 
 const frieren = anime();
 const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist: Brotherhood', nota_media: 9.0 });

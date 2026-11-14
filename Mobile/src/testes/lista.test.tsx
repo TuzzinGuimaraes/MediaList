@@ -1,13 +1,10 @@
-import path from 'node:path';
 import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
-import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { type Requisicao, type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
 import { anime, jogo, manga } from './midias';
 import { trocarRecorte } from './recorte';
-
-const APP = path.resolve(__dirname, '../../app');
+import { abrirLogado as abrir } from './sessao';
 
 /** Item de GET /lista no formato real (conferido contra o backend local): a Mídia mais os campos do Item. */
 function item(midia: { id_midia: string; tipo: string } & Record<string, unknown>, dados: Record<string, unknown> = {}) {
@@ -34,11 +31,6 @@ const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal
 const jojo = manga();
 const hollow = jogo();
 const celeste = jogo({ id_midia: 'MID-JOG-2026-40002', titulo_original: 'Celeste' });
-
-async function abrir(url: string) {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: url });
-}
 
 /** Servidor de mentira com estado: as escritas mudam o que o GET /lista devolve. */
 function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Resposta | ((r: Requisicao) => Resposta | Promise<Resposta>)> = {}) {

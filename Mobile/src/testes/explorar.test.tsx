@@ -1,18 +1,12 @@
-import path from 'node:path';
 import { userEvent } from '@testing-library/react-native';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { usuarioAna, simularFetch } from './fetchSimulado';
+import { simularFetch } from './fetchSimulado';
 import { anime, manga } from './midias';
 import { trocarRecorte } from './recorte';
+import { abrirLogado } from './sessao';
 
-const APP = path.resolve(__dirname, '../../app');
-
-async function abrirExplorar() {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: '/explorar' });
-}
+const abrirExplorar = () => abrirLogado('/explorar');
 
 /** GET /midias como a API responde (conferido contra o backend local). */
 function pagina(midias: unknown[], numero = 1, tipo = 'anime') {
