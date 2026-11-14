@@ -133,9 +133,34 @@ export default function Inicio() {
   if (emAlta.data && populares.data) {
     const top10 = populares.data.slice(0, 10);
     const continuar = (itensDoRecorte ?? []).filter((i) => estadoDe(i.status_consumo, i.tipo) === 'em_progresso');
-    conteudo = emAlta.data.length ? (
+    const carrosseis = {
+      maioresNotas: sem(maioresNotas.data, emAlta.data),
+      lancamentos: jaLancadas(lancamentos.data ?? []),
+      porGenero: generos.map((genero, i) => ({ genero, midias: sem(porGenero[i]?.data, itens) })),
+      maisAdicionados: sem(maisAdicionados.data, top10),
+      maisConcluidos: maisConcluidos.data ?? [],
+    };
+    // O estado vazio da tela só quando todos os carrosséis (já respondidos) vierem vazios.
+    const pendente = [lista, maioresNotas, lancamentos, maisAdicionados, maisConcluidos, ...porGenero].some(
+      (c) => c.isPending,
+    );
+    const vazio =
+      !pendente &&
+      [
+        emAlta.data,
+        top10,
+        continuar,
+        carrosseis.maioresNotas,
+        carrosseis.lancamentos,
+        carrosseis.maisAdicionados,
+        carrosseis.maisConcluidos,
+        ...carrosseis.porGenero.map((g) => g.midias),
+      ].every((l) => !l.length);
+    conteudo = vazio ? (
+      <Vazio mensagem={textos.vazio} />
+    ) : (
       <>
-        <Destaques midias={emAlta.data.slice(0, MAX_DESTAQUES)} />
+        {emAlta.data.length ? <Destaques midias={emAlta.data.slice(0, MAX_DESTAQUES)} /> : null}
         <Fileira
           titulo={textos.continuar}
           itens={continuar}
@@ -144,16 +169,14 @@ export default function Inicio() {
         />
         <Carrossel titulo={textos.emAlta} midias={emAlta.data} />
         <Top10 midias={top10} />
-        <Carrossel titulo={textos.maioresNotas} midias={sem(maioresNotas.data, emAlta.data)} />
-        <Carrossel titulo={textos.lancamentos} midias={jaLancadas(lancamentos.data ?? [])} />
-        {generos.map((genero, i) => (
-          <Carrossel key={genero} titulo={textos.porGenero(genero)} midias={sem(porGenero[i]?.data, itens)} />
+        <Carrossel titulo={textos.maioresNotas} midias={carrosseis.maioresNotas} />
+        <Carrossel titulo={textos.lancamentos} midias={carrosseis.lancamentos} />
+        {carrosseis.porGenero.map(({ genero, midias }) => (
+          <Carrossel key={genero} titulo={textos.porGenero(genero)} midias={midias} />
         ))}
-        <Carrossel titulo={textos.maisAdicionados} midias={sem(maisAdicionados.data, top10)} />
-        <Carrossel titulo={rotuloMaisConcluidos(TIPOS_DO_RECORTE[recorte])} midias={maisConcluidos.data ?? []} />
+        <Carrossel titulo={textos.maisAdicionados} midias={carrosseis.maisAdicionados} />
+        <Carrossel titulo={rotuloMaisConcluidos(TIPOS_DO_RECORTE[recorte])} midias={carrosseis.maisConcluidos} />
       </>
-    ) : (
-      <Vazio mensagem={textos.vazio} />
     );
   } else if (emAlta.isError || populares.isError) {
     conteudo = <Falha erro={emAlta.error ?? populares.error} tentarDeNovo={atualizar.onRefresh} />;

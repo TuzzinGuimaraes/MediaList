@@ -365,6 +365,30 @@ describe('Início: destaques e carrosséis', () => {
     expect(secoes).toEqual(['Em alta', 'Top 10 de hoje']);
   });
 
+  it('sem Em alta, só o carrossel dele some: os outros continuam', async () => {
+    simularFetch({
+      ...completo(),
+      'GET /midias/trending?tipo=anime&limite=10': midias(),
+      'GET /midias/trending?tipo=manga&limite=10': midias(),
+    });
+
+    await abrirLogado();
+
+    expect(await screen.findByLabelText('Maiores notas')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Em alta')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Destaques')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Nenhuma Mídia neste catálogo ainda.')).not.toBeOnTheScreen();
+  });
+
+  it('com todos os carrosséis vazios, mostra o estado vazio da tela', async () => {
+    simularFetch(rotasDoInicio());
+
+    await abrirLogado();
+
+    expect(await screen.findByText('Nenhuma Mídia neste catálogo ainda.')).toBeOnTheScreen();
+    expect(screen.queryAllByRole('header')).toHaveLength(0);
+  });
+
   it('no catálogo Jogos, os gêneros e os carrosséis seguem os jogos e "Mais concluídos" vira "Mais jogados"', async () => {
     const api = simularFetch({
       ...completo(),
