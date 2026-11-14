@@ -12,7 +12,6 @@ import type { ItemLista, Midia } from '@/api/tipos';
 import { useSessao } from '@/auth/SessaoContext';
 import { Barra } from '@/components/Barras';
 import { Botao } from '@/components/Botao';
-import { lancamentoDe } from '@/components/CardMidia';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, FalhaParcial } from '@/components/EstadoTela';
 import { FioProgresso } from '@/components/FioProgresso';
@@ -23,6 +22,7 @@ import { Selo, SeloStatus, SeloTipo, SeloTop } from '@/components/Selo';
 import { estadoDe, nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import { temProgresso, totalDoItem } from '@/dominio/itemLista';
 import { formatarData } from '@/dominio/datas';
+import { emLancamento } from '@/dominio/situacao';
 import {
   atributosDoTipo,
   distribuicaoDeNotas,
@@ -102,7 +102,7 @@ function Banner({ midia }: { midia: Midia }) {
 /** Pôster sobre a base do banner, com os selos de Top 10 e lançamento e o fio de progresso. */
 function Poster({ midia, item }: { midia: Midia; item: ItemLista | null | undefined }) {
   const top = usePosicaoTop10(midia.id_midia);
-  const lancamento = lancamentoDe(midia);
+  const lancamento = emLancamento(midia);
   return (
     <View
       className="aspect-[2/3] w-32 overflow-hidden rounded-lg border-2 border-fundo bg-superficie-alta"

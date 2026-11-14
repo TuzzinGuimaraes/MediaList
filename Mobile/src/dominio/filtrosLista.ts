@@ -2,6 +2,7 @@
 // contagens das abas saem dos Itens já filtrados.
 import type { TipoMidia } from './estadoConsumo';
 import { tituloDaMidia } from './midia';
+import { nomeDaSituacao, situacaoDe } from './situacao';
 
 /** Alfabética (padrão), Nota pessoal, adicionado recentemente, atualizado recentemente. */
 export type OrdemLista = 'titulo' | 'nota' | 'adicao' | 'atualizacao';
@@ -30,16 +31,6 @@ type ItemFiltravel = {
   data_adicao?: string | null;
   data_atualizacao?: string | null;
 };
-
-/** Status de lançamento do Item, lido do campo do seu Tipo. */
-export function situacaoDe(item: Pick<ItemFiltravel, 'tipo' | 'status_anime' | 'status_manga' | 'status_jogo'>): string | null {
-  const porTipo: Record<TipoMidia, string | null> = {
-    anime: item.status_anime,
-    manga: item.status_manga,
-    jogo: item.status_jogo,
-  };
-  return porTipo[item.tipo] ?? null;
-}
 
 const colacao = new Intl.Collator('pt-BR', { sensitivity: 'base' });
 
@@ -96,19 +87,6 @@ export function buscarNaLista<T extends ItemFiltravel & { titulo_ingles?: string
 }
 
 
-/** Nomes na tela dos status de lançamento (CHECKs de anime, mangá e jogo no banco). */
-const NOMES_SITUACAO: Record<string, string> = {
-  em_exibicao: 'Em exibição',
-  em_publicacao: 'Em publicação',
-  finalizado: 'Finalizado',
-  aguardando: 'Aguardando',
-  hiato: 'Em hiato',
-  cancelado: 'Cancelado',
-  lancado: 'Lançado',
-  em_desenvolvimento: 'Em desenvolvimento',
-  remasterizado: 'Remasterizado',
-};
-
 export type OpcoesDosFiltros = {
   generos: string[];
   situacoes: { valor: string; titulo: string }[];
@@ -121,7 +99,7 @@ export function opcoesDosFiltros(itens: readonly ItemFiltravel[]): OpcoesDosFilt
   return {
     generos: [...generos].sort(colacao.compare),
     situacoes: [...situacoes]
-      .map((valor) => ({ valor, titulo: NOMES_SITUACAO[valor] ?? valor }))
+      .map((valor) => ({ valor, titulo: nomeDaSituacao(valor) }))
       .sort((a, b) => colacao.compare(a.titulo, b.titulo)),
   };
 }
