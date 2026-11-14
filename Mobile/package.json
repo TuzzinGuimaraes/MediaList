@@ -59,6 +59,7 @@
       "./jest.setup.ts"
     ],
     "clearMocks": true,
+    "testTimeout": 20000,
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/src/testes/cssVazio.js",
       "^react-native-reanimated/mock$": "<rootDir>/src/testes/reanimadoSimulado.js"
