@@ -4,12 +4,12 @@ import { AccessibilityInfo } from 'react-native';
 
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
-import { anime, jogo, manga, popular } from './midias';
+import { anime, fullmetal, itemDaLista as item, jogo, manga, popular } from './midias';
 import { pilulaRecorte, trocarRecorte } from './recorte';
 import { abrirLogado } from './sessao';
 
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist: Brotherhood', nota_media: 9.0 });
+const fma = fullmetal();
 const jojo = manga();
 const hollow = jogo();
 
@@ -277,10 +277,6 @@ describe('Início: destaques e carrosséis', () => {
   const futuro = anime({ id_midia: 'MID-ANM-2099-1', titulo_portugues: 'Anime do Futuro', data_lancamento: '2099-01-01' });
   const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Monster', generos: 'Drama' });
   const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_portugues: 'Vagabond', generos: 'Ação' });
-
-  function item(midia: { id_midia: string } & Record<string, unknown>, dados: Record<string, unknown>) {
-    return { ...midia, id_lista: `LST-${midia.id_midia}`, progresso_atual: null, progresso_total: null, nota_usuario: null, ...dados };
-  }
 
   const midias = (...lista: unknown[]) => ({ status: 200, corpo: { midias: lista } });
 

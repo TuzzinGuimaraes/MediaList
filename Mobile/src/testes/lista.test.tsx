@@ -2,32 +2,12 @@ import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-nativ
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
-import { anime, jogo, manga } from './midias';
+import { anime, fullmetal, itemDaLista as item, jogo, manga } from './midias';
 import { trocarRecorte } from './recorte';
 import { abrirLogado as abrir } from './sessao';
 
-/** Item de GET /lista no formato real (conferido contra o backend local): a Mídia mais os campos do Item. */
-function item(midia: { id_midia: string; tipo: string } & Record<string, unknown>, dados: Record<string, unknown> = {}) {
-  return {
-    ...midia,
-    id_lista: `LST-${midia.id_midia}`,
-    codigo_lista: 'LST20261106-00001',
-    status_consumo: 'planejado',
-    progresso_atual: 0,
-    progresso_total: (midia.numero_episodios ?? midia.numero_capitulos ?? null) as number | null,
-    nota_usuario: null,
-    favorito: false,
-    privado: false,
-    data_inicio: null,
-    data_conclusao: null,
-    comentario: null,
-    total_rewatches: 0,
-    ...dados,
-  };
-}
-
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist', numero_episodios: 64 });
+const fma = fullmetal();
 const jojo = manga();
 const hollow = jogo();
 const celeste = jogo({ id_midia: 'MID-JOG-2026-40002', titulo_original: 'Celeste' });
@@ -87,17 +67,17 @@ describe('aba Lista', () => {
     expect(screen.queryByRole('tab', { name: /^Platinado/ })).not.toBeOnTheScreen();
     expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item JoJo no Kimyou na Bouken')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Fullmetal Alchemist: Brotherhood')).not.toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('tab', { name: 'Concluído (1)' }));
-    expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
+    expect(await linha('Fullmetal Alchemist: Brotherhood')).toBeOnTheScreen();
 
     await trocarRecorte('Jogos');
     expect(await aba('Concluído', 2)).toBeOnTheScreen();
     expect(screen.getByRole('tab', { name: 'Platinado (1)' })).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Hollow Knight')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Celeste')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Fullmetal Alchemist: Brotherhood')).not.toBeOnTheScreen();
   });
 
   it('cada linha mostra o selo do Tipo de mídia, também no rótulo de acessibilidade', async () => {
@@ -570,7 +550,7 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Buscar na Lista' }));
     await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'ALCHEM');
 
-    const resultado = await linha('Fullmetal Alchemist');
+    const resultado = await linha('Fullmetal Alchemist: Brotherhood');
     expect(within(resultado).getByText('Concluído')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
     expect(screen.queryByRole('tab', { name: /^Em progresso/ })).not.toBeOnTheScreen();
@@ -596,7 +576,7 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Buscar na Lista' }));
     await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'e');
-    expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
+    expect(await linha('Fullmetal Alchemist: Brotherhood')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Filtros, 1 ativo' }));
