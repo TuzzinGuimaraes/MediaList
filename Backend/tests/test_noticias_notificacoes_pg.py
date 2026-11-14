@@ -111,8 +111,8 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     assert response.get_json()['notificacoes_enviadas'] == 2
     [notificacao] = client.get('/api/notificacoes', headers=entrar(assistindo)).get_json()['notificacoes']
     assert {k: v for k, v in notificacao.items() if k != 'data_criacao'} == {
-        'id_usuario': assistindo, 'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
-        'titulo': 'Episódio 12', 'midia_nome': 'Anime PG', 'anime_nome': 'Anime PG',
+        'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
+        'titulo': 'Episódio 12', 'midia_nome': 'Anime PG',
         'mensagem': 'Novidade em anime da sua lista: Anime PG', 'lida': False,
     }
     assert len(client.get('/api/notificacoes', headers=entrar(favorito_completo)).get_json()['notificacoes']) == 1
@@ -177,6 +177,6 @@ def test_preferencias_salvas_sao_lidas_com_os_padroes_no_resto(pg, client, entra
     salvo = client.put('/api/preferencias', headers=entrar(eu), json={'notificacoes_ativas': False})
     depois = client.get('/api/preferencias', headers=entrar(eu)).get_json()['preferencias']
 
-    assert inicial == {'id_usuario': eu, 'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
+    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
     assert salvo.get_json()['modificado'] is True
-    assert depois == {'id_usuario': eu, 'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}
+    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}

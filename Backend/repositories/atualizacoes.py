@@ -65,14 +65,12 @@ class Atualizacoes:
         """As 50 Notificações mais recentes do Usuário.
 
         Título, tipo e Mídia vêm da Atualização que a Notificação entrega.
-        `anime_nome` repete `midia_nome` para o web antigo.
         """
         return consultar(
             """
-            SELECT n.id_usuario, a.id_midia, t.nome_tipo AS tipo_midia,
+            SELECT a.id_midia, t.nome_tipo AS tipo_midia,
                    a.tipo_atualizacao AS tipo, a.titulo,
                    COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS midia_nome,
-                   COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS anime_nome,
                    'Novidade em ' || t.nome_tipo || ' da sua lista: '
                        || COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS mensagem,
                    n.lida, n.data_criacao

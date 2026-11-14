@@ -1,11 +1,14 @@
 """
 Blueprint de usuário.
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from spectree import Response
 
 from banco import consultar, consultar_um
+from contrato import AUTENTICADO, CodigoErro, Erro, contrato, resposta_erro
 from decorators import get_user_permissions
+from schemas.usuario import RespostaEstatisticas, RespostaPerfil, RespostaPermissoes
 
 usuario_bp = Blueprint('usuario', __name__)
 
@@ -32,23 +35,26 @@ ESTATISTICAS_POR_TIPO = """
 
 @usuario_bp.route('/perfil', methods=['GET'])
 @jwt_required()
+@contrato.validate(resp=Response(HTTP_200=RespostaPerfil, HTTP_404=Erro), tags=['usuario'], security=AUTENTICADO)
 def obter_perfil():
     """Obter perfil completo do usuário."""
     perfil = consultar_um("SELECT * FROM vw_perfil_usuario WHERE id_usuario = %s", (get_jwt_identity(),))
     if not perfil:
-        return jsonify({'erro': 'Perfil não encontrado'}), 404
-    return jsonify({'perfil': perfil}), 200
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Perfil não encontrado')
+    return {'perfil': perfil}
 
 
 @usuario_bp.route('/permissoes', methods=['GET'])
 @jwt_required()
+@contrato.validate(resp=Response(HTTP_200=RespostaPermissoes), tags=['usuario'], security=AUTENTICADO)
 def obter_permissoes():
     """Obter permissões do usuário."""
-    return jsonify({'permissoes': get_user_permissions(get_jwt_identity())}), 200
+    return {'permissoes': get_user_permissions(get_jwt_identity())}
 
 
 @usuario_bp.route('/estatisticas', methods=['GET'])
 @jwt_required()
+@contrato.validate(resp=Response(HTTP_200=RespostaEstatisticas), tags=['usuario'], security=AUTENTICADO)
 def obter_estatisticas():
     """Obter estatísticas do usuário por tipo de mídia."""
     result = consultar(ESTATISTICAS_POR_TIPO, (get_jwt_identity(),))
@@ -59,4 +65,4 @@ def obter_estatisticas():
         'em_andamento': sum(item.get('em_andamento') or 0 for item in result),
         'favoritos': sum(item.get('favoritos') or 0 for item in result),
     }
-    return jsonify({'estatisticas': result, 'resumo': resumo}), 200
+    return {'estatisticas': result, 'resumo': resumo}
