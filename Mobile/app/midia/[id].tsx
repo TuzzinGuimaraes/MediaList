@@ -67,42 +67,51 @@ const ALTURA_BANNER = 260;
 
 /**
  * Banner do topo: o banner da Mídia (ou o pôster desfocado, sem banner), escurecido no alto
- * para o botão voltar e fundido no fundo da tela na base. Decorativo.
+ * para o botão voltar e fundido no fundo da tela na base. A imagem é decorativa; o selo do
+ * Tipo fica sobre ela, no canto.
  */
 function Banner({ midia }: { midia: Midia }) {
   const cores = useCores();
+  const insets = useSafeAreaInsets();
   const imagem = midia.banner_url ?? midia.poster_url;
   return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      className="overflow-hidden bg-superficie"
-      style={{ height: ALTURA_BANNER }}
-    >
-      {imagem ? (
-        <Image
-          source={imagem}
-          style={{ position: 'absolute', width: '100%', height: '100%' }}
-          contentFit="cover"
-          blurRadius={midia.banner_url ? 0 : 18}
-          cachePolicy="disk"
-          transition={200}
-        />
-      ) : null}
+    <View>
       <View
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, transparent 60%, ${cores.fundo} 100%)`,
-        }}
-      />
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        className="overflow-hidden bg-superficie"
+        style={{ height: ALTURA_BANNER }}
+      >
+        {imagem ? (
+          <Image
+            source={imagem}
+            style={{ position: 'absolute', width: '100%', height: '100%' }}
+            contentFit="cover"
+            blurRadius={midia.banner_url ? 0 : 18}
+            cachePolicy="disk"
+            transition={200}
+          />
+        ) : null}
+        <View
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, transparent 60%, ${cores.fundo} 100%)`,
+          }}
+        />
+      </View>
+      {/* Fora da parte decorativa: o Tipo é lido. Na altura do voltar, no canto oposto. */}
+      <View className="absolute right-3 h-10 justify-center" style={{ top: insets.top + 8 }}>
+        <SeloTipo tipo={midia.tipo} sobreImagem />
+      </View>
     </View>
   );
 }
 
-/** Pôster sobre a base do banner, com os selos de Top 10 e lançamento e o fio de progresso. */
+/** Pôster sobre a base do banner, com os selos de Top 10, lançamento e Status e o fio de progresso. */
 function Poster({ midia, item }: { midia: Midia; item: ItemLista | null | undefined }) {
   const top = usePosicaoTop10(midia.id_midia);
   const lancamento = emLancamento(midia);
+  const estado = item ? estadoDe(item.status_consumo, midia.tipo) : null;
   return (
     <View
       className="aspect-[2/3] w-32 overflow-hidden rounded-lg border-2 border-fundo bg-superficie-alta"
@@ -123,9 +132,10 @@ function Poster({ midia, item }: { midia: Midia; item: ItemLista | null | undefi
           <SeloTop posicao={top} />
         </View>
       ) : null}
-      {lancamento ? (
-        <View className="absolute bottom-1.5 left-1">
-          <Selo texto={lancamento} tom="marca" />
+      {lancamento || estado ? (
+        <View className="absolute bottom-1.5 left-1 right-1 gap-1">
+          {lancamento ? <Selo texto={lancamento} tom="marca" /> : null}
+          {estado ? <SeloStatus estado={estado} sobreImagem /> : null}
         </View>
       ) : null}
       {item ? <FioProgresso item={item} /> : null}
@@ -198,7 +208,6 @@ function DetalheMidia() {
   const maiorEstado = Math.max(0, ...estados.map((e) => e.total));
   const titulo = tituloDaMidia(m);
   const alternativo = tituloAlternativo(m);
-  const estado = item.data ? estadoDe(item.data.status_consumo, m.tipo) : null;
 
   return (
     <View className="flex-1 bg-fundo">
@@ -207,7 +216,6 @@ function DetalheMidia() {
         <View className="-mt-24 flex-row items-end gap-4 px-4">
           <Poster midia={m} item={item.data} />
           <View className="flex-1 gap-1 pb-1">
-            <SeloTipo tipo={m.tipo} />
             <Text accessibilityRole="header" className="text-titulo-secao font-bold text-texto-forte">
               {titulo}
             </Text>
@@ -216,7 +224,6 @@ function DetalheMidia() {
                 {alternativo}
               </Text>
             ) : null}
-            {estado ? <SeloStatus estado={estado} /> : null}
           </View>
         </View>
 
