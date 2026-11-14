@@ -31,4 +31,4 @@ class CorpoNoticia(BaseModel):
 
 class NoticiaCriada(BaseModel):
     mensagem: str
-    id: Id = Field(description='id_noticia da Notícia criada')
+    id_noticia: Id

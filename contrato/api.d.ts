@@ -1778,11 +1778,8 @@ export interface components {
         };
         /** NoticiaCriada */
         NoticiaCriada: {
-            /**
-             * Id
-             * @description id_noticia da Notícia criada
-             */
-            id: string;
+            /** Id Noticia */
+            id_noticia: string;
             /** Mensagem */
             mensagem: string;
         };

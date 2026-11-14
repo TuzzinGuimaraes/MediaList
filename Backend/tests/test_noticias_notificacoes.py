@@ -78,7 +78,7 @@ def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, m
     })
 
     assert response.status_code == 201
-    assert response.get_json() == {'mensagem': 'Notícia criada!', 'id': 'NOT-1'}
+    assert response.get_json() == {'mensagem': 'Notícia criada!', 'id_noticia': 'NOT-1'}
     _, _, params = fake.sql('INSERT INTO noticias')[0]
     assert params == ('Nova notícia', 'Texto', 'USR-ADMIN-0001', 'jogo', ['rpg'], 'https://img/x.png')
 

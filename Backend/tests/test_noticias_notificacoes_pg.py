@@ -79,13 +79,13 @@ def test_noticia_publicada_sai_na_lista_com_o_nome_do_autor(pg, client, entrar):
     criada = client.post('/api/noticias', headers=entrar(admin), json={
         'titulo': titulo, 'conteudo': 'Texto', 'tags': ['anime', 'estreia'],
     })
-    pg['noticias'].append(criada.get_json()['id'])
+    pg['noticias'].append(criada.get_json()['id_noticia'])
     pagina = client.get('/api/noticias?por_pagina=1').get_json()
 
     assert criada.status_code == 201
     assert pagina['total'] == antes + 1
     [noticia] = pagina['itens']
-    assert noticia['id_noticia'] == criada.get_json()['id']
+    assert noticia['id_noticia'] == criada.get_json()['id_noticia']
     assert noticia['titulo'] == titulo
     assert noticia['autor'] == 'Ana Admin'
     assert noticia['tags'] == ['anime', 'estreia']
@@ -97,7 +97,7 @@ def test_noticias_paginadas_sem_repetir_nem_pular(pg, client, entrar):
     admin = _usuario(pg, 'Administradores')
     for i in range(3):
         criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': f'Página {i}'})
-        pg['noticias'].append(criada.get_json()['id'])
+        pg['noticias'].append(criada.get_json()['id_noticia'])
 
     primeira = client.get('/api/noticias?por_pagina=2').get_json()
     segunda = client.get('/api/noticias?por_pagina=2&pagina=2').get_json()

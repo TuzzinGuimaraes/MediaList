@@ -3557,9 +3557,8 @@
       },
       "NoticiaCriada": {
         "properties": {
-          "id": {
-            "description": "id_noticia da Notícia criada",
-            "title": "Id",
+          "id_noticia": {
+            "title": "Id Noticia",
             "type": "string"
           },
           "mensagem": {
@@ -3569,7 +3568,7 @@
         },
         "required": [
           "mensagem",
-          "id"
+          "id_noticia"
         ],
         "title": "NoticiaCriada",
         "type": "object"

@@ -58,4 +58,4 @@ def criar_noticia(json: CorpoNoticia):
             json.imagem_url or None,
         ),
     )
-    return {'mensagem': 'Notícia criada!', 'id': criada['id_noticia']}, 201
+    return {'mensagem': 'Notícia criada!', 'id_noticia': criada['id_noticia']}, 201
