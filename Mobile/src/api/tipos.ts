@@ -120,7 +120,10 @@ export type CartaoMidia = Pick<
   NotasDaMidia;
 
 /** Linha de GET /midias/populares (view vw_midias_populares); não traz `total_avaliacoes`. */
-export type MidiaPopular = MidiaResumo;
+export type MidiaPopular = MidiaResumo & {
+  /** "Aventura, Drama" ou null. */
+  generos: string | null;
+};
 
 /** GET /midias/trending e GET /midias/populares. */
 export type RespostaMidias<M = MidiaResumo> = { midias: M[] };
