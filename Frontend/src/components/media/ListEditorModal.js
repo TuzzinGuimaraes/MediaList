@@ -134,7 +134,7 @@ const ListEditorModal = ({ isOpen, onClose, midia, listaItem, onSave }) => {
                     method: 'POST',
                     body: JSON.stringify({
                         id_midia: midia.id_midia,
-                        status: form.status_consumo,
+                        status_consumo: form.status_consumo,
                         nota_usuario: notaUsuario,
                         progresso_atual: Number(form.progresso_atual),
                         favorito: form.favorito,
