@@ -2,6 +2,8 @@ import { focusManager } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import type { Noticia, Notificacao } from '../api/tipos';
+import { pagina } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
 import { aba, entrarPeloLogin as entrar } from './sessao';
 
@@ -28,21 +30,21 @@ function badgeNoticias() {
   return within(botao).queryByText(/^\d+$/)?.props.children ?? null;
 }
 
-/** Formato de GET /notificacoes (Backend/routes/midias.py cria; Flask serializa a data em RFC 1123). */
-function notificacao(titulo: string, lida: boolean) {
+/** Item de GET /notificacoes. */
+function notificacao(titulo: string, lida: boolean): Notificacao {
   return {
-    id_usuario: 'USR-20261106-00007',
     id_midia: 'ANI-0001',
     tipo_midia: 'anime',
     tipo: 'episodio',
     titulo,
     midia_nome: 'Frieren',
-    anime_nome: 'Frieren',
     mensagem: 'Novidade em anime da sua lista: Frieren',
     lida,
-    data_criacao: 'Fri, 06 Nov 2026 10:00:00 GMT',
+    data_criacao: '2026-11-06T10:00:00Z',
   };
 }
+
+const semNoticias = pagina<Noticia>([]);
 
 describe('badge de Notificações não lidas', () => {
   it('a aba Notícias mostra quantas Notificações estão não lidas', async () => {
@@ -69,7 +71,7 @@ describe('badge de Notificações não lidas', () => {
     let lidas = false;
     const api = simularFetch({
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
-      'GET /noticias?limite=20': { status: 200, corpo: { noticias: [] } },
+      'GET /noticias?por_pagina=20': semNoticias,
       'GET /notificacoes': () => ({
         status: 200,
         corpo: { notificacoes: [notificacao('Episódio 12', lidas), notificacao('Episódio 11', lidas)] },
@@ -115,7 +117,7 @@ describe('badge de Notificações não lidas', () => {
     let novas = 1;
     simularFetch({
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
-      'GET /noticias?limite=20': { status: 200, corpo: { noticias: [] } },
+      'GET /noticias?por_pagina=20': semNoticias,
       'GET /notificacoes': () => ({
         status: 200,
         corpo: { notificacoes: Array.from({ length: novas }, (_, i) => notificacao(`Episódio ${i}`, false)) },
@@ -139,23 +141,18 @@ describe('Notícias', () => {
     simularFetch({
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
       'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
-      'GET /noticias?limite=20': {
-        status: 200,
-        corpo: {
-          noticias: [
-            {
-              titulo: 'Temporada de inverno',
-              conteudo: 'Os lançamentos de janeiro.',
-              autor: 'Admin',
-              categoria: 'geral',
-              tags: ['anime'],
-              imagem_url: null,
-              data_publicacao: 'Fri, 06 Nov 2026 10:00:00 GMT',
-              visualizacoes: 0,
-            },
-          ],
+      'GET /noticias?por_pagina=20': pagina<Noticia>([
+        {
+          id_noticia: 'NOT-0001',
+          titulo: 'Temporada de inverno',
+          conteudo: 'Os lançamentos de janeiro.',
+          autor: 'Admin',
+          categoria: 'geral',
+          tags: ['anime'],
+          imagem_url: null,
+          data_publicacao: '2026-11-06T10:00:00Z',
         },
-      },
+      ]),
     });
     await entrar();
 
