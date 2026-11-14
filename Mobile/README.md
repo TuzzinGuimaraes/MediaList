@@ -53,6 +53,25 @@ Escala única em `src/tema/tipografia.js`, exposta como classes do Tailwind (tam
 `allowFontScaling={false}`); só pílulas, selos e o stepper limitam o crescimento com
 `maxFontSizeMultiplier={1.3}`.
 
+## PROTÓTIPO da identidade visual (ticket 29, branch descartável)
+
+Esta branch (`artur/identidade-prototipo`) não vai para a master. `npm start` e abra no Expo Go: a
+barra amarela flutuante (só em `__DEV__`) troca os eixos em memória. Linha de cima `‹ eixo ›`, linha
+de baixo `‹ valor ›`; arraste pela alça ≡ e recolha no ×. Eixos: `paleta` (Carmesim, Bordô, Rubi),
+`tema` (escuro, claro, sistema; também no Perfil), `fonte` (Overpass, Inter, Manrope, Outfit),
+`card` (A, B, C), `inicio` (A, B, C), `detalhe` (A, B, C), `animacao` (micro, compartilhada) e
+`haptics`.
+
+- Cores: tokens semânticos em `src/tema/paletas.js`, classes `rgb(var(--cor-x) / <alpha-value>)` no
+  `tailwind.config.js` e valores aplicados com `vars()` num View raiz (`src/prototipo/PrototipoContext.tsx`).
+  Os nomes antigos (`dark-*`, `accent-*`, `text-*`) apontam para os tokens. Em JS: `usePaleta()`.
+- Fonte: `text-<nivel>` e `font-semibold`/`font-bold` põem `fontFamily: var(--fonte-<peso>)`, porque
+  no Android uma família customizada não ganha negrito por `fontWeight`.
+- Pôster compartilhado: feito à mão em `src/prototipo/PrototipoTransicaoPoster.tsx` (o
+  `sharedTransitionTag` do Reanimated exige flag nativa, que o Expo Go não liga).
+- Jest: o Reanimated real não roda no Jest; `react-native-reanimated/mock` é redirecionado para
+  `src/testes/reanimadoSimulado.js`. Os testes abrem nas variantes de controle e sem a barra.
+
 ## Verificação
 
 ```bash

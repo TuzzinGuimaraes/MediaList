@@ -9,12 +9,12 @@ import {
   contarPorEstado,
   mediaNotasPessoais,
 } from '../dominio/estadoConsumo';
-import paleta from '../tema/paleta';
+import { usePaleta } from '../prototipo/PrototipoContext';
 import { type Barra, Barras } from './Barras';
 import { Falha } from './EstadoTela';
 
 const textos = {
-  porEstado: 'Por Estado de consumo',
+  porEstado: 'Por Status',
   porTipo: 'Por Tipo de mídia',
   media: 'Média das notas pessoais',
 };
@@ -25,6 +25,7 @@ function formatarNota(nota: number | null): string {
 
 /** Estatísticas da Lista pessoal do Usuário, mostradas abaixo dos dados do Perfil. */
 export function EstatisticasPerfil() {
+  const paleta = usePaleta();
   const porTipo = useEstatisticasPorTipo();
   const itens = useItensParaEstatisticas();
 

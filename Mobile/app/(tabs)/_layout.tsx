@@ -6,7 +6,8 @@ import { useNaoLidas } from '@/api/noticias';
 import { useSessao } from '@/auth/SessaoContext';
 import { Carregando } from '@/components/EstadoTela';
 import { SeletorRecorte } from '@/components/SeletorRecorte';
-import paleta from '@/tema/paleta';
+import { useFontes, usePaleta } from '@/prototipo/PrototipoContext';
+import { useAnimar } from '@/prototipo/PrototipoMovimento';
 import tipografia from '@/tema/tipografia';
 
 type Icone = ComponentProps<typeof Ionicons>['name'];
@@ -23,6 +24,9 @@ const abas: { nome: string; titulo: string; icone: Icone; recorte?: boolean }[] 
 export default function AbasLayout() {
   const { sessao } = useSessao();
   const naoLidas = useNaoLidas();
+  const paleta = usePaleta();
+  const fontes = useFontes();
+  const animar = useAnimar();
   if (sessao.estado === 'carregando') return <Carregando />;
   // Sem sessão (nunca entrou, saiu, ou o refresh falhou): volta ao login.
   if (sessao.estado === 'anonima') return <Redirect href="/login" />;
@@ -33,10 +37,14 @@ export default function AbasLayout() {
         headerStyle: { backgroundColor: paleta.dark.nav },
         headerTintColor: paleta.text.bright,
         headerTitleAlign: 'left',
-        headerTitleStyle: { fontWeight: 'bold', fontSize: tipografia['titulo-secao'].tamanho },
-        tabBarLabelStyle: { fontSize: tipografia.legenda.tamanho },
+        headerTitleStyle: { fontFamily: fontes.negrito, fontSize: tipografia['titulo-secao'].tamanho },
+        headerShadowVisible: false,
+        // PROTÓTIPO (ticket 29): troca de aba com fade curto.
+        animation: animar ? 'fade' : 'none',
+        tabBarLabelStyle: { fontSize: tipografia.legenda.tamanho, fontFamily: fontes.semi },
         tabBarStyle: { backgroundColor: paleta.dark.nav, borderTopColor: paleta.dark.border },
-        tabBarActiveTintColor: paleta.accent.blue,
+        tabBarActiveTintColor: paleta['marca-texto'],
+        tabBarBadgeStyle: { backgroundColor: paleta.marca, color: paleta['sobre-marca'] },
         tabBarInactiveTintColor: paleta.text.secondary,
       }}
     >

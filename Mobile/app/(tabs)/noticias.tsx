@@ -7,7 +7,7 @@ import type { Noticia, Notificacao } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { formatarData } from '@/dominio/datas';
-import paleta from '@/tema/paleta';
+import { usePaleta } from '@/prototipo/PrototipoContext';
 
 type SubAba = 'noticias' | 'notificacoes';
 
@@ -18,6 +18,7 @@ const subAbas: { chave: SubAba; titulo: string }[] = [
 
 /** Puxar a tela mostra o indicador só durante o refetch pedido pelo gesto. */
 function usePuxarParaAtualizar(refetch: () => Promise<unknown>) {
+  const paleta = usePaleta();
   const [atualizando, setAtualizando] = useState(false);
   return (
     <RefreshControl

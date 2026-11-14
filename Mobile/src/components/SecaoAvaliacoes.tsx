@@ -7,7 +7,7 @@ import { mensagemDeErro } from '../api/erros';
 import type { AvaliacaoCompleta } from '../api/tipos';
 import { useSessao } from '../auth/SessaoContext';
 import { formatarData } from '../dominio/datas';
-import paleta from '../tema/paleta';
+import { usePaleta } from '../prototipo/PrototipoContext';
 import { Botao } from './Botao';
 import { FormularioAvaliacao } from './FormularioAvaliacao';
 
@@ -51,6 +51,7 @@ function ApagarAvaliacao({ idMidia, idAvaliacao }: { idMidia: string; idAvaliaca
 }
 
 function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
+  const paleta = usePaleta();
   return (
     <View accessibilityLabel={`Avaliação de ${a.nome_completo}`} className="gap-1 rounded-md bg-dark-tertiary p-3">
       <View className="flex-row items-center justify-between gap-2">

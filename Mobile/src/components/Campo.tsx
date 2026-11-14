@@ -1,10 +1,11 @@
 import { Text, TextInput, type TextInputProps, View } from 'react-native';
 
-import paleta from '../tema/paleta';
+import { usePaleta } from '../prototipo/PrototipoContext';
 
 type Props = Omit<TextInputProps, 'className'> & { rotulo: string };
 
 export function Campo({ rotulo, ...props }: Props) {
+  const paleta = usePaleta();
   return (
     <View className="gap-1">
       <Text className="text-legenda text-text-secondary">{rotulo}</Text>

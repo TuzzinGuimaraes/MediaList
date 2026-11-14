@@ -2,7 +2,7 @@ import { fireEvent, screen } from 'expo-router/testing-library';
 
 /** A pílula do Recorte de catálogo no cabeçalho da aba visível. */
 export const pilulaRecorte = (nome?: string) =>
-  screen.findByRole('button', { name: nome ? `Recorte de catálogo: ${nome}` : /^Recorte de catálogo:/ });
+  screen.findByRole('button', { name: nome ? `Catálogo: ${nome}` : /^Catálogo:/ });
 
 /** Abre o menu da pílula e escolhe a opção pelo nome. */
 export async function trocarRecorte(nome: 'Anime & Mangá' | 'Jogos') {

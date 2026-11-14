@@ -4,11 +4,12 @@ import { AccessibilityInfo, Animated, Modal, Pressable, Text, useWindowDimension
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NOMES_RECORTE, type Recorte, useRecorte } from '../recorte/RecorteContext';
-import paleta from '../tema/paleta';
+import { usePaleta } from '../prototipo/PrototipoContext';
 import { useReduzirMovimento } from '../tema/movimento';
 
 const RECORTES: Recorte[] = ['animanga', 'jogos'];
-const ROTULO = 'Recorte de catálogo';
+// PROTÓTIPO (ticket 29): a palavra Recorte some da tela; o leitor de tela diz "Catálogo".
+const ROTULO = 'Catálogo';
 const ABRIR_MS = 150;
 const FECHAR_MS = 100;
 
@@ -19,6 +20,7 @@ type Ancora = { topo: number; direita: number };
  * Abre um menu ancorado com as duas opções; só troca ao escolher a outra.
  */
 export function SeletorRecorte() {
+  const paleta = usePaleta();
   const { recorte, destino, escolher } = useRecorte();
   const reduzir = useReduzirMovimento();
   const { width } = useWindowDimensions();
@@ -62,7 +64,7 @@ export function SeletorRecorte() {
         ref={pilula}
         accessibilityRole="button"
         accessibilityLabel={`${ROTULO}: ${NOMES_RECORTE[destino]}`}
-        accessibilityHint="Abre o menu para trocar o Recorte"
+        accessibilityHint="Abre o menu para trocar o catálogo"
         accessibilityState={{ expanded: aberto }}
         onPress={abrir}
         hitSlop={4}

@@ -9,7 +9,7 @@ import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela'
 import { Opcoes } from '@/components/Opcoes';
 import { NOMES_TIPO } from '@/dominio/estadoConsumo';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
-import paleta from '@/tema/paleta';
+import { usePaleta } from '@/prototipo/PrototipoContext';
 
 const textos = {
   busca: 'Buscar por título',
@@ -44,6 +44,7 @@ function useValorAtrasado<T>(valor: T, ms: number): T {
 }
 
 export default function Explorar() {
+  const paleta = usePaleta();
   const { recorte } = useRecorte();
   const tipos = TIPOS_DO_RECORTE[recorte];
   const [tipoEscolhido, setTipoEscolhido] = useState<TipoMidia>(tipos[0]);

@@ -6,7 +6,7 @@ import type { ItemLista } from '../api/tipos';
 import { nomeDoRotulo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import paleta from '../tema/paleta';
+import { usePaleta, useVibrar } from '../prototipo/PrototipoContext';
 import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
@@ -18,13 +18,19 @@ type Props = {
 type PropsPasso = { novo: number | null; icone: 'remove' | 'add'; rotulo: string; mudar(n: number): void };
 
 function BotaoPasso({ novo, icone, rotulo, mudar }: PropsPasso) {
+  const paleta = usePaleta();
+  const vibrar = useVibrar();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={rotulo}
       accessibilityState={{ disabled: novo === null }}
       disabled={novo === null}
-      onPress={() => novo !== null && mudar(novo)}
+      onPress={() => {
+        if (novo === null) return;
+        vibrar();
+        mudar(novo);
+      }}
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       className="h-8 w-9 items-center justify-center active:opacity-60"
     >
@@ -57,6 +63,7 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
 
 /** Linha do Item na aba Lista. Tocar abre o editor; o stepper muda o Progresso direto. */
 export function LinhaItem({ item, editar, mudarProgresso }: Props) {
+  const paleta = usePaleta();
   const titulo = tituloDaMidia(item);
   const nota = item.nota_usuario != null ? String(item.nota_usuario) : null;
   return (

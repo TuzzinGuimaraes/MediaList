@@ -7,7 +7,7 @@ import { mensagemDeErro } from '../api/erros';
 import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
 import { dataDoTexto, textoDaData } from '../dominio/datas';
-import { estadoDe, NOMES_ESTADO, rotulosDoTipo } from '../dominio/estadoConsumo';
+import { estadoDe, NOMES_ESTADO, rotulosDoTipo, type TipoMidia } from '../dominio/estadoConsumo';
 import {
   type EdicaoItem,
   type FormularioItem,
@@ -19,7 +19,8 @@ import {
   validarItem,
 } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import paleta from '../tema/paleta';
+import { usePaleta, useVibrar } from '../prototipo/PrototipoContext';
+import { corDoEstado } from '../prototipo/PrototipoSelos';
 import { BottomSheet } from './BottomSheet';
 import { Botao } from './Botao';
 
@@ -27,9 +28,9 @@ const textos = {
   editor: 'Editor do Item de lista',
   adicionar: 'Adicionar à Lista',
   editar: 'Editar Item da Lista',
-  estado: 'Estado de consumo',
+  // PROTÓTIPO (ticket 29): nomes só na tela; o código segue com Estado de consumo e Recontagem.
+  estado: 'Status',
   nota: 'Nota pessoal',
-  recontagem: 'Recontagem',
   inicio: 'Início',
   conclusao: 'Conclusão',
   data: 'dd/mm/aaaa',
@@ -53,7 +54,11 @@ type Props = {
   aoFechar: () => void;
 };
 
+/** Recontagem na tela: "Reassistido N×" / "Relido N×" / "Rejogado N×". */
+const NOME_RECONTAGEM: Record<TipoMidia, string> = { anime: 'Reassistido', manga: 'Relido', jogo: 'Rejogado' };
+
 function CampoCurto({ rotulo, ...props }: Omit<TextInputProps, 'className'> & { rotulo: string }) {
+  const paleta = usePaleta();
   return (
     // Rótulo em até duas linhas, alinhado por baixo: os campos lado a lado ficam na mesma altura.
     <View className="flex-1 justify-end gap-1">
@@ -127,13 +132,18 @@ function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
 type PropsPasso = { icone: 'remove' | 'add'; rotulo: string; desativado?: boolean; aoTocar(): void };
 
 function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) {
+  const paleta = usePaleta();
+  const vibrar = useVibrar();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={rotulo}
       accessibilityState={{ disabled: desativado }}
       disabled={desativado}
-      onPress={aoTocar}
+      onPress={() => {
+        vibrar();
+        aoTocar();
+      }}
       hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       className="h-10 w-10 items-center justify-center active:opacity-60"
     >
@@ -143,29 +153,31 @@ function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) 
 }
 
 /** Recontagem com − e + (mínimo 0), no visual do stepper do Progresso da Lista. */
-function ContadorRecontagem({ valor, mudar }: { valor: number; mudar(n: number): void }) {
+function ContadorRecontagem({ tipo, valor, mudar }: { tipo: TipoMidia; valor: number; mudar(n: number): void }) {
+  const nome = NOME_RECONTAGEM[tipo] ?? 'Recontagem';
   return (
     <View className="flex-1 justify-end gap-1">
       <Text numberOfLines={2} className="text-legenda text-text-secondary">
-        {textos.recontagem}
+        {nome}
       </Text>
       <View className="flex-row items-center justify-between rounded-full border border-dark-border bg-dark-tertiary">
-        <BotaoPasso icone="remove" rotulo={`Diminuir ${textos.recontagem}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
+        <BotaoPasso icone="remove" rotulo={`Diminuir ${nome}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
         <Text
-          accessibilityLabel={`${textos.recontagem}: ${valor}`}
+          accessibilityLabel={`${nome}: ${valor}`}
           accessibilityLiveRegion="polite"
           className="text-campo font-semibold text-text-bright"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {valor}
+          {valor}×
         </Text>
-        <BotaoPasso icone="add" rotulo={`Aumentar ${textos.recontagem}`} aoTocar={() => mudar(valor + 1)} />
+        <BotaoPasso icone="add" rotulo={`Aumentar ${nome}`} aoTocar={() => mudar(valor + 1)} />
       </View>
     </View>
   );
 }
 
 function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'heart' | 'lock-closed'; ativo: boolean; mudar(): void }) {
+  const paleta = usePaleta();
   return (
     <Pressable
       accessibilityRole="switch"
@@ -197,6 +209,8 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
   const remover = useRemoverItem();
+  const paleta = usePaleta();
+  const vibrar = useVibrar();
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
@@ -208,6 +222,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await salvar.mutateAsync({ idMidia: midia.id_midia, idLista: item?.id_lista, dados: resultado.dados });
+      vibrar('sucesso');
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -219,6 +234,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await remover.mutateAsync({ idMidia: midia.id_midia, idLista: item.id_lista });
+      vibrar('sucesso');
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -281,18 +297,22 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
             const estado = estadoDe(rotulo, tipo);
             const ativo = form.status_consumo === rotulo;
             const nome = estado ? NOMES_ESTADO[estado] : rotulo;
+            // PROTÓTIPO (ticket 29): o chip ativo ganha a cor dessaturada do Status.
+            const cor = estado ? corDoEstado(estado, paleta) : paleta['marca-texto'];
             return (
               <Pressable
                 key={rotulo}
                 accessibilityRole="radio"
                 accessibilityLabel={nome}
                 accessibilityState={{ checked: ativo }}
-                onPress={() => mudar('status_consumo')(rotulo)}
-                className={`min-h-[40px] justify-center rounded-full border px-3 py-1.5 ${
-                  ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border'
-                }`}
+                onPress={() => {
+                  vibrar();
+                  mudar('status_consumo')(rotulo);
+                }}
+                className="min-h-[40px] justify-center rounded-full border border-dark-border px-3 py-1.5"
+                style={ativo ? { borderColor: cor, backgroundColor: `${cor}26` } : undefined}
               >
-                <Text className={`text-corpo font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
+                <Text className={`text-corpo font-semibold ${ativo ? '' : 'text-text-secondary'}`} style={ativo ? { color: cor } : undefined}>
                   {nome}
                 </Text>
               </Pressable>
@@ -309,7 +329,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           keyboardType="number-pad"
         />
         <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 10" />
-        <ContadorRecontagem valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
+        <ContadorRecontagem tipo={tipo} valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
       </View>
 
       <View className="flex-row gap-2">

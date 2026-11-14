@@ -1,10 +1,11 @@
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { ErroRede, mensagemDeErro } from '../api/erros';
-import paleta from '../tema/paleta';
+import { usePaleta } from '../prototipo/PrototipoContext';
 import { Botao } from './Botao';
 
 export function Carregando() {
+  const paleta = usePaleta();
   return (
     <View className="flex-1 items-center justify-center bg-dark-primary">
       <ActivityIndicator color={paleta.accent.blue} accessibilityLabel="Carregando" />

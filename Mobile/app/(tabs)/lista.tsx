@@ -11,7 +11,7 @@ import { Opcoes } from '@/components/Opcoes';
 import { contarPorEstado, type EstadoConsumo, NOMES_ESTADO } from '@/dominio/estadoConsumo';
 import { estadosDaLista, itensDoEstado } from '@/dominio/itemLista';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
-import paleta from '@/tema/paleta';
+import { usePaleta } from '@/prototipo/PrototipoContext';
 
 const textos = {
   abas: 'Estados de consumo',
@@ -20,6 +20,7 @@ const textos = {
 };
 
 export default function Lista() {
+  const paleta = usePaleta();
   const { recorte } = useRecorte();
   const tipos = TIPOS_DO_RECORTE[recorte];
   const lista = useLista();
