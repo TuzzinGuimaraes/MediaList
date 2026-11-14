@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+@import './tema.gerado.css';
+
+@custom-variant claro (&:where(.claro, .claro *));
+
+html,
+body {
+  font-family: var(--font-sans);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+}
+
+/* Fileiras roláveis sem barra visível; as setas do hover rolam. */
+.sem-barra {
+  scrollbar-width: none;
+}
+.sem-barra::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

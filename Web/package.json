@@ -1,0 +1,32 @@
+{
+  "name": "medialist-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "PROTÓTIPO descartável do web novo (ticket 19): variantes de layout de desktop.",
+  "scripts": {
+    "tema": "node scripts/gerar-tema.mjs",
+    "predev": "npm run tema",
+    "dev": "vite --port 3006 --strictPort",
+    "prebuild": "npm run tema",
+    "build": "tsc -b && vite build",
+    "tipos": "npm run tema && tsc -b"
+  },
+  "dependencies": {
+    "@fontsource/outfit": "^5.3.0",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-router": "^1.170.46",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~5.9",
+    "vite": "^8.3.8"
+  }
+}
