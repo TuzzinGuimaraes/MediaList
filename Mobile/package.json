@@ -59,7 +59,8 @@
     ],
     "clearMocks": true,
     "moduleNameMapper": {
-      "\\.css$": "<rootDir>/src/testes/cssVazio.js"
+      "\\.css$": "<rootDir>/src/testes/cssVazio.js",
+      "^react-native-reanimated/mock$": "<rootDir>/src/testes/reanimadoSimulado.js"
     }
   }
 }
