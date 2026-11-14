@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from contrato import Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
 
@@ -50,10 +50,7 @@ class NovoItemLista(CamposDoItem):
     """Corpo de POST /lista e /lista/adicionar."""
 
     id_midia: Id
-    # `status` é o nome que o ListEditorModal do web ainda manda; fica fora do documento.
-    status_consumo: str = Field(
-        validation_alias=AliasChoices('status_consumo', 'status'), description='Rótulo de estado do Tipo da Mídia',
-    )
+    status_consumo: str = Field(description='Rótulo de estado do Tipo da Mídia')
 
 
 class EdicaoItemLista(CamposDoItem):

@@ -158,19 +158,19 @@ def test_post_lista_entrega_ao_modulo_so_os_campos_enviados(client, auth_headers
     })]
 
 
-def test_post_lista_ainda_aceita_status_do_web_mas_nao_os_outros_apelidos(client, auth_headers, modulo):
-    """`status` tem remetente (ListEditorModal do web); `id_anime` e companhia, não."""
+@pytest.mark.parametrize('corpo', [
+    {'id_midia': 'MID-1', 'status': 'assistindo'},
+    {'id_anime': 'MID-1', 'status_visualizacao': 'assistindo'},
+])
+def test_post_lista_nao_aceita_apelidos(client, auth_headers, modulo, corpo):
+    """Só `id_midia` e `status_consumo`: `status` (o último apelido, do web) também saiu."""
     falso = modulo(Resultado(OK, id_lista='LST-10'))
 
-    aceito = client.post('/api/lista', headers=auth_headers, json={'id_midia': 'MID-1', 'status': 'assistindo'})
-    recusado = client.post('/api/lista', headers=auth_headers, json={
-        'id_anime': 'MID-1', 'status_visualizacao': 'assistindo',
-    })
+    recusado = client.post('/api/lista', headers=auth_headers, json=corpo)
 
-    assert aceito.status_code == 201
-    assert falso.chamadas == [('adicionar', 'USR-TEST-0001', {'id_midia': 'MID-1', 'status_consumo': 'assistindo'})]
     assert recusado.status_code == 400
-    assert recusado.get_json()['detalhes'] == {'id_midia': 'Campo obrigatório', 'status_consumo': 'Campo obrigatório'}
+    assert 'status_consumo' in recusado.get_json()['detalhes']
+    assert falso.chamadas == []
 
 
 def test_post_lista_traduz_invalido_para_400_no_envelope(client, auth_headers, modulo):

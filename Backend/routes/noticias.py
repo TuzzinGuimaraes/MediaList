@@ -9,16 +9,16 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar, consultar_um
-from contrato import AUTENTICADO, Pagina, contrato, montar_pagina
+from contrato import AUTENTICADO, ConsultaPaginada, Pagina, contrato, montar_pagina
 from decorators import permission_required
-from schemas.noticias import ConsultaNoticias, CorpoNoticia, Noticia, NoticiaCriada
+from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
 noticias_bp = Blueprint('noticias', __name__)
 
 
 @noticias_bp.route('', methods=['GET'])
 @contrato.validate(resp=Response(HTTP_200=Pagina[Noticia]), tags=['noticias'])
-def listar_noticias(query: ConsultaNoticias):
+def listar_noticias(query: ConsultaPaginada):
     """Uma página das Notícias, mais recentes primeiro."""
     noticias = consultar(
         """

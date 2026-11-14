@@ -3,25 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints
 
-from contrato import ConsultaPaginada, Id, Instante, VazioComoAusente
-from parametros import POR_PAGINA_MAX
-
-
-class ConsultaNoticias(ConsultaPaginada):
-    limite: Annotated[int | None, VazioComoAusente, Field(
-        default=None, ge=1, deprecated=True,
-        description='Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence',
-    )]
-
-    @model_validator(mode='after')
-    def _limite_como_por_pagina(self):
-        # Pelo __dict__: o acesso por atributo a campo `deprecated` emite DeprecationWarning.
-        limite = self.__dict__['limite']
-        if limite is not None and 'por_pagina' not in self.model_fields_set:
-            self.por_pagina = min(limite, POR_PAGINA_MAX)
-        return self
+from contrato import Id, Instante
 
 
 class Noticia(BaseModel):

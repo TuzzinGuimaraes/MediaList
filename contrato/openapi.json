@@ -636,23 +636,21 @@
         "title": "ConsultaMidias",
         "type": "object"
       },
-      "ConsultaNoticias": {
+      "ConsultaNotificacoes": {
         "properties": {
-          "limite": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "deprecated": true,
-            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-            "ge": 1,
-            "title": "Limite"
-          },
+          "nao_lidas": {
+            "default": false,
+            "description": "Só as não lidas",
+            "title": "Nao Lidas",
+            "type": "boolean"
+          }
+        },
+        "title": "ConsultaNotificacoes",
+        "type": "object"
+      },
+      "ConsultaPaginada": {
+        "description": "`?pagina=&por_pagina=`, com as regras de `parametros.ler_paginacao`.\n\nAcima do teto, `por_pagina` vira o teto (não é erro). Herde para somar filtros.",
+        "properties": {
           "pagina": {
             "default": 1,
             "minimum": 1,
@@ -667,19 +665,7 @@
             "type": "integer"
           }
         },
-        "title": "ConsultaNoticias",
-        "type": "object"
-      },
-      "ConsultaNotificacoes": {
-        "properties": {
-          "nao_lidas": {
-            "default": false,
-            "description": "Só as não lidas",
-            "title": "Nao Lidas",
-            "type": "boolean"
-          }
-        },
-        "title": "ConsultaNotificacoes",
+        "title": "ConsultaPaginada",
         "type": "object"
       },
       "ConsultaPopulares": {
@@ -6927,27 +6913,6 @@
               "minimum": 1,
               "title": "Por Pagina",
               "type": "integer"
-            }
-          },
-          {
-            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-            "in": "query",
-            "name": "limite",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "deprecated": true,
-              "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-              "ge": 1,
-              "title": "Limite"
             }
           }
         ],

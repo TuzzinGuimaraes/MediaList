@@ -855,15 +855,22 @@ export interface components {
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
         };
-        /** ConsultaNoticias */
-        ConsultaNoticias: {
+        /** ConsultaNotificacoes */
+        ConsultaNotificacoes: {
             /**
-             * Limite
-             * @deprecated
-             * @description Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence
-             * @default null
+             * Nao Lidas
+             * @description Só as não lidas
+             * @default false
              */
-            limite?: number | null;
+            nao_lidas?: boolean;
+        };
+        /**
+         * ConsultaPaginada
+         * @description `?pagina=&por_pagina=`, com as regras de `parametros.ler_paginacao`.
+         *
+         *     Acima do teto, `por_pagina` vira o teto (não é erro). Herde para somar filtros.
+         */
+        ConsultaPaginada: {
             /**
              * Pagina
              * @default 1
@@ -875,15 +882,6 @@ export interface components {
              * @default 20
              */
             por_pagina?: number;
-        };
-        /** ConsultaNotificacoes */
-        ConsultaNotificacoes: {
-            /**
-             * Nao Lidas
-             * @description Só as não lidas
-             * @default false
-             */
-            nao_lidas?: boolean;
         };
         /** ConsultaPopulares */
         ConsultaPopulares: {
@@ -3649,8 +3647,6 @@ export interface operations {
                 pagina?: number;
                 /** @description Acima de 50 vira 50 */
                 por_pagina?: number;
-                /** @description Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence */
-                limite?: number | null;
             };
             header?: never;
             path?: never;
