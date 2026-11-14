@@ -30,7 +30,7 @@ const HomePage = () => {
             const requests = [
                 apiCall('/lista').catch(() => ({ lista: [] })),
                 ...tipos.map(tipo =>
-                    apiCall(`/midias?tipo=${tipo}&por_pagina=15&ordem=nota_media`).catch(() => ({ midias: [] }))
+                    apiCall(`/midias?tipo=${tipo}&por_pagina=15&ordem=nota_media`).catch(() => ({ itens: [] }))
                 ),
             ];
 
@@ -38,7 +38,7 @@ const HomePage = () => {
 
             setLista(listaData.lista || []);
 
-            const all = midiasResults.flatMap(r => r.midias || []);
+            const all = midiasResults.flatMap(r => r.itens || []);
             const sorted = [...all].sort((a, b) => (b?.nota_media || 0) - (a?.nota_media || 0));
             const byDate = [...all].sort((a, b) => new Date(b?.data_lancamento || 0) - new Date(a?.data_lancamento || 0));
 

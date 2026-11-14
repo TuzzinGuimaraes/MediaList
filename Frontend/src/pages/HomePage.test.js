@@ -42,9 +42,9 @@ describe('HomePage', () => {
                     return Promise.resolve({ lista: [{ id_lista: 'L1', tipo: 'anime', status_consumo: 'assistindo', titulo_portugues: 'Anime Progress', progresso_atual: 2, progresso_total: 12 }] });
                 }
                 if (endpoint.startsWith('/midias?tipo=anime')) {
-                    return Promise.resolve({ midias: [{ id_midia: 'MID-A', titulo_portugues: 'Anime Top', nota_media: 9, data_lancamento: '2026-04-01' }] });
+                    return Promise.resolve({ itens: [{ id_midia: 'MID-A', titulo_portugues: 'Anime Top', nota_media: 9, data_lancamento: '2026-04-01' }], pagina: 1, por_pagina: 15, total: 1 });
                 }
-                return Promise.resolve({ midias: [{ id_midia: 'MID-M', titulo_portugues: 'Manga Top', nota_media: 8, data_lancamento: '2026-03-01' }] });
+                return Promise.resolve({ itens: [{ id_midia: 'MID-M', titulo_portugues: 'Manga Top', nota_media: 8, data_lancamento: '2026-03-01' }], pagina: 1, por_pagina: 15, total: 1 });
             }),
         });
 
@@ -65,7 +65,7 @@ describe('HomePage', () => {
             sessaoConfig: { tipos: ['jogo'] },
         });
         useApi.mockReturnValue({
-            apiCall: jest.fn().mockResolvedValue({ lista: [], midias: [] }),
+            apiCall: jest.fn().mockResolvedValue({ lista: [], itens: [], pagina: 1, por_pagina: 15, total: 0 }),
         });
 
         render(
@@ -83,7 +83,7 @@ describe('HomePage', () => {
             if (endpoint === '/lista') {
                 return Promise.resolve({ lista: [{ id_lista: 'L1', tipo: 'anime', status_consumo: 'assistindo', titulo_portugues: 'Anime Progress', progresso_atual: 2, progresso_total: 12 }] });
             }
-            return Promise.resolve({ midias: [] });
+            return Promise.resolve({ itens: [], pagina: 1, por_pagina: 15, total: 0 });
         });
         useSession.mockReturnValue({
             sessaoConfig: { tipos: ['anime'] },
