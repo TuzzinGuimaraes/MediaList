@@ -7,6 +7,7 @@ import {
   itensDoEstado,
   mudarEdicao,
   passoDeProgresso,
+  proporcaoDoFio,
   rotuloInicial,
   temProgresso,
   totalDoItem,
@@ -49,6 +50,28 @@ describe('Progresso', () => {
 
   it('jogo não tem passo de Progresso', () => {
     expect(passoDeProgresso({ ...jogo, progresso_total: null, progresso_atual: 10 }, 1)).toBeNull();
+  });
+});
+
+describe('fio de progresso', () => {
+  it('é a fração do Progresso sobre o total', () => {
+    expect(proporcaoDoFio({ ...anime, status_consumo: 'assistindo', progresso_atual: 7 })).toBe(0.25);
+  });
+
+  it('fica cheio em Concluído e em Platinado, mesmo sem total', () => {
+    expect(proporcaoDoFio({ ...anime, status_consumo: 'completo', progresso_atual: 3 })).toBe(1);
+    expect(proporcaoDoFio({ ...jogo, status_consumo: 'zerado', progresso_atual: 40 })).toBe(1);
+    expect(proporcaoDoFio({ ...jogo, status_consumo: 'platinado', progresso_atual: 80 })).toBe(1);
+  });
+
+  it('sem total conhecido é um traço curto (null)', () => {
+    expect(proporcaoDoFio({ ...manga, numero_capitulos: null, status_consumo: 'lendo', progresso_atual: 12 })).toBeNull();
+    expect(proporcaoDoFio({ ...jogo, status_consumo: 'jogando', progresso_atual: 15 })).toBeNull();
+  });
+
+  it('nunca passa do total; sem Progresso fica vazio', () => {
+    expect(proporcaoDoFio({ ...anime, progresso_total: 24, status_consumo: 'assistindo', progresso_atual: 30 })).toBe(1);
+    expect(proporcaoDoFio({ ...anime, status_consumo: 'planejado', progresso_atual: null })).toBe(0);
   });
 });
 
@@ -283,7 +306,7 @@ describe('formulário do editor', () => {
   });
 
   it.each([
-    [{ status_consumo: 'platinado' }, 'Escolha um Estado de consumo válido para o Tipo.'],
+    [{ status_consumo: 'platinado' }, 'Escolha um Status válido para o Tipo.'],
     [{ progresso: '29' }, 'O Progresso vai de 0 a 28.'],
     [{ progresso: '-1' }, 'O Progresso vai de 0 a 28.'],
     [{ progresso: '1.5' }, 'O Progresso vai de 0 a 28.'],
@@ -291,7 +314,7 @@ describe('formulário do editor', () => {
     [{ nota: '8,55' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ nota: '-1' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ nota: 'abc' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
-    [{ recontagem: '-2' }, 'A Recontagem é um número inteiro a partir de 0.'],
+    [{ recontagem: '-2' }, 'Reassistido: use um número inteiro a partir de 0.'],
     [{ inicio: '10/10/2026', conclusao: '09/10/2026' }, 'A conclusão não pode ser antes do início.'],
   ])('recusa %o', (mudanca, erro) => {
     expect(validarItem({ ...valido, ...mudanca }, { tipo: 'anime', total: 28 })).toEqual({ ok: false, erro });
