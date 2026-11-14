@@ -7,6 +7,8 @@ rótulo só é válido para o tipo a que pertence — um anime nunca está `plat
 """
 from __future__ import annotations
 
+from typing import Literal
+
 PLANEJADO = 'planejado'
 EM_PROGRESSO = 'em_progresso'
 PAUSADO = 'pausado'
@@ -107,3 +109,10 @@ def erro_de_rotulo(rotulo: str | None, tipo: str | None) -> str | None:
 
     validos = ', '.join(sorted(rotulos_do_tipo(tipo)))
     return f"Status '{rotulo}' não se aplica a mídia do tipo '{tipo}'. Válidos: {validos}"
+
+
+#: Os Rótulos de estado no contrato da API (enum no OpenAPI); o mesmo conjunto de `ROTULOS_VALIDOS`.
+RotuloDeEstado = Literal[
+    'planejado', 'assistindo', 'lendo', 'na_fila', 'jogando', 'pausado', 'abandonado', 'completo', 'lido', 'zerado',
+    'platinado',
+]

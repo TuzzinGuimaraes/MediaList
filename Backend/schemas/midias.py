@@ -16,6 +16,7 @@ from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
 from contrato import ConsultaPaginada, Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
 from parametros import POR_PAGINA_MAX
+from schemas.estado_consumo import RotuloDeEstado
 
 StatusAnime = Literal['em_exibicao', 'finalizado', 'aguardando', 'cancelado']
 StatusManga = Literal['em_publicacao', 'finalizado', 'aguardando', 'cancelado', 'hiato']
@@ -144,8 +145,9 @@ class CorpoAtualizacao(BaseModel):
 # Saída
 # ============================================
 
-class Midia(BaseModel):
-    """A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos."""
+class CamposDaMidia(BaseModel):
+    """Os campos da Mídia que saem em toda parte: em `Midia` e na parte da Mídia de cada Item
+    de lista (`ItemLista`). Os de outro Tipo vêm nulos."""
 
     id_midia: Id
     tipo: TipoDeMidia
@@ -160,7 +162,6 @@ class Midia(BaseModel):
     origem_nota: OrigemNota | None
     poster_url: str | None
     banner_url: str | None
-    trailer_url: str | None
     status_catalogo: StatusAnime | StatusManga | StatusJogo | None = Field(description='O status do Tipo da Mídia')
     generos: str | None = Field(description="'Ação, Drama'; `generos_lista` é o mesmo já separado")
     generos_lista: list[str]
@@ -169,8 +170,6 @@ class Midia(BaseModel):
     # anime
     status_anime: StatusAnime | None
     numero_episodios: int | None
-    duracao_episodio: int | None = Field(description='Minutos')
-    classificacao_etaria: str | None
     estudio: str | None
     fonte_original: str | None
     # mangá
@@ -178,9 +177,6 @@ class Midia(BaseModel):
     numero_capitulos: int | None
     numero_volumes: int | None
     autor: str | None
-    artista: str | None = Field(validation_alias='manga_artista')
-    publicadora_original: str | None
-    revista: str | None
     demografia: Demografia | None
     # jogo
     desenvolvedor: str | None
@@ -188,6 +184,20 @@ class Midia(BaseModel):
     plataformas: str | None = Field(description="'PC, Switch'")
     status_jogo: StatusJogo | None
     modo_jogo: ModoJogo | None
+
+
+class Midia(CamposDaMidia):
+    """A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos."""
+
+    trailer_url: str | None
+    # anime
+    duracao_episodio: int | None = Field(description='Minutos')
+    classificacao_etaria: str | None
+    # mangá
+    artista: str | None = Field(validation_alias='manga_artista')
+    publicadora_original: str | None
+    revista: str | None
+    # jogo
     classificacao: str | None
 
 
@@ -229,7 +239,7 @@ class RespostaPopulares(BaseModel):
 
 
 class ContagemPorRotulo(BaseModel):
-    status_consumo: str = Field(description='Rótulo de estado')
+    status_consumo: RotuloDeEstado
     total: int
 
 

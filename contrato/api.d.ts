@@ -924,9 +924,9 @@ export interface components {
         ContagemPorRotulo: {
             /**
              * Status Consumo
-             * @description Rótulo de estado
+             * @enum {string}
              */
-            status_consumo: string;
+            status_consumo: "planejado" | "assistindo" | "lendo" | "na_fila" | "jogando" | "pausado" | "abandonado" | "completo" | "lido" | "zerado" | "platinado";
             /** Total */
             total: number;
         };
@@ -1382,7 +1382,7 @@ export interface components {
         };
         /**
          * ItemLista
-         * @description Um Item de GET /lista: a Mídia mais os campos do Item.
+         * @description Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item.
          */
         ItemLista: {
             /** Autor */
@@ -1408,7 +1408,7 @@ export interface components {
             /** Data Lancamento */
             data_lancamento: string | null;
             /** Demografia */
-            demografia: string | null;
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
             /** Desenvolvedor */
             desenvolvedor: string | null;
             /** Estudio */
@@ -1419,7 +1419,7 @@ export interface components {
             fonte_original: string | null;
             /**
              * Generos
-             * @description "Aventura, Drama"; `generos_lista` é o mesmo, separado
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
              */
             generos: string | null;
             /** Generos Lista */
@@ -1429,12 +1429,15 @@ export interface components {
             /** Id Midia */
             id_midia: string;
             /** Modo Jogo */
-            modo_jogo: string | null;
-            /** Nota Fonte */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
             nota_fonte: number | null;
             /**
              * Nota Media
-             * @description Média das Avaliações; null sem elas
+             * @description Média das Avaliações; nula sem elas
              */
             nota_media: number | null;
             /**
@@ -1452,7 +1455,7 @@ export interface components {
             origem_nota: ("AniList" | "RAWG") | null;
             /**
              * Plataformas
-             * @description "PC, Switch, PS4"
+             * @description 'PC, Switch'
              */
             plataformas: string | null;
             /** Poster Url */
@@ -1466,35 +1469,31 @@ export interface components {
              * @description Total copiado da Mídia na criação do Item
              */
             progresso_total: number | null;
-            /**
-             * Progresso Total Padrao
-             * @description Total da Mídia; null no jogo
-             */
-            progresso_total_padrao: number | null;
             /** Publicadora */
             publicadora: string | null;
             /** Sinopse */
             sinopse: string | null;
             /** Status Anime */
-            status_anime: string | null;
-            /** Status Catalogo */
-            status_catalogo: string | null;
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /**
              * Status Consumo
-             * @description Rótulo de estado
+             * @enum {string}
              */
-            status_consumo: string;
+            status_consumo: "planejado" | "assistindo" | "lendo" | "na_fila" | "jogando" | "pausado" | "abandonado" | "completo" | "lido" | "zerado" | "platinado";
             /** Status Jogo */
-            status_jogo: string | null;
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /** Status Manga */
-            status_manga: string | null;
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
             /**
              * Tipo
              * @enum {string}
              */
             tipo: "anime" | "manga" | "jogo";
-            /** Tipo Label */
-            tipo_label: string;
             /** Titulo Ingles */
             titulo_ingles: string | null;
             /** Titulo Original */
@@ -1503,17 +1502,23 @@ export interface components {
             titulo_portugues: string | null;
             /**
              * Total Avaliacoes
-             * @description null quando a Mídia não tem Avaliações
+             * @description Nulo quando a Mídia não tem Avaliações
              */
             total_avaliacoes: number | null;
-            /** Total Concluidos */
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
             total_concluidos: number;
             /**
              * Total Rewatches
              * @description Recontagem
              */
             total_rewatches: number;
-            /** Total Usuarios */
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
             total_usuarios: number;
         };
         /**

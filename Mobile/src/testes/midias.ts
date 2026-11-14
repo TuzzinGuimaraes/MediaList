@@ -119,15 +119,12 @@ export function fullmetal(dados: Partial<MidiaDetalhe> = {}): MidiaDetalhe {
   });
 }
 
-const NOME_DO_TIPO = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' } as const;
-
 /** Item de GET /lista: a parte da Mídia que o Item traz mais os campos do Item. */
 export function itemDaLista(midia: MidiaDetalhe, dados: Partial<ItemLista> = {}): ItemLista {
   const total = midia.tipo === 'anime' ? midia.numero_episodios : midia.tipo === 'manga' ? midia.numero_capitulos : null;
   return {
     id_midia: midia.id_midia,
     tipo: midia.tipo,
-    tipo_label: NOME_DO_TIPO[midia.tipo],
     titulo_original: midia.titulo_original,
     titulo_portugues: midia.titulo_portugues,
     titulo_ingles: midia.titulo_ingles,
@@ -158,7 +155,6 @@ export function itemDaLista(midia: MidiaDetalhe, dados: Partial<ItemLista> = {})
     desenvolvedor: midia.desenvolvedor,
     publicadora: midia.publicadora,
     modo_jogo: midia.modo_jogo,
-    progresso_total_padrao: total,
     id_lista: `LST-${midia.id_midia}`,
     status_consumo: 'planejado',
     progresso_atual: 0,

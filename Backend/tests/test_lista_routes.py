@@ -76,12 +76,23 @@ def test_get_lista_serve_o_item_no_modelo_sem_os_apelidos_legados(client, auth_h
     item = client.get('/api/lista', headers=auth_headers).get_json()['lista'][0]
 
     for legado in ('status_visualizacao', 'episodios_assistidos', 'codigo_lista', 'id_anime', 'codigo_anime',
-                   'codigo_midia', 'anime_trailer_url', 'trailer_url', 'unidade_progresso', 'rawg_slug'):
+                   'codigo_midia', 'anime_trailer_url', 'trailer_url', 'unidade_progresso', 'rawg_slug',
+                   'tipo_label', 'progresso_total_padrao'):
         assert legado not in item
     assert (item['nota_usuario'], item['nota_fonte'], item['favorito']) == (8.5, 8.9, True)
     assert (item['data_inicio'], item['data_lancamento'], item['data_conclusao']) == ('2026-10-01', '2023-09-29', None)
     assert item['data_adicao'] == '2026-11-06T10:00:00Z'
     assert item['generos_lista'] == ['Aventura', 'Drama']
+
+
+@pytest.mark.parametrize('campo, valor', [
+    ('status_anime', 'em_algum_lugar'), ('demografia', 'adulto'), ('origem_nota', 'IMDb'), ('status_consumo', 'vendo'),
+])
+def test_get_lista_tipa_a_midia_do_item_com_os_enums_da_midia(client, auth_headers, listar, campo, valor):
+    """A Mídia do Item usa os mesmos enums da Mídia de /midias; fora deles, a resposta sai do contrato."""
+    listar([linha_de_item(**{campo: valor})])
+
+    assert client.get('/api/lista', headers=auth_headers).status_code == 500
 
 
 def test_get_lista_recusa_tipo_desconhecido_no_envelope(client, auth_headers, listar):

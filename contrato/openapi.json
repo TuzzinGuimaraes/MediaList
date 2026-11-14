@@ -736,7 +736,19 @@
       "ContagemPorRotulo": {
         "properties": {
           "status_consumo": {
-            "description": "Rótulo de estado",
+            "enum": [
+              "planejado",
+              "assistindo",
+              "lendo",
+              "na_fila",
+              "jogando",
+              "pausado",
+              "abandonado",
+              "completo",
+              "lido",
+              "zerado",
+              "platinado"
+            ],
             "title": "Status Consumo",
             "type": "string"
           },
@@ -1820,7 +1832,7 @@
         "type": "object"
       },
       "ItemLista": {
-        "description": "Um Item de GET /lista: a Mídia mais os campos do Item.",
+        "description": "Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item.",
         "properties": {
           "autor": {
             "anyOf": [
@@ -1904,6 +1916,13 @@
           "demografia": {
             "anyOf": [
               {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
                 "type": "string"
               },
               {
@@ -1958,7 +1977,7 @@
                 "type": "null"
               }
             ],
-            "description": "\"Aventura, Drama\"; `generos_lista` é o mesmo, separado",
+            "description": "'Ação, Drama'; `generos_lista` é o mesmo já separado",
             "title": "Generos"
           },
           "generos_lista": {
@@ -1979,6 +1998,11 @@
           "modo_jogo": {
             "anyOf": [
               {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
                 "type": "string"
               },
               {
@@ -1998,6 +2022,7 @@
                 "type": "null"
               }
             ],
+            "description": "Nota do AniList/RAWG, gravada pela Importação",
             "title": "Nota Fonte"
           },
           "nota_media": {
@@ -2011,7 +2036,7 @@
                 "type": "null"
               }
             ],
-            "description": "Média das Avaliações; null sem elas",
+            "description": "Média das Avaliações; nula sem elas",
             "title": "Nota Media"
           },
           "nota_usuario": {
@@ -2085,7 +2110,7 @@
                 "type": "null"
               }
             ],
-            "description": "\"PC, Switch, PS4\"",
+            "description": "'PC, Switch'",
             "title": "Plataformas"
           },
           "poster_url": {
@@ -2126,18 +2151,6 @@
             "description": "Total copiado da Mídia na criação do Item",
             "title": "Progresso Total"
           },
-          "progresso_total_padrao": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Total da Mídia; null no jogo",
-            "title": "Progresso Total Padrao"
-          },
           "publicadora": {
             "anyOf": [
               {
@@ -2163,6 +2176,12 @@
           "status_anime": {
             "anyOf": [
               {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
                 "type": "string"
               },
               {
@@ -2174,22 +2193,66 @@
           "status_catalogo": {
             "anyOf": [
               {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "description": "O status do Tipo da Mídia",
             "title": "Status Catalogo"
           },
           "status_consumo": {
-            "description": "Rótulo de estado",
+            "enum": [
+              "planejado",
+              "assistindo",
+              "lendo",
+              "na_fila",
+              "jogando",
+              "pausado",
+              "abandonado",
+              "completo",
+              "lido",
+              "zerado",
+              "platinado"
+            ],
             "title": "Status Consumo",
             "type": "string"
           },
           "status_jogo": {
             "anyOf": [
               {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
                 "type": "string"
               },
               {
@@ -2201,6 +2264,13 @@
           "status_manga": {
             "anyOf": [
               {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
                 "type": "string"
               },
               {
@@ -2216,10 +2286,6 @@
               "jogo"
             ],
             "title": "Tipo",
-            "type": "string"
-          },
-          "tipo_label": {
-            "title": "Tipo Label",
             "type": "string"
           },
           "titulo_ingles": {
@@ -2257,10 +2323,11 @@
                 "type": "null"
               }
             ],
-            "description": "null quando a Mídia não tem Avaliações",
+            "description": "Nulo quando a Mídia não tem Avaliações",
             "title": "Total Avaliacoes"
           },
           "total_concluidos": {
+            "description": "Itens de lista em Concluído ou Platinado",
             "title": "Total Concluidos",
             "type": "integer"
           },
@@ -2270,6 +2337,7 @@
             "type": "integer"
           },
           "total_usuarios": {
+            "description": "Usuários com a Mídia na Lista pessoal (Popularidade)",
             "title": "Total Usuarios",
             "type": "integer"
           }
@@ -2277,7 +2345,6 @@
         "required": [
           "id_midia",
           "tipo",
-          "tipo_label",
           "titulo_original",
           "titulo_ingles",
           "titulo_portugues",
@@ -2290,7 +2357,6 @@
           "poster_url",
           "banner_url",
           "status_catalogo",
-          "progresso_total_padrao",
           "generos",
           "generos_lista",
           "total_usuarios",
@@ -2304,10 +2370,10 @@
           "numero_volumes",
           "autor",
           "demografia",
-          "status_jogo",
           "desenvolvedor",
           "publicadora",
           "plataformas",
+          "status_jogo",
           "modo_jogo",
           "id_lista",
           "status_consumo",
@@ -2827,7 +2893,6 @@
           "origem_nota",
           "poster_url",
           "banner_url",
-          "trailer_url",
           "status_catalogo",
           "generos",
           "generos_lista",
@@ -2835,23 +2900,24 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
-          "duracao_episodio",
-          "classificacao_etaria",
           "estudio",
           "fonte_original",
           "status_manga",
           "numero_capitulos",
           "numero_volumes",
           "autor",
-          "artista",
-          "publicadora_original",
-          "revista",
           "demografia",
           "desenvolvedor",
           "publicadora",
           "plataformas",
           "status_jogo",
           "modo_jogo",
+          "trailer_url",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "artista",
+          "publicadora_original",
+          "revista",
           "classificacao"
         ],
         "title": "Midia",
@@ -3364,7 +3430,6 @@
           "origem_nota",
           "poster_url",
           "banner_url",
-          "trailer_url",
           "status_catalogo",
           "generos",
           "generos_lista",
@@ -3372,23 +3437,24 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
-          "duracao_episodio",
-          "classificacao_etaria",
           "estudio",
           "fonte_original",
           "status_manga",
           "numero_capitulos",
           "numero_volumes",
           "autor",
-          "artista",
-          "publicadora_original",
-          "revista",
           "demografia",
           "desenvolvedor",
           "publicadora",
           "plataformas",
           "status_jogo",
           "modo_jogo",
+          "trailer_url",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "artista",
+          "publicadora_original",
+          "revista",
           "classificacao",
           "atualizacoes"
         ],

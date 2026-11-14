@@ -12,11 +12,13 @@ nada sobre ele.
 """
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
 from contrato import Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
+from schemas.estado_consumo import RotuloDeEstado
+from schemas.midias import CamposDaMidia
 
 # ============================================
 # Entrada
@@ -70,53 +72,11 @@ class ProgressoItemLista(BaseModel):
 # ============================================
 
 
-class MidiaDoItem(BaseModel):
-    """Os campos da Mídia que vêm em cada Item de lista (os que os clientes leem)."""
-
-    id_midia: Id
-    tipo: TipoDeMidia
-    tipo_label: str
-    titulo_original: str
-    titulo_ingles: str | None
-    titulo_portugues: str | None
-    sinopse: str | None
-    data_lancamento: Data | None
-    nota_media: Nota | None = Field(description='Média das Avaliações; null sem elas')
-    total_avaliacoes: int | None = Field(description='null quando a Mídia não tem Avaliações')
-    nota_fonte: Nota | None
-    origem_nota: Literal['AniList', 'RAWG'] | None
-    poster_url: str | None
-    banner_url: str | None
-    status_catalogo: str | None
-    progresso_total_padrao: int | None = Field(description='Total da Mídia; null no jogo')
-    generos: str | None = Field(description='"Aventura, Drama"; `generos_lista` é o mesmo, separado')
-    generos_lista: list[str]
-    total_usuarios: int
-    total_concluidos: int
-    # anime
-    status_anime: str | None
-    numero_episodios: int | None
-    estudio: str | None
-    fonte_original: str | None
-    # mangá
-    status_manga: str | None
-    numero_capitulos: int | None
-    numero_volumes: int | None
-    autor: str | None
-    demografia: str | None
-    # jogo
-    status_jogo: str | None
-    desenvolvedor: str | None
-    publicadora: str | None
-    plataformas: str | None = Field(description='"PC, Switch, PS4"')
-    modo_jogo: str | None
-
-
-class ItemLista(MidiaDoItem):
-    """Um Item de GET /lista: a Mídia mais os campos do Item."""
+class ItemLista(CamposDaMidia):
+    """Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item."""
 
     id_lista: Id
-    status_consumo: str = Field(description='Rótulo de estado')
+    status_consumo: RotuloDeEstado
     progresso_atual: int | None
     progresso_total: int | None = Field(description='Total copiado da Mídia na criação do Item')
     nota_usuario: Nota | None = Field(description='Nota pessoal')

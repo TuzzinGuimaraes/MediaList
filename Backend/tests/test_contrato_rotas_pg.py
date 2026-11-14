@@ -32,13 +32,13 @@ CHAVES_MIDIA = {
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
 }
 #: Chaves de cada Item de GET /lista (modelo `ItemLista`). Explícitas, e não
-#: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é o modelo `MidiaDoItem`.
+#: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é `CamposDaMidia`, sem os campos só do detalhe.
 CHAVES_ITEM = {
     'autor', 'banner_url', 'data_lancamento', 'demografia', 'desenvolvedor', 'estudio', 'fonte_original',
     'generos', 'generos_lista', 'id_midia', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
-    'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
+    'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url',
     'publicadora', 'sinopse', 'status_anime', 'status_catalogo', 'status_jogo', 'status_manga', 'tipo',
-    'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
+    'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
     'total_usuarios',
     'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio', 'favorito', 'id_lista',
     'nota_usuario', 'privado', 'progresso_atual', 'progresso_total', 'status_consumo', 'total_rewatches',
