@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { rotasDoInicio } from './inicio';
 import { anime } from './midias';
 import { abrirLogado } from './sessao';
 
@@ -114,6 +115,7 @@ describe('Avaliações no detalhe da Mídia', () => {
 
   it('uma Avaliação nova refaz as listagens que ordenam pela Nota média e a Lista', async () => {
     const api = simularFetch({
+      ...rotasDoInicio(),
       ...rotas([]),
       'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: [frieren] } },
       'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [] } },

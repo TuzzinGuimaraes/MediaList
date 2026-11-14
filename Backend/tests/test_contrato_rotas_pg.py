@@ -28,7 +28,7 @@ CHAVES_MIDIA = {
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
     'publicadora', 'publicadora_original', 'rawg_slug', 'revista', 'sinopse', 'status_anime', 'status_catalogo',
     'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues',
-    'total_avaliacoes', 'total_usuarios', 'trailer_url', 'unidade_progresso',
+    'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
 }
 CHAVES_ITEM = CHAVES_MIDIA | {
     'codigo_lista', 'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio',

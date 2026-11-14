@@ -3,6 +3,7 @@ import { fireEvent, screen, within } from 'expo-router/testing-library';
 import { AccessibilityInfo } from 'react-native';
 
 import { simularFetch } from './fetchSimulado';
+import { rotaCarrossel, rotasDoInicio } from './inicio';
 import { anime, jogo, manga, popular } from './midias';
 import { pilulaRecorte, trocarRecorte } from './recorte';
 import { abrirLogado } from './sessao';
@@ -12,8 +13,14 @@ const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal
 const jojo = manga();
 const hollow = jogo();
 
+/** O card da Mídia; ela aparece nos destaques e em Em alta, basta o primeiro. */
+async function card(nome: string) {
+  return (await screen.findAllByRole('link', { name: nome }))[0];
+}
+
 function catalogo() {
   return {
+    ...rotasDoInicio(),
     'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: [frieren, fma] } },
     'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [jojo] } },
     'GET /midias/trending?tipo=jogo&limite=10': { status: 200, corpo: { midias: [hollow] } },
@@ -107,12 +114,12 @@ describe('Início', () => {
     ]);
   });
 
-  it('populares ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
+  it('Top 10 de hoje ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
     simularFetch(catalogo());
 
     await abrirLogado();
 
-    const populares = await screen.findByLabelText('Populares');
+    const populares = await screen.findByLabelText('Top 10 de hoje');
     expect(await within(populares).findAllByRole('link')).toHaveLength(2);
     expect(within(populares).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
       'JoJo no Kimyou na Bouken, Mangá',
@@ -132,7 +139,8 @@ describe('Início', () => {
     expect(within(emAlta).queryByRole('link', { name: 'Sousou no Frieren, Anime' })).not.toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
     expect(api.para('GET /midias/populares?tipo=jogo')).toHaveLength(1);
-    expect(await screen.findByText('Nenhuma Mídia popular neste catálogo ainda.')).toBeOnTheScreen();
+    // Sem populares no catálogo, o Top 10 some em vez de mostrar um carrossel vazio.
+    expect(screen.queryByLabelText('Top 10 de hoje')).not.toBeOnTheScreen();
   });
 
   it('a pílula abre o menu com as duas opções e a atual marcada', async () => {
@@ -153,28 +161,28 @@ describe('Início', () => {
   it('tocar fora do menu fecha sem trocar o Recorte', async () => {
     const api = simularFetch(catalogo());
     await abrirLogado();
-    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    await card('Sousou no Frieren, Anime');
 
     await fireEvent.press(await pilulaRecorte());
     await fireEvent.press(await screen.findByRole('button', { name: 'Fechar menu' }));
 
     expect(screen.queryByLabelText('Catálogo')).not.toBeOnTheScreen();
     expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
-    expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('link', { name: 'Sousou no Frieren, Anime' })[0]).toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(0);
   });
 
   it('escolher o Recorte atual só fecha o menu', async () => {
     const api = simularFetch(catalogo());
     await abrirLogado();
-    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    await card('Sousou no Frieren, Anime');
     const pedidos = api.chamadas.length;
 
     await trocarRecorte('Anime & Mangá');
 
     expect(screen.queryByLabelText('Catálogo')).not.toBeOnTheScreen();
     expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
-    expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('link', { name: 'Sousou no Frieren, Anime' })[0]).toBeOnTheScreen();
     expect(api.chamadas).toHaveLength(pedidos);
   });
 
@@ -182,14 +190,14 @@ describe('Início', () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
     const api = simularFetch(catalogo());
     await abrirLogado();
-    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    await card('Sousou no Frieren, Anime');
 
     await trocarRecorte('Jogos');
 
     // Durante o fade-out a pílula já mostra Jogos e o conteúdo ainda é o do Recorte anterior.
     expect(await pilulaRecorte('Jogos')).toBeOnTheScreen();
-    expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
-    expect(await screen.findByRole('link', { name: 'Hollow Knight, Jogo' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('link', { name: 'Sousou no Frieren, Anime' })[0]).toBeOnTheScreen();
+    expect(await card('Hollow Knight, Jogo')).toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
   });
 
@@ -202,7 +210,7 @@ describe('Início', () => {
     await fireEvent.press(await screen.findByRole('button', { name: /^Início, tab/ }));
 
     expect(await pilulaRecorte('Jogos')).toBeOnTheScreen();
-    expect(await screen.findByRole('link', { name: 'Hollow Knight, Jogo' })).toBeOnTheScreen();
+    expect(await card('Hollow Knight, Jogo')).toBeOnTheScreen();
   });
 
   it('puxar para atualizar pede os dados de novo', async () => {
@@ -215,12 +223,12 @@ describe('Início', () => {
       }),
     });
     await abrirLogado();
-    await screen.findByRole('link', { name: 'Frieren 9.1, Anime' });
+    await card('Frieren 9.1, Anime');
 
     nota = 9.3;
     await userEvent.setup().pullToRefresh(screen.getByTestId('inicio'));
 
-    expect(await screen.findByRole('link', { name: 'Frieren 9.3, Anime' })).toBeOnTheScreen();
+    expect(await card('Frieren 9.3, Anime')).toBeOnTheScreen();
     expect(api.para('GET /midias/populares?tipo=manga')).toHaveLength(2);
   });
 
@@ -240,7 +248,7 @@ describe('Início', () => {
     online = true;
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    expect(await card('Sousou no Frieren, Anime')).toBeOnTheScreen();
   });
 
   it('tocar num card abre o detalhe; voltar retorna ao Início', async () => {
@@ -253,7 +261,7 @@ describe('Início', () => {
     });
     const app = await abrirLogado();
 
-    await fireEvent.press(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' }));
+    await fireEvent.press(await card('Sousou no Frieren, Anime'));
 
     expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(app.getPathname()).toBe('/midia/MID-ANM-2026-20053');
@@ -261,5 +269,118 @@ describe('Início', () => {
     await fireEvent.press(screen.getByRole('button', { name: /voltar|back/i }));
     expect(await screen.findByLabelText('Em alta')).toBeOnTheScreen();
     expect(app.getPathname()).toBe('/');
+  });
+});
+
+describe('Início: destaques e carrosséis', () => {
+  const berserk = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Berserk', nota_media: 8.7, generos: 'Ação' });
+  const futuro = anime({ id_midia: 'MID-ANM-2099-1', titulo_portugues: 'Anime do Futuro', data_lancamento: '2099-01-01' });
+  const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Monster', generos: 'Drama' });
+  const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_portugues: 'Vagabond', generos: 'Ação' });
+
+  function item(midia: { id_midia: string } & Record<string, unknown>, dados: Record<string, unknown>) {
+    return { ...midia, id_lista: `LST-${midia.id_midia}`, progresso_atual: null, progresso_total: null, nota_usuario: null, ...dados };
+  }
+
+  const midias = (...lista: unknown[]) => ({ status: 200, corpo: { midias: lista } });
+
+  function completo() {
+    return {
+      ...catalogo(),
+      'GET /lista': {
+        status: 200,
+        corpo: {
+          lista: [
+            item(frieren, { status_consumo: 'assistindo', progresso_atual: 10, progresso_total: 28 }),
+            item(jojo, { status_consumo: 'lido' }),
+            item(hollow, { status_consumo: 'jogando' }),
+          ],
+        },
+      },
+      [rotaCarrossel('anime', 'nota_media')]: midias(frieren, fma, berserk),
+      [rotaCarrossel('anime', 'data_lancamento')]: midias(futuro, frieren),
+      [rotaCarrossel('anime', 'mais_adicionados')]: midias(fma, monster),
+      [rotaCarrossel('manga', 'mais_concluidos')]: midias({ ...jojo, total_concluidos: 3 }),
+      [rotaCarrossel('anime', 'nota_media', 'Aventura')]: midias(frieren, monster),
+      [rotaCarrossel('manga', 'nota_media', 'Ação')]: midias(vagabond),
+    };
+  }
+
+  const nomes = (rotulo: string) =>
+    within(screen.getByLabelText(rotulo)).getAllByRole('link').map((c) => c.props.accessibilityLabel);
+
+  it('mostra os destaques e os carrosséis na ordem da identidade', async () => {
+    simularFetch(completo());
+
+    await abrirLogado();
+
+    expect(await screen.findByLabelText('Mais concluídos')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Porque você curte Ação')).toBeOnTheScreen();
+    const secoes = screen.getAllByRole('header').map((h) => h.props.children);
+    expect(secoes).toEqual([
+      'Continuar',
+      'Em alta',
+      'Top 10 de hoje',
+      'Maiores notas',
+      'Lançamentos recentes',
+      'Porque você curte Aventura',
+      'Porque você curte Ação',
+      'Mais adicionados',
+      'Mais concluídos',
+    ]);
+    // Destaques: as Mídias de Em alta, no card C.
+    expect(nomes('Destaques')).toEqual(nomes('Em alta'));
+  });
+
+  it('Continuar traz só os Itens Em progresso do catálogo ativo', async () => {
+    simularFetch(completo());
+
+    await abrirLogado();
+
+    await screen.findByLabelText('Continuar');
+    expect(nomes('Continuar')).toEqual(['Sousou no Frieren, Anime']);
+  });
+
+  it('cada carrossel tira o que já aparece no anterior de mesma ordem, e Lançamentos tira o que não saiu', async () => {
+    simularFetch(completo());
+
+    await abrirLogado();
+
+    await screen.findByLabelText('Mais concluídos');
+    expect(nomes('Maiores notas')).toEqual(['Berserk, Anime']);
+    expect(nomes('Lançamentos recentes')).toEqual(['Sousou no Frieren, Anime']);
+    expect(nomes('Mais adicionados')).toEqual(['Monster, Anime']);
+    // "Porque você curte" não sugere o que já está na Lista.
+    expect(nomes('Porque você curte Aventura')).toEqual(['Monster, Anime']);
+    expect(nomes('Porque você curte Ação')).toEqual(['Vagabond, Mangá']);
+  });
+
+  it('sem Lista e sem Mídias, só ficam os carrosséis com conteúdo', async () => {
+    simularFetch(catalogo());
+
+    await abrirLogado();
+
+    await screen.findByLabelText('Em alta');
+    const secoes = screen.getAllByRole('header').map((h) => h.props.children);
+    expect(secoes).toEqual(['Em alta', 'Top 10 de hoje']);
+  });
+
+  it('no catálogo Jogos, os gêneros e os carrosséis seguem os jogos e "Mais concluídos" vira "Mais jogados"', async () => {
+    const api = simularFetch({
+      ...completo(),
+      [rotaCarrossel('jogo', 'mais_concluidos')]: midias({ ...hollow, total_concluidos: 2 }),
+      [rotaCarrossel('jogo', 'nota_media', 'Aventura')]: midias(jogo({ id_midia: 'MID-JOG-2', titulo_original: 'Celeste' })),
+    });
+    await abrirLogado();
+    await screen.findByLabelText('Mais concluídos');
+
+    await trocarRecorte('Jogos');
+
+    expect(await screen.findByLabelText('Mais jogados')).toBeOnTheScreen();
+    expect(nomes('Continuar')).toEqual(['Hollow Knight, Jogo']);
+    // O jogo da Lista tem Ação e Aventura: os dois gêneros vêm dele.
+    expect(await screen.findByLabelText('Porque você curte Aventura')).toBeOnTheScreen();
+    expect(api.para(rotaCarrossel('jogo', 'nota_media', 'Ação'))).toHaveLength(1);
+    expect(screen.queryByLabelText('Mais concluídos')).not.toBeOnTheScreen();
   });
 });

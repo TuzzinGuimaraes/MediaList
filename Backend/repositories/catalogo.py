@@ -11,7 +11,14 @@ from __future__ import annotations
 from typing import Any
 
 from banco import consultar, consultar_um, executar, transacao
+from schemas.estado_consumo import ESTADOS_TERMINAIS, ROTULOS_POR_TIPO
 from tipos_midia import COLUNAS_BASE, TIPOS, joins_das_filhas, origem_nota, por_tipo, valor_de_coluna
+
+#: Rótulos de estado de Concluído e Platinado, em todos os Tipos, já como literais SQL.
+_ROTULOS_TERMINAIS = ', '.join(
+    sorted({f"'{rotulo}'" for rotulos in ROTULOS_POR_TIPO.values()
+            for estado, rotulo in rotulos.items() if estado in ESTADOS_TERMINAIS})
+)
 
 #: Colunas de uma Mídia nas respostas da API. Os nomes duplicados (`id_anime`,
 #: `codigo_anime`) e prefixados (`anime_trailer_url`) são contrato com os clientes.
@@ -74,7 +81,12 @@ SELECT_MIDIA = f"""
             SELECT COUNT(DISTINCT lu.id_usuario)
             FROM lista_usuarios lu
             WHERE lu.id_midia = m.id_midia
-        ) AS total_usuarios
+        ) AS total_usuarios,
+        (
+            SELECT COUNT(*)
+            FROM lista_usuarios lu
+            WHERE lu.id_midia = m.id_midia AND lu.status_consumo IN ({_ROTULOS_TERMINAIS})
+        ) AS total_concluidos
 """
 
 FROM_MIDIA = f"""
@@ -95,6 +107,8 @@ ORDENS = {
     'titulo': 'COALESCE(m.titulo_portugues, m.titulo_original) ASC',
     'mais_adicionados': f'total_usuarios DESC, {NOTA_DE_RANKING}',
     'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
+    # Itens em Concluído ou Platinado (o Platinado também conta como Concluído).
+    'mais_concluidos': f'total_concluidos DESC, {NOTA_DE_RANKING}',
 }
 
 #: Filtros de texto parcial, sem caixa: filtro -> coluna.
