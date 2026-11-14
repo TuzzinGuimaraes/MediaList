@@ -42,7 +42,7 @@ describe('Header', () => {
         jest.clearAllMocks();
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'usuario', pode_moderar: 0 },
+            permissions: { nivel_acesso: 'usuario', pode_moderar: false },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({
@@ -84,7 +84,7 @@ describe('Header', () => {
         const apiCall = jest.fn().mockResolvedValue({ notificacoes: [{ titulo: 'Nova notificação', mensagem: 'Teste' }] });
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'admin', pode_moderar: 1 },
+            permissions: { nivel_acesso: 'admin', pode_moderar: true },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({ apiCall });

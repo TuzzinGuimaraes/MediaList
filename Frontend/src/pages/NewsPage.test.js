@@ -29,7 +29,7 @@ describe('NewsPage', () => {
             noticias: [{ titulo: 'Noticia 1', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01', tags: [] }],
         });
         useApi.mockReturnValue({ apiCall });
-        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: 1 } });
+        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
 
         render(<NewsPage />);
 
@@ -44,7 +44,7 @@ describe('NewsPage', () => {
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({ noticias: [{ titulo: 'Nova noticia', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01', tags: [] }] });
         useApi.mockReturnValue({ apiCall });
-        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: 1 } });
+        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
 
         render(<NewsPage />);
         await screen.findByText('Nenhuma notícia disponível no momento.');
@@ -58,7 +58,7 @@ describe('NewsPage', () => {
 
     test('exibe estado vazio', async () => {
         useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ noticias: [] }) });
-        useAuth.mockReturnValue({ user: { nome: 'User' }, permissions: { nivel_acesso: 'usuario', pode_moderar: 0 } });
+        useAuth.mockReturnValue({ user: { nome: 'User' }, permissions: { nivel_acesso: 'usuario', pode_moderar: false } });
 
         render(<NewsPage />);
 
