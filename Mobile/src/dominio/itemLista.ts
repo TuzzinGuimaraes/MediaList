@@ -34,6 +34,13 @@ export function totalDoItem(item: ComTotal): number | null {
   return daMidia ?? null;
 }
 
+/** Progresso para ler na tela: "3 de 28", ou só "3" sem total. */
+export function textoDoProgresso(item: ComTotal & { progresso_atual: number | null }): string {
+  const total = totalDoItem(item);
+  const atual = item.progresso_atual ?? 0;
+  return total !== null ? `${atual} de ${total}` : String(atual);
+}
+
 /** Próximo Progresso ao tocar − (−1) ou + (+1); null se o toque não é permitido. */
 export function passoDeProgresso(
   item: ComTotal & { progresso_atual: number | null },
