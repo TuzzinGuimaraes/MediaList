@@ -41,7 +41,13 @@ export type MidiaDetalhe = Esquemas['MidiaDetalhe'];
 export type MidiaPopular = Esquemas['MidiaPopular'];
 export type RespostaTrending = Esquemas['RespostaTrending'];
 export type RespostaPopulares = Esquemas['RespostaPopulares'];
-/** Uma página de GET /midias: `total` conta todas as páginas. */
+/**
+ * O envelope `Pagina[T]` do contrato (`Backend/contrato.py`): `total` conta todas as páginas.
+ * O OpenAPI só tem as instâncias (`PaginaMidia`, `PaginaNoticia`...), cada uma com nome próprio;
+ * o genérico fica aqui, conferido contra elas logo abaixo.
+ */
+export type Pagina<T> = { itens: T[]; pagina: number; por_pagina: number; total: number };
+/** Uma página de GET /midias. */
 export type PaginaMidias = Esquemas['PaginaMidia'];
 /** GET /midias/<id>/distribuicao: quantos Usuários têm a Mídia em cada Rótulo de estado. */
 export type RespostaDistribuicao = Esquemas['RespostaDistribuicao'];
@@ -68,6 +74,8 @@ export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 
 export type Avaliacao = Esquemas['AvaliacaoDaMidia'];
 /** Uma página de GET /avaliacoes/<id_midia>. */
 export type PaginaAvaliacoes = Esquemas['PaginaAvaliacaoDaMidia'];
+/** GET /midias/<id>/notas: as 10 faixas de nota e a Avaliação do Usuário logado (ou null). */
+export type RespostaNotas = Esquemas['RespostaNotas'];
 export type AvaliacaoCriada = Esquemas['AvaliacaoCriada'];
 export type AvaliacaoEditada = Esquemas['AvaliacaoEditada'];
 /**
@@ -92,3 +100,13 @@ export type PaginaNoticias = Esquemas['PaginaNoticia'];
 /** Item de GET /notificacoes: a entrega de uma Atualização de mídia. */
 export type Notificacao = Esquemas['Notificacao'];
 export type RespostaNotificacoes = Esquemas['RespostaNotificacoes'];
+
+// `Pagina<T>` escrito à mão tem de continuar igual às instâncias geradas: se o envelope mudar
+// no Backend, o tsc para aqui.
+type Igual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type Confere<T extends true> = T;
+export type PaginasConferidas = [
+  Confere<Igual<PaginaMidias, Pagina<Midia>>>,
+  Confere<Igual<PaginaAvaliacoes, Pagina<Avaliacao>>>,
+  Confere<Igual<PaginaNoticias, Pagina<Noticia>>>,
+];

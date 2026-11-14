@@ -89,8 +89,8 @@
           "nota_media_atualizada": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -163,8 +163,8 @@
             "type": "string"
           },
           "nota": {
-            "maximum": 10,
-            "minimum": 0,
+            "ge": 0,
+            "le": 10,
             "title": "Nota",
             "type": "number"
           },
@@ -215,8 +215,8 @@
           "nota_media_atualizada": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -271,8 +271,8 @@
             "type": "string"
           },
           "nota": {
-            "maximum": 10,
-            "minimum": 0,
+            "ge": 0,
+            "le": 10,
             "title": "Nota",
             "type": "number"
           },
@@ -340,19 +340,6 @@
         "title": "AvaliacaoModeracao",
         "type": "object"
       },
-      "AvaliacaoRemovida": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "AvaliacaoRemovida",
-        "type": "object"
-      },
       "CodigoErro": {
         "description": "Código estável do erro, para o cliente decidir sem ler a mensagem.",
         "enum": [
@@ -372,38 +359,6 @@
         ],
         "title": "CodigoErro",
         "type": "string"
-      },
-      "ConfirmacaoLista": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "ConfirmacaoLista",
-        "type": "object"
-      },
-      "ConsultaAvaliacoes": {
-        "properties": {
-          "pagina": {
-            "default": 1,
-            "minimum": 1,
-            "title": "Pagina",
-            "type": "integer"
-          },
-          "por_pagina": {
-            "default": 20,
-            "description": "Acima de 50 vira 50",
-            "minimum": 1,
-            "title": "Por Pagina",
-            "type": "integer"
-          }
-        },
-        "title": "ConsultaAvaliacoes",
-        "type": "object"
       },
       "ConsultaGeneros": {
         "properties": {
@@ -636,23 +591,21 @@
         "title": "ConsultaMidias",
         "type": "object"
       },
-      "ConsultaNoticias": {
+      "ConsultaNotificacoes": {
         "properties": {
-          "limite": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "deprecated": true,
-            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-            "ge": 1,
-            "title": "Limite"
-          },
+          "nao_lidas": {
+            "default": false,
+            "description": "Só as não lidas",
+            "title": "Nao Lidas",
+            "type": "boolean"
+          }
+        },
+        "title": "ConsultaNotificacoes",
+        "type": "object"
+      },
+      "ConsultaPaginada": {
+        "description": "`?pagina=&por_pagina=`. Herde para somar filtros.",
+        "properties": {
           "pagina": {
             "default": 1,
             "minimum": 1,
@@ -667,19 +620,7 @@
             "type": "integer"
           }
         },
-        "title": "ConsultaNoticias",
-        "type": "object"
-      },
-      "ConsultaNotificacoes": {
-        "properties": {
-          "nao_lidas": {
-            "default": false,
-            "description": "Só as não lidas",
-            "title": "Nao Lidas",
-            "type": "boolean"
-          }
-        },
-        "title": "ConsultaNotificacoes",
+        "title": "ConsultaPaginada",
         "type": "object"
       },
       "ConsultaPopulares": {
@@ -728,29 +669,43 @@
         "title": "ConsultaTrending",
         "type": "object"
       },
-      "ConsultaUsuariosModeracao": {
+      "ContagemPorNota": {
         "properties": {
-          "pagina": {
-            "default": 1,
+          "nota": {
+            "description": "A faixa: a nota arredondada, meio para cima (7,5 cai no 8)",
+            "maximum": 10,
             "minimum": 1,
-            "title": "Pagina",
+            "title": "Nota",
             "type": "integer"
           },
-          "por_pagina": {
-            "default": 20,
-            "description": "Acima de 50 vira 50",
-            "minimum": 1,
-            "title": "Por Pagina",
+          "total": {
+            "title": "Total",
             "type": "integer"
           }
         },
-        "title": "ConsultaUsuariosModeracao",
+        "required": [
+          "nota",
+          "total"
+        ],
+        "title": "ContagemPorNota",
         "type": "object"
       },
       "ContagemPorRotulo": {
         "properties": {
           "status_consumo": {
-            "description": "Rótulo de estado",
+            "enum": [
+              "planejado",
+              "assistindo",
+              "lendo",
+              "na_fila",
+              "jogando",
+              "pausado",
+              "abandonado",
+              "completo",
+              "lido",
+              "zerado",
+              "platinado"
+            ],
             "title": "Status Consumo",
             "type": "string"
           },
@@ -810,17 +765,16 @@
           "nota": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
-              },
-              {
-                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
+            "description": "De 0 a 10, com no máximo uma casa decimal",
             "title": "Nota"
           },
           "texto_avaliacao": {
@@ -1399,16 +1353,11 @@
             "type": "string"
           },
           "nota": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
-            "title": "Nota"
+            "description": "De 0 a 10, com no máximo uma casa decimal",
+            "ge": 0,
+            "le": 10,
+            "title": "Nota",
+            "type": "number"
           },
           "texto_avaliacao": {
             "anyOf": [
@@ -1625,6 +1574,8 @@
           "nota_usuario": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -1743,8 +1694,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -1834,7 +1785,7 @@
         "type": "object"
       },
       "ItemLista": {
-        "description": "Um Item de GET /lista: a Mídia mais os campos do Item.",
+        "description": "Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item.",
         "properties": {
           "autor": {
             "anyOf": [
@@ -1918,6 +1869,13 @@
           "demografia": {
             "anyOf": [
               {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
                 "type": "string"
               },
               {
@@ -1972,7 +1930,7 @@
                 "type": "null"
               }
             ],
-            "description": "\"Aventura, Drama\"; `generos_lista` é o mesmo, separado",
+            "description": "'Ação, Drama'; `generos_lista` é o mesmo já separado",
             "title": "Generos"
           },
           "generos_lista": {
@@ -1993,6 +1951,11 @@
           "modo_jogo": {
             "anyOf": [
               {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
                 "type": "string"
               },
               {
@@ -2004,35 +1967,36 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
                 "type": "null"
               }
             ],
+            "description": "Nota do AniList/RAWG, gravada pela Importação",
             "title": "Nota Fonte"
           },
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Média das Avaliações; null sem elas",
+            "description": "Média das Avaliações; nula sem elas",
             "title": "Nota Media"
           },
           "nota_usuario": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2099,7 +2063,7 @@
                 "type": "null"
               }
             ],
-            "description": "\"PC, Switch, PS4\"",
+            "description": "'PC, Switch'",
             "title": "Plataformas"
           },
           "poster_url": {
@@ -2140,18 +2104,6 @@
             "description": "Total copiado da Mídia na criação do Item",
             "title": "Progresso Total"
           },
-          "progresso_total_padrao": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Total da Mídia; null no jogo",
-            "title": "Progresso Total Padrao"
-          },
           "publicadora": {
             "anyOf": [
               {
@@ -2177,6 +2129,12 @@
           "status_anime": {
             "anyOf": [
               {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
                 "type": "string"
               },
               {
@@ -2188,22 +2146,66 @@
           "status_catalogo": {
             "anyOf": [
               {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "description": "O status do Tipo da Mídia",
             "title": "Status Catalogo"
           },
           "status_consumo": {
-            "description": "Rótulo de estado",
+            "enum": [
+              "planejado",
+              "assistindo",
+              "lendo",
+              "na_fila",
+              "jogando",
+              "pausado",
+              "abandonado",
+              "completo",
+              "lido",
+              "zerado",
+              "platinado"
+            ],
             "title": "Status Consumo",
             "type": "string"
           },
           "status_jogo": {
             "anyOf": [
               {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
                 "type": "string"
               },
               {
@@ -2215,6 +2217,13 @@
           "status_manga": {
             "anyOf": [
               {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
                 "type": "string"
               },
               {
@@ -2230,10 +2239,6 @@
               "jogo"
             ],
             "title": "Tipo",
-            "type": "string"
-          },
-          "tipo_label": {
-            "title": "Tipo Label",
             "type": "string"
           },
           "titulo_ingles": {
@@ -2271,10 +2276,11 @@
                 "type": "null"
               }
             ],
-            "description": "null quando a Mídia não tem Avaliações",
+            "description": "Nulo quando a Mídia não tem Avaliações",
             "title": "Total Avaliacoes"
           },
           "total_concluidos": {
+            "description": "Itens de lista em Concluído ou Platinado",
             "title": "Total Concluidos",
             "type": "integer"
           },
@@ -2284,6 +2290,7 @@
             "type": "integer"
           },
           "total_usuarios": {
+            "description": "Usuários com a Mídia na Lista pessoal (Popularidade)",
             "title": "Total Usuarios",
             "type": "integer"
           }
@@ -2291,7 +2298,6 @@
         "required": [
           "id_midia",
           "tipo",
-          "tipo_label",
           "titulo_original",
           "titulo_ingles",
           "titulo_portugues",
@@ -2304,7 +2310,6 @@
           "poster_url",
           "banner_url",
           "status_catalogo",
-          "progresso_total_padrao",
           "generos",
           "generos_lista",
           "total_usuarios",
@@ -2318,10 +2323,10 @@
           "numero_volumes",
           "autor",
           "demografia",
-          "status_jogo",
           "desenvolvedor",
           "publicadora",
           "plataformas",
+          "status_jogo",
           "modo_jogo",
           "id_lista",
           "status_consumo",
@@ -2529,8 +2534,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2543,8 +2548,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -2841,7 +2846,6 @@
           "origem_nota",
           "poster_url",
           "banner_url",
-          "trailer_url",
           "status_catalogo",
           "generos",
           "generos_lista",
@@ -2849,39 +2853,27 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
-          "duracao_episodio",
-          "classificacao_etaria",
           "estudio",
           "fonte_original",
           "status_manga",
           "numero_capitulos",
           "numero_volumes",
           "autor",
-          "artista",
-          "publicadora_original",
-          "revista",
           "demografia",
           "desenvolvedor",
           "publicadora",
           "plataformas",
           "status_jogo",
           "modo_jogo",
+          "trailer_url",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "artista",
+          "publicadora_original",
+          "revista",
           "classificacao"
         ],
         "title": "Midia",
-        "type": "object"
-      },
-      "MidiaAlterada": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "MidiaAlterada",
         "type": "object"
       },
       "MidiaDetalhe": {
@@ -3066,8 +3058,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3080,8 +3072,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3378,7 +3370,6 @@
           "origem_nota",
           "poster_url",
           "banner_url",
-          "trailer_url",
           "status_catalogo",
           "generos",
           "generos_lista",
@@ -3386,23 +3377,24 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
-          "duracao_episodio",
-          "classificacao_etaria",
           "estudio",
           "fonte_original",
           "status_manga",
           "numero_capitulos",
           "numero_volumes",
           "autor",
-          "artista",
-          "publicadora_original",
-          "revista",
           "demografia",
           "desenvolvedor",
           "publicadora",
           "plataformas",
           "status_jogo",
           "modo_jogo",
+          "trailer_url",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "artista",
+          "publicadora_original",
+          "revista",
           "classificacao",
           "atualizacoes"
         ],
@@ -3431,8 +3423,8 @@
           "nota_fonte": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3444,8 +3436,8 @@
           "nota_media": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3586,9 +3578,8 @@
       },
       "NoticiaCriada": {
         "properties": {
-          "id": {
-            "description": "id_noticia da Notícia criada",
-            "title": "Id",
+          "id_noticia": {
+            "title": "Id Noticia",
             "type": "string"
           },
           "mensagem": {
@@ -3598,7 +3589,7 @@
         },
         "required": [
           "mensagem",
-          "id"
+          "id_noticia"
         ],
         "title": "NoticiaCriada",
         "type": "object"
@@ -3658,19 +3649,6 @@
           "data_criacao"
         ],
         "title": "Notificacao",
-        "type": "object"
-      },
-      "NotificacoesMarcadas": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "NotificacoesMarcadas",
         "type": "object"
       },
       "NovoItemLista": {
@@ -3733,6 +3711,8 @@
           "nota_usuario": {
             "anyOf": [
               {
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -3977,8 +3957,8 @@
           "nota_media_usuario": {
             "anyOf": [
               {
-                "maximum": 10,
-                "minimum": 0,
+                "ge": 0,
+                "le": 10,
                 "type": "number"
               },
               {
@@ -4028,7 +4008,7 @@
         "type": "object"
       },
       "Permissoes": {
-        "description": "Permissões efetivas: vence o Grupo mais privilegiado.",
+        "description": "Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.",
         "properties": {
           "grupos": {
             "anyOf": [
@@ -4039,6 +4019,7 @@
                 "type": "null"
               }
             ],
+            "description": "Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo",
             "title": "Grupos"
           },
           "nivel_acesso": {
@@ -4076,34 +4057,6 @@
           "pode_moderar"
         ],
         "title": "Permissoes",
-        "type": "object"
-      },
-      "PermissoesDaSessao": {
-        "properties": {
-          "pode_criar": {
-            "title": "Pode Criar",
-            "type": "boolean"
-          },
-          "pode_deletar": {
-            "title": "Pode Deletar",
-            "type": "boolean"
-          },
-          "pode_editar": {
-            "title": "Pode Editar",
-            "type": "boolean"
-          },
-          "pode_moderar": {
-            "title": "Pode Moderar",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pode_criar",
-          "pode_editar",
-          "pode_deletar",
-          "pode_moderar"
-        ],
-        "title": "PermissoesDaSessao",
         "type": "object"
       },
       "Preferencias": {
@@ -4290,6 +4243,35 @@
         "title": "RespostaMe",
         "type": "object"
       },
+      "RespostaNotas": {
+        "properties": {
+          "distribuicao": {
+            "description": "As 10 faixas, de 1 a 10, inclusive as vazias",
+            "items": {
+              "$ref": "#/components/schemas/ContagemPorNota"
+            },
+            "title": "Distribuicao",
+            "type": "array"
+          },
+          "minha_avaliacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AvaliacaoDaMidia"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A do Usuário logado; null sem login ou sem Avaliação"
+          }
+        },
+        "required": [
+          "distribuicao",
+          "minha_avaliacao"
+        ],
+        "title": "RespostaNotas",
+        "type": "object"
+      },
       "RespostaNotificacoes": {
         "properties": {
           "notificacoes": {
@@ -4447,19 +4429,6 @@
         "title": "Saude",
         "type": "object"
       },
-      "StatusUsuarioAlterado": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "StatusUsuarioAlterado",
-        "type": "object"
-      },
       "UsuarioAtual": {
         "properties": {
           "email": {
@@ -4514,34 +4483,14 @@
         "type": "object"
       },
       "UsuarioDaSessao": {
+        "description": "`id` e `nome` (e não `id_usuario`/`nome_completo`) são legado intencional: o app lê\n`usuario.id` e o web lê `usuario.nome` da sessão guardada.",
         "properties": {
           "email": {
             "title": "Email",
             "type": "string"
           },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nomes dos Grupos: 'Usuários, Moderadores'",
-            "title": "Grupos"
-          },
           "id": {
             "title": "Id",
-            "type": "string"
-          },
-          "nivel_acesso": {
-            "enum": [
-              "admin",
-              "moderador",
-              "usuario"
-            ],
-            "title": "Nivel Acesso",
             "type": "string"
           },
           "nome": {
@@ -4549,15 +4498,13 @@
             "type": "string"
           },
           "permissoes": {
-            "$ref": "#/components/schemas/PermissoesDaSessao"
+            "$ref": "#/components/schemas/Permissoes"
           }
         },
         "required": [
           "id",
           "nome",
           "email",
-          "nivel_acesso",
-          "grupos",
           "permissoes"
         ],
         "title": "UsuarioDaSessao",
@@ -4790,6 +4737,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -4829,6 +4796,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4838,6 +4815,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -4887,6 +4874,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -4906,6 +4903,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5081,6 +5088,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5100,6 +5117,16 @@
               }
             },
             "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5133,7 +5160,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AvaliacaoRemovida"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5148,6 +5175,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
           },
           "403": {
             "content": {
@@ -5168,6 +5205,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5225,6 +5272,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5234,6 +5291,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5493,6 +5560,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5540,6 +5627,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5549,6 +5646,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5598,6 +5705,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5607,6 +5724,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5640,7 +5767,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5656,6 +5783,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5665,6 +5802,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5706,7 +5853,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5722,6 +5869,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5731,6 +5888,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5774,7 +5941,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -5790,6 +5957,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5799,6 +5976,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -5890,6 +6077,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -5899,6 +6096,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6335,7 +6542,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MidiaAlterada"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6380,6 +6587,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6472,7 +6689,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MidiaAlterada"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6517,6 +6734,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6605,6 +6832,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6661,6 +6898,85 @@
         ]
       }
     },
+    "/api/midias/{id_midia}/notas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_notas",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaNotas"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
     "/api/moderacao/avaliacoes": {
       "get": {
         "description": "",
@@ -6686,6 +7002,36 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6750,6 +7096,36 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6783,7 +7159,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6798,6 +7174,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
           },
           "403": {
             "content": {
@@ -6818,6 +7204,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6851,7 +7247,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -6866,6 +7262,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
           },
           "403": {
             "content": {
@@ -6886,6 +7292,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -6927,27 +7343,6 @@
               "minimum": 1,
               "title": "Por Pagina",
               "type": "integer"
-            }
-          },
-          {
-            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-            "in": "query",
-            "name": "limite",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "deprecated": true,
-              "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
-              "ge": 1,
-              "title": "Limite"
             }
           }
         ],
@@ -7012,6 +7407,36 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7063,6 +7488,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7086,7 +7531,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificacoesMarcadas"
+                  "$ref": "#/components/schemas/Mensagem"
                 }
               }
             },
@@ -7101,6 +7546,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7140,6 +7605,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7149,6 +7624,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7195,6 +7680,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7233,6 +7738,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7272,6 +7797,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7281,6 +7816,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [
@@ -7319,6 +7864,26 @@
               }
             },
             "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         },
         "security": [

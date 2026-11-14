@@ -3,6 +3,7 @@ import { Grid3X3, List, Search } from 'lucide-react';
 import { useApi } from '../contexts/ApiContext';
 import MediaCard from '../components/cards/MediaCard';
 import ListEditorModal from '../components/media/ListEditorModal';
+import { totalDoItem } from '../constants/itemLista';
 
 const STATUS_POR_TIPO = {
     anime: [
@@ -240,7 +241,7 @@ const MediaListPage = ({ tipo }) => {
                                     <p className="text-xs text-text-secondary capitalize">{item.status_consumo}</p>
                                 </div>
                                 <div className="text-xs text-text-secondary">
-                                    {item.progresso_atual || 0}/{item.progresso_total || item.progresso_total_padrao || '?'}
+                                    {item.progresso_atual || 0}/{totalDoItem(item) || '?'}
                                 </div>
                                 {item.nota_usuario && (
                                     <div className="text-xs text-accent-yellow font-semibold">{item.nota_usuario}</div>

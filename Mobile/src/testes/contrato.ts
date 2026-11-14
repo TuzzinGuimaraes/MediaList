@@ -1,10 +1,8 @@
 // Respostas da API nos envelopes do contrato (ADR 0011), tipadas pelo arquivo gerado.
 
-import type { Avaliacao, CodigoErro, Erro, PaginaMidias } from '../api/tipos';
+import { AVALIACOES_POR_PAGINA } from '../api/avaliacoes';
+import type { Avaliacao, CodigoErro, Erro, Pagina, RespostaNotas } from '../api/tipos';
 import type { Resposta } from './fetchSimulado';
-
-/** O envelope `Pagina[T]` de GET /midias, avaliações e notícias. */
-export type Pagina<T> = Omit<PaginaMidias, 'itens'> & { itens: T[] };
 
 /**
  * Uma página com `itens`. Sem `total`, a página é a última: `total` conta as anteriores
@@ -26,15 +24,30 @@ export function erro(status: number, codigo: CodigoErro, mensagem: string, detal
   return { status, corpo };
 }
 
-/** Avaliações por página que o detalhe pede (o teto da API). */
-export const AVALIACOES_POR_PAGINA = 50;
-
-/** A rota de uma página de GET /avaliacoes/<id_midia>, como o detalhe a monta. */
-export function rotaAvaliacoes(idMidia: string, numero = 1): string {
-  return `GET /avaliacoes/${idMidia}?pagina=${numero}&por_pagina=${AVALIACOES_POR_PAGINA}`;
+/** A rota da 1ª página de GET /avaliacoes/<id_midia>, a única que o detalhe pede. */
+export function rotaAvaliacoes(idMidia: string): string {
+  return `GET /avaliacoes/${idMidia}?por_pagina=${AVALIACOES_POR_PAGINA}`;
 }
 
-/** Uma página de Avaliações de uma Mídia; sem `total`, é a última. */
-export function paginaAvaliacoes(itens: Avaliacao[], numero = 1, total?: number) {
-  return pagina(itens, { pagina: numero, por_pagina: AVALIACOES_POR_PAGINA, total });
+/** A 1ª página de Avaliações de uma Mídia; sem `total`, é a única. */
+export function paginaAvaliacoes(itens: Avaliacao[], total?: number) {
+  return pagina(itens, { pagina: 1, por_pagina: AVALIACOES_POR_PAGINA, total });
+}
+
+export function rotaNotas(idMidia: string): string {
+  return `GET /midias/${idMidia}/notas`;
+}
+
+/** GET /midias/<id>/notas: as 10 faixas (as não informadas com 0) e a Avaliação do Usuário. */
+export function respostaNotas(
+  totais: Partial<Record<number, number>> = {},
+  minha: Avaliacao | null = null,
+): { status: 200; corpo: RespostaNotas } {
+  const distribuicao = Array.from({ length: 10 }, (_, i) => ({ nota: i + 1, total: totais[i + 1] ?? 0 }));
+  return { status: 200, corpo: { distribuicao, minha_avaliacao: minha } };
+}
+
+/** As rotas das Avaliações no detalhe: a 1ª página e as notas, sem nenhuma Avaliação. */
+export function rotasSemAvaliacoes(idMidia: string): Record<string, Resposta> {
+  return { [rotaAvaliacoes(idMidia)]: paginaAvaliacoes([]), [rotaNotas(idMidia)]: respostaNotas() };
 }

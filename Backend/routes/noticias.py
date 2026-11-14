@@ -9,16 +9,16 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar, consultar_um
-from contrato import AUTENTICADO, Pagina, contrato, montar_pagina
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, deslocamento, montar_pagina
 from decorators import permission_required
-from schemas.noticias import ConsultaNoticias, CorpoNoticia, Noticia, NoticiaCriada
+from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
 noticias_bp = Blueprint('noticias', __name__)
 
 
 @noticias_bp.route('', methods=['GET'])
 @contrato.validate(resp=Response(HTTP_200=Pagina[Noticia]), tags=['noticias'])
-def listar_noticias(query: ConsultaNoticias):
+def listar_noticias(query: ConsultaPaginada):
     """Uma página das Notícias, mais recentes primeiro."""
     noticias = consultar(
         """
@@ -29,7 +29,7 @@ def listar_noticias(query: ConsultaNoticias):
         ORDER BY n.data_publicacao DESC, n.id_noticia DESC
         LIMIT %s OFFSET %s
         """,
-        (query.por_pagina, (query.pagina - 1) * query.por_pagina),
+        (query.por_pagina, deslocamento(query)),
     )
     total = consultar_um('SELECT count(*) AS total FROM noticias')['total']
     return montar_pagina(noticias, total, query.pagina, query.por_pagina)
@@ -38,7 +38,9 @@ def listar_noticias(query: ConsultaNoticias):
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('criar')
-@contrato.validate(resp=Response(HTTP_201=NoticiaCriada), tags=['noticias'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_201=NoticiaCriada, **ERROS_COM_PERMISSAO), tags=['noticias'], security=AUTENTICADO,
+)
 def criar_noticia(json: CorpoNoticia):
     """Criar Notícia; o autor é o Usuário logado."""
     criada = consultar_um(
@@ -56,4 +58,4 @@ def criar_noticia(json: CorpoNoticia):
             json.imagem_url or None,
         ),
     )
-    return {'mensagem': 'Notícia criada!', 'id': criada['id_noticia']}, 201
+    return {'mensagem': 'Notícia criada!', 'id_noticia': criada['id_noticia']}, 201

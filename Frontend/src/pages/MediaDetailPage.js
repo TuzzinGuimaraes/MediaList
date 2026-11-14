@@ -6,7 +6,9 @@ import { useApi } from '../contexts/ApiContext';
 import ListEditorModal from '../components/media/ListEditorModal';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants/mediaStatus';
 import { notasDaMidia } from '../constants/notas';
-import { buscarTodasAsPaginas } from '../paginacao';
+
+// Avaliações que o detalhe mostra: só a 1ª página.
+const AVALIACOES_NA_TELA = 10;
 
 const blocoEspecifico = (midia) => {
     switch (midia.tipo) {
@@ -51,6 +53,7 @@ const MediaDetailPage = () => {
     const [totalAvaliacoes, setTotalAvaliacoes] = useState(0);
     const [listaItem, setListaItem] = useState(null);
     const [distribuicao, setDistribuicao] = useState([]);
+    const [notasPorFaixa, setNotasPorFaixa] = useState([]);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState('');
     const [listEditorOpen, setListEditorOpen] = useState(false);
@@ -59,10 +62,12 @@ const MediaDetailPage = () => {
         setLoading(true);
         setErro('');
         try {
-            const [midiaData, avalData, listaData, distData] = await Promise.all([
+            const [midiaData, avalData, notasData, listaData, distData] = await Promise.all([
                 apiCall(`/midias/${id}`),
-                // Todas as páginas: a distribuição de notas precisa de todas as Avaliações.
-                buscarTodasAsPaginas(apiCall, `/avaliacoes/${id}`).catch(() => ({ itens: [], total: 0 })),
+                // Só a 1ª página (as que a tela mostra); o contador usa o `total`.
+                apiCall(`/avaliacoes/${id}?por_pagina=${AVALIACOES_NA_TELA}`).catch(() => ({ itens: [], total: 0 })),
+                // A distribuição das notas vem pronta, das Avaliações de todas as páginas.
+                apiCall(`/midias/${id}/notas`).catch(() => ({ distribuicao: [] })),
                 apiCall('/lista').catch(() => ({ lista: [] })),
                 apiCall(`/midias/${id}/distribuicao`).catch(() => ({ distribuicao: [] })),
             ]);
@@ -71,6 +76,7 @@ const MediaDetailPage = () => {
             setMidia({ ...midiaData, generos: midiaData.generos_lista || [] });
             setAvaliacoes(avalData.itens);
             setTotalAvaliacoes(avalData.total);
+            setNotasPorFaixa(notasData.distribuicao || []);
             setDistribuicao(distData.distribuicao || []);
 
             const lista = listaData.lista || [];
@@ -93,16 +99,12 @@ const MediaDetailPage = () => {
         setListEditorOpen(false);
     };
 
-    // Score distribution (1-10 buckets)
-    const scoreDistribution = useMemo(() => {
-        const buckets = {};
-        for (let i = 1; i <= 10; i++) buckets[i] = 0;
-        avaliacoes.forEach(av => {
-            const nota = Math.round(Number(av.nota));
-            if (nota >= 1 && nota <= 10) buckets[nota]++;
-        });
-        return Object.entries(buckets).map(([score, count]) => ({ score: Number(score), count }));
-    }, [avaliacoes]);
+    // Faixas de 1 a 10 de GET /midias/<id>/notas, no formato do gráfico.
+    const scoreDistribution = useMemo(
+        () => notasPorFaixa.map(({ nota, total }) => ({ score: nota, count: total })),
+        [notasPorFaixa],
+    );
+    const temNotas = scoreDistribution.some((faixa) => faixa.count > 0);
 
     if (loading) {
         return (
@@ -290,7 +292,7 @@ const MediaDetailPage = () => {
                         )}
 
                         {/* Score Distribution */}
-                        {avaliacoes.length > 0 && (
+                        {temNotas && (
                             <div className="bg-dark-secondary rounded-md p-5">
                                 <h3 className="text-sm font-semibold text-text-bright mb-4">Score Distribution</h3>
                                 <ResponsiveContainer width="100%" height={180}>
@@ -319,7 +321,7 @@ const MediaDetailPage = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {avaliacoes.slice(0, 10).map(av => (
+                                    {avaliacoes.map(av => (
                                         <div key={av.id_avaliacao} className="bg-dark-secondary rounded-md p-4">
                                             <div className="flex items-start justify-between mb-2">
                                                 <div className="flex items-center gap-2">

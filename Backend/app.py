@@ -22,7 +22,6 @@ from werkzeug.exceptions import HTTPException
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
 from contrato import CodigoErro, detalhes_de_validacao, registrar_documentacao, resposta_erro
-from parametros import ErroEntrada
 from routes import auth as rotas_auth
 from routes import (
     auth_bp,
@@ -35,7 +34,6 @@ from routes import (
     usuario_bp,
     utils_bp,
 )
-from schemas import ValidationError as SchemaValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -203,12 +201,6 @@ def entrada_fora_do_modelo(erro):
     )
 
 
-@app.errorhandler(SchemaValidationError)
-def payload_invalido(erro):
-    """`BaseSchema` legado, enquanto existir; as mensagens já vêm em português."""
-    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos', erro.errors)
-
-
 @app.errorhandler(Conflito)
 def conflito(_erro):
     return resposta_erro(409, CodigoErro.CONFLITO, 'Registro já existe')
@@ -222,11 +214,6 @@ def integridade(_erro):
 @app.errorhandler(Indisponivel)
 def indisponivel(_erro):
     return resposta_erro(503, CodigoErro.INDISPONIVEL, 'Serviço temporariamente indisponível')
-
-
-@app.errorhandler(ErroEntrada)
-def erro_entrada(erro):
-    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro))
 
 
 # Erros HTTP do Flask/Werkzeug (404 de rota, 405, abort(...)): status -> (código, mensagem).

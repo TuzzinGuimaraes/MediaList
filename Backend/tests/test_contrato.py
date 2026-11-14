@@ -4,6 +4,7 @@ Envelope de erro `{erro, codigo, detalhes?}`, envelope de paginação, validaç�
 das respostas contra o modelo e documentação OpenAPI.
 """
 import json
+import re
 from datetime import timedelta
 
 import pytest
@@ -12,9 +13,17 @@ from flask_jwt_extended import create_access_token
 from pydantic import ValidationError as PydanticValidationError
 
 import exportar_openapi
-from contrato import ConsultaPaginada, Erro, Pagina, detalhes_de_validacao, montar_pagina, registrar_documentacao
+from contrato import (
+    ConsultaPaginada,
+    Erro,
+    Pagina,
+    contrato,
+    deslocamento,
+    detalhes_de_validacao,
+    montar_pagina,
+    registrar_documentacao,
+)
 from routes import utils as utils_routes
-from schemas import ValidationError
 from schemas.utils import Genero
 
 from .helpers import FakeCatalogo
@@ -116,28 +125,12 @@ def test_resposta_fora_do_modelo_em_producao_sai_como_veio_e_vai_para_o_log(app,
     assert 'nome_genero' in caplog.text
 
 
-
 def test_generos_com_tipo_vazio_e_como_sem_tipo(client, generos):
-    """Parâmetro de query vazio vale como ausente, como em `parametros.ler_int`."""
+    """Parâmetro de query vazio vale como ausente (`VazioComoAusente`)."""
     catalogo = generos()
 
     assert client.get('/api/generos?tipo=').status_code == 200
     assert catalogo.chamadas == [('generos', None)]
-
-
-
-# ============================================
-# Validação legada (BaseSchema) no mesmo envelope
-# ============================================
-
-def test_validation_error_do_base_schema_vira_envelope(app):
-    with app.test_request_context('/api/midias/X', method='PUT'):
-        response = app.make_response(app.handle_user_exception(ValidationError({'generos': 'Tipo inválido'})))
-
-    assert response.status_code == 400
-    assert response.get_json() == {
-        'erro': 'Dados inválidos', 'codigo': 'dados_invalidos', 'detalhes': {'generos': 'Tipo inválido'},
-    }
 
 
 # ============================================
@@ -156,7 +149,7 @@ def test_montar_pagina_monta_o_envelope_e_cabe_em_pagina_do_modelo():
     assert Pagina[Genero].model_validate(corpo).model_dump(mode='json')['itens'][0]['id_genero'] == '1'
 
 
-def test_consulta_paginada_segue_as_regras_de_ler_paginacao():
+def test_consulta_paginada_comeca_na_1_e_traz_o_teto():
     assert ConsultaPaginada.model_validate({}).model_dump() == {'pagina': 1, 'por_pagina': 20}
     assert ConsultaPaginada.model_validate({'pagina': '2', 'por_pagina': '999'}).model_dump() == {
         'pagina': 2, 'por_pagina': 50,
@@ -168,6 +161,10 @@ def test_consulta_paginada_segue_as_regras_de_ler_paginacao():
         'por_pagina': 'Tipo inválido',
     }
 
+
+def test_deslocamento_e_o_offset_da_pagina():
+    assert deslocamento(ConsultaPaginada(pagina=1, por_pagina=20)) == 0
+    assert deslocamento(ConsultaPaginada(pagina=3, por_pagina=20)) == 40
 
 
 # ============================================
@@ -181,6 +178,37 @@ def test_openapi_fora_de_producao_traz_a_rota_de_referencia_e_o_enum_de_erro(cli
     documento = response.get_json()
     assert '/api/generos' in documento['paths']
     assert set(documento['components']['schemas']['CodigoErro']['enum']) >= {'nao_encontrado', 'dados_invalidos'}
+
+
+def _operacoes(app):
+    """(método, rota do OpenAPI, operação, função da view) de cada rota documentada."""
+    documento = contrato.spec
+    for regra in app.url_map.iter_rules():
+        caminho = re.sub(r'<(?:[^:<>]+:)?([^<>]+)>', r'{\1}', regra.rule)
+        for metodo in sorted((regra.methods or set()) - {'HEAD', 'OPTIONS'}):
+            operacao = documento['paths'].get(caminho, {}).get(metodo.lower())
+            if operacao:
+                yield metodo, caminho, operacao, app.view_functions[regra.endpoint]
+
+
+def test_toda_rota_autenticada_declara_401_e_422_do_token(app):
+    with app.app_context():
+        autenticadas = [(m, c, op) for m, c, op, _ in _operacoes(app) if op.get('security')]
+
+    assert len(autenticadas) > 20
+    faltando = [(m, c) for m, c, op in autenticadas if not {'401', '422'} <= set(op['responses'])]
+    assert faltando == []
+
+
+def test_toda_rota_com_permissao_declara_403(app):
+    with app.app_context():
+        com_permissao = [(m, c, op) for m, c, op, view in _operacoes(app) if getattr(view, 'exige_permissao', False)]
+
+    assert {(m, c) for m, c, _ in com_permissao} >= {
+        ('POST', '/api/noticias'), ('GET', '/api/moderacao/avaliacoes'), ('GET', '/api/moderacao/usuarios'),
+        ('PUT', '/api/midias/{id_midia}'), ('DELETE', '/api/midias/{id_midia}'),
+    }
+    assert [(m, c) for m, c, op in com_permissao if '403' not in op['responses']] == []
 
 
 def test_docs_fora_de_producao(client):

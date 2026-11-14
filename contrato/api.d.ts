@@ -406,6 +406,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/{id_midia}/notas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário. */
+        get: operations["get__api_midias_{id_midia}_notas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/moderacao/avaliacoes": {
         parameters: {
             query?: never;
@@ -723,36 +740,12 @@ export interface components {
             /** Titulo Portugues */
             titulo_portugues: string | null;
         };
-        /** AvaliacaoRemovida */
-        AvaliacaoRemovida: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /**
          * CodigoErro
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
-        /** ConfirmacaoLista */
-        ConfirmacaoLista: {
-            /** Mensagem */
-            mensagem: string;
-        };
-        /** ConsultaAvaliacoes */
-        ConsultaAvaliacoes: {
-            /**
-             * Pagina
-             * @default 1
-             */
-            pagina?: number;
-            /**
-             * Por Pagina
-             * @description Acima de 50 vira 50
-             * @default 20
-             */
-            por_pagina?: number;
-        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -855,15 +848,20 @@ export interface components {
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
         };
-        /** ConsultaNoticias */
-        ConsultaNoticias: {
+        /** ConsultaNotificacoes */
+        ConsultaNotificacoes: {
             /**
-             * Limite
-             * @deprecated
-             * @description Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence
-             * @default null
+             * Nao Lidas
+             * @description Só as não lidas
+             * @default false
              */
-            limite?: number | null;
+            nao_lidas?: boolean;
+        };
+        /**
+         * ConsultaPaginada
+         * @description `?pagina=&por_pagina=`. Herde para somar filtros.
+         */
+        ConsultaPaginada: {
             /**
              * Pagina
              * @default 1
@@ -875,15 +873,6 @@ export interface components {
              * @default 20
              */
             por_pagina?: number;
-        };
-        /** ConsultaNotificacoes */
-        ConsultaNotificacoes: {
-            /**
-             * Nao Lidas
-             * @description Só as não lidas
-             * @default false
-             */
-            nao_lidas?: boolean;
         };
         /** ConsultaPopulares */
         ConsultaPopulares: {
@@ -908,27 +897,23 @@ export interface components {
              */
             tipo?: "anime" | "manga" | "jogo";
         };
-        /** ConsultaUsuariosModeracao */
-        ConsultaUsuariosModeracao: {
+        /** ContagemPorNota */
+        ContagemPorNota: {
             /**
-             * Pagina
-             * @default 1
+             * Nota
+             * @description A faixa: a nota arredondada, meio para cima (7,5 cai no 8)
              */
-            pagina?: number;
-            /**
-             * Por Pagina
-             * @description Acima de 50 vira 50
-             * @default 20
-             */
-            por_pagina?: number;
+            nota: number;
+            /** Total */
+            total: number;
         };
         /** ContagemPorRotulo */
         ContagemPorRotulo: {
             /**
              * Status Consumo
-             * @description Rótulo de estado
+             * @enum {string}
              */
-            status_consumo: string;
+            status_consumo: "planejado" | "assistindo" | "lendo" | "na_fila" | "jogando" | "pausado" | "abandonado" | "completo" | "lido" | "zerado" | "platinado";
             /** Total */
             total: number;
         };
@@ -958,10 +943,10 @@ export interface components {
         CorpoEdicaoAvaliacao: {
             /**
              * Nota
-             * @description De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula ("7,5")
+             * @description De 0 a 10, com no máximo uma casa decimal
              * @default null
              */
-            nota?: number | string | null;
+            nota?: number | null;
             /**
              * Texto Avaliacao
              * @default null
@@ -1193,9 +1178,9 @@ export interface components {
             id_midia: string;
             /**
              * Nota
-             * @description De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula ("7,5")
+             * @description De 0 a 10, com no máximo uma casa decimal
              */
-            nota: number | string;
+            nota: number;
             /**
              * Texto Avaliacao
              * @default null
@@ -1384,7 +1369,7 @@ export interface components {
         };
         /**
          * ItemLista
-         * @description Um Item de GET /lista: a Mídia mais os campos do Item.
+         * @description Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item.
          */
         ItemLista: {
             /** Autor */
@@ -1410,7 +1395,7 @@ export interface components {
             /** Data Lancamento */
             data_lancamento: string | null;
             /** Demografia */
-            demografia: string | null;
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
             /** Desenvolvedor */
             desenvolvedor: string | null;
             /** Estudio */
@@ -1421,7 +1406,7 @@ export interface components {
             fonte_original: string | null;
             /**
              * Generos
-             * @description "Aventura, Drama"; `generos_lista` é o mesmo, separado
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
              */
             generos: string | null;
             /** Generos Lista */
@@ -1431,12 +1416,15 @@ export interface components {
             /** Id Midia */
             id_midia: string;
             /** Modo Jogo */
-            modo_jogo: string | null;
-            /** Nota Fonte */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
             nota_fonte: number | null;
             /**
              * Nota Media
-             * @description Média das Avaliações; null sem elas
+             * @description Média das Avaliações; nula sem elas
              */
             nota_media: number | null;
             /**
@@ -1454,7 +1442,7 @@ export interface components {
             origem_nota: ("AniList" | "RAWG") | null;
             /**
              * Plataformas
-             * @description "PC, Switch, PS4"
+             * @description 'PC, Switch'
              */
             plataformas: string | null;
             /** Poster Url */
@@ -1468,35 +1456,31 @@ export interface components {
              * @description Total copiado da Mídia na criação do Item
              */
             progresso_total: number | null;
-            /**
-             * Progresso Total Padrao
-             * @description Total da Mídia; null no jogo
-             */
-            progresso_total_padrao: number | null;
             /** Publicadora */
             publicadora: string | null;
             /** Sinopse */
             sinopse: string | null;
             /** Status Anime */
-            status_anime: string | null;
-            /** Status Catalogo */
-            status_catalogo: string | null;
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /**
              * Status Consumo
-             * @description Rótulo de estado
+             * @enum {string}
              */
-            status_consumo: string;
+            status_consumo: "planejado" | "assistindo" | "lendo" | "na_fila" | "jogando" | "pausado" | "abandonado" | "completo" | "lido" | "zerado" | "platinado";
             /** Status Jogo */
-            status_jogo: string | null;
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /** Status Manga */
-            status_manga: string | null;
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
             /**
              * Tipo
              * @enum {string}
              */
             tipo: "anime" | "manga" | "jogo";
-            /** Tipo Label */
-            tipo_label: string;
             /** Titulo Ingles */
             titulo_ingles: string | null;
             /** Titulo Original */
@@ -1505,17 +1489,23 @@ export interface components {
             titulo_portugues: string | null;
             /**
              * Total Avaliacoes
-             * @description null quando a Mídia não tem Avaliações
+             * @description Nulo quando a Mídia não tem Avaliações
              */
             total_avaliacoes: number | null;
-            /** Total Concluidos */
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
             total_concluidos: number;
             /**
              * Total Rewatches
              * @description Recontagem
              */
             total_rewatches: number;
-            /** Total Usuarios */
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
             total_usuarios: number;
         };
         /**
@@ -1639,11 +1629,6 @@ export interface components {
             total_usuarios: number;
             /** Trailer Url */
             trailer_url: string | null;
-        };
-        /** MidiaAlterada */
-        MidiaAlterada: {
-            /** Mensagem */
-            mensagem: string;
         };
         /** MidiaDetalhe */
         MidiaDetalhe: {
@@ -1820,11 +1805,8 @@ export interface components {
         };
         /** NoticiaCriada */
         NoticiaCriada: {
-            /**
-             * Id
-             * @description id_noticia da Notícia criada
-             */
-            id: string;
+            /** Id Noticia */
+            id_noticia: string;
             /** Mensagem */
             mensagem: string;
         };
@@ -1861,11 +1843,6 @@ export interface components {
             tipo_midia: "anime" | "manga" | "jogo";
             /** Titulo */
             titulo: string;
-        };
-        /** NotificacoesMarcadas */
-        NotificacoesMarcadas: {
-            /** Mensagem */
-            mensagem: string;
         };
         /**
          * NovoItemLista
@@ -2018,27 +1995,19 @@ export interface components {
         };
         /**
          * Permissoes
-         * @description Permissões efetivas: vence o Grupo mais privilegiado.
+         * @description Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.
          */
         Permissoes: {
-            /** Grupos */
+            /**
+             * Grupos
+             * @description Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo
+             */
             grupos: string | null;
             /**
              * Nivel Acesso
              * @enum {string}
              */
             nivel_acesso: "admin" | "moderador" | "usuario";
-            /** Pode Criar */
-            pode_criar: boolean;
-            /** Pode Deletar */
-            pode_deletar: boolean;
-            /** Pode Editar */
-            pode_editar: boolean;
-            /** Pode Moderar */
-            pode_moderar: boolean;
-        };
-        /** PermissoesDaSessao */
-        PermissoesDaSessao: {
             /** Pode Criar */
             pode_criar: boolean;
             /** Pode Deletar */
@@ -2122,6 +2091,16 @@ export interface components {
         RespostaMe: {
             usuario: components["schemas"]["UsuarioAtual"];
         };
+        /** RespostaNotas */
+        RespostaNotas: {
+            /**
+             * Distribuicao
+             * @description As 10 faixas, de 1 a 10, inclusive as vazias
+             */
+            distribuicao: components["schemas"]["ContagemPorNota"][];
+            /** @description A do Usuário logado; null sem login ou sem Avaliação */
+            minha_avaliacao: components["schemas"]["AvaliacaoDaMidia"] | null;
+        };
         /** RespostaNotificacoes */
         RespostaNotificacoes: {
             /**
@@ -2183,11 +2162,6 @@ export interface components {
              */
             status: "healthy" | "unhealthy";
         };
-        /** StatusUsuarioAlterado */
-        StatusUsuarioAlterado: {
-            /** Mensagem */
-            mensagem: string;
-        };
         /** UsuarioAtual */
         UsuarioAtual: {
             /** Email */
@@ -2206,25 +2180,19 @@ export interface components {
             /** Mensagem */
             mensagem: string;
         };
-        /** UsuarioDaSessao */
+        /**
+         * UsuarioDaSessao
+         * @description `id` e `nome` (e não `id_usuario`/`nome_completo`) são legado intencional: o app lê
+         *     `usuario.id` e o web lê `usuario.nome` da sessão guardada.
+         */
         UsuarioDaSessao: {
             /** Email */
             email: string;
-            /**
-             * Grupos
-             * @description Nomes dos Grupos: 'Usuários, Moderadores'
-             */
-            grupos: string | null;
             /** Id */
             id: string;
-            /**
-             * Nivel Acesso
-             * @enum {string}
-             */
-            nivel_acesso: "admin" | "moderador" | "usuario";
             /** Nome */
             nome: string;
-            permissoes: components["schemas"]["PermissoesDaSessao"];
+            permissoes: components["schemas"]["Permissoes"];
         };
         /** UsuarioModeracao */
         UsuarioModeracao: {
@@ -2380,6 +2348,24 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     get__api_auth_me: {
@@ -2409,8 +2395,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2451,6 +2455,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
                 headers: {
@@ -2462,6 +2475,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2604,6 +2626,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -2615,6 +2646,15 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2657,8 +2697,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2685,11 +2743,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AvaliacaoRemovida"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2708,6 +2775,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2861,6 +2937,24 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     post__api_lista: {
@@ -2894,8 +2988,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2936,8 +3048,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2968,7 +3098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -2980,8 +3110,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3008,7 +3156,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3020,8 +3168,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3052,7 +3218,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3064,8 +3230,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3108,8 +3292,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3291,7 +3493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MidiaAlterada"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3323,6 +3525,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3349,7 +3560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MidiaAlterada"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
@@ -3381,6 +3592,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3450,6 +3670,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     "get__api_midias_{id_midia}_distribuicao": {
@@ -3483,6 +3712,64 @@ export interface operations {
             };
         };
     };
+    "get__api_midias_{id_midia}_notas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaNotas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     get__api_moderacao_avaliacoes: {
         parameters: {
             query?: never;
@@ -3503,6 +3790,33 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3543,6 +3857,33 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     "put__api_moderacao_usuarios_{target_user_id}_ativar": {
@@ -3562,11 +3903,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StatusUsuarioAlterado"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3585,6 +3935,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3611,11 +3970,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StatusUsuarioAlterado"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3641,6 +4009,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     get__api_noticias: {
@@ -3649,8 +4026,6 @@ export interface operations {
                 pagina?: number;
                 /** @description Acima de 50 vira 50 */
                 por_pagina?: number;
-                /** @description Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence */
-                limite?: number | null;
             };
             header?: never;
             path?: never;
@@ -3709,6 +4084,33 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     get__api_notificacoes: {
@@ -3741,6 +4143,24 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     "put__api_notificacoes_marcar-todas-lidas": {
@@ -3758,11 +4178,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotificacoesMarcadas"];
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3799,8 +4237,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3841,6 +4297,24 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     get__api_usuario_estatisticas: {
@@ -3863,6 +4337,24 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3899,8 +4391,26 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3930,6 +4440,24 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

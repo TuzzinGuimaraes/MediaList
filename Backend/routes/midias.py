@@ -1,6 +1,7 @@
 """
 Blueprint de mídias: adaptador HTTP do Catálogo (`repositories.catalogo`) e das
-Atualizações de mídia (`repositories.atualizacoes`).
+Atualizações de mídia (`repositories.atualizacoes`), e as notas das Avaliações
+(`repositories.avaliacoes`).
 
 A rota lê os parâmetros, chama o módulo e responde; entrada e saída seguem os
 modelos de `schemas/midias.py` (ADR 0011). Os testes trocam `catalogo` e
@@ -9,12 +10,25 @@ modelos de `schemas/midias.py` (ADR 0011). Os testes trocam `catalogo` e
 from __future__ import annotations
 
 from flask import Blueprint
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import (
+    AUTENTICACAO_OPCIONAL,
+    AUTENTICADO,
+    ERROS_AUTENTICADA,
+    ERROS_COM_PERMISSAO,
+    CodigoErro,
+    Erro,
+    Mensagem,
+    Pagina,
+    contrato,
+    montar_pagina,
+    resposta_erro,
+)
 from decorators import permission_required
 from repositories.atualizacoes import Atualizacoes
+from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
 from schemas.midias import (
     AtualizacaoPublicada,
@@ -24,9 +38,9 @@ from schemas.midias import (
     CorpoAtualizacao,
     CorpoMidia,
     Midia,
-    MidiaAlterada,
     MidiaDetalhe,
     RespostaDistribuicao,
+    RespostaNotas,
     RespostaPopulares,
     RespostaTrending,
 )
@@ -35,6 +49,7 @@ midias_bp = Blueprint('midias', __name__)
 
 catalogo = Catalogo()
 atualizacoes = Atualizacoes()
+avaliacoes = AvaliacaoRepository()
 
 #: Filtros de GET /midias, repassados ao Catálogo com o mesmo nome.
 FILTROS = (
@@ -42,7 +57,7 @@ FILTROS = (
     'artista',
 )
 
-ERROS_DE_ESCRITA = {'HTTP_401': Erro, 'HTTP_403': Erro, 'HTTP_404': Erro}
+ERROS_DE_ESCRITA = {**ERROS_COM_PERMISSAO, 'HTTP_404': Erro}
 
 
 def midia_nao_encontrada():
@@ -90,7 +105,7 @@ def detalhes_midia(id_midia):
 @jwt_required()
 @permission_required('editar')
 @contrato.validate(
-    resp=Response(HTTP_200=MidiaAlterada, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
 def atualizar_midia(id_midia, json: CorpoMidia):
     """Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela."""
@@ -107,7 +122,7 @@ def atualizar_midia(id_midia, json: CorpoMidia):
 @jwt_required()
 @permission_required('deletar')
 @contrato.validate(
-    resp=Response(HTTP_200=MidiaAlterada, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
 def deletar_midia(id_midia):
     """Deletar mídia central."""
@@ -139,3 +154,21 @@ def criar_atualizacao_midia(id_midia, json: CorpoAtualizacao):
 def distribuicao_midia(id_midia):
     """Distribuição de status dos usuários para uma mídia."""
     return {'distribuicao': catalogo.distribuicao(id_midia)}
+
+
+@midias_bp.route('/<string:id_midia>/notas', methods=['GET'])
+@jwt_required(optional=True)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaNotas, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['midias'], security=AUTENTICACAO_OPCIONAL,
+)
+def notas_midia(id_midia):
+    """Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário."""
+    if not catalogo.obter(id_midia):
+        return midia_nao_encontrada()
+
+    id_usuario = get_jwt_identity()
+    return {
+        'distribuicao': avaliacoes.distribuicao(id_midia),
+        'minha_avaliacao': avaliacoes.do_usuario(id_midia, id_usuario) if id_usuario else None,
+    }

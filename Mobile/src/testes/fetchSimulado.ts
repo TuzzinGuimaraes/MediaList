@@ -55,9 +55,14 @@ export const usuarioAna: UsuarioSessao = {
   id: 'USR-20261106-00007',
   nome: 'Ana Souza',
   email: 'ana@exemplo.com',
-  nivel_acesso: 'usuario',
-  grupos: 'Usuários',
-  permissoes: { pode_criar: false, pode_editar: false, pode_deletar: false, pode_moderar: false },
+  permissoes: {
+    nivel_acesso: 'usuario',
+    grupos: 'Usuários',
+    pode_criar: false,
+    pode_editar: false,
+    pode_deletar: false,
+    pode_moderar: false,
+  },
 };
 
 export function loginOk(tokens: { access: string; refresh: string | null }): Resposta {

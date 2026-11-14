@@ -12,13 +12,12 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar_um
-from contrato import AUTENTICADO, contrato
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, Mensagem, contrato
 from repositories.atualizacoes import Atualizacoes
 from repositories.catalogo import Catalogo
 from schemas.utils import (
     ConsultaGeneros,
     ConsultaNotificacoes,
-    NotificacoesMarcadas,
     RespostaGeneros,
     RespostaNotificacoes,
     Saude,
@@ -41,7 +40,9 @@ def listar_generos(query: ConsultaGeneros):
 
 @utils_bp.route('/notificacoes', methods=['GET'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=RespostaNotificacoes), tags=['utils'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaNotificacoes, **ERROS_AUTENTICADA), tags=['utils'], security=AUTENTICADO,
+)
 def obter_notificacoes(query: ConsultaNotificacoes):
     """As 50 Notificações mais recentes do Usuário; `?nao_lidas=true` só as não lidas."""
     return {'notificacoes': atualizacoes.notificacoes(get_jwt_identity(), query.nao_lidas)}
@@ -49,7 +50,9 @@ def obter_notificacoes(query: ConsultaNotificacoes):
 
 @utils_bp.route('/notificacoes/marcar-todas-lidas', methods=['PUT'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=NotificacoesMarcadas), tags=['utils'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, **ERROS_AUTENTICADA), tags=['utils'], security=AUTENTICADO,
+)
 def marcar_todas_lidas():
     """Marcar como lidas todas as Notificações do Usuário."""
     marcadas = atualizacoes.marcar_todas_lidas(get_jwt_identity())

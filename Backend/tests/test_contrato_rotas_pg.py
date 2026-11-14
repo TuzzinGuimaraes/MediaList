@@ -32,13 +32,13 @@ CHAVES_MIDIA = {
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
 }
 #: Chaves de cada Item de GET /lista (modelo `ItemLista`). Explícitas, e não
-#: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é o modelo `MidiaDoItem`.
+#: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é `CamposDaMidia`, sem os campos só do detalhe.
 CHAVES_ITEM = {
     'autor', 'banner_url', 'data_lancamento', 'demografia', 'desenvolvedor', 'estudio', 'fonte_original',
     'generos', 'generos_lista', 'id_midia', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
-    'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
+    'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url',
     'publicadora', 'sinopse', 'status_anime', 'status_catalogo', 'status_jogo', 'status_manga', 'tipo',
-    'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
+    'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
     'total_usuarios',
     'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio', 'favorito', 'id_lista',
     'nota_usuario', 'privado', 'progresso_atual', 'progresso_total', 'status_consumo', 'total_rewatches',
@@ -192,7 +192,7 @@ def test_lista_pessoal_do_adicionar_ao_remover(client, catalogo, pg, entrar):  #
     recusado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'platinado'})
     assert recusado.status_code == 400 and set(recusado.get_json()) == {'erro', 'codigo', 'detalhes'}
 
-    criado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status': 'assistindo'})
+    criado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'assistindo'})
     assert criado.status_code == 201
     assert set(criado.get_json()) == {'mensagem', 'id_lista'}
     id_lista = criado.get_json()['id_lista']
@@ -269,7 +269,7 @@ def test_avaliacao_do_criar_ao_apagar(client, catalogo, pg, entrar):  # noqa: F8
     assert (alheia.status_code, alheia.get_json()) == (403, negada_na_edicao)
     inexistente = client.put(f'/api/avaliacoes/{INEXISTENTE}', headers=ela, json={'nota': 1})
     assert (inexistente.status_code, inexistente.get_json()) == (403, negada_na_edicao)
-    editada = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': '9,5'})
+    editada = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': 9.5})
     assert (editada.status_code, editada.get_json()) == (
         200, {'mensagem': 'Avaliação atualizada com sucesso!', 'nota_media_atualizada': 9.5})
 
@@ -308,3 +308,34 @@ def test_avaliacoes_da_midia_paginadas_com_o_total(client, catalogo, pg, entrar)
     # Mais recentes primeiro, sem repetir nem pular entre as páginas.
     assert [a['nota'] for a in primeira['itens'] + segunda['itens']] == [7.0, 6.0, 5.0]
     assert client.get(f'/api/avaliacoes/{anime}?pagina=0').status_code == 400
+
+
+def test_notas_da_midia_por_faixa_e_a_avaliacao_de_quem_esta_logado(client, catalogo, pg, entrar):  # noqa: F811
+    anime = catalogo['anime']
+    faixas_vazias = [{'nota': n, 'total': 0} for n in range(1, 11)]
+    assert client.get(f'/api/midias/{anime}/notas').get_json() == {
+        'distribuicao': faixas_vazias, 'minha_avaliacao': None,
+    }
+    inexistente = client.get(f'/api/midias/{INEXISTENTE}/notas')
+    assert (inexistente.status_code, inexistente.get_json()) == (
+        404, {'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado'})
+
+    # A faixa é a nota arredondada (meio para cima), como o web e o app desenhavam: 7,5 cai no 8,
+    # 1,4 no 1; abaixo de 0,5 não entra em faixa nenhuma.
+    autoras = {nota: _usuario(pg) for nota in (7.5, 8, 10, 1.4, 0.4)}
+    for nota, autora in autoras.items():
+        criada = client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': anime, 'nota': nota})
+        assert criada.status_code == 201
+
+    sem_login = client.get(f'/api/midias/{anime}/notas').get_json()
+    totais = {faixa['nota']: faixa['total'] for faixa in sem_login['distribuicao']}
+    assert [f['nota'] for f in sem_login['distribuicao']] == list(range(1, 11))
+    assert {n: t for n, t in totais.items() if t} == {1: 1, 8: 2, 10: 1}
+    assert sem_login['minha_avaliacao'] is None
+
+    minha = client.get(f'/api/midias/{anime}/notas', headers=entrar(autoras[10])).get_json()['minha_avaliacao']
+    assert set(minha) == CHAVES_AVALIACAO
+    assert (minha['nota'], minha['id_usuario']) == (10.0, str(autoras[10]))
+    sem_avaliacao = client.get(f'/api/midias/{anime}/notas', headers=entrar(_usuario(pg))).get_json()
+    assert sem_avaliacao['minha_avaliacao'] is None
+    assert sem_avaliacao['distribuicao'] == sem_login['distribuicao']

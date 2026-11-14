@@ -52,18 +52,15 @@ export const AuthProvider = ({ children, sessionExpiredRef }) => {
                 body: JSON.stringify({ email, senha })
             });
 
-            const mergedPermissions = {
-                ...data.usuario.permissoes,
-                nivel_acesso: data.usuario.nivel_acesso,
-                grupos: data.usuario.grupos
-            };
+            // `permissoes` traz nivel_acesso, grupos e pode_*: o mesmo de GET /usuario/permissoes.
+            const { permissoes } = data.usuario;
 
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.usuario));
-            localStorage.setItem('permissions', JSON.stringify(mergedPermissions));
+            localStorage.setItem('permissions', JSON.stringify(permissoes));
 
             setUser(data.usuario);
-            setPermissions(mergedPermissions);
+            setPermissions(permissoes);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };

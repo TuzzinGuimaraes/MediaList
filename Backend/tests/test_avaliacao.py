@@ -150,9 +150,9 @@ def test_apagar_inexistente(avaliacoes):
 def test_listar_so_de_midia_que_existe(avaliacoes):
     _criar(avaliacoes)
 
-    assert [a['id_avaliacao'] for a in avaliacoes.listar('MID-1', 1, 20).dados['avaliacoes']] == ['AVL-1']
-    assert avaliacoes.listar('MID-2', 1, 20).dados == {'avaliacoes': [], 'total': 0}
-    assert (avaliacoes.listar('MID-404', 1, 20).codigo, avaliacoes.listar('MID-404', 1, 20).erro) == (
+    assert [a['id_avaliacao'] for a in avaliacoes.listar('MID-1', 20, 0).dados['avaliacoes']] == ['AVL-1']
+    assert avaliacoes.listar('MID-2', 20, 0).dados == {'avaliacoes': [], 'total': 0}
+    assert (avaliacoes.listar('MID-404', 20, 0).codigo, avaliacoes.listar('MID-404', 20, 0).erro) == (
         NAO_ENCONTRADO, 'Mídia não encontrada')
 
 
@@ -161,7 +161,7 @@ def test_listar_devolve_a_pagina_pedida_e_o_total_da_midia(avaliacoes):
         _criar(avaliacoes, usuario)
     avaliacoes.criar('USR-1', {'id_midia': 'MID-2', 'nota': 5})
 
-    segunda = avaliacoes.listar('MID-1', 2, 2).dados
+    segunda = avaliacoes.listar('MID-1', 2, 2).dados  # 2ª página de 2
 
     assert segunda['total'] == 3
     assert len(segunda['avaliacoes']) == 1

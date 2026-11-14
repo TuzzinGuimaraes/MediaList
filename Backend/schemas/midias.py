@@ -12,10 +12,22 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field
 
-from contrato import ConsultaPaginada, Data, Id, Instante, Nota, TipoDeMidia, VazioComoAusente
-from parametros import POR_PAGINA_MAX
+from contrato import (
+    ConsultaPaginada,
+    Data,
+    Id,
+    Instante,
+    Nota,
+    PorPagina,
+    Preenchido,
+    TextoOpcional,
+    TipoDeMidia,
+    VazioComoAusente,
+)
+from schemas.avaliacoes import AvaliacaoDaMidia
+from schemas.estado_consumo import RotuloDeEstado
 
 StatusAnime = Literal['em_exibicao', 'finalizado', 'aguardando', 'cancelado']
 StatusManga = Literal['em_publicacao', 'finalizado', 'aguardando', 'cancelado', 'hiato']
@@ -28,9 +40,6 @@ OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
 ]
 
-#: Filtro de texto opcional: vazio vale como ausente.
-Filtro = Annotated[str | None, VazioComoAusente]
-
 
 # ============================================
 # Entrada
@@ -40,42 +49,33 @@ class ConsultaMidias(ConsultaPaginada):
     """`GET /midias`: Tipo, filtros, ordem e página."""
 
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
-    busca: Filtro = None
-    genero: Filtro = Field(default=None, description='`nome_genero`')
-    status: Filtro = Field(default=None, description='Status do Catálogo; sem Tipo, o de qualquer Tipo')
-    autor: Filtro = None
-    estudio: Filtro = None
-    demografia: Filtro = None
-    plataforma: Filtro = None
-    desenvolvedor: Filtro = None
-    modo_jogo: Filtro = None
-    artista: Filtro = None
+    busca: TextoOpcional = None
+    genero: TextoOpcional = Field(default=None, description='`nome_genero`')
+    status: TextoOpcional = Field(default=None, description='Status do Catálogo; sem Tipo, o de qualquer Tipo')
+    autor: TextoOpcional = None
+    estudio: TextoOpcional = None
+    demografia: TextoOpcional = None
+    plataforma: TextoOpcional = None
+    desenvolvedor: TextoOpcional = None
+    modo_jogo: TextoOpcional = None
+    artista: TextoOpcional = None
     ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = 'nota_media'
 
 
 class ConsultaTrending(BaseModel):
     tipo: Annotated[TipoDeMidia, BeforeValidator(lambda v: v or 'anime')] = 'anime'
-    limite: int = Field(default=10, ge=1, description=f'Acima de {POR_PAGINA_MAX} vira {POR_PAGINA_MAX}')
-
-    @field_validator('limite')
-    @classmethod
-    def _teto(cls, valor: int) -> int:
-        return min(valor, POR_PAGINA_MAX)
+    limite: PorPagina = 10
 
 
 class ConsultaPopulares(BaseModel):
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
 
 
-#: Texto opcional do corpo: vazio grava NULL.
-TextoOpcional = Annotated[str | None, VazioComoAusente]
-
-
 class _CorpoMidiaBase(BaseModel):
     """Campos comuns do PUT. A Nota média e a Nota da fonte não são graváveis
     pela API (ticket 13): chegam e são ignoradas, como qualquer campo fora do modelo."""
 
-    titulo_original: Annotated[str, Field(min_length=1)] | None = None
+    titulo_original: Preenchido | None = None
     titulo_ingles: TextoOpcional = None
     titulo_portugues: TextoOpcional = None
     sinopse: TextoOpcional = None
@@ -132,8 +132,8 @@ class CorpoMidia(CorpoAnime, CorpoManga, CorpoJogo):
 
 
 class CorpoAtualizacao(BaseModel):
-    tipo: Annotated[str, Field(min_length=1, description='Tipo da Atualização: episodio, capitulo...')]
-    titulo: Annotated[str, Field(min_length=1)]
+    tipo: Preenchido = Field(description='Tipo da Atualização: episodio, capitulo...')
+    titulo: Preenchido
     descricao: str | None = None
     dados_adicionais: Annotated[dict[str, Any], BeforeValidator(lambda v: {} if v is None else v)] = Field(
         default_factory=dict,
@@ -144,8 +144,9 @@ class CorpoAtualizacao(BaseModel):
 # Saída
 # ============================================
 
-class Midia(BaseModel):
-    """A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos."""
+class CamposDaMidia(BaseModel):
+    """Os campos da Mídia que saem em toda parte: em `Midia` e na parte da Mídia de cada Item
+    de lista (`ItemLista`). Os de outro Tipo vêm nulos."""
 
     id_midia: Id
     tipo: TipoDeMidia
@@ -160,7 +161,6 @@ class Midia(BaseModel):
     origem_nota: OrigemNota | None
     poster_url: str | None
     banner_url: str | None
-    trailer_url: str | None
     status_catalogo: StatusAnime | StatusManga | StatusJogo | None = Field(description='O status do Tipo da Mídia')
     generos: str | None = Field(description="'Ação, Drama'; `generos_lista` é o mesmo já separado")
     generos_lista: list[str]
@@ -169,8 +169,6 @@ class Midia(BaseModel):
     # anime
     status_anime: StatusAnime | None
     numero_episodios: int | None
-    duracao_episodio: int | None = Field(description='Minutos')
-    classificacao_etaria: str | None
     estudio: str | None
     fonte_original: str | None
     # mangá
@@ -178,9 +176,6 @@ class Midia(BaseModel):
     numero_capitulos: int | None
     numero_volumes: int | None
     autor: str | None
-    artista: str | None = Field(validation_alias='manga_artista')
-    publicadora_original: str | None
-    revista: str | None
     demografia: Demografia | None
     # jogo
     desenvolvedor: str | None
@@ -188,6 +183,20 @@ class Midia(BaseModel):
     plataformas: str | None = Field(description="'PC, Switch'")
     status_jogo: StatusJogo | None
     modo_jogo: ModoJogo | None
+
+
+class Midia(CamposDaMidia):
+    """A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos."""
+
+    trailer_url: str | None
+    # anime
+    duracao_episodio: int | None = Field(description='Minutos')
+    classificacao_etaria: str | None
+    # mangá
+    artista: str | None = Field(validation_alias='manga_artista')
+    publicadora_original: str | None
+    revista: str | None
+    # jogo
     classificacao: str | None
 
 
@@ -229,7 +238,7 @@ class RespostaPopulares(BaseModel):
 
 
 class ContagemPorRotulo(BaseModel):
-    status_consumo: str = Field(description='Rótulo de estado')
+    status_consumo: RotuloDeEstado
     total: int
 
 
@@ -237,8 +246,14 @@ class RespostaDistribuicao(BaseModel):
     distribuicao: list[ContagemPorRotulo]
 
 
-class MidiaAlterada(BaseModel):
-    mensagem: str
+class ContagemPorNota(BaseModel):
+    nota: int = Field(ge=1, le=10, description='A faixa: a nota arredondada, meio para cima (7,5 cai no 8)')
+    total: int
+
+
+class RespostaNotas(BaseModel):
+    distribuicao: list[ContagemPorNota] = Field(description='As 10 faixas, de 1 a 10, inclusive as vazias')
+    minha_avaliacao: AvaliacaoDaMidia | None = Field(description='A do Usuário logado; null sem login ou sem Avaliação')
 
 
 class AtualizacaoPublicada(BaseModel):

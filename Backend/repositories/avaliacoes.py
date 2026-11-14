@@ -17,6 +17,15 @@ NOTAS_DA_MIDIA = 'SELECT nota_media, total_avaliacoes FROM vw_notas_midia WHERE 
 CAMPOS_EDITAVEIS = ('nota', 'titulo_avaliacao', 'texto_avaliacao')
 
 
+#: Uma Avaliação com nome e foto do autor.
+SELECT_AVALIACAO = """
+    SELECT av.id_avaliacao, av.id_usuario, av.id_midia, av.nota, av.titulo_avaliacao,
+           av.texto_avaliacao, av.data_avaliacao, av.data_edicao, u.nome_completo, u.foto_perfil
+    FROM avaliacoes av
+    JOIN usuarios u ON u.id_usuario = av.id_usuario
+"""
+
+
 class AvaliacaoRepository:
     def listar(self, id_midia: str, limite: int, deslocamento: int) -> list[dict[str, Any]]:
         """Uma página das Avaliações da Mídia, com nome e foto do autor, mais recentes primeiro.
@@ -24,16 +33,33 @@ class AvaliacaoRepository:
         O id desempata o instante, para a página não repetir nem pular Avaliação.
         """
         return consultar(
-            """
-            SELECT av.id_avaliacao, av.id_usuario, av.id_midia, av.nota, av.titulo_avaliacao,
-                   av.texto_avaliacao, av.data_avaliacao, av.data_edicao, u.nome_completo, u.foto_perfil
-            FROM avaliacoes av
-            JOIN usuarios u ON u.id_usuario = av.id_usuario
+            f"""{SELECT_AVALIACAO}
             WHERE av.id_midia = %s
             ORDER BY av.data_avaliacao DESC, av.id_avaliacao DESC
             LIMIT %s OFFSET %s
             """,
             (id_midia, limite, deslocamento),
+        )
+
+    def do_usuario(self, id_midia: str, id_usuario: str) -> dict[str, Any] | None:
+        """A Avaliação do Usuário para a Mídia (no máximo uma), ou None."""
+        return consultar_um(f'{SELECT_AVALIACAO} WHERE av.id_midia = %s AND av.id_usuario = %s', (id_midia, id_usuario))
+
+    def distribuicao(self, id_midia: str) -> list[dict[str, Any]]:
+        """Quantas Avaliações da Mídia caem em cada nota inteira de 1 a 10, todas as faixas.
+
+        A faixa é a nota arredondada, meio para cima (7,5 cai no 8), como o web e o app já
+        desenhavam; nota abaixo de 0,5 não entra em faixa nenhuma.
+        """
+        return consultar(
+            """
+            SELECT faixa.nota, count(av.id_avaliacao) AS total
+            FROM generate_series(1, 10) AS faixa(nota)
+            LEFT JOIN avaliacoes av ON av.id_midia = %s AND round(av.nota) = faixa.nota
+            GROUP BY faixa.nota
+            ORDER BY faixa.nota
+            """,
+            (id_midia,),
         )
 
     def contar(self, id_midia: str) -> int:

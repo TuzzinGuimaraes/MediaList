@@ -2,7 +2,7 @@ import { userEvent } from '@testing-library/react-native';
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import type { Midia, RespostaGeneros } from '../api/tipos';
-import { erro, pagina as paginaDe, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
+import { erro, pagina as paginaDe, rotasSemAvaliacoes } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { anime, fullmetal, manga } from './midias';
 import { trocarRecorte } from './recorte';
@@ -178,7 +178,7 @@ describe('Explorar', () => {
       'GET /generos?tipo=anime': generos(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
-      [rotaAvaliacoes('MID-ANM-2026-20053')]: paginaAvaliacoes([]),
+      ...rotasSemAvaliacoes('MID-ANM-2026-20053'),
       'GET /lista': { status: 200, corpo: { lista: [] } },
     });
     const app = await abrirExplorar();

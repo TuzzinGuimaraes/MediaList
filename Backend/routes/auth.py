@@ -15,7 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from banco import Conflito, consultar_um, executar, transacao
 from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
-from contrato import AUTENTICADO, CodigoErro, Erro, contrato, resposta_erro
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from decorators import get_user_permissions
 from repositories import AcessoRepository, RefreshTokenRepository
 from schemas.auth import (
@@ -25,7 +25,6 @@ from schemas.auth import (
     CorpoRedefinirSenha,
     CorpoRefresh,
     CorpoRegistro,
-    Mensagem,
     RespostaLogin,
     RespostaMe,
     RespostaRefresh,
@@ -162,14 +161,7 @@ def login(json: CorpoLogin):
             'id': usuario['id_usuario'],
             'nome': usuario['nome_completo'],
             'email': usuario['email'],
-            'nivel_acesso': permissions['nivel_acesso'],
-            'grupos': permissions['grupos'],
-            'permissoes': {
-                'pode_criar': permissions['pode_criar'],
-                'pode_editar': permissions['pode_editar'],
-                'pode_deletar': permissions['pode_deletar'],
-                'pode_moderar': permissions['pode_moderar']
-            }
+            'permissoes': permissions,
         }
     }
 
@@ -228,7 +220,9 @@ def _refresh_invalido():
 
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=RespostaMe, HTTP_404=Erro), tags=['auth'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaMe, HTTP_404=Erro, **ERROS_AUTENTICADA), tags=['auth'], security=AUTENTICADO,
+)
 def obter_usuario_atual():
     """Obter informações do usuário autenticado"""
     usuario = consultar_um(
@@ -243,7 +237,7 @@ def obter_usuario_atual():
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=Mensagem), tags=['auth'], security=AUTENTICADO)
+@contrato.validate(resp=Response(HTTP_200=Mensagem, **ERROS_AUTENTICADA), tags=['auth'], security=AUTENTICADO)
 def logout(json: CorpoLogout):
     """Fazer logout e revogar o token"""
     _revogar_access(get_jwt())
@@ -283,7 +277,8 @@ def esqueci_senha(json: CorpoEsqueciSenha):
 @auth_bp.route('/redefinir-senha', methods=['POST'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro), tags=['auth'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['auth'], security=AUTENTICADO,
 )
 def redefinir_senha(json: CorpoRedefinirSenha):
     """Redefinir senha com token de recuperação"""

@@ -1,7 +1,7 @@
 import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { erro, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
+import { erro, rotasSemAvaliacoes } from './contrato';
 import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
 import { anime, fullmetal, itemDaLista as item, jogo, manga } from './midias';
 import { trocarRecorte } from './recorte';
@@ -413,7 +413,7 @@ describe('adicionar pelo detalhe', () => {
     return {
       [`GET /midias/${id}`]: { status: 200, corpo: midia },
       [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
-      [rotaAvaliacoes(id)]: paginaAvaliacoes([]),
+      ...rotasSemAvaliacoes(id),
     };
   }
 

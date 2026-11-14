@@ -87,6 +87,8 @@ def permission_required(permission_name):
                     return resposta_erro(403, CodigoErro.ACESSO_NEGADO, f'Sem permissão para {permission_name}')
 
             return f(*args, **kwargs)
+        # O teste do contrato confere que a rota declara o 403 (ERROS_COM_PERMISSAO).
+        decorated_function.exige_permissao = True
         return decorated_function
     return decorator
 
@@ -106,5 +108,6 @@ def moderator_or_admin_required(f):
 
         return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Acesso restrito a moderadores e administradores')
 
+    decorated_function.exige_permissao = True
     return decorated_function
 

@@ -1,34 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { Cliente } from './cliente';
-import type { Avaliacao, DadosAvaliacao, PaginaAvaliacoes } from './tipos';
+import type { DadosAvaliacao, PaginaAvaliacoes, RespostaNotas } from './tipos';
 
-/** O teto de `por_pagina` da API: menos idas ao servidor por Mídia. */
-const POR_PAGINA = 50;
+/** Avaliações que o detalhe mostra: só a 1ª página. */
+export const AVALIACOES_POR_PAGINA = 20;
 
-/**
- * Todas as Avaliações da Mídia, página a página até somar o `total`. O detalhe precisa de
- * todas: a distribuição das notas conta cada uma, e a do Usuário pode estar em qualquer
- * página. A API não tem a distribuição pronta nem um "minha Avaliação" (ver o ticket 06).
- */
-async function todasAsAvaliacoes(cliente: Cliente, id: string): Promise<Avaliacao[]> {
-  const itens: Avaliacao[] = [];
-  for (let pagina = 1; ; pagina++) {
-    const r = await cliente.requisitar<PaginaAvaliacoes>(
-      `/avaliacoes/${encodeURIComponent(id)}?pagina=${pagina}&por_pagina=${POR_PAGINA}`,
-    );
-    itens.push(...r.itens);
-    if (r.pagina * r.por_pagina >= r.total || r.itens.length === 0) return itens;
-  }
-}
-
+/** A 1ª página das Avaliações da Mídia; `total` conta todas. */
 export function useAvaliacoes(id: string) {
   const { cliente, sessao } = useSessao();
   return useQuery({
     enabled: sessao.estado === 'autenticada',
     queryKey: ['avaliacoes', id],
-    queryFn: () => todasAsAvaliacoes(cliente, id),
+    queryFn: () =>
+      cliente.requisitar<PaginaAvaliacoes>(`/avaliacoes/${encodeURIComponent(id)}?por_pagina=${AVALIACOES_POR_PAGINA}`),
+  });
+}
+
+/**
+ * GET /midias/<id>/notas: a distribuição das notas de todas as Avaliações e a do Usuário
+ * logado (que pode não estar na 1ª página). Sob ['avaliacoes', id]: uma Avaliação gravada
+ * invalida as duas consultas.
+ */
+export function useNotas(id: string) {
+  const { cliente, sessao } = useSessao();
+  return useQuery({
+    enabled: sessao.estado === 'autenticada',
+    queryKey: ['avaliacoes', id, 'notas'],
+    queryFn: () => cliente.requisitar<RespostaNotas>(`/midias/${encodeURIComponent(id)}/notas`),
   });
 }
 

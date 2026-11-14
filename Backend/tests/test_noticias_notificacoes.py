@@ -48,17 +48,17 @@ def test_noticias_sem_paginacao_vem_na_primeira_pagina_de_20(client, monkeypatch
     assert fake.sql('LIMIT')[0][2] == (20, 0)
 
 
-@pytest.mark.parametrize('query, por_pagina', [('limite=5', 5), ('limite=999', 50), ('limite=5&por_pagina=7', 7)])
-def test_limite_vale_como_por_pagina_ate_os_clientes_migrarem(client, monkeypatch, query, por_pagina):
+def test_limite_nao_e_mais_parametro_das_noticias(client, monkeypatch):
+    """O apelido antigo de `por_pagina` saiu: os dois clientes mandam `por_pagina`."""
     fake = _noticias(monkeypatch)
 
-    response = client.get(f'/api/noticias?{query}')
+    response = client.get('/api/noticias?limite=5')
 
-    assert response.get_json()['por_pagina'] == por_pagina
-    assert fake.sql('LIMIT')[0][2] == (por_pagina, 0)
+    assert response.get_json()['por_pagina'] == 20
+    assert fake.sql('LIMIT')[0][2] == (20, 0)
 
 
-@pytest.mark.parametrize('query', ['limite=0', 'limite=dez', 'pagina=0'])
+@pytest.mark.parametrize('query', ['por_pagina=0', 'por_pagina=dez', 'pagina=0'])
 def test_paginacao_invalida_das_noticias_responde_400(client, monkeypatch, query):
     fake = _noticias(monkeypatch)
 
@@ -78,7 +78,7 @@ def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, m
     })
 
     assert response.status_code == 201
-    assert response.get_json() == {'mensagem': 'Notícia criada!', 'id': 'NOT-1'}
+    assert response.get_json() == {'mensagem': 'Notícia criada!', 'id_noticia': 'NOT-1'}
     _, _, params = fake.sql('INSERT INTO noticias')[0]
     assert params == ('Nova notícia', 'Texto', 'USR-ADMIN-0001', 'jogo', ['rpg'], 'https://img/x.png')
 
