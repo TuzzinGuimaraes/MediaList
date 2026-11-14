@@ -3,8 +3,7 @@ import { ActivityIndicator, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { useBuscaMidias, useGeneros } from '@/api/explorar';
-import type { OrdemCatalogo } from '@/api/tipos';
-import type { TipoMidia } from '@/api/tipos';
+import type { OrdemCatalogo, TipoMidia } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
