@@ -6,6 +6,7 @@ import { useApi } from '../contexts/ApiContext';
 import ListEditorModal from '../components/media/ListEditorModal';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants/mediaStatus';
 import { notasDaMidia } from '../constants/notas';
+import { buscarTodasAsPaginas } from '../paginacao';
 
 const blocoEspecifico = (midia) => {
     switch (midia.tipo) {
@@ -47,6 +48,7 @@ const MediaDetailPage = () => {
     const { apiCall } = useApi();
     const [midia, setMidia] = useState(null);
     const [avaliacoes, setAvaliacoes] = useState([]);
+    const [totalAvaliacoes, setTotalAvaliacoes] = useState(0);
     const [listaItem, setListaItem] = useState(null);
     const [distribuicao, setDistribuicao] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -59,19 +61,16 @@ const MediaDetailPage = () => {
         try {
             const [midiaData, avalData, listaData, distData] = await Promise.all([
                 apiCall(`/midias/${id}`),
-                apiCall(`/avaliacoes/${id}`).catch(() => ({ avaliacoes: [] })),
+                // Todas as páginas: a distribuição de notas precisa de todas as Avaliações.
+                buscarTodasAsPaginas(apiCall, `/avaliacoes/${id}`).catch(() => ({ itens: [], total: 0 })),
                 apiCall('/lista').catch(() => ({ lista: [] })),
                 apiCall(`/midias/${id}/distribuicao`).catch(() => ({ distribuicao: [] })),
             ]);
 
-            const m = midiaData.id_midia ? midiaData : (midiaData.midia || midiaData);
-            if (!m.generos && m.generos_lista) {
-                m.generos = m.generos_lista;
-            } else if (typeof m.generos === 'string' && m.generos) {
-                m.generos = m.generos.split(',').map(g => g.trim()).filter(Boolean);
-            }
-            setMidia(m);
-            setAvaliacoes(avalData.avaliacoes || []);
+            // `generos` é o texto 'Ação, Drama'; `generos_lista` já vem separado.
+            setMidia({ ...midiaData, generos: midiaData.generos_lista || [] });
+            setAvaliacoes(avalData.itens);
+            setTotalAvaliacoes(avalData.total);
             setDistribuicao(distData.distribuicao || []);
 
             const lista = listaData.lista || [];
@@ -195,7 +194,7 @@ const MediaDetailPage = () => {
                             ))}
                             <div className="flex items-center gap-1.5">
                                 <MessageSquare size={16} className="text-accent-blue" />
-                                <span className="font-bold text-text-bright">{avaliacoes.length}</span>
+                                <span className="font-bold text-text-bright">{totalAvaliacoes}</span>
                                 <span className="text-xs text-text-secondary">Avaliações</span>
                             </div>
                             {midia.total_usuarios > 0 && (
@@ -241,7 +240,7 @@ const MediaDetailPage = () => {
                                     <div className="flex flex-wrap gap-1 mt-1">
                                         {midia.generos.map((g, i) => (
                                             <span key={i} className="bg-accent-blue/15 text-accent-blue text-xs px-2 py-0.5 rounded">
-                                                {typeof g === 'string' ? g : g.nome}
+                                                {g}
                                             </span>
                                         ))}
                                     </div>
@@ -311,7 +310,7 @@ const MediaDetailPage = () => {
                         {/* Reviews */}
                         <div>
                             <h3 className="text-lg font-semibold text-text-bright mb-4">
-                                {avaliacoes.length > 0 ? `Avaliações (${avaliacoes.length})` : 'Sem avaliações'}
+                                {totalAvaliacoes > 0 ? `Avaliações (${totalAvaliacoes})` : 'Sem avaliações'}
                             </h3>
                             {avaliacoes.length === 0 ? (
                                 <div className="bg-dark-secondary rounded-md p-8 text-center">
