@@ -1,7 +1,8 @@
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import type { Avaliacao, AvaliacaoCriada, MidiaDetalhe } from '../api/tipos';
-import { erro, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
+import { AVALIACOES_POR_PAGINA } from '../api/avaliacoes';
+import { erro, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
 import { rotasDoInicio } from './inicio';
 import { anime } from './midias';
@@ -38,11 +39,16 @@ const minha = (dados: Partial<Avaliacao> = {}) =>
 const frieren = anime({ nota_media: 8.5, total_avaliacoes: 1 });
 const ID = frieren.id_midia;
 
+/** GET /midias/<id>/notas como a API responderia a Ana: a Avaliação dela, se houver. */
+const notasPara = (avaliacoes: Avaliacao[]) =>
+  respostaNotas({}, avaliacoes.find((a) => a.id_usuario === usuarioAna.id) ?? null);
+
 function rotas(avaliacoes: Avaliacao[], extras: Record<string, Resposta | ((r: any) => Resposta)> = {}) {
   return {
     [`GET /midias/${ID}`]: { status: 200, corpo: frieren },
     [`GET /midias/${ID}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
     [rotaAvaliacoes(ID)]: paginaAvaliacoes(avaliacoes),
+    [rotaNotas(ID)]: notasPara(avaliacoes),
     'GET /lista': { status: 200, corpo: { lista: [] } },
     ...extras,
   };
@@ -79,6 +85,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
       [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'POST /avaliacoes': (req) => {
         avaliacoes = [minha({ nota: 9, titulo_avaliacao: 'Obra-prima', texto_avaliacao: 'Chorei.' })];
         midia = { ...midia, nota_media: 9, total_avaliacoes: 1 };
@@ -157,6 +164,7 @@ describe('Avaliações no detalhe da Mídia', () => {
     const api = simularFetch({
       ...rotas([]),
       [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'PUT /avaliacoes/AVL-MINHA': (req) => {
         avaliacoes = [avaliacao(), minha({ nota: 6.5, titulo_avaliacao: 'Revisto' })];
         return { status: 200, corpo: { mensagem: 'Avaliação atualizada com sucesso!', nota_media_atualizada: 7.5 } };
@@ -184,15 +192,15 @@ describe('Avaliações no detalhe da Mídia', () => {
     expect(api.para(`GET /midias/${ID}`).length).toBeGreaterThan(1);
   });
 
-  it('reconhece a Avaliação própria mesmo fora da primeira página', async () => {
-    const outras = Array.from({ length: 50 }, (_, i) =>
+  it('reconhece a Avaliação própria pela /notas, mesmo fora da 1ª página', async () => {
+    const outras = Array.from({ length: AVALIACOES_POR_PAGINA }, (_, i) =>
       avaliacao({ id_avaliacao: `AVL-${i}`, id_usuario: `USR-${i}`, nome_completo: `Usuário ${i}` }),
     );
     simularFetch({
       ...rotas([]),
       [`GET /midias/${ID}`]: { status: 200, corpo: anime({ nota_media: 8.5, total_avaliacoes: 51 }) },
-      [rotaAvaliacoes(ID, 1)]: paginaAvaliacoes(outras, 1, 51),
-      [rotaAvaliacoes(ID, 2)]: paginaAvaliacoes([minha()], 2, 51),
+      [rotaAvaliacoes(ID)]: paginaAvaliacoes(outras, 51),
+      [rotaNotas(ID)]: respostaNotas({}, minha()),
     });
 
     await abrirDetalhe();
@@ -209,6 +217,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
       [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'DELETE /avaliacoes/AVL-MINHA': () => {
         avaliacoes = [];
         midia = { ...midia, nota_media: null, total_avaliacoes: null };

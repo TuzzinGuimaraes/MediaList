@@ -91,13 +91,3 @@ export function atributosDoTipo(midia: Midia): [string, string][] {
     .filter(([, valor]) => valor != null && valor !== '')
     .map(([rotulo, valor]) => [rotulo, String(valor)]);
 }
-
-/** Quantas Avaliações caíram em cada nota inteira de 1 a 10 (arredondada). */
-export function distribuicaoDeNotas(notas: number[]): { nota: number; total: number }[] {
-  const totais = Array.from({ length: 10 }, (_, i) => ({ nota: i + 1, total: 0 }));
-  for (const n of notas) {
-    const nota = Math.round(Number(n));
-    if (nota >= 1 && nota <= 10) totais[nota - 1].total++;
-  }
-  return totais;
-}

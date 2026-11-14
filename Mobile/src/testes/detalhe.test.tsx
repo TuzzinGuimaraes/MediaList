@@ -1,7 +1,8 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 import type { Avaliacao, ItemLista, MidiaDetalhe, RespostaDistribuicao } from '../api/tipos';
-import { erro, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
+import { AVALIACOES_POR_PAGINA } from '../api/avaliacoes';
+import { erro, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { type Resposta, simularFetch } from './fetchSimulado';
 import { anime, itemDaLista as item, jogo, manga } from './midias';
 import { APP, abrirLogado } from './sessao';
@@ -26,7 +27,10 @@ function detalhe(
   midia: MidiaDetalhe,
   extras: {
     lista?: ItemLista[];
+    /** Notas das Avaliações da 1ª página. */
     notas?: number[];
+    /** Faixas de GET /midias/<id>/notas. */
+    totais?: Partial<Record<number, number>>;
     distribuicao?: RespostaDistribuicao['distribuicao'];
   } = {},
 ): Record<string, Resposta> {
@@ -36,6 +40,7 @@ function detalhe(
     [`GET /midias/${id}`]: { status: 200, corpo: midia },
     [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: distribuicao },
     [rotaAvaliacoes(id)]: paginaAvaliacoes(avaliacoesCom(id, extras.notas ?? [])),
+    [rotaNotas(id)]: respostaNotas(extras.totais),
     'GET /lista': { status: 200, corpo: { lista: extras.lista ?? [] } },
   };
 }
@@ -122,7 +127,7 @@ describe('detalhe da Mídia', () => {
 
   it('mostra a distribuição das notas das Avaliações', async () => {
     const frieren = anime({ total_avaliacoes: 3 });
-    simularFetch(detalhe(frieren, { notas: [9, 9.4, 6] }));
+    simularFetch(detalhe(frieren, { totais: { 9: 2, 6: 1 } }));
 
     await abrirDetalhe(frieren.id_midia);
 
@@ -131,21 +136,20 @@ describe('detalhe da Mídia', () => {
     expect(screen.getByLabelText('Nota 10: 0 avaliações')).toBeOnTheScreen();
   });
 
-  it('a distribuição das notas soma todas as páginas de Avaliações, não só a primeira', async () => {
+  it('pede só a 1ª página de Avaliações; a distribuição de todas vem pronta de /notas', async () => {
     const frieren = anime({ total_avaliacoes: 52 });
     const id = frieren.id_midia;
     const api = simularFetch({
-      ...detalhe(frieren),
-      [rotaAvaliacoes(id, 1)]: paginaAvaliacoes(avaliacoesCom(id, Array(50).fill(9)), 1, 52),
-      [rotaAvaliacoes(id, 2)]: paginaAvaliacoes(avaliacoesCom(id, [3, 9], 50), 2, 52),
+      ...detalhe(frieren, { totais: { 9: 51, 3: 1 } }),
+      [rotaAvaliacoes(id)]: paginaAvaliacoes(avaliacoesCom(id, Array(AVALIACOES_POR_PAGINA).fill(9)), 52),
     });
 
     await abrirDetalhe(id);
 
     expect(await screen.findByLabelText('Nota 9: 51 avaliações')).toBeOnTheScreen();
     expect(screen.getByLabelText('Nota 3: 1 avaliação')).toBeOnTheScreen();
-    expect(api.para(rotaAvaliacoes(id, 2))).toHaveLength(1);
-    expect(api.chamadas.filter((c) => c.caminho.includes('pagina=3&'))).toHaveLength(0);
+    expect(screen.getAllByLabelText(/^Avaliação de /)).toHaveLength(AVALIACOES_POR_PAGINA);
+    expect(api.chamadas.filter((c) => c.caminho.startsWith('/avaliacoes/'))).toHaveLength(1);
   });
 
   it('mostra quantos Usuários têm a Mídia em cada Estado de consumo', async () => {
@@ -257,6 +261,7 @@ describe('detalhe da Mídia', () => {
 
   it.each([
     ['as Avaliações', (id: string) => rotaAvaliacoes(id)],
+    ['as notas', (id: string) => rotaNotas(id)],
     ['a distribuição por Estado', (id: string) => `GET /midias/${id}/distribuicao`],
     ['a Lista pessoal', () => 'GET /lista'],
   ])('se falha ao carregar %s, o detalhe mostra o erro e "Tentar de novo" recarrega', async (_parte, rota) => {

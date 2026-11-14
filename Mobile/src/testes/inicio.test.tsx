@@ -4,7 +4,7 @@ import { AccessibilityInfo } from 'react-native';
 
 import { POR_CARROSSEL } from '../api/inicio';
 import type { Midia } from '../api/tipos';
-import { pagina, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
+import { pagina, rotasSemAvaliacoes } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
 import { anime, fullmetal, itemDaLista as item, jogo, manga, popular } from './midias';
@@ -259,7 +259,7 @@ describe('Início', () => {
       ...catalogo(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
-      [rotaAvaliacoes('MID-ANM-2026-20053')]: paginaAvaliacoes([]),
+      ...rotasSemAvaliacoes('MID-ANM-2026-20053'),
       'GET /lista': { status: 200, corpo: { lista: [] } },
     });
     const app = await abrirLogado();
