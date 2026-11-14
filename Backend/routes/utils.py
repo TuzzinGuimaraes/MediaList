@@ -1,5 +1,5 @@
 """
-Blueprint de utilidades: gêneros, Mídias populares, Notificações e saúde.
+Blueprint de utilidades: gêneros, Notificações e saúde (Mídias populares: blueprint `midias`).
 
 As rotas leem os parâmetros, chamam o Catálogo ou as Atualizações e respondem.
 Os testes trocam `catalogo` e `atualizacoes` deste módulo; `/health` fala com o
@@ -61,8 +61,3 @@ def health_check():
         return jsonify({'status': 'unhealthy', 'postgres': 'disconnected'}), 503
     return jsonify({'status': 'healthy', 'postgres': 'connected'}), 200
 
-
-@utils_bp.route('/midias/populares', methods=['GET'])
-def midias_populares():
-    """As Mídias com mais Usuários; a nota desempata."""
-    return jsonify({'midias': catalogo.populares(request.args.get('tipo'))}), 200

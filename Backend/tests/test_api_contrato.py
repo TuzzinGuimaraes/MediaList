@@ -28,7 +28,7 @@ def test_pagina_que_nao_e_numero_responde_400(client):
     response = client.get('/api/midias?pagina=abc')
 
     assert response.status_code == 400
-    assert 'pagina' in response.get_json()['erro']
+    assert response.get_json()['detalhes'] == {'pagina': 'Tipo inválido'}
 
 
 def test_pagina_zero_responde_400(client):

@@ -35,10 +35,17 @@ CHAVES_ITEM = CHAVES_MIDIA | {
     'episodios_assistidos', 'favorito', 'id_lista', 'nota_usuario', 'privado', 'progresso_atual',
     'progresso_total', 'status_consumo', 'status_visualizacao', 'total_rewatches',
 }
+#: A Mídia em GET /midias, no detalhe e em trending (contrato-api 03): sem os apelidos legados
+#: (`id_anime`, `codigo_anime`, `*_trailer_url`, `*_anilist_id`, `manga_artista`), sem `codigo_midia`,
+#: `tipo_label`, `rawg_slug`, `progresso_total_padrao` e `unidade_progresso`; `artista` no lugar de
+#: `manga_artista`.
+CHAVES_MIDIA_CONTRATO = CHAVES_MIDIA - {
+    'anime_anilist_id', 'anime_trailer_url', 'codigo_anime', 'codigo_midia', 'id_anime', 'jogo_trailer_url',
+    'manga_anilist_id', 'manga_artista', 'progresso_total_padrao', 'rawg_slug', 'tipo_label', 'unidade_progresso',
+} | {'artista'}
 CHAVES_POPULAR = {
-    'codigo_midia', 'generos', 'id_midia', 'nota_fonte', 'nota_media', 'origem_nota', 'poster_url', 'tipo',
-    'tipo_label', 'titulo_original', 'titulo_portugues', 'total_favoritos', 'total_usuarios',
-    'usuarios_concluiram',
+    'generos', 'id_midia', 'nota_fonte', 'nota_media', 'origem_nota', 'poster_url', 'tipo', 'titulo_original',
+    'titulo_portugues', 'total_usuarios',
 }
 CHAVES_AVALIACAO = {
     'data_avaliacao', 'data_edicao', 'dislikes', 'foto_perfil', 'generos_lista', 'id_avaliacao', 'id_midia',
@@ -75,7 +82,7 @@ def catalogo(pg, prefixo):  # noqa: F811
         }),
         'manga': salvar(importacao.salvar_manga, {
             'anilist_id': random.randint(10**8, 2 * 10**9), 'status_manga': 'finalizado', 'numero_capitulos': 30,
-            'autor': 'Autor CTR', 'demografia': 'seinen',
+            'autor': 'Autor CTR', 'artista': 'Artista CTR', 'demografia': 'seinen',
         }),
         'jogo': salvar(importacao.salvar_jogo, {
             'rawg_slug': f'ctr-{uuid.uuid4().hex}', 'status_jogo': 'lancado', 'modo_jogo': 'single',
@@ -90,33 +97,40 @@ def entrar(make_token):
 
 
 def test_listagem_detalhe_trending_e_populares(client, catalogo, prefixo):
-    resposta = client.get(f'/api/midias?busca={prefixo}&ordem=nota_media&pagina=1&por_pagina=10')
+    resposta = client.get(f'/api/midias?busca={prefixo}&ordem=nota_media&pagina=1&por_pagina=2')
     corpo = resposta.get_json()
 
     assert resposta.status_code == 200
-    assert set(corpo) == {'midias', 'tipo', 'pagina', 'por_pagina'}
-    assert (corpo['tipo'], corpo['pagina'], corpo['por_pagina']) == (None, 1, 10)
+    # Envelope de paginação; `total` conta as 3, não só a página (contrato-api 03).
+    assert set(corpo) == {'itens', 'pagina', 'por_pagina', 'total'}
+    assert (corpo['pagina'], corpo['por_pagina'], corpo['total']) == (1, 2, 3)
     # COALESCE(nota_media, nota_fonte): jogo 9.0, anime 7.5, mangá sem nota no fim.
-    assert [m['id_midia'] for m in corpo['midias']] == [catalogo['jogo'], catalogo['anime'], catalogo['manga']]
-    assert all(set(m) == CHAVES_MIDIA for m in corpo['midias'])
+    assert [m['id_midia'] for m in corpo['itens']] == [catalogo['jogo'], catalogo['anime']]
+    assert all(set(m) == CHAVES_MIDIA_CONTRATO for m in corpo['itens'])
+    segunda = client.get(f'/api/midias?busca={prefixo}&pagina=2&por_pagina=2').get_json()
+    assert ([m['id_midia'] for m in segunda['itens']], segunda['total']) == ([catalogo['manga']], 3)
 
     jogo = client.get(f'/api/midias?tipo=jogo&busca={prefixo}&plataforma=PC&desenvolvedor=dev')
-    assert [m['id_midia'] for m in jogo.get_json()['midias']] == [catalogo['jogo']]
-    assert jogo.get_json()['midias'][0]['plataformas'] == 'PC, Switch'
+    assert [m['id_midia'] for m in jogo.get_json()['itens']] == [catalogo['jogo']]
+    assert jogo.get_json()['total'] == 1
+    assert jogo.get_json()['itens'][0]['plataformas'] == 'PC, Switch'
     manga = client.get(f'/api/midias?tipo=manga&busca={prefixo}&demografia=seinen&autor=autor&status=finalizado')
-    assert [m['id_midia'] for m in manga.get_json()['midias']] == [catalogo['manga']]
+    assert [m['id_midia'] for m in manga.get_json()['itens']] == [catalogo['manga']]
+    assert manga.get_json()['itens'][0]['artista'] == 'Artista CTR'
 
     detalhe = client.get(f'/api/midias/{catalogo["anime"]}')
     assert detalhe.status_code == 200
-    assert set(detalhe.get_json()) == CHAVES_MIDIA | {'atualizacoes'}
+    assert set(detalhe.get_json()) == CHAVES_MIDIA_CONTRATO | {'atualizacoes'}
     assert detalhe.get_json()['generos_lista'] == ['Ação']
-    assert (detalhe.get_json()['progresso_total_padrao'], detalhe.get_json()['unidade_progresso']) == (12, 'episodios')
-    assert client.get(f'/api/midias/{INEXISTENTE}').get_json() == {'erro': 'Mídia não encontrada'}
+    assert (detalhe.get_json()['nota_fonte'], detalhe.get_json()['origem_nota']) == (7.5, 'AniList')
+    assert client.get(f'/api/midias/{INEXISTENTE}').get_json() == {
+        'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado',
+    }
     assert client.get(f'/api/midias/{INEXISTENTE}').status_code == 404
 
     trending = client.get('/api/midias/trending?tipo=jogo&limite=3')
     assert trending.status_code == 200 and set(trending.get_json()) == {'midias'}
-    assert all(set(m) == CHAVES_MIDIA for m in trending.get_json()['midias'])
+    assert all(set(m) == CHAVES_MIDIA_CONTRATO for m in trending.get_json()['midias'])
 
     populares = client.get('/api/midias/populares?tipo=anime')
     assert populares.status_code == 200 and set(populares.get_json()) == {'midias'}
@@ -144,6 +158,20 @@ def test_atualizacao_aparece_no_detalhe(client, catalogo, pg, entrar):  # noqa: 
     assert criada.get_json() == {'mensagem': 'Atualização adicionada!', 'notificacoes_enviadas': 0}
     atualizacoes = client.get(f'/api/midias/{catalogo["anime"]}').get_json()['atualizacoes']
     assert [set(a) for a in atualizacoes] == [CHAVES_ATUALIZACAO]
+
+
+def test_put_grava_os_campos_do_tipo_e_o_detalhe_devolve(client, catalogo, pg, entrar):  # noqa: F811
+    admin = entrar(_usuario(pg, 'Administradores'))
+    drama = banco.consultar_um("SELECT id_genero FROM generos WHERE nome_genero = 'Drama'")['id_genero']
+
+    resposta = client.put(f'/api/midias/{catalogo["jogo"]}', headers=admin, json={
+        'data_lancamento': '2024-03-01', 'plataformas': 'PS5, PC', 'generos': [str(drama)], 'numero_episodios': 3,
+    })
+
+    assert (resposta.status_code, resposta.get_json()) == (200, {'mensagem': 'Mídia atualizada com sucesso'})
+    jogo = client.get(f'/api/midias/{catalogo["jogo"]}').get_json()
+    assert (jogo['data_lancamento'], jogo['plataformas'], jogo['generos_lista']) == ('2024-03-01', 'PS5, PC', ['Drama'])
+    assert jogo['numero_episodios'] is None
 
 
 def test_lista_pessoal_do_adicionar_ao_remover(client, catalogo, pg, entrar):  # noqa: F811
