@@ -4,128 +4,6 @@
  */
 
 export interface paths {
-    "/api/auth/esqueci-senha": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Solicitar redefinição de senha */
-        post: operations["post__api_auth_esqueci-senha"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Login de usuário */
-        post: operations["post__api_auth_login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Fazer logout e revogar o token */
-        post: operations["post__api_auth_logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Obter informações do usuário autenticado */
-        get: operations["get__api_auth_me"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/redefinir-senha": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Redefinir senha com token de recuperação */
-        post: operations["post__api_auth_redefinir-senha"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trocar um refresh token por um par novo de access + refresh (rotação).
-         * @description Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
-         */
-        post: operations["post__api_auth_refresh"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/registro": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Registrar novo usuário */
-        post: operations["post__api_auth_registro"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/generos": {
         parameters: {
             query?: never;
@@ -143,41 +21,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/health": {
+    "/api/lista": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Saúde do sistema: 200 com o PostgreSQL de pé, 503 sem ele. */
-        get: operations["get__api_health"];
+        /** Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado. */
+        get: operations["get__api_lista"];
         put?: never;
-        post?: never;
+        /** Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar). */
+        post: operations["post__api_lista"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/notificacoes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** As 50 Notificações mais recentes do Usuário; `?nao_lidas=true` só as não lidas. */
-        get: operations["get__api_notificacoes"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notificacoes/marcar-todas-lidas": {
+    "/api/lista/adicionar": {
         parameters: {
             query?: never;
             header?: never;
@@ -185,43 +47,46 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Marcar como lidas todas as Notificações do Usuário. */
-        put: operations["put__api_notificacoes_marcar-todas-lidas"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/preferencias": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Preferências do Usuário, com os padrões no que ele não mudou. */
-        get: operations["get__api_preferencias"];
-        /** Grava os campos enviados; os outros ficam como estão. */
-        put: operations["put__api_preferencias"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/usuario/estatisticas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Obter estatísticas do usuário por tipo de mídia. */
-        get: operations["get__api_usuario_estatisticas"];
         put?: never;
+        /** Pôr uma Mídia na Lista pessoal. */
+        post: operations["post__api_lista_adicionar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Gravar os campos enviados num Item. */
+        put: operations["put__api_lista_{lista_id}"];
+        post?: never;
+        /** Tirar um Item da Lista pessoal. */
+        delete: operations["delete__api_lista_{lista_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}/progresso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Atualizar o Progresso de um Item.
+         * @description Teto, promoção a Concluído e dono do Item são decisão do módulo.
+         */
+        put: operations["put__api_lista_{lista_id}_progresso"];
         post?: never;
         delete?: never;
         options?: never;
@@ -229,32 +94,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/usuario/perfil": {
+    "/api/lista/{target_user_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Obter perfil completo do usuário. */
-        get: operations["get__api_usuario_perfil"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/usuario/permissoes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Obter permissões do usuário. */
-        get: operations["get__api_usuario_permissoes"];
+        /** Lista pessoal de um Usuário: só o próprio. */
+        get: operations["get__api_lista_{target_user_id}"];
         put?: never;
         post?: never;
         delete?: never;
@@ -273,6 +121,11 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConfirmacaoLista */
+        ConfirmacaoLista: {
+            /** Mensagem */
+            mensagem: string;
+        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -281,91 +134,73 @@ export interface components {
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
         };
-        /** ConsultaNotificacoes */
-        ConsultaNotificacoes: {
+        /** ConsultaLista */
+        ConsultaLista: {
             /**
-             * Nao Lidas
-             * @description Só as não lidas
-             * @default false
-             */
-            nao_lidas?: boolean;
-        };
-        /** CorpoEsqueciSenha */
-        CorpoEsqueciSenha: {
-            /** Email */
-            email: string;
-        };
-        /** CorpoLogin */
-        CorpoLogin: {
-            /** Email */
-            email: string;
-            /** Senha */
-            senha: string;
-        };
-        /** CorpoLogout */
-        CorpoLogout: {
-            /**
-             * Refresh Token
-             * @description Refresh do aparelho, para encerrar a sessão nele
+             * Status Consumo
+             * @description Rótulo de estado
              * @default null
              */
-            refresh_token?: string | null;
+            status_consumo?: string | null;
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
         };
         /**
-         * CorpoPreferencias
-         * @description Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `"true"` não é booleano.
+         * EdicaoItemLista
+         * @description Corpo de PUT /lista/<id_lista>.
          */
-        CorpoPreferencias: {
+        EdicaoItemLista: {
             /**
-             * Idioma
+             * Comentario
              * @default null
              */
-            idioma?: string | null;
+            comentario?: string | null;
             /**
-             * Notificacoes Ativas
+             * Data Conclusao
              * @default null
              */
-            notificacoes_ativas?: boolean | null;
+            data_conclusao?: string | null;
             /**
-             * Tema
+             * Data Inicio
              * @default null
              */
-            tema?: string | null;
-        };
-        /** CorpoRedefinirSenha */
-        CorpoRedefinirSenha: {
-            /** Nova Senha */
-            nova_senha: string;
-        };
-        /**
-         * CorpoRefresh
-         * @description Ausente ou vazio responde 401, como um token desconhecido.
-         */
-        CorpoRefresh: {
+            data_inicio?: string | null;
             /**
-             * Refresh Token
+             * Favorito
              * @default null
              */
-            refresh_token?: string | null;
-        };
-        /** CorpoRegistro */
-        CorpoRegistro: {
+            favorito?: boolean | null;
             /**
-             * Biografia
-             * @default
-             */
-            biografia?: string | null;
-            /**
-             * Data Nascimento
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
              * @default null
              */
-            data_nascimento?: string | null;
-            /** Email */
-            email: string;
-            /** Nome Completo */
-            nome_completo: string;
-            /** Senha */
-            senha: string;
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             * @default null
+             */
+            status_consumo?: string | null;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
         };
         /**
          * Erro
@@ -387,35 +222,6 @@ export interface components {
              */
             erro: string;
         };
-        /** EstatisticaPorTipo */
-        EstatisticaPorTipo: {
-            /**
-             * Concluidos
-             * @description Concluídos e Platinados
-             */
-            concluidos: number;
-            /**
-             * Em Andamento
-             * @description Em progresso
-             */
-            em_andamento: number;
-            /** Favoritos */
-            favoritos: number;
-            /**
-             * Nota Media
-             * @description Média das Notas pessoais do Tipo; nula sem nenhuma
-             */
-            nota_media: number | null;
-            /** Progresso Total Consumido */
-            progresso_total_consumido: number;
-            /**
-             * Tipo
-             * @enum {string}
-             */
-            tipo: "anime" | "manga" | "jogo";
-            /** Total Midias */
-            total_midias: number;
-        };
         /** Genero */
         Genero: {
             /** Aplicavel A */
@@ -425,259 +231,221 @@ export interface components {
             /** Nome Genero */
             nome_genero: string;
         };
-        /**
-         * Mensagem
-         * @description Resposta que só confirma a operação.
-         */
-        Mensagem: {
+        /** ItemCriado */
+        ItemCriado: {
+            /** Id Lista */
+            id_lista: string;
             /** Mensagem */
             mensagem: string;
         };
         /**
-         * Notificacao
-         * @description A entrega de uma Atualização de mídia a um Usuário.
+         * ItemLista
+         * @description Um Item de GET /lista: a Mídia mais os campos do Item.
          */
-        Notificacao: {
+        ItemLista: {
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Comentario */
+            comentario: string | null;
             /**
-             * Data Criacao
+             * Data Adicao
              * Format: date-time
              */
-            data_criacao: string;
+            data_adicao: string;
+            /**
+             * Data Atualizacao
+             * Format: date-time
+             */
+            data_atualizacao: string;
+            /** Data Conclusao */
+            data_conclusao: string | null;
+            /** Data Inicio */
+            data_inicio: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: string | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Favorito */
+            favorito: boolean;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description "Aventura, Drama"; `generos_lista` é o mesmo, separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Lista */
+            id_lista: string;
             /** Id Midia */
             id_midia: string;
-            /** Lida */
-            lida: boolean;
-            /** Mensagem */
-            mensagem: string;
+            /** Modo Jogo */
+            modo_jogo: string | null;
+            /** Nota Fonte */
+            nota_fonte: number | null;
             /**
-             * Midia Nome
-             * @description Título em português, ou o original
+             * Nota Media
+             * @description Média das Avaliações; null sem elas
              */
-            midia_nome: string;
+            nota_media: number | null;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal
+             */
+            nota_usuario: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description "PC, Switch, PS4"
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Privado */
+            privado: boolean;
+            /** Progresso Atual */
+            progresso_atual: number | null;
+            /**
+             * Progresso Total
+             * @description Total copiado da Mídia na criação do Item
+             */
+            progresso_total: number | null;
+            /**
+             * Progresso Total Padrao
+             * @description Total da Mídia; null no jogo
+             */
+            progresso_total_padrao: number | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: string | null;
+            /** Status Catalogo */
+            status_catalogo: string | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             */
+            status_consumo: string;
+            /** Status Jogo */
+            status_jogo: string | null;
+            /** Status Manga */
+            status_manga: string | null;
             /**
              * Tipo
-             * @description Tipo da Atualização: episodio, capitulo, dlc...
-             */
-            tipo: string;
-            /**
-             * Tipo Midia
              * @enum {string}
              */
-            tipo_midia: "anime" | "manga" | "jogo";
-            /** Titulo */
-            titulo: string;
-        };
-        /** NotificacoesMarcadas */
-        NotificacoesMarcadas: {
-            /** Mensagem */
-            mensagem: string;
+            tipo: "anime" | "manga" | "jogo";
+            /** Tipo Label */
+            tipo_label: string;
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description null quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /** Total Concluidos */
+            total_concluidos: number;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             */
+            total_rewatches: number;
+            /** Total Usuarios */
+            total_usuarios: number;
         };
         /**
-         * Perfil
-         * @description Linha de `vw_perfil_usuario`.
+         * NovoItemLista
+         * @description Corpo de POST /lista e /lista/adicionar.
          */
-        Perfil: {
-            /** Biografia */
-            biografia: string | null;
+        NovoItemLista: {
             /**
-             * Data Cadastro
-             * Format: date-time
+             * Comentario
+             * @default null
              */
-            data_cadastro: string;
-            /** Email */
-            email: string;
-            /** Foto Perfil */
-            foto_perfil: string | null;
-            /** Grupos */
-            grupos: string | null;
-            /** Id Usuario */
-            id_usuario: string;
-            /** Nome Completo */
-            nome_completo: string;
+            comentario?: string | null;
             /**
-             * Nota Media Usuario
-             * @description Média das Notas pessoais; nula sem nenhuma
+             * Data Conclusao
+             * @default null
              */
-            nota_media_usuario: number | null;
-            /** Total Animes */
-            total_animes: number;
-            /** Total Favoritos */
-            total_favoritos: number;
-            /** Total Jogos */
-            total_jogos: number;
-            /** Total Mangas */
-            total_mangas: number;
-            /** Total Midias */
-            total_midias: number;
+            data_conclusao?: string | null;
+            /**
+             * Data Inicio
+             * @default null
+             */
+            data_inicio?: string | null;
+            /**
+             * Favorito
+             * @default null
+             */
+            favorito?: boolean | null;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
+             * @default null
+             */
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado do Tipo da Mídia
+             */
+            status_consumo: string;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
         };
         /**
-         * Permissoes
-         * @description Permissões efetivas: vence o Grupo mais privilegiado.
+         * ProgressoItemLista
+         * @description Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.
          */
-        Permissoes: {
-            /** Grupos */
-            grupos: string | null;
-            /**
-             * Nivel Acesso
-             * @enum {string}
-             */
-            nivel_acesso: "admin" | "moderador" | "usuario";
-            /** Pode Criar */
-            pode_criar: boolean;
-            /** Pode Deletar */
-            pode_deletar: boolean;
-            /** Pode Editar */
-            pode_editar: boolean;
-            /** Pode Moderar */
-            pode_moderar: boolean;
-        };
-        /** PermissoesDaSessao */
-        PermissoesDaSessao: {
-            /** Pode Criar */
-            pode_criar: boolean;
-            /** Pode Deletar */
-            pode_deletar: boolean;
-            /** Pode Editar */
-            pode_editar: boolean;
-            /** Pode Moderar */
-            pode_moderar: boolean;
-        };
-        /**
-         * Preferencias
-         * @description As preferências completas: o que o Usuário mudou, e os padrões no resto.
-         */
-        Preferencias: {
-            /** Idioma */
-            idioma: string;
-            /** Notificacoes Ativas */
-            notificacoes_ativas: boolean;
-            /** Tema */
-            tema: string;
-        };
-        /** PreferenciasAtualizadas */
-        PreferenciasAtualizadas: {
-            /** Mensagem */
-            mensagem: string;
-            /** Modificado */
-            modificado: boolean;
-        };
-        /** RespostaEstatisticas */
-        RespostaEstatisticas: {
-            /**
-             * Estatisticas
-             * @description Uma linha por Tipo presente na Lista pessoal
-             */
-            estatisticas: components["schemas"]["EstatisticaPorTipo"][];
-            resumo: components["schemas"]["ResumoEstatisticas"];
+        ProgressoItemLista: {
+            /** Progresso Atual */
+            progresso_atual: number;
         };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
             generos: components["schemas"]["Genero"][];
         };
-        /** RespostaLogin */
-        RespostaLogin: {
-            /** Access Token */
-            access_token: string;
-            /**
-             * Refresh Token
-             * @description Nulo se o banco não gravou o refresh; o login vale mesmo assim
-             */
-            refresh_token: string | null;
-            usuario: components["schemas"]["UsuarioDaSessao"];
-        };
-        /** RespostaMe */
-        RespostaMe: {
-            usuario: components["schemas"]["UsuarioAtual"];
-        };
-        /** RespostaNotificacoes */
-        RespostaNotificacoes: {
-            /**
-             * Notificacoes
-             * @description As 50 mais recentes
-             */
-            notificacoes: components["schemas"]["Notificacao"][];
-        };
-        /** RespostaPerfil */
-        RespostaPerfil: {
-            perfil: components["schemas"]["Perfil"];
-        };
-        /** RespostaPermissoes */
-        RespostaPermissoes: {
-            permissoes: components["schemas"]["Permissoes"];
-        };
-        /** RespostaPreferencias */
-        RespostaPreferencias: {
-            preferencias: components["schemas"]["Preferencias"];
-        };
-        /** RespostaRefresh */
-        RespostaRefresh: {
-            /** Access Token */
-            access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
-        };
-        /** ResumoEstatisticas */
-        ResumoEstatisticas: {
-            /** Concluidos */
-            concluidos: number;
-            /** Em Andamento */
-            em_andamento: number;
-            /** Favoritos */
-            favoritos: number;
-            /** Total Midias */
-            total_midias: number;
-        };
-        /** Saude */
-        Saude: {
-            /**
-             * Postgres
-             * @enum {string}
-             */
-            postgres: "connected" | "disconnected";
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "healthy" | "unhealthy";
-        };
-        /** UsuarioAtual */
-        UsuarioAtual: {
-            /** Email */
-            email: string;
-            /** Foto Perfil */
-            foto_perfil: string | null;
-            /** Id Usuario */
-            id_usuario: string;
-            /** Nome Completo */
-            nome_completo: string;
-        };
-        /** UsuarioCriado */
-        UsuarioCriado: {
-            /** Id Usuario */
-            id_usuario: string;
-            /** Mensagem */
-            mensagem: string;
-        };
-        /** UsuarioDaSessao */
-        UsuarioDaSessao: {
-            /** Email */
-            email: string;
-            /**
-             * Grupos
-             * @description Nomes dos Grupos: 'Usuários, Moderadores'
-             */
-            grupos: string | null;
-            /** Id */
-            id: string;
-            /**
-             * Nivel Acesso
-             * @enum {string}
-             */
-            nivel_acesso: "admin" | "moderador" | "usuario";
-            /** Nome */
-            nome: string;
-            permissoes: components["schemas"]["PermissoesDaSessao"];
+        /** RespostaLista */
+        RespostaLista: {
+            /** Lista */
+            lista: components["schemas"]["ItemLista"][];
         };
     };
     responses: never;
@@ -688,314 +456,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    "post__api_auth_esqueci-senha": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoEsqueciSenha"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Mensagem"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    post__api_auth_login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoLogin"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespostaLogin"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    post__api_auth_logout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoLogout"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Mensagem"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    get__api_auth_me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespostaMe"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    "post__api_auth_redefinir-senha": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoRedefinirSenha"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Mensagem"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    post__api_auth_refresh: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoRefresh"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespostaRefresh"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    post__api_auth_registro: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoRegistro"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UsuarioCriado"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
     get__api_generos: {
         parameters: {
             query?: {
@@ -1027,49 +487,12 @@ export interface operations {
             };
         };
     };
-    get__api_health: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Saude"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Service Unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Saude"];
-                };
-            };
-        };
-    };
-    get__api_notificacoes: {
+    get__api_lista: {
         parameters: {
             query?: {
-                /** @description Só as não lidas */
-                nao_lidas?: boolean;
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
             };
             header?: never;
             path?: never;
@@ -1083,7 +506,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespostaNotificacoes"];
+                    "application/json": components["schemas"]["RespostaLista"];
                 };
             };
             /** @description Bad Request */
@@ -1097,74 +520,7 @@ export interface operations {
             };
         };
     };
-    "put__api_notificacoes_marcar-todas-lidas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificacoesMarcadas"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    get__api_preferencias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespostaPreferencias"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    put__api_preferencias: {
+    post__api_lista: {
         parameters: {
             query?: never;
             header?: never;
@@ -1173,17 +529,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CorpoPreferencias"];
+                "application/json": components["schemas"]["NovoItemLista"];
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PreferenciasAtualizadas"];
+                    "application/json": components["schemas"]["ItemCriado"];
                 };
             };
             /** @description Bad Request */
@@ -1195,13 +551,110 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
-    get__api_usuario_estatisticas: {
+    post__api_lista_adicionar: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoItemLista"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EdicaoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1212,7 +665,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespostaEstatisticas"];
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
                 };
             };
             /** @description Bad Request */
@@ -1224,13 +677,72 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
-    get__api_usuario_perfil: {
+    "put__api_lista_{lista_id}_progresso": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_lista_{target_user_id}": {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
+            };
+            header?: never;
+            path: {
+                target_user_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1241,7 +753,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespostaPerfil"];
+                    "application/json": components["schemas"]["RespostaLista"];
                 };
             };
             /** @description Bad Request */
@@ -1253,37 +765,8 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    get__api_usuario_permissoes: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespostaPermissoes"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

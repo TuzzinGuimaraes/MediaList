@@ -21,6 +21,19 @@
         "title": "CodigoErro",
         "type": "string"
       },
+      "ConfirmacaoLista": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "title": "ConfirmacaoLista",
+        "type": "object"
+      },
       "ConsultaGeneros": {
         "properties": {
           "tipo": {
@@ -44,55 +57,46 @@
         "title": "ConsultaGeneros",
         "type": "object"
       },
-      "ConsultaNotificacoes": {
+      "ConsultaLista": {
         "properties": {
-          "nao_lidas": {
-            "default": false,
-            "description": "Só as não lidas",
-            "title": "Nao Lidas",
-            "type": "boolean"
-          }
-        },
-        "title": "ConsultaNotificacoes",
-        "type": "object"
-      },
-      "CorpoEsqueciSenha": {
-        "properties": {
-          "email": {
-            "minLength": 1,
-            "title": "Email",
-            "type": "string"
-          }
-        },
-        "required": [
-          "email"
-        ],
-        "title": "CorpoEsqueciSenha",
-        "type": "object"
-      },
-      "CorpoLogin": {
-        "properties": {
-          "email": {
-            "minLength": 1,
-            "title": "Email",
-            "type": "string"
+          "status_consumo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rótulo de estado",
+            "title": "Status Consumo"
           },
-          "senha": {
-            "minLength": 1,
-            "title": "Senha",
-            "type": "string"
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tipo"
           }
         },
-        "required": [
-          "email",
-          "senha"
-        ],
-        "title": "CorpoLogin",
+        "title": "ConsultaLista",
         "type": "object"
       },
-      "CorpoLogout": {
+      "EdicaoItemLista": {
+        "description": "Corpo de PUT /lista/<id_lista>.",
         "properties": {
-          "refresh_token": {
+          "comentario": {
             "anyOf": [
               {
                 "type": "string"
@@ -102,104 +106,9 @@
               }
             ],
             "default": null,
-            "description": "Refresh do aparelho, para encerrar a sessão nele",
-            "title": "Refresh Token"
-          }
-        },
-        "title": "CorpoLogout",
-        "type": "object"
-      },
-      "CorpoPreferencias": {
-        "description": "Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `\"true\"` não é booleano.",
-        "properties": {
-          "idioma": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Idioma"
+            "title": "Comentario"
           },
-          "notificacoes_ativas": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Notificacoes Ativas"
-          },
-          "tema": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Tema"
-          }
-        },
-        "title": "CorpoPreferencias",
-        "type": "object"
-      },
-      "CorpoRedefinirSenha": {
-        "properties": {
-          "nova_senha": {
-            "minLength": 6,
-            "title": "Nova Senha",
-            "type": "string"
-          }
-        },
-        "required": [
-          "nova_senha"
-        ],
-        "title": "CorpoRedefinirSenha",
-        "type": "object"
-      },
-      "CorpoRefresh": {
-        "description": "Ausente ou vazio responde 401, como um token desconhecido.",
-        "properties": {
-          "refresh_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Refresh Token"
-          }
-        },
-        "title": "CorpoRefresh",
-        "type": "object"
-      },
-      "CorpoRegistro": {
-        "properties": {
-          "biografia": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "",
-            "title": "Biografia"
-          },
-          "data_nascimento": {
+          "data_conclusao": {
             "anyOf": [
               {
                 "format": "date",
@@ -210,30 +119,98 @@
               }
             ],
             "default": null,
-            "title": "Data Nascimento"
+            "title": "Data Conclusao"
           },
-          "email": {
-            "minLength": 1,
-            "title": "Email",
-            "type": "string"
+          "data_inicio": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data Inicio"
           },
-          "nome_completo": {
-            "minLength": 1,
-            "title": "Nome Completo",
-            "type": "string"
+          "favorito": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Favorito"
           },
-          "senha": {
-            "minLength": 1,
-            "title": "Senha",
-            "type": "string"
+          "nota_usuario": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga",
+            "title": "Nota Usuario"
+          },
+          "privado": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Privado"
+          },
+          "progresso_atual": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Progresso Atual"
+          },
+          "status_consumo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rótulo de estado",
+            "title": "Status Consumo"
+          },
+          "total_rewatches": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Recontagem",
+            "title": "Total Rewatches"
           }
         },
-        "required": [
-          "nome_completo",
-          "email",
-          "senha"
-        ],
-        "title": "CorpoRegistro",
+        "title": "EdicaoItemLista",
         "type": "object"
       },
       "Erro": {
@@ -271,66 +248,6 @@
         "title": "Erro",
         "type": "object"
       },
-      "EstatisticaPorTipo": {
-        "properties": {
-          "concluidos": {
-            "description": "Concluídos e Platinados",
-            "title": "Concluidos",
-            "type": "integer"
-          },
-          "em_andamento": {
-            "description": "Em progresso",
-            "title": "Em Andamento",
-            "type": "integer"
-          },
-          "favoritos": {
-            "title": "Favoritos",
-            "type": "integer"
-          },
-          "nota_media": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Média das Notas pessoais do Tipo; nula sem nenhuma",
-            "title": "Nota Media"
-          },
-          "progresso_total_consumido": {
-            "title": "Progresso Total Consumido",
-            "type": "integer"
-          },
-          "tipo": {
-            "enum": [
-              "anime",
-              "manga",
-              "jogo"
-            ],
-            "title": "Tipo",
-            "type": "string"
-          },
-          "total_midias": {
-            "title": "Total Midias",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "tipo",
-          "total_midias",
-          "concluidos",
-          "em_andamento",
-          "progresso_total_consumido",
-          "nota_media",
-          "favoritos"
-        ],
-        "title": "EstatisticaPorTipo",
-        "type": "object"
-      },
       "Genero": {
         "properties": {
           "aplicavel_a": {
@@ -362,94 +279,182 @@
         "title": "Genero",
         "type": "object"
       },
-      "Mensagem": {
-        "description": "Resposta que só confirma a operação.",
+      "ItemCriado": {
         "properties": {
+          "id_lista": {
+            "title": "Id Lista",
+            "type": "string"
+          },
           "mensagem": {
             "title": "Mensagem",
             "type": "string"
           }
         },
         "required": [
-          "mensagem"
+          "mensagem",
+          "id_lista"
         ],
-        "title": "Mensagem",
+        "title": "ItemCriado",
         "type": "object"
       },
-      "Notificacao": {
-        "description": "A entrega de uma Atualização de mídia a um Usuário.",
+      "ItemLista": {
+        "description": "Um Item de GET /lista: a Mídia mais os campos do Item.",
         "properties": {
-          "data_criacao": {
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor"
+          },
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Url"
+          },
+          "comentario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comentario"
+          },
+          "data_adicao": {
             "format": "date-time",
-            "title": "Data Criacao",
+            "title": "Data Adicao",
+            "type": "string"
+          },
+          "data_atualizacao": {
+            "format": "date-time",
+            "title": "Data Atualizacao",
+            "type": "string"
+          },
+          "data_conclusao": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Conclusao"
+          },
+          "data_inicio": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Inicio"
+          },
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Lancamento"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desenvolvedor"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estudio"
+          },
+          "favorito": {
+            "title": "Favorito",
+            "type": "boolean"
+          },
+          "fonte_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte Original"
+          },
+          "generos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\"Aventura, Drama\"; `generos_lista` é o mesmo, separado",
+            "title": "Generos"
+          },
+          "generos_lista": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Generos Lista",
+            "type": "array"
+          },
+          "id_lista": {
+            "title": "Id Lista",
             "type": "string"
           },
           "id_midia": {
             "title": "Id Midia",
             "type": "string"
           },
-          "lida": {
-            "title": "Lida",
-            "type": "boolean"
-          },
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          },
-          "midia_nome": {
-            "description": "Título em português, ou o original",
-            "title": "Midia Nome",
-            "type": "string"
-          },
-          "tipo": {
-            "description": "Tipo da Atualização: episodio, capitulo, dlc...",
-            "title": "Tipo",
-            "type": "string"
-          },
-          "tipo_midia": {
-            "enum": [
-              "anime",
-              "manga",
-              "jogo"
-            ],
-            "title": "Tipo Midia",
-            "type": "string"
-          },
-          "titulo": {
-            "title": "Titulo",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id_midia",
-          "tipo_midia",
-          "tipo",
-          "titulo",
-          "midia_nome",
-          "mensagem",
-          "lida",
-          "data_criacao"
-        ],
-        "title": "Notificacao",
-        "type": "object"
-      },
-      "NotificacoesMarcadas": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem"
-        ],
-        "title": "NotificacoesMarcadas",
-        "type": "object"
-      },
-      "Perfil": {
-        "description": "Linha de `vw_perfil_usuario`.",
-        "properties": {
-          "biografia": {
+          "modo_jogo": {
             "anyOf": [
               {
                 "type": "string"
@@ -458,48 +463,9 @@
                 "type": "null"
               }
             ],
-            "title": "Biografia"
+            "title": "Modo Jogo"
           },
-          "data_cadastro": {
-            "format": "date-time",
-            "title": "Data Cadastro",
-            "type": "string"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "foto_perfil": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Foto Perfil"
-          },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grupos"
-          },
-          "id_usuario": {
-            "title": "Id Usuario",
-            "type": "string"
-          },
-          "nome_completo": {
-            "title": "Nome Completo",
-            "type": "string"
-          },
-          "nota_media_usuario": {
+          "nota_fonte": {
             "anyOf": [
               {
                 "maximum": 10,
@@ -510,52 +476,85 @@
                 "type": "null"
               }
             ],
-            "description": "Média das Notas pessoais; nula sem nenhuma",
-            "title": "Nota Media Usuario"
+            "title": "Nota Fonte"
           },
-          "total_animes": {
-            "title": "Total Animes",
-            "type": "integer"
+          "nota_media": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Média das Avaliações; null sem elas",
+            "title": "Nota Media"
           },
-          "total_favoritos": {
-            "title": "Total Favoritos",
-            "type": "integer"
+          "nota_usuario": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota pessoal",
+            "title": "Nota Usuario"
           },
-          "total_jogos": {
-            "title": "Total Jogos",
-            "type": "integer"
+          "numero_capitulos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Capitulos"
           },
-          "total_mangas": {
-            "title": "Total Mangas",
-            "type": "integer"
+          "numero_episodios": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Episodios"
           },
-          "total_midias": {
-            "title": "Total Midias",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id_usuario",
-          "nome_completo",
-          "email",
-          "foto_perfil",
-          "biografia",
-          "data_cadastro",
-          "total_midias",
-          "total_animes",
-          "total_mangas",
-          "total_jogos",
-          "nota_media_usuario",
-          "total_favoritos",
-          "grupos"
-        ],
-        "title": "Perfil",
-        "type": "object"
-      },
-      "Permissoes": {
-        "description": "Permissões efetivas: vence o Grupo mais privilegiado.",
-        "properties": {
-          "grupos": {
+          "numero_volumes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Volumes"
+          },
+          "origem_nota": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AniList",
+                  "RAWG"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origem Nota"
+          },
+          "plataformas": {
             "anyOf": [
               {
                 "type": "string"
@@ -564,134 +563,379 @@
                 "type": "null"
               }
             ],
-            "title": "Grupos"
+            "description": "\"PC, Switch, PS4\"",
+            "title": "Plataformas"
           },
-          "nivel_acesso": {
-            "enum": [
-              "admin",
-              "moderador",
-              "usuario"
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Nivel Acesso",
+            "title": "Poster Url"
+          },
+          "privado": {
+            "title": "Privado",
+            "type": "boolean"
+          },
+          "progresso_atual": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progresso Atual"
+          },
+          "progresso_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total copiado da Mídia na criação do Item",
+            "title": "Progresso Total"
+          },
+          "progresso_total_padrao": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total da Mídia; null no jogo",
+            "title": "Progresso Total Padrao"
+          },
+          "publicadora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora"
+          },
+          "sinopse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sinopse"
+          },
+          "status_anime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Anime"
+          },
+          "status_catalogo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Catalogo"
+          },
+          "status_consumo": {
+            "description": "Rótulo de estado",
+            "title": "Status Consumo",
             "type": "string"
           },
-          "pode_criar": {
-            "title": "Pode Criar",
-            "type": "boolean"
+          "status_jogo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Jogo"
           },
-          "pode_deletar": {
-            "title": "Pode Deletar",
-            "type": "boolean"
+          "status_manga": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Manga"
           },
-          "pode_editar": {
-            "title": "Pode Editar",
-            "type": "boolean"
-          },
-          "pode_moderar": {
-            "title": "Pode Moderar",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "nivel_acesso",
-          "grupos",
-          "pode_criar",
-          "pode_editar",
-          "pode_deletar",
-          "pode_moderar"
-        ],
-        "title": "Permissoes",
-        "type": "object"
-      },
-      "PermissoesDaSessao": {
-        "properties": {
-          "pode_criar": {
-            "title": "Pode Criar",
-            "type": "boolean"
-          },
-          "pode_deletar": {
-            "title": "Pode Deletar",
-            "type": "boolean"
-          },
-          "pode_editar": {
-            "title": "Pode Editar",
-            "type": "boolean"
-          },
-          "pode_moderar": {
-            "title": "Pode Moderar",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pode_criar",
-          "pode_editar",
-          "pode_deletar",
-          "pode_moderar"
-        ],
-        "title": "PermissoesDaSessao",
-        "type": "object"
-      },
-      "Preferencias": {
-        "description": "As preferências completas: o que o Usuário mudou, e os padrões no resto.",
-        "properties": {
-          "idioma": {
-            "title": "Idioma",
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
             "type": "string"
           },
-          "notificacoes_ativas": {
-            "title": "Notificacoes Ativas",
-            "type": "boolean"
-          },
-          "tema": {
-            "title": "Tema",
-            "type": "string"
-          }
-        },
-        "required": [
-          "tema",
-          "idioma",
-          "notificacoes_ativas"
-        ],
-        "title": "Preferencias",
-        "type": "object"
-      },
-      "PreferenciasAtualizadas": {
-        "properties": {
-          "mensagem": {
-            "title": "Mensagem",
+          "tipo_label": {
+            "title": "Tipo Label",
             "type": "string"
           },
-          "modificado": {
-            "title": "Modificado",
-            "type": "boolean"
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          },
+          "total_avaliacoes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null quando a Mídia não tem Avaliações",
+            "title": "Total Avaliacoes"
+          },
+          "total_concluidos": {
+            "title": "Total Concluidos",
+            "type": "integer"
+          },
+          "total_rewatches": {
+            "description": "Recontagem",
+            "title": "Total Rewatches",
+            "type": "integer"
+          },
+          "total_usuarios": {
+            "title": "Total Usuarios",
+            "type": "integer"
           }
         },
         "required": [
-          "mensagem",
-          "modificado"
+          "id_midia",
+          "tipo",
+          "tipo_label",
+          "titulo_original",
+          "titulo_ingles",
+          "titulo_portugues",
+          "sinopse",
+          "data_lancamento",
+          "nota_media",
+          "total_avaliacoes",
+          "nota_fonte",
+          "origem_nota",
+          "poster_url",
+          "banner_url",
+          "status_catalogo",
+          "progresso_total_padrao",
+          "generos",
+          "generos_lista",
+          "total_usuarios",
+          "total_concluidos",
+          "status_anime",
+          "numero_episodios",
+          "estudio",
+          "fonte_original",
+          "status_manga",
+          "numero_capitulos",
+          "numero_volumes",
+          "autor",
+          "demografia",
+          "status_jogo",
+          "desenvolvedor",
+          "publicadora",
+          "plataformas",
+          "modo_jogo",
+          "id_lista",
+          "status_consumo",
+          "progresso_atual",
+          "progresso_total",
+          "nota_usuario",
+          "favorito",
+          "privado",
+          "data_inicio",
+          "data_conclusao",
+          "total_rewatches",
+          "comentario",
+          "data_adicao",
+          "data_atualizacao"
         ],
-        "title": "PreferenciasAtualizadas",
+        "title": "ItemLista",
         "type": "object"
       },
-      "RespostaEstatisticas": {
+      "NovoItemLista": {
+        "description": "Corpo de POST /lista e /lista/adicionar.",
         "properties": {
-          "estatisticas": {
-            "description": "Uma linha por Tipo presente na Lista pessoal",
-            "items": {
-              "$ref": "#/components/schemas/EstatisticaPorTipo"
-            },
-            "title": "Estatisticas",
-            "type": "array"
+          "comentario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Comentario"
           },
-          "resumo": {
-            "$ref": "#/components/schemas/ResumoEstatisticas"
+          "data_conclusao": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data Conclusao"
+          },
+          "data_inicio": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data Inicio"
+          },
+          "favorito": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Favorito"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "nota_usuario": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga",
+            "title": "Nota Usuario"
+          },
+          "privado": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Privado"
+          },
+          "progresso_atual": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Progresso Atual"
+          },
+          "status_consumo": {
+            "description": "Rótulo de estado do Tipo da Mídia",
+            "title": "Status Consumo",
+            "type": "string"
+          },
+          "total_rewatches": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Recontagem",
+            "title": "Total Rewatches"
           }
         },
         "required": [
-          "estatisticas",
-          "resumo"
+          "id_midia",
+          "status_consumo"
         ],
-        "title": "RespostaEstatisticas",
+        "title": "NovoItemLista",
+        "type": "object"
+      },
+      "ProgressoItemLista": {
+        "description": "Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.",
+        "properties": {
+          "progresso_atual": {
+            "title": "Progresso Atual",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "progresso_atual"
+        ],
+        "title": "ProgressoItemLista",
         "type": "object"
       },
       "RespostaGeneros": {
@@ -710,274 +954,20 @@
         "title": "RespostaGeneros",
         "type": "object"
       },
-      "RespostaLogin": {
+      "RespostaLista": {
         "properties": {
-          "access_token": {
-            "title": "Access Token",
-            "type": "string"
-          },
-          "refresh_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nulo se o banco não gravou o refresh; o login vale mesmo assim",
-            "title": "Refresh Token"
-          },
-          "usuario": {
-            "$ref": "#/components/schemas/UsuarioDaSessao"
-          }
-        },
-        "required": [
-          "access_token",
-          "refresh_token",
-          "usuario"
-        ],
-        "title": "RespostaLogin",
-        "type": "object"
-      },
-      "RespostaMe": {
-        "properties": {
-          "usuario": {
-            "$ref": "#/components/schemas/UsuarioAtual"
-          }
-        },
-        "required": [
-          "usuario"
-        ],
-        "title": "RespostaMe",
-        "type": "object"
-      },
-      "RespostaNotificacoes": {
-        "properties": {
-          "notificacoes": {
-            "description": "As 50 mais recentes",
+          "lista": {
             "items": {
-              "$ref": "#/components/schemas/Notificacao"
+              "$ref": "#/components/schemas/ItemLista"
             },
-            "title": "Notificacoes",
+            "title": "Lista",
             "type": "array"
           }
         },
         "required": [
-          "notificacoes"
+          "lista"
         ],
-        "title": "RespostaNotificacoes",
-        "type": "object"
-      },
-      "RespostaPerfil": {
-        "properties": {
-          "perfil": {
-            "$ref": "#/components/schemas/Perfil"
-          }
-        },
-        "required": [
-          "perfil"
-        ],
-        "title": "RespostaPerfil",
-        "type": "object"
-      },
-      "RespostaPermissoes": {
-        "properties": {
-          "permissoes": {
-            "$ref": "#/components/schemas/Permissoes"
-          }
-        },
-        "required": [
-          "permissoes"
-        ],
-        "title": "RespostaPermissoes",
-        "type": "object"
-      },
-      "RespostaPreferencias": {
-        "properties": {
-          "preferencias": {
-            "$ref": "#/components/schemas/Preferencias"
-          }
-        },
-        "required": [
-          "preferencias"
-        ],
-        "title": "RespostaPreferencias",
-        "type": "object"
-      },
-      "RespostaRefresh": {
-        "properties": {
-          "access_token": {
-            "title": "Access Token",
-            "type": "string"
-          },
-          "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "access_token",
-          "refresh_token"
-        ],
-        "title": "RespostaRefresh",
-        "type": "object"
-      },
-      "ResumoEstatisticas": {
-        "properties": {
-          "concluidos": {
-            "title": "Concluidos",
-            "type": "integer"
-          },
-          "em_andamento": {
-            "title": "Em Andamento",
-            "type": "integer"
-          },
-          "favoritos": {
-            "title": "Favoritos",
-            "type": "integer"
-          },
-          "total_midias": {
-            "title": "Total Midias",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "total_midias",
-          "concluidos",
-          "em_andamento",
-          "favoritos"
-        ],
-        "title": "ResumoEstatisticas",
-        "type": "object"
-      },
-      "Saude": {
-        "properties": {
-          "postgres": {
-            "enum": [
-              "connected",
-              "disconnected"
-            ],
-            "title": "Postgres",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "healthy",
-              "unhealthy"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "postgres"
-        ],
-        "title": "Saude",
-        "type": "object"
-      },
-      "UsuarioAtual": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "foto_perfil": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Foto Perfil"
-          },
-          "id_usuario": {
-            "title": "Id Usuario",
-            "type": "string"
-          },
-          "nome_completo": {
-            "title": "Nome Completo",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id_usuario",
-          "nome_completo",
-          "email",
-          "foto_perfil"
-        ],
-        "title": "UsuarioAtual",
-        "type": "object"
-      },
-      "UsuarioCriado": {
-        "properties": {
-          "id_usuario": {
-            "title": "Id Usuario",
-            "type": "string"
-          },
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
-          }
-        },
-        "required": [
-          "mensagem",
-          "id_usuario"
-        ],
-        "title": "UsuarioCriado",
-        "type": "object"
-      },
-      "UsuarioDaSessao": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nomes dos Grupos: 'Usuários, Moderadores'",
-            "title": "Grupos"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "nivel_acesso": {
-            "enum": [
-              "admin",
-              "moderador",
-              "usuario"
-            ],
-            "title": "Nivel Acesso",
-            "type": "string"
-          },
-          "nome": {
-            "title": "Nome",
-            "type": "string"
-          },
-          "permissoes": {
-            "$ref": "#/components/schemas/PermissoesDaSessao"
-          }
-        },
-        "required": [
-          "id",
-          "nome",
-          "email",
-          "nivel_acesso",
-          "grupos",
-          "permissoes"
-        ],
-        "title": "UsuarioDaSessao",
+        "title": "RespostaLista",
         "type": "object"
       }
     },
@@ -995,402 +985,6 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/auth/esqueci-senha": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_auth_esqueci-senha",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoEsqueciSenha"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Mensagem"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          }
-        },
-        "summary": "Solicitar redefinição de senha",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/login": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_auth_login",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoLogin"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RespostaLogin"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "summary": "Login de usuário",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_auth_logout",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoLogout"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Mensagem"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Fazer logout e revogar o token",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/me": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_auth_me",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RespostaMe"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Obter informações do usuário autenticado",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/redefinir-senha": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_auth_redefinir-senha",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoRedefinirSenha"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Mensagem"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Redefinir senha com token de recuperação",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/refresh": {
-      "post": {
-        "description": "Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.",
-        "operationId": "post__api_auth_refresh",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoRefresh"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RespostaRefresh"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "summary": "Trocar um refresh token por um par novo de access + refresh (rotação).",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/registro": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_auth_registro",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoRegistro"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UsuarioCriado"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Internal Server Error"
-          }
-        },
-        "summary": "Registrar novo usuário",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/generos": {
       "get": {
         "description": "",
@@ -1448,64 +1042,51 @@
         ]
       }
     },
-    "/api/health": {
+    "/api/lista": {
       "get": {
         "description": "",
-        "operationId": "get__api_health",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Saude"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Saude"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          }
-        },
-        "summary": "Saúde do sistema: 200 com o PostgreSQL de pé, 503 sem ele.",
-        "tags": [
-          "utils"
-        ]
-      }
-    },
-    "/api/notificacoes": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_notificacoes",
+        "operationId": "get__api_lista",
         "parameters": [
           {
-            "description": "Só as não lidas",
+            "description": "",
             "in": "query",
-            "name": "nao_lidas",
+            "name": "tipo",
             "required": false,
             "schema": {
-              "default": false,
-              "description": "Só as não lidas",
-              "title": "Nao Lidas",
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tipo"
+            }
+          },
+          {
+            "description": "Rótulo de estado",
+            "in": "query",
+            "name": "status_consumo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Rótulo de estado",
+              "title": "Status Consumo"
             }
           }
         ],
@@ -1514,7 +1095,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaNotificacoes"
+                  "$ref": "#/components/schemas/RespostaLista"
                 }
               }
             },
@@ -1536,106 +1117,202 @@
             "bearer": []
           }
         ],
-        "summary": "As 50 Notificações mais recentes do Usuário; `?nao_lidas=true` só as não lidas.",
+        "summary": "Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado.",
         "tags": [
-          "utils"
-        ]
-      }
-    },
-    "/api/notificacoes/marcar-todas-lidas": {
-      "put": {
-        "description": "",
-        "operationId": "put__api_notificacoes_marcar-todas-lidas",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificacoesMarcadas"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Marcar como lidas todas as Notificações do Usuário.",
-        "tags": [
-          "utils"
-        ]
-      }
-    },
-    "/api/preferencias": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_preferencias",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RespostaPreferencias"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Preferências do Usuário, com os padrões no que ele não mudou.",
-        "tags": [
-          "preferencias"
+          "lista"
         ]
       },
-      "put": {
+      "post": {
         "description": "",
-        "operationId": "put__api_preferencias",
+        "operationId": "post__api_lista",
         "parameters": [],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CorpoPreferencias"
+                "$ref": "#/components/schemas/NovoItemLista"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemCriado"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar).",
+        "tags": [
+          "lista"
+        ]
+      }
+    },
+    "/api/lista/adicionar": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_lista_adicionar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoItemLista"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemCriado"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pôr uma Mídia na Lista pessoal.",
+        "tags": [
+          "lista"
+        ]
+      }
+    },
+    "/api/lista/{lista_id}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_lista_{lista_id}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "lista_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmacaoLista"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tirar um Item da Lista pessoal.",
+        "tags": [
+          "lista"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_lista_{lista_id}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "lista_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicaoItemLista"
               }
             }
           },
@@ -1646,7 +1323,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PreferenciasAtualizadas"
+                  "$ref": "#/components/schemas/ConfirmacaoLista"
                 }
               }
             },
@@ -1661,6 +1338,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         },
         "security": [
@@ -1668,23 +1355,43 @@
             "bearer": []
           }
         ],
-        "summary": "Grava os campos enviados; os outros ficam como estão.",
+        "summary": "Gravar os campos enviados num Item.",
         "tags": [
-          "preferencias"
+          "lista"
         ]
       }
     },
-    "/api/usuario/estatisticas": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_usuario_estatisticas",
-        "parameters": [],
+    "/api/lista/{lista_id}/progresso": {
+      "put": {
+        "description": "Teto, promoção a Concluído e dono do Item são decisão do módulo.",
+        "operationId": "put__api_lista_{lista_id}_progresso",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "lista_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgressoItemLista"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaEstatisticas"
+                  "$ref": "#/components/schemas/ConfirmacaoLista"
                 }
               }
             },
@@ -1699,6 +1406,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         },
         "security": [
@@ -1706,23 +1423,75 @@
             "bearer": []
           }
         ],
-        "summary": "Obter estatísticas do usuário por tipo de mídia.",
+        "summary": "Atualizar o Progresso de um Item.",
         "tags": [
-          "usuario"
+          "lista"
         ]
       }
     },
-    "/api/usuario/perfil": {
+    "/api/lista/{target_user_id}": {
       "get": {
         "description": "",
-        "operationId": "get__api_usuario_perfil",
-        "parameters": [],
+        "operationId": "get__api_lista_{target_user_id}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "target_user_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tipo"
+            }
+          },
+          {
+            "description": "Rótulo de estado",
+            "in": "query",
+            "name": "status_consumo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Rótulo de estado",
+              "title": "Status Consumo"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaPerfil"
+                  "$ref": "#/components/schemas/RespostaLista"
                 }
               }
             },
@@ -1738,7 +1507,7 @@
             },
             "description": "Bad Request"
           },
-          "404": {
+          "403": {
             "content": {
               "application/json": {
                 "schema": {
@@ -1746,7 +1515,7 @@
                 }
               }
             },
-            "description": "Not Found"
+            "description": "Forbidden"
           }
         },
         "security": [
@@ -1754,47 +1523,9 @@
             "bearer": []
           }
         ],
-        "summary": "Obter perfil completo do usuário.",
+        "summary": "Lista pessoal de um Usuário: só o próprio.",
         "tags": [
-          "usuario"
-        ]
-      }
-    },
-    "/api/usuario/permissoes": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_usuario_permissoes",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RespostaPermissoes"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Obter permissões do usuário.",
-        "tags": [
-          "usuario"
+          "lista"
         ]
       }
     }
@@ -1802,13 +1533,7 @@
   "security": [],
   "tags": [
     {
-      "name": "auth"
-    },
-    {
-      "name": "usuario"
-    },
-    {
-      "name": "preferencias"
+      "name": "lista"
     },
     {
       "name": "utils"
