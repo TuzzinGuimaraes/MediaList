@@ -2,6 +2,7 @@
 // contagens das abas saem dos Itens já filtrados.
 import type { TipoMidia } from './estadoConsumo';
 import { tituloDaMidia } from './midia';
+import { decrescente } from './ordenacao';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
 /** Alfabética (padrão), Nota pessoal, adicionado recentemente, atualizado recentemente. */
@@ -39,18 +40,17 @@ function alfabetica(a: ItemFiltravel, b: ItemFiltravel): number {
   return colacao.compare(tituloDaMidia(a), tituloDaMidia(b)) || (a.id_lista < b.id_lista ? -1 : a.id_lista > b.id_lista ? 1 : 0);
 }
 
-/** Maior primeiro; sem valor vai para o fim. */
-function decrescente(valor: (i: ItemFiltravel) => number | null) {
-  return (a: ItemFiltravel, b: ItemFiltravel) => (valor(b) ?? -Infinity) - (valor(a) ?? -Infinity);
+/** Instante da data ISO, para comparar; ausente ou ilegível é null (vai para o fim). */
+function momento(data: string | null | undefined): number | null {
+  const instante = data ? Date.parse(data) : NaN;
+  return Number.isNaN(instante) ? null : instante;
 }
-
-const momento = (data: string | null | undefined) => (data ? Date.parse(data) : null);
 
 const COMPARAR: Record<OrdemLista, (a: ItemFiltravel, b: ItemFiltravel) => number> = {
   titulo: alfabetica,
-  nota: decrescente((i) => i.nota_usuario),
-  adicao: decrescente((i) => momento(i.data_adicao)),
-  atualizacao: decrescente((i) => momento(i.data_atualizacao)),
+  nota: decrescente<ItemFiltravel>((i) => i.nota_usuario),
+  adicao: decrescente<ItemFiltravel>((i) => momento(i.data_adicao)),
+  atualizacao: decrescente<ItemFiltravel>((i) => momento(i.data_atualizacao)),
 };
 
 /** Os Itens que passam nos filtros, na Ordem escolhida (alfabética no empate). */

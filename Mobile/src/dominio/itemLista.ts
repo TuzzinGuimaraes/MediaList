@@ -5,6 +5,7 @@
 import { formatarData } from './datas';
 import { lerNota } from './nota';
 import {
+  APRESENTACAO_DO_TIPO,
   type EstadoConsumo,
   estadoDe,
   ROTULOS_POR_TIPO,
@@ -318,14 +319,12 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
 
 /** Recontagem como aparece na tela, pelo Tipo ("Reassistido 2×"). */
 export function nomeDaRecontagem(tipo: TipoMidia): string {
-  return { anime: 'Reassistido', manga: 'Relido', jogo: 'Rejogado' }[tipo];
+  return APRESENTACAO_DO_TIPO[tipo].recontagem;
 }
 
 /** Unidade do Progresso, para rótulos ("Episódios", "Capítulos", "Horas jogadas"). */
 export function nomeDoProgresso(tipo: string): string {
-  if (tipo === 'anime') return 'Episódios';
-  if (tipo === 'manga') return 'Capítulos';
-  return 'Horas jogadas';
+  return (APRESENTACAO_DO_TIPO[tipo as TipoMidia] ?? APRESENTACAO_DO_TIPO.jogo).progresso;
 }
 
 /** Quanto do fio de progresso fica preenchido (0 a 1); null: sem total, só um traço curto. */

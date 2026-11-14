@@ -2,6 +2,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
 import { notaDeRanking } from '../dominio/midia';
+import { decrescente } from '../dominio/ordenacao';
 import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
 import type { Midia, OrdemCatalogo, PaginaMidias } from './tipos';
@@ -22,16 +23,6 @@ const CHAVE_DA_ORDEM: Record<OrdemCarrossel, (m: Midia) => number | string | nul
   mais_adicionados: (m) => m.total_usuarios,
   mais_concluidos: (m) => m.total_concluidos,
 };
-
-function decrescente(chave: (m: Midia) => number | string | null) {
-  return (a: Midia, b: Midia) => {
-    const [va, vb] = [chave(a), chave(b)];
-    if (va === vb) return 0;
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    return va < vb ? 1 : -1;
-  };
-}
 
 function consultaCarrossel(
   cliente: Cliente,

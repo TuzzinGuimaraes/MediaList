@@ -6,12 +6,12 @@ import { Text, View } from 'react-native';
 import { useItemEmCache } from '../api/lista';
 import { usePosicaoTop10 } from '../api/midias';
 import type { CartaoMidia, Midia } from '../api/tipos';
-import { estadoDe } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoTipo } from '../dominio/estadoConsumo';
 import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '../dominio/midia';
 import { emLancamento } from '../dominio/situacao';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
-import { nomeDoTipo, Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
+import { Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
 import { Toque } from './Toque';
 
 /** A listagem pode trazer os campos completos (Em alta traz; Populares não). */

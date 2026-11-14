@@ -5,7 +5,33 @@ export type TipoMidia = 'anime' | 'manga' | 'jogo';
 
 export const TIPOS: readonly TipoMidia[] = ['anime', 'manga', 'jogo'];
 
-export const NOMES_TIPO: Record<TipoMidia, string> = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' };
+/** Como cada Tipo aparece na tela: o nome e as palavras que mudam com ele. */
+export const APRESENTACAO_DO_TIPO: Record<
+  TipoMidia,
+  {
+    nome: string;
+    /** Título do carrossel da ordem `mais_concluidos` com só este Tipo. */
+    maisConcluidos: string;
+    /** Recontagem ("Reassistido 2×"). */
+    recontagem: string;
+    /** Unidade do Progresso; em jogo o campo guarda horas. */
+    progresso: string;
+  }
+> = {
+  anime: { nome: 'Anime', maisConcluidos: 'Mais assistidos', recontagem: 'Reassistido', progresso: 'Episódios' },
+  manga: { nome: 'Mangá', maisConcluidos: 'Mais lidos', recontagem: 'Relido', progresso: 'Capítulos' },
+  jogo: { nome: 'Jogo', maisConcluidos: 'Mais jogados', recontagem: 'Rejogado', progresso: 'Horas jogadas' },
+};
+
+export const NOMES_TIPO = Object.fromEntries(TIPOS.map((t) => [t, APRESENTACAO_DO_TIPO[t].nome])) as Record<
+  TipoMidia,
+  string
+>;
+
+/** Nome do Tipo para exibir e para rótulos de acessibilidade; Tipo desconhecido passa como veio. */
+export function nomeDoTipo(tipo: string): string {
+  return NOMES_TIPO[tipo as TipoMidia] ?? tipo;
+}
 
 export type EstadoConsumo =
   | 'planejado'

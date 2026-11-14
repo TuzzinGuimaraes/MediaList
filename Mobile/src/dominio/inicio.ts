@@ -1,6 +1,7 @@
 // Regras do Início que não dependem da tela.
 
-import type { TipoMidia } from './estadoConsumo';
+import { diaIso } from './datas';
+import { APRESENTACAO_DO_TIPO, type TipoMidia } from './estadoConsumo';
 
 /** Quantos carrosséis "Porque você curte <gênero>" o Início mostra, no máximo. */
 export const MAX_GENEROS_CURTIDOS = 2;
@@ -36,26 +37,17 @@ export function generosQueVoceCurte(
   return daLista.length ? daLista : maisFrequentes(populares, limite);
 }
 
-const VERBO_DO_TIPO: Record<TipoMidia, string> = {
-  anime: 'Mais assistidos',
-  manga: 'Mais lidos',
-  jogo: 'Mais jogados',
-};
-
 /**
  * Título do carrossel de "mais concluídos" (ordem `mais_concluidos`). Com um Tipo só, o verbo
  * dele; com Anime e Mangá juntos, nenhum dos dois verbos serve e fica "Mais concluídos",
  * do Status Concluído.
  */
 export function rotuloMaisConcluidos(tipos: readonly TipoMidia[]): string {
-  return tipos.length === 1 ? VERBO_DO_TIPO[tipos[0]] : 'Mais concluídos';
+  return tipos.length === 1 ? APRESENTACAO_DO_TIPO[tipos[0]].maisConcluidos : 'Mais concluídos';
 }
-
-
-const dois = (n: number) => String(n).padStart(2, '0');
 
 /** As Mídias já lançadas até `hoje` (dia do aparelho); data futura ou ausente fica de fora. */
 export function jaLancadas<M extends { data_lancamento: string | null }>(midias: M[], hoje = new Date()): M[] {
-  const limite = `${hoje.getFullYear()}-${dois(hoje.getMonth() + 1)}-${dois(hoje.getDate())}`;
+  const limite = diaIso(hoje);
   return midias.filter((m) => m.data_lancamento !== null && m.data_lancamento.slice(0, 10) <= limite);
 }

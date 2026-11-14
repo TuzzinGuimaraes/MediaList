@@ -3,12 +3,12 @@ import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { estadoDe, nomeDoRotulo } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoRotulo, nomeDoTipo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
-import { nomeDoTipo, SeloStatus, SeloTipo } from './Selo';
+import { SeloStatus, SeloTipo } from './Selo';
 
 type Props = {
   item: ItemLista;
