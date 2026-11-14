@@ -106,7 +106,7 @@ describe('Header', () => {
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
             // Sessão gravada antes do ticket 35: o moderador deixou de existir.
-            permissions: { nivel_acesso: 'moderador', pode_moderar: true },
+            permissions: { nivel_acesso: 'moderador' },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useSession.mockReturnValue({ sessao: 'animanga', setSessao: jest.fn() });

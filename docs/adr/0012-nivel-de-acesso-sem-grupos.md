@@ -1,7 +1,7 @@
 # Nível de acesso por Usuário no lugar dos Grupos
 
-O modelo de Grupos (`grupos_usuarios`, `usuarios_grupos` e os poderes `pode_criar`,
-`pode_editar`, `pode_deletar` e `pode_moderar`) atrapalhava mais do que ajudava. Um Usuário
+O modelo de Grupos (duas tabelas, uma de Grupos e outra de associação, e quatro poderes por
+Grupo: criar, editar, deletar e moderar) atrapalhava mais do que ajudava. Um Usuário
 podia estar em vários Grupos e o efetivo era o mais privilegiado, o moderador tinha poderes
 diferentes do admin e cada rota escolhia entre dois decoradores. Com poucos Usuários e um único
 papel de fato usado, o admin, isso era complexidade sem uso.

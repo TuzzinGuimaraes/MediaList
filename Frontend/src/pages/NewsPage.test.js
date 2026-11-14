@@ -72,7 +72,7 @@ describe('NewsPage', () => {
 
     test('sessão antiga de moderador não cria notícia', async () => {
         useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ itens: [], pagina: 1, por_pagina: 20, total: 0 }) });
-        useAuth.mockReturnValue({ user: { nome: 'Mod' }, permissions: { nivel_acesso: 'moderador', pode_moderar: true } });
+        useAuth.mockReturnValue({ user: { nome: 'Mod' }, permissions: { nivel_acesso: 'moderador' } });
 
         render(<NewsPage />);
 

@@ -98,7 +98,7 @@ def test_grupos_viram_nivel_de_acesso_e_o_downgrade_recria_um_grupo_por_nivel(ba
     nome = banco_descartavel
     _alembic(nome, 'upgrade', ANTERIOR)
     _usuario(nome, 'admin@x.test', 'Administradores')
-    _usuario(nome, 'moderador@x.test', 'Moderadores')
+    _usuario(nome, 'mod@x.test', 'Moderadores')
     _usuario(nome, 'comum@x.test', 'Usuários')
     _usuario(nome, 'varios@x.test', 'Usuários', 'Moderadores', 'Administradores')
     _usuario(nome, 'mod-e-comum@x.test', 'Usuários', 'Moderadores')
@@ -108,7 +108,7 @@ def test_grupos_viram_nivel_de_acesso_e_o_downgrade_recria_um_grupo_por_nivel(ba
 
     assert _niveis(nome) == {
         'admin@x.test': 'admin',
-        'moderador@x.test': 'usuario',
+        'mod@x.test': 'usuario',
         'comum@x.test': 'usuario',
         'varios@x.test': 'admin',
         'mod-e-comum@x.test': 'usuario',
@@ -135,7 +135,7 @@ def test_grupos_viram_nivel_de_acesso_e_o_downgrade_recria_um_grupo_por_nivel(ba
     """)
     assert {a['email']: a['nome_grupo'] for a in associacoes} == {
         'admin@x.test': 'Administradores',
-        'moderador@x.test': 'Usuários',
+        'mod@x.test': 'Usuários',
         'comum@x.test': 'Usuários',
         'varios@x.test': 'Administradores',
         'mod-e-comum@x.test': 'Usuários',
@@ -150,4 +150,4 @@ def test_grupos_viram_nivel_de_acesso_e_o_downgrade_recria_um_grupo_por_nivel(ba
     # Ida e volta: o upgrade de novo dá o mesmo Nível a cada um.
     _alembic(nome, 'upgrade', NOVA)
     assert _niveis(nome)['admin@x.test'] == 'admin'
-    assert _niveis(nome)['moderador@x.test'] == 'usuario'
+    assert _niveis(nome)['mod@x.test'] == 'usuario'
