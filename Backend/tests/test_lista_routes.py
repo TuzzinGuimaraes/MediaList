@@ -4,13 +4,13 @@ As regras do Item de lista são afirmadas em `test_lista_pessoal.py`. Aqui só s
 prova o que o adaptador faz: validar o corpo pelo modelo, escolher o código de
 status, esconder item de terceiro atrás de 403 e servir o Item no modelo de saída.
 """
-from datetime import date, datetime, timezone
-from decimal import Decimal
 
 import pytest
 
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, OK, Resultado
 from routes import lista as lista_routes
+
+from .helpers import linha_de_item
 
 
 class ModuloFalso:
@@ -43,32 +43,6 @@ def modulo(monkeypatch):
     return _instalar
 
 
-def linha_do_banco(**campos):
-    """Uma linha de `ItensLista.listar` como o psycopg devolve: Decimal, date, datetime, apelidos legados."""
-    return {
-        'id_midia': 'MID-1', 'id_anime': 'MID-1', 'codigo_midia': 'ANI-1', 'codigo_anime': 'ANI-1',
-        'tipo': 'anime', 'tipo_label': 'Anime', 'titulo_original': 'Frieren', 'titulo_ingles': None,
-        'titulo_portugues': None, 'sinopse': None, 'data_lancamento': date(2023, 9, 29),
-        'nota_media': None, 'total_avaliacoes': None, 'nota_fonte': Decimal('8.9'), 'origem_nota': 'AniList',
-        'poster_url': None, 'banner_url': None, 'status_anime': 'finalizado', 'numero_episodios': 28,
-        'duracao_episodio': 24, 'classificacao_etaria': None, 'anime_trailer_url': None, 'estudio': 'Madhouse',
-        'fonte_original': None, 'anime_anilist_id': 154587, 'status_manga': None, 'numero_capitulos': None,
-        'numero_volumes': None, 'autor': None, 'manga_artista': None, 'publicadora_original': None,
-        'revista': None, 'demografia': None, 'manga_anilist_id': None, 'desenvolvedor': None,
-        'publicadora': None, 'plataformas': None, 'status_jogo': None, 'modo_jogo': None, 'classificacao': None,
-        'jogo_trailer_url': None, 'rawg_slug': None, 'trailer_url': None, 'status_catalogo': 'finalizado',
-        'progresso_total_padrao': 28, 'unidade_progresso': 'episódios', 'generos': 'Aventura, Drama',
-        'generos_lista': ['Aventura', 'Drama'], 'total_usuarios': 3, 'total_concluidos': 1,
-        'id_lista': 'LST-1', 'codigo_lista': None, 'status_consumo': 'assistindo',
-        'status_visualizacao': 'assistindo', 'progresso_atual': 5, 'episodios_assistidos': 5,
-        'progresso_total': 28, 'nota_usuario': Decimal('8.5'), 'favorito': True, 'data_inicio': date(2026, 10, 1),
-        'data_conclusao': None, 'comentario': None, 'total_rewatches': 0, 'privado': False,
-        'data_adicao': datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc),
-        'data_atualizacao': datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc),
-        **campos,
-    }
-
-
 @pytest.fixture
 def listar(monkeypatch):
     """Troca `itens_lista.listar` e registra (usuário, tipo, status)."""
@@ -87,7 +61,7 @@ def listar(monkeypatch):
 
 def test_get_lista_filtra_por_tipo_e_estado_do_usuario(client, auth_headers, listar):
     """A leitura não passa pelo módulo de domínio: a rota lê de `itens_lista` direto."""
-    chamadas = listar([linha_do_banco()])
+    chamadas = listar([linha_de_item()])
 
     response = client.get('/api/lista?tipo=anime&status_consumo=assistindo', headers=auth_headers)
 
@@ -97,7 +71,7 @@ def test_get_lista_filtra_por_tipo_e_estado_do_usuario(client, auth_headers, lis
 
 
 def test_get_lista_serve_o_item_no_modelo_sem_os_apelidos_legados(client, auth_headers, listar):
-    listar([linha_do_banco()])
+    listar([linha_de_item()])
 
     item = client.get('/api/lista', headers=auth_headers).get_json()['lista'][0]
 
@@ -129,7 +103,7 @@ def test_get_lista_com_filtro_vazio_vale_como_ausente(client, auth_headers, list
 
 
 def test_lista_exige_token_e_so_serve_a_lista_do_dono(client, auth_headers, listar):
-    listar([linha_do_banco()])
+    listar([linha_de_item()])
     assert client.get('/api/lista').status_code == 401
 
     alheia = client.get('/api/lista/USR-OUTRO-1', headers=auth_headers)

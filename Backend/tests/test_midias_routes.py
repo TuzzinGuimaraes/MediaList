@@ -9,23 +9,10 @@ import pytest
 
 from routes import midias as midias_routes
 
-from .helpers import FakeAtualizacoes, FakeCatalogo
+from .helpers import FakeAtualizacoes, FakeCatalogo, linha_de_midia
 
-#: Uma linha de `Catalogo.buscar`/`obter` (sem o id), com todas as colunas do SELECT_MIDIA.
-LINHA_ANIME = {
-    'id_anime': 'MID-1', 'codigo_midia': None, 'codigo_anime': None, 'tipo': 'anime', 'tipo_label': 'Anime',
-    'titulo_original': 'Anime X', 'titulo_ingles': None, 'titulo_portugues': 'Anime X', 'sinopse': None,
-    'data_lancamento': None, 'nota_media': None, 'total_avaliacoes': None, 'nota_fonte': None, 'origem_nota': None,
-    'poster_url': None, 'banner_url': None, 'status_anime': 'finalizado', 'numero_episodios': 12,
-    'duracao_episodio': None, 'classificacao_etaria': None, 'anime_trailer_url': None, 'estudio': None,
-    'fonte_original': None, 'anime_anilist_id': None, 'status_manga': None, 'numero_capitulos': None,
-    'numero_volumes': None, 'autor': None, 'manga_artista': None, 'publicadora_original': None, 'revista': None,
-    'demografia': None, 'manga_anilist_id': None, 'desenvolvedor': None, 'publicadora': None, 'plataformas': None,
-    'status_jogo': None, 'modo_jogo': None, 'classificacao': None, 'jogo_trailer_url': None, 'rawg_slug': None,
-    'trailer_url': None, 'status_catalogo': 'finalizado', 'progresso_total_padrao': 12,
-    'unidade_progresso': 'episodios', 'generos': None, 'generos_lista': [], 'total_usuarios': 0,
-    'total_concluidos': 0,
-}
+#: Uma linha de `Catalogo.buscar`/`obter`, com todas as colunas do SELECT_MIDIA.
+LINHA_ANIME = linha_de_midia()
 ANIME_X = LINHA_ANIME
 #: Apelidos legados do SELECT_MIDIA e campos sem leitor: ficam fora do contrato (contrato-api 03).
 CAMPOS_FORA_DO_CONTRATO = {
@@ -133,7 +120,7 @@ def test_detalhe_traz_as_atualizacoes_recentes(client, catalogo, atualizacoes):
 
     assert response.status_code == 200
     corpo = response.get_json()
-    assert (corpo['id_midia'], corpo['titulo_original'], corpo['numero_episodios']) == ('MID-1', 'Anime X', 12)
+    assert (corpo['id_midia'], corpo['titulo_original'], corpo['numero_episodios']) == ('MID-1', 'Frieren', 28)
     assert not CAMPOS_FORA_DO_CONTRATO & set(corpo)
     assert corpo['atualizacoes'] == [{**ATUALIZACAO, 'data_atualizacao': '2026-11-06T10:00:00Z'}]
     assert falso.chamadas == [('recentes', 'MID-1')]
