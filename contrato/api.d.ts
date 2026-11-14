@@ -491,23 +491,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/moderacao/usuarios/{target_user_id}/nivel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Mudar o Nível de acesso de outro Usuário; um admin não muda o de outro admin. */
-        put: operations["put__api_moderacao_usuarios_{target_user_id}_nivel"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/noticias": {
         parameters: {
             query?: never;
@@ -1159,14 +1142,6 @@ export interface components {
              * @default null
              */
             trailer_url?: string | null;
-        };
-        /** CorpoNivelAcesso */
-        CorpoNivelAcesso: {
-            /**
-             * Nivel Acesso
-             * @enum {string}
-             */
-            nivel_acesso: "usuario" | "admin";
         };
         /**
          * CorpoNoticia
@@ -3969,77 +3944,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Mensagem"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-        };
-    };
-    "put__api_moderacao_usuarios_{target_user_id}_nivel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                target_user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CorpoNivelAcesso"];
-            };
-        };
         responses: {
             /** @description OK */
             200: {

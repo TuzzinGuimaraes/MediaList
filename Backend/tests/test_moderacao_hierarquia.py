@@ -38,12 +38,6 @@ def _headers(make_token, user_id):
     return {'Authorization': f'Bearer {make_token(user_id)}'}
 
 
-def _mudar_nivel(client, make_token, ator, alvo, nivel):
-    return client.put(
-        f'/api/moderacao/usuarios/{alvo}/nivel', headers=_headers(make_token, ator), json={'nivel_acesso': nivel},
-    )
-
-
 @pytest.mark.parametrize('acao', ['desativar', 'ativar'])
 def test_ninguem_altera_o_proprio_status(client, make_token, banco, acao):
     resposta = client.put(
@@ -103,40 +97,4 @@ def test_usuario_comum_barrado_pelo_decorador_recebe_o_envelope_de_erro(client, 
     resposta = getattr(client, metodo)(rota, headers=_headers(make_token, 'USR-COMUM-0001'))
     assert resposta.status_code == 403
     assert resposta.get_json() == {'erro': 'Acesso restrito a administradores', 'codigo': 'acesso_negado'}
-    assert banco['updates'] == []
-
-
-def test_admin_promove_usuario_a_admin(client, make_token, banco):
-    resposta = _mudar_nivel(client, make_token, 'USR-ADMIN-0001', 'USR-COMUM-0001', 'admin')
-
-    assert (resposta.status_code, resposta.get_json()) == (200, {'mensagem': 'Nível de acesso alterado'})
-    [(sql, params)] = banco['updates']
-    assert sql.startswith('UPDATE usuarios SET nivel_acesso')
-    assert params == ('admin', 'USR-COMUM-0001')
-
-
-@pytest.mark.parametrize('ator, alvo, erro', [
-    ('USR-ADMIN-0001', 'USR-ADMIN-0001', 'Você não pode alterar o próprio nível de acesso'),
-    ('USR-ADMIN-0001', 'USR-ADMIN-0002', 'Não é possível alterar outro administrador'),
-    ('USR-COMUM-0001', 'USR-COMUM-0002', 'Acesso restrito a administradores'),
-])
-def test_nivel_respeita_a_hierarquia(client, make_token, banco, ator, alvo, erro):
-    resposta = _mudar_nivel(client, make_token, ator, alvo, 'usuario')
-
-    assert (resposta.status_code, resposta.get_json()) == (403, {'erro': erro, 'codigo': 'acesso_negado'})
-    assert banco['updates'] == []
-
-
-def test_nivel_de_alvo_inexistente_responde_404(client, make_token, banco):
-    resposta = _mudar_nivel(client, make_token, 'USR-ADMIN-0001', 'USR-NAO-EXISTE', 'admin')
-
-    assert resposta.get_json() == {'erro': 'Usuário não encontrado', 'codigo': 'nao_encontrado'}
-    assert banco['updates'] == []
-
-
-@pytest.mark.parametrize('nivel', ['moderador', '', None])
-def test_nivel_fora_da_lista_responde_400(client, make_token, banco, nivel):
-    resposta = _mudar_nivel(client, make_token, 'USR-ADMIN-0001', 'USR-COMUM-0001', nivel)
-
-    assert (resposta.status_code, resposta.get_json()['codigo']) == (400, 'dados_invalidos')
     assert banco['updates'] == []

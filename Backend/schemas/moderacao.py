@@ -8,10 +8,6 @@ from schemas.auth import NivelAcesso
 from schemas.avaliacoes import CamposDaAvaliacao
 
 
-class CorpoNivelAcesso(BaseModel):
-    nivel_acesso: NivelAcesso
-
-
 class AvaliacaoModeracao(CamposDaAvaliacao):
     titulo_portugues: str | None
     titulo_original: str

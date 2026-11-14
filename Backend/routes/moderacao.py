@@ -22,7 +22,6 @@ from contrato import (
 )
 from decorators import admin_required
 from schemas.moderacao import (
-    CorpoNivelAcesso,
     RespostaAvaliacoesModeracao,
     UsuarioModeracao,
 )
@@ -152,25 +151,3 @@ def desativar_usuario(target_user_id):
 def ativar_usuario(target_user_id):
     """Ativar usuário."""
     return _alterar_status(target_user_id, ativo=True)
-
-
-
-@moderacao_bp.route('/usuarios/<string:target_user_id>/nivel', methods=['PUT'])
-@jwt_required()
-@admin_required
-@contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
-    tags=['moderacao'], security=AUTENTICADO,
-)
-def alterar_nivel_usuario(target_user_id, json: CorpoNivelAcesso):
-    """Mudar o Nível de acesso de outro Usuário; um admin não muda o de outro admin."""
-    barrado = _barrar_pela_hierarquia(target_user_id, 'Você não pode alterar o próprio nível de acesso')
-    if barrado:
-        return barrado
-
-    alterados = executar(
-        "UPDATE usuarios SET nivel_acesso = %s WHERE id_usuario = %s", (json.nivel_acesso, target_user_id),
-    )
-    if not alterados:
-        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
-    return {'mensagem': 'Nível de acesso alterado'}

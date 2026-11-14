@@ -10,8 +10,8 @@ Cada Usuário passa a ter um único **Nível de acesso**, `usuario` ou `admin`, 
 `usuarios.nivel_acesso` (CHECK, padrão `usuario`). O papel de moderador deixa de existir. Um
 decorador só, `@admin_required`, guarda as rotas restritas: moderação de Avaliações e de
 Usuários, Notícias, Atualizações de mídia e edição e exclusão de Mídias. A hierarquia fica:
-ninguém ativa, desativa ou muda o Nível de si mesmo, nem de outro admin. O admin promove um
-Usuário por `PUT /api/moderacao/usuarios/{id}/nivel`.
+ninguém ativa ou desativa a si mesmo, nem outro admin. Promover um Usuário a admin
+fica no banco ou no seed: não há rota para isso.
 
 No contrato, `permissoes` (login e `GET /usuario/permissoes`) fica só com `{nivel_acesso}`, e
 `grupos` sai do Perfil e da lista da moderação, que ganham `nivel_acesso`.

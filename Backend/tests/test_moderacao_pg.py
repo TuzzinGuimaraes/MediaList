@@ -39,24 +39,6 @@ def test_usuarios_da_moderacao_paginados_com_o_total(client, pg, entrar):  # noq
     }
 
 
-def test_admin_promove_usuario_e_o_novo_admin_entra_na_moderacao(client, pg, entrar):  # noqa: F811
-    admin, comum = _usuario(pg, 'admin'), _usuario(pg)
-    assert client.get('/api/moderacao/usuarios', headers=entrar(comum)).status_code == 403
-
-    promover = client.put(
-        f'/api/moderacao/usuarios/{comum}/nivel', headers=entrar(admin), json={'nivel_acesso': 'admin'},
-    )
-
-    assert promover.status_code == 200
-    assert client.get('/api/moderacao/usuarios', headers=entrar(comum)).status_code == 200
-    # Agora são dois admins: um não desativa nem rebaixa o outro.
-    assert client.put(f'/api/moderacao/usuarios/{admin}/desativar', headers=entrar(comum)).status_code == 403
-    rebaixar = client.put(
-        f'/api/moderacao/usuarios/{admin}/nivel', headers=entrar(comum), json={'nivel_acesso': 'usuario'},
-    )
-    assert rebaixar.status_code == 403
-
-
 def test_avaliacoes_da_moderacao_com_a_midia(client, pg, entrar):  # noqa: F811
     admin, autora = _usuario(pg, 'admin'), _usuario(pg)
     id_midia = Catalogo().criar('anime', {'titulo_original': f'PG {uuid.uuid4().hex}'})

@@ -1279,23 +1279,6 @@
         "title": "CorpoMidia",
         "type": "object"
       },
-      "CorpoNivelAcesso": {
-        "properties": {
-          "nivel_acesso": {
-            "enum": [
-              "usuario",
-              "admin"
-            ],
-            "title": "Nivel Acesso",
-            "type": "string"
-          }
-        },
-        "required": [
-          "nivel_acesso"
-        ],
-        "title": "CorpoNivelAcesso",
-        "type": "object"
-      },
       "CorpoNoticia": {
         "description": "O autor é o Usuário logado; `autor` no corpo é ignorado.",
         "properties": {
@@ -7276,104 +7259,6 @@
           }
         ],
         "summary": "Desativar usuário.",
-        "tags": [
-          "moderacao"
-        ]
-      }
-    },
-    "/api/moderacao/usuarios/{target_user_id}/nivel": {
-      "put": {
-        "description": "",
-        "operationId": "put__api_moderacao_usuarios_{target_user_id}_nivel",
-        "parameters": [
-          {
-            "description": "",
-            "in": "path",
-            "name": "target_user_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpoNivelAcesso"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Mensagem"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mudar o Nível de acesso de outro Usuário; um admin não muda o de outro admin.",
         "tags": [
           "moderacao"
         ]
