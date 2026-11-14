@@ -13,7 +13,7 @@ from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, CodigoErro, Erro, contrato, resposta_erro
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
 from repositories.catalogo import Catalogo
 from repositories.itens_lista import ItensLista
@@ -37,7 +37,7 @@ lista_pessoal = ListaPessoal(itens_lista, Catalogo())
 ERRO_SEM_ACESSO = 'Item não encontrado ou sem permissão'
 
 #: Respostas de erro comuns às rotas de escrita.
-ERROS_DA_ESCRITA = {'HTTP_400': Erro, 'HTTP_403': Erro}
+ERROS_DA_ESCRITA = {'HTTP_400': Erro, 'HTTP_403': Erro, **ERROS_AUTENTICADA}
 
 
 def _campos(corpo) -> dict:
@@ -76,7 +76,7 @@ def _lista(user_id: str, query: ConsultaLista):
 
 @lista_bp.route('', methods=['GET'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=RespostaLista), tags=['lista'], security=AUTENTICADO)
+@contrato.validate(resp=Response(HTTP_200=RespostaLista, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO)
 def obter_lista_usuario(query: ConsultaLista):
     """Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado."""
     return _lista(get_jwt_identity(), query)
@@ -84,7 +84,9 @@ def obter_lista_usuario(query: ConsultaLista):
 
 @lista_bp.route('/<string:target_user_id>', methods=['GET'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=RespostaLista, HTTP_403=Erro), tags=['lista'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaLista, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+)
 def obter_lista_usuario_por_id(target_user_id, query: ConsultaLista):
     """Lista pessoal de um Usuário: só o próprio."""
     user_id = get_jwt_identity()
@@ -141,7 +143,9 @@ def atualizar_item_lista(lista_id, json: EdicaoItemLista):
 
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
 @jwt_required()
-@contrato.validate(resp=Response(HTTP_200=ConfirmacaoLista, HTTP_403=Erro), tags=['lista'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=ConfirmacaoLista, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+)
 def remover_item_lista(lista_id):
     """Tirar um Item da Lista pessoal."""
     resultado = lista_pessoal.remover(get_jwt_identity(), lista_id)

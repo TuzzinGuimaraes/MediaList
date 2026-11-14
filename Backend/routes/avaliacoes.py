@@ -9,7 +9,7 @@ from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
 from decorators import get_user_permissions
 from dominio.avaliacao import CONFLITO, Avaliacoes
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO
@@ -55,7 +55,7 @@ def listar_avaliacoes(id_midia, query: ConsultaAvaliacoes):
 @avaliacoes_bp.route('', methods=['POST'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_201=AvaliacaoCriada, HTTP_400=Erro, HTTP_404=Erro, HTTP_409=Erro),
+    resp=Response(HTTP_201=AvaliacaoCriada, HTTP_400=Erro, HTTP_404=Erro, HTTP_409=Erro, **ERROS_AUTENTICADA),
     tags=['avaliacoes'], security=AUTENTICADO,
 )
 def criar_avaliacao(json: CorpoNovaAvaliacao):
@@ -74,7 +74,8 @@ def criar_avaliacao(json: CorpoNovaAvaliacao):
 @avaliacoes_bp.route('/<string:avaliacao_id>', methods=['PUT'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=AvaliacaoEditada, HTTP_400=Erro, HTTP_403=Erro), tags=['avaliacoes'], security=AUTENTICADO,
+    resp=Response(HTTP_200=AvaliacaoEditada, HTTP_400=Erro, HTTP_403=Erro, **ERROS_AUTENTICADA),
+    tags=['avaliacoes'], security=AUTENTICADO,
 )
 def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
     """Editar a própria Avaliação; só os campos enviados."""
@@ -87,7 +88,8 @@ def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
 @avaliacoes_bp.route('/<string:avaliacao_id>', methods=['DELETE'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=AvaliacaoRemovida, HTTP_403=Erro, HTTP_404=Erro), tags=['avaliacoes'], security=AUTENTICADO,
+    resp=Response(HTTP_200=AvaliacaoRemovida, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['avaliacoes'], security=AUTENTICADO,
 )
 def deletar_avaliacao(avaliacao_id):
     """Deletar avaliação: o autor, ou quem pode moderar."""

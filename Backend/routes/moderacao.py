@@ -7,7 +7,7 @@ from spectree import Response
 
 import decorators
 from banco import consultar, consultar_um, executar, transacao
-from contrato import AUTENTICADO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
 from decorators import moderator_or_admin_required
 from schemas.moderacao import (
     ConsultaUsuariosModeracao,
@@ -66,7 +66,10 @@ def _alterar_status(target_user_id, ativo):
 @moderacao_bp.route('/avaliacoes', methods=['GET'])
 @jwt_required()
 @moderator_or_admin_required
-@contrato.validate(resp=Response(HTTP_200=RespostaAvaliacoesModeracao), tags=['moderacao'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaAvaliacoesModeracao, **ERROS_COM_PERMISSAO),
+    tags=['moderacao'], security=AUTENTICADO,
+)
 def listar_avaliacoes_moderacao():
     """As 50 Avaliações mais recentes, para moderação."""
     query = """
@@ -90,7 +93,9 @@ def listar_avaliacoes_moderacao():
 @moderacao_bp.route('/usuarios', methods=['GET'])
 @jwt_required()
 @moderator_or_admin_required
-@contrato.validate(resp=Response(HTTP_200=Pagina[UsuarioModeracao]), tags=['moderacao'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_200=Pagina[UsuarioModeracao], **ERROS_COM_PERMISSAO), tags=['moderacao'], security=AUTENTICADO,
+)
 def listar_usuarios_moderacao(query: ConsultaUsuariosModeracao):
     """Uma página dos Usuários, mais recentes primeiro, para moderação."""
     sql = """
@@ -122,7 +127,7 @@ def listar_usuarios_moderacao(query: ConsultaUsuariosModeracao):
 @jwt_required()
 @moderator_or_admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=StatusUsuarioAlterado, HTTP_403=Erro, HTTP_404=Erro),
+    resp=Response(HTTP_200=StatusUsuarioAlterado, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
     tags=['moderacao'], security=AUTENTICADO,
 )
 def desativar_usuario(target_user_id):
@@ -134,7 +139,7 @@ def desativar_usuario(target_user_id):
 @jwt_required()
 @moderator_or_admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=StatusUsuarioAlterado, HTTP_403=Erro, HTTP_404=Erro),
+    resp=Response(HTTP_200=StatusUsuarioAlterado, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
     tags=['moderacao'], security=AUTENTICADO,
 )
 def ativar_usuario(target_user_id):

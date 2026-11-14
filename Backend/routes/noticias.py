@@ -9,7 +9,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar, consultar_um
-from contrato import AUTENTICADO, ConsultaPaginada, Pagina, contrato, montar_pagina
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, montar_pagina
 from decorators import permission_required
 from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
@@ -38,7 +38,9 @@ def listar_noticias(query: ConsultaPaginada):
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('criar')
-@contrato.validate(resp=Response(HTTP_201=NoticiaCriada), tags=['noticias'], security=AUTENTICADO)
+@contrato.validate(
+    resp=Response(HTTP_201=NoticiaCriada, **ERROS_COM_PERMISSAO), tags=['noticias'], security=AUTENTICADO,
+)
 def criar_noticia(json: CorpoNoticia):
     """Criar Notícia; o autor é o Usuário logado."""
     criada = consultar_um(

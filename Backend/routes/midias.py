@@ -12,7 +12,7 @@ from flask import Blueprint
 from flask_jwt_extended import jwt_required
 from spectree import Response
 
-from contrato import AUTENTICADO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, CodigoErro, Erro, Pagina, contrato, montar_pagina, resposta_erro
 from decorators import permission_required
 from repositories.atualizacoes import Atualizacoes
 from repositories.catalogo import Catalogo
@@ -42,7 +42,7 @@ FILTROS = (
     'artista',
 )
 
-ERROS_DE_ESCRITA = {'HTTP_401': Erro, 'HTTP_403': Erro, 'HTTP_404': Erro}
+ERROS_DE_ESCRITA = {**ERROS_COM_PERMISSAO, 'HTTP_404': Erro}
 
 
 def midia_nao_encontrada():

@@ -238,6 +238,13 @@ contrato = SpecTree(
 #: `security=` das rotas com `@jwt_required()`.
 AUTENTICADO = {'bearer': []}
 
+#: Erros de toda rota com `@jwt_required()`, vindos dos loaders do flask-jwt (app.py): 401 sem
+#: token, expirado, revogado ou de Usuário desativado; 422 com o token malformado.
+#: Uso: `resp=Response(HTTP_200=X, **ERROS_AUTENTICADA)`.
+ERROS_AUTENTICADA = {'HTTP_401': Erro, 'HTTP_422': Erro}
+#: Mais o 403 de `permission_required` e `moderator_or_admin_required` (decorators.py).
+ERROS_COM_PERMISSAO = {**ERROS_AUTENTICADA, 'HTTP_403': Erro}
+
 
 def registrar_documentacao(app, em_producao: bool, spec: SpecTree = contrato) -> None:
     """Documento e páginas do OpenAPI, só fora de produção.
