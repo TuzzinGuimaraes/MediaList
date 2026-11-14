@@ -86,13 +86,11 @@ def test_noticia_com_tags_que_nao_sao_lista_de_texto_responde_400(client, admin_
 
 
 NOTIFICACAO = {
-    'id_usuario': 'USR-TEST-0001',
     'id_midia': 'MID-1',
     'tipo_midia': 'anime',
     'tipo': 'episodio',
     'titulo': 'Episódio 12',
     'midia_nome': 'Anime X',
-    'anime_nome': 'Anime X',
     'mensagem': 'Novidade em anime da sua lista: Anime X',
     'lida': False,
     'data_criacao': datetime(2026, 11, 13, 9, 30, tzinfo=timezone.utc),
@@ -114,7 +112,7 @@ def test_notificacoes_do_usuario_logado_com_data_iso(client, auth_headers, monke
 
     assert response.status_code == 200
     assert response.get_json() == {
-        'notificacoes': [{**NOTIFICACAO, 'data_criacao': '2026-11-13T09:30:00+00:00'}],
+        'notificacoes': [{**NOTIFICACAO, 'data_criacao': '2026-11-13T09:30:00Z'}],
     }
     assert falso.chamadas == [('notificacoes', 'USR-TEST-0001', False)]
 
@@ -126,6 +124,16 @@ def test_notificacoes_nao_lidas_filtra_pelas_nao_lidas(client, auth_headers, mon
 
     assert response.get_json() == {'notificacoes': []}
     assert falso.chamadas == [('notificacoes', 'USR-TEST-0001', True)]
+
+
+def test_notificacoes_com_nao_lidas_invalido_responde_400(client, auth_headers, monkeypatch):
+    falso = _instalar_atualizacoes(monkeypatch, notificacoes=[NOTIFICACAO])
+
+    response = client.get('/api/notificacoes?nao_lidas=talvez', headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'nao_lidas': 'Tipo inválido'}
+    assert falso.chamadas == []
 
 
 def test_notificacoes_exigem_login(client):
@@ -154,9 +162,8 @@ def test_preferencias_sem_nada_salvo_saem_com_os_padroes(client, auth_headers, m
     response = client.get('/api/preferencias', headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json() == {'preferencias': {
-        'id_usuario': 'USR-TEST-0001', 'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True,
-    }}
+    # `id_usuario` saiu: é o próprio Usuário logado, e nenhum cliente lia.
+    assert response.get_json() == {'preferencias': {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}}
     assert fake.sql('FROM usuarios')[0][2] == ('USR-TEST-0001',)
 
 
@@ -172,7 +179,10 @@ def test_preferencias_salvas_vencem_os_padroes(client, auth_headers, monkeypatch
 def test_preferencias_de_usuario_inexistente_respondem_404(client, auth_headers, monkeypatch):
     _instalar_preferencias(monkeypatch)
 
-    assert client.get('/api/preferencias', headers=auth_headers).status_code == 404
+    response = client.get('/api/preferencias', headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.get_json() == {'erro': 'Usuário não encontrado', 'codigo': 'nao_encontrado'}
 
 
 def test_preferencias_put_grava_so_os_campos_permitidos(client, auth_headers, monkeypatch):
@@ -194,13 +204,25 @@ def test_preferencias_put_sem_campo_valido_responde_400(client, auth_headers, mo
     response = client.put('/api/preferencias', headers=auth_headers, json={'invalido': True})
 
     assert response.status_code == 400
+    assert response.get_json() == {'erro': 'Nenhuma preferência válida fornecida', 'codigo': 'dados_invalidos'}
     assert fake.chamadas == []
 
 
 def test_preferencias_put_com_tipo_errado_responde_400(client, auth_headers, monkeypatch):
     fake = _instalar_preferencias(monkeypatch)
 
-    response = client.put('/api/preferencias', headers=auth_headers, json={'notificacoes_ativas': 'sim'})
+    response = client.put('/api/preferencias', headers=auth_headers, json={'notificacoes_ativas': 'true'})
 
     assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'notificacoes_ativas': 'Tipo inválido'}
+    assert fake.chamadas == []
+
+
+def test_preferencias_put_com_tema_que_nao_e_texto_responde_400(client, auth_headers, monkeypatch):
+    fake = _instalar_preferencias(monkeypatch)
+
+    response = client.put('/api/preferencias', headers=auth_headers, json={'tema': 1})
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'tema': 'Tipo inválido'}
     assert fake.chamadas == []
