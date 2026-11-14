@@ -339,8 +339,12 @@ class FakeAvaliacaoRepository:
             return {'nota_media': None, 'total_avaliacoes': None}
         return {'nota_media': sum(notas) / len(notas), 'total_avaliacoes': len(notas)}
 
-    def listar(self, id_midia):
-        return [dict(a) for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+    def listar(self, id_midia, limite, deslocamento):
+        da_midia = [dict(a) for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+        return da_midia[deslocamento:deslocamento + limite]
+
+    def contar(self, id_midia):
+        return sum(1 for a in self.avaliacoes.values() if a['id_midia'] == id_midia)
 
     def criar(self, id_usuario, id_midia, nota, titulo, texto):
         from banco import Conflito
