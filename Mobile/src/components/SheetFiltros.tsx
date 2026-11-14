@@ -18,6 +18,8 @@ type PropsSheet = {
   aoFechar: () => void;
   /** Volta todos os filtros ao padrão; sem ele, o botão Limpar não aparece. */
   limpar?: () => void;
+  /** Texto do botão Limpar (padrão "Limpar"). */
+  tituloLimpar?: string;
   /** Os grupos de filtro (GrupoFiltro). */
   children: React.ReactNode;
 };
@@ -26,7 +28,7 @@ type PropsSheet = {
  * Sheet de filtros genérico (Lista e Explorar): os filtros valem na hora, e o rodapé tem
  * Limpar e Ver resultados, que só fecha.
  */
-export function SheetFiltros({ titulo = textos.filtros, aoFechar, limpar, children }: PropsSheet) {
+export function SheetFiltros({ titulo = textos.filtros, aoFechar, limpar, tituloLimpar = textos.limpar, children }: PropsSheet) {
   return (
     <BottomSheet
       rotulo={titulo}
@@ -40,7 +42,7 @@ export function SheetFiltros({ titulo = textos.filtros, aoFechar, limpar, childr
         <View className="flex-row gap-2">
           {limpar ? (
             <View className="flex-1">
-              <Botao titulo={textos.limpar} variante="secundario" onPress={limpar} />
+              <Botao titulo={tituloLimpar} variante="secundario" onPress={limpar} />
             </View>
           ) : null}
           <View className="flex-[2]">
