@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 
 import { useCarrosseisPorGenero, useCarrossel } from '@/api/inicio';
 import { useLista } from '@/api/lista';
 import { useEmAlta, usePopulares } from '@/api/midias';
-import type { ItemLista } from '@/api/tipos';
+import type { ItemLista, Midia } from '@/api/tipos';
 import { CardInfo } from '@/components/CardMidia';
 import { Carrossel, Fileira, Top10 } from '@/components/Carrossel';
 import { Destaques } from '@/components/Destaques';
+import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { useAtualizar } from '@/components/useAtualizar';
 import { estadoDe } from '@/dominio/estadoConsumo';
@@ -34,6 +36,8 @@ export default function Inicio() {
   const emAlta = useEmAlta(recorte);
   const populares = usePopulares(recorte);
   const lista = useLista();
+  // O editor aberto pelos destaques: a Mídia e o Item dela (null ao adicionar).
+  const [editando, setEditando] = useState<{ midia: Midia; item: ItemLista | null } | null>(null);
   const maioresNotas = useCarrossel(recorte, 'nota_media');
   const lancamentos = useCarrossel(recorte, 'data_lancamento');
   const maisAdicionados = useCarrossel(recorte, 'mais_adicionados');
@@ -88,7 +92,11 @@ export default function Inicio() {
       <Vazio mensagem={textos.vazio} />
     ) : (
       <>
-        {emAlta.data.length ? <Destaques midias={emAlta.data.slice(0, MAX_DESTAQUES)} /> : null}
+        {emAlta.data.length ? <Destaques
+            midias={emAlta.data.slice(0, MAX_DESTAQUES)}
+            itens={itens}
+            aoEditar={(midia, item) => setEditando({ midia, item })}
+          /> : null}
         <Fileira
           titulo={textos.continuar}
           itens={continuar}
@@ -117,11 +125,14 @@ export default function Inicio() {
       <ScrollView
         testID="inicio"
         className="flex-1 bg-fundo"
-        contentContainerClassName="flex-grow gap-7 pb-8 pt-4"
+        contentContainerClassName="flex-grow gap-7 pb-8"
         refreshControl={<RefreshControl {...atualizar} />}
       >
         {conteudo}
       </ScrollView>
+      {editando ? (
+        <EditorItem midia={editando.midia} item={editando.item} aoFechar={() => setEditando(null)} />
+      ) : null}
     </ConteudoRecorte>
   );
 }

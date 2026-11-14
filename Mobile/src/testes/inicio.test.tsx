@@ -328,6 +328,19 @@ describe('Início: destaques e carrosséis', () => {
     expect(nomes('Destaques')).toEqual(nomes('Em alta'));
   });
 
+  it('destaque: "Editar" no que está na Lista, "Adicionar à Lista" no resto, e os dois abrem o editor', async () => {
+    simularFetch(completo());
+
+    await abrirLogado();
+
+    const destaques = within(await screen.findByLabelText('Destaques'));
+    expect(await destaques.findByRole('button', { name: /^Editar: Sousou no Frieren/ })).toBeOnTheScreen();
+    expect(destaques.getAllByRole('button', { name: /^Detalhes: / })).toHaveLength(3);
+
+    await fireEvent.press(destaques.getByRole('button', { name: /^Adicionar à Lista: / }));
+    expect(await screen.findByRole('button', { name: 'Salvar' })).toBeOnTheScreen();
+  });
+
   it('Continuar traz só os Itens Em progresso do catálogo ativo', async () => {
     simularFetch(completo());
 
