@@ -31,13 +31,22 @@ def test_usuario_perfil_retorna_404_quando_view_nao_tem_registro(client, auth_he
 
 
 def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatch):
+    from datetime import datetime, timezone
+
+    avaliacao = {
+        'id_avaliacao': 'AVL-1', 'id_usuario': 'USR-1', 'id_midia': 'MID-1', 'nota': 7.5,
+        'titulo_avaliacao': None, 'texto_avaliacao': 'Bom',
+        'data_avaliacao': datetime(2026, 11, 1, tzinfo=timezone.utc),
+        'data_edicao': None, 'nome_completo': 'Ana', 'titulo_portugues': None, 'titulo_original': 'Original',
+        'tipo': 'anime',
+    }
     monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    FakeBanco({'FROM avaliacoes': [{'id_avaliacao': 'AVL-1'}]}).instalar(monkeypatch, moderacao_routes)
+    FakeBanco({'FROM avaliacoes': [avaliacao]}).instalar(monkeypatch, moderacao_routes)
 
     response = client.get('/api/moderacao/avaliacoes', headers=admin_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
+    assert response.get_json() == {'avaliacoes': [{**avaliacao, 'data_avaliacao': '2026-11-01T00:00:00Z'}]}
 
 
 def test_populares_repassa_o_tipo_ao_catalogo(client, monkeypatch):
