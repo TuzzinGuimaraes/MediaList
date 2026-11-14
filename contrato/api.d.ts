@@ -21,6 +21,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lista": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado. */
+        get: operations["get__api_lista"];
+        put?: never;
+        /** Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar). */
+        post: operations["post__api_lista"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/adicionar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pôr uma Mídia na Lista pessoal. */
+        post: operations["post__api_lista_adicionar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Gravar os campos enviados num Item. */
+        put: operations["put__api_lista_{lista_id}"];
+        post?: never;
+        /** Tirar um Item da Lista pessoal. */
+        delete: operations["delete__api_lista_{lista_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}/progresso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Atualizar o Progresso de um Item.
+         * @description Teto, promoção a Concluído e dono do Item são decisão do módulo.
+         */
+        put: operations["put__api_lista_{lista_id}_progresso"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{target_user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista pessoal de um Usuário: só o próprio. */
+        get: operations["get__api_lista_{target_user_id}"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31,6 +121,11 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConfirmacaoLista */
+        ConfirmacaoLista: {
+            /** Mensagem */
+            mensagem: string;
+        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -38,6 +133,74 @@ export interface components {
              * @default null
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaLista */
+        ConsultaLista: {
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             * @default null
+             */
+            status_consumo?: string | null;
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /**
+         * EdicaoItemLista
+         * @description Corpo de PUT /lista/<id_lista>.
+         */
+        EdicaoItemLista: {
+            /**
+             * Comentario
+             * @default null
+             */
+            comentario?: string | null;
+            /**
+             * Data Conclusao
+             * @default null
+             */
+            data_conclusao?: string | null;
+            /**
+             * Data Inicio
+             * @default null
+             */
+            data_inicio?: string | null;
+            /**
+             * Favorito
+             * @default null
+             */
+            favorito?: boolean | null;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
+             * @default null
+             */
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             * @default null
+             */
+            status_consumo?: string | null;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
         };
         /**
          * Erro
@@ -68,10 +231,221 @@ export interface components {
             /** Nome Genero */
             nome_genero: string;
         };
+        /** ItemCriado */
+        ItemCriado: {
+            /** Id Lista */
+            id_lista: string;
+            /** Mensagem */
+            mensagem: string;
+        };
+        /**
+         * ItemLista
+         * @description Um Item de GET /lista: a Mídia mais os campos do Item.
+         */
+        ItemLista: {
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Comentario */
+            comentario: string | null;
+            /**
+             * Data Adicao
+             * Format: date-time
+             */
+            data_adicao: string;
+            /**
+             * Data Atualizacao
+             * Format: date-time
+             */
+            data_atualizacao: string;
+            /** Data Conclusao */
+            data_conclusao: string | null;
+            /** Data Inicio */
+            data_inicio: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: string | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Favorito */
+            favorito: boolean;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description "Aventura, Drama"; `generos_lista` é o mesmo, separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Lista */
+            id_lista: string;
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: string | null;
+            /** Nota Fonte */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; null sem elas
+             */
+            nota_media: number | null;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal
+             */
+            nota_usuario: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description "PC, Switch, PS4"
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Privado */
+            privado: boolean;
+            /** Progresso Atual */
+            progresso_atual: number | null;
+            /**
+             * Progresso Total
+             * @description Total copiado da Mídia na criação do Item
+             */
+            progresso_total: number | null;
+            /**
+             * Progresso Total Padrao
+             * @description Total da Mídia; null no jogo
+             */
+            progresso_total_padrao: number | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: string | null;
+            /** Status Catalogo */
+            status_catalogo: string | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             */
+            status_consumo: string;
+            /** Status Jogo */
+            status_jogo: string | null;
+            /** Status Manga */
+            status_manga: string | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Tipo Label */
+            tipo_label: string;
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description null quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /** Total Concluidos */
+            total_concluidos: number;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             */
+            total_rewatches: number;
+            /** Total Usuarios */
+            total_usuarios: number;
+        };
+        /**
+         * NovoItemLista
+         * @description Corpo de POST /lista e /lista/adicionar.
+         */
+        NovoItemLista: {
+            /**
+             * Comentario
+             * @default null
+             */
+            comentario?: string | null;
+            /**
+             * Data Conclusao
+             * @default null
+             */
+            data_conclusao?: string | null;
+            /**
+             * Data Inicio
+             * @default null
+             */
+            data_inicio?: string | null;
+            /**
+             * Favorito
+             * @default null
+             */
+            favorito?: boolean | null;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
+             * @default null
+             */
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado do Tipo da Mídia
+             */
+            status_consumo: string;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
+        };
+        /**
+         * ProgressoItemLista
+         * @description Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.
+         */
+        ProgressoItemLista: {
+            /** Progresso Atual */
+            progresso_atual: number;
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
             generos: components["schemas"]["Genero"][];
+        };
+        /** RespostaLista */
+        RespostaLista: {
+            /** Lista */
+            lista: components["schemas"]["ItemLista"][];
         };
     };
     responses: never;
@@ -104,6 +478,295 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_lista: {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_lista: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoItemLista"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_lista_adicionar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoItemLista"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EdicaoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_lista_{lista_id}_progresso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_lista_{target_user_id}": {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
+            };
+            header?: never;
+            path: {
+                target_user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
