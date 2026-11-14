@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
+import { diaIso } from '../dominio/datas';
 import { aplicarProgresso, type DadosItem, totalDoItem } from '../dominio/itemLista';
 import { useCache } from './consulta';
 import type { ItemLista, RespostaLista } from './tipos';
@@ -76,12 +77,6 @@ export function useRemoverItem() {
   });
 }
 
-/** "2026-11-06" no fuso do aparelho. */
-function hoje(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 type ItemCache = RespostaLista['lista'][number];
 
 /** Estado de uma sequência de toques no stepper de um Item, enquanto houver toque pendente. */
@@ -97,7 +92,7 @@ type Rajada = {
 function comProgresso(original: ItemCache, progresso: number): ItemCache {
   return {
     ...original,
-    ...aplicarProgresso({ ...original, data_conclusao: original.data_conclusao ?? null }, progresso, hoje()),
+    ...aplicarProgresso({ ...original, data_conclusao: original.data_conclusao ?? null }, progresso, diaIso()),
   };
 }
 

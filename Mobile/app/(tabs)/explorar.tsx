@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { type Ordem, useBuscaMidias, useGeneros } from '@/api/explorar';
-import type { TipoMidia } from '@/api/tipos';
+import { useBuscaMidias, useGeneros } from '@/api/explorar';
+import type { OrdemCatalogo, TipoMidia } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
@@ -25,8 +25,8 @@ const textos = {
   nadaNoFiltro: 'Nenhuma Mídia com esses filtros.',
 };
 
-const ORDEM_PADRAO: Ordem = 'nota_media';
-const ORDENS: { valor: Ordem; titulo: string }[] = [
+const ORDEM_PADRAO: OrdemCatalogo = 'nota_media';
+const ORDENS: { valor: OrdemCatalogo; titulo: string }[] = [
   { valor: 'nota_media', titulo: 'Nota' },
   { valor: 'titulo', titulo: 'Título' },
   { valor: 'data_lancamento', titulo: 'Lançamento' },
@@ -60,7 +60,7 @@ export default function Explorar() {
   // Gênero vale só para o Tipo em que foi escolhido: trocar Tipo ou Recorte o limpa.
   const [genero, setGenero] = useState<{ tipo: TipoMidia; nome: string } | null>(null);
   const nomeGenero = genero?.tipo === tipo ? genero.nome : null;
-  const [ordem, setOrdem] = useState<Ordem>(ORDEM_PADRAO);
+  const [ordem, setOrdem] = useState<OrdemCatalogo>(ORDEM_PADRAO);
   const [texto, setTexto] = useState('');
   const termo = useValorAtrasado(texto.trim(), ATRASO_BUSCA_MS);
   const busca = termo.length >= MINIMO_BUSCA ? termo : '';

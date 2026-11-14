@@ -3,12 +3,12 @@ import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { estadoDe, nomeDoRotulo } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoRotulo, nomeDoTipo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
-import { nomeDoTipo, SeloStatus, SeloTipo } from './Selo';
+import { SeloStatus, SeloTipo } from './Selo';
 
 type Props = {
   item: ItemLista;
@@ -133,5 +133,18 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
       </View>
       <FioProgresso item={item} />
     </View>
+  );
+}
+
+/** O que a Lista faz com um Item: abrir o editor e mudar o Progresso pelo stepper. */
+export type AcoesDoItem = {
+  editar(idLista: string): void;
+  mudarProgresso(item: ItemLista, progresso: number): void;
+};
+
+/** A linha de um Item ligada às ações da Lista (páginas por Status e resultados da busca). */
+export function LinhaDaLista({ item, acoes }: { item: ItemLista; acoes: AcoesDoItem }) {
+  return (
+    <LinhaItem item={item} editar={() => acoes.editar(item.id_lista)} mudarProgresso={(p) => acoes.mudarProgresso(item, p)} />
   );
 }

@@ -1,4 +1,4 @@
-import { contarPorEstado, estadoDe, mediaNotasPessoais, nomeDoRotulo, rotulosDoTipo, somarPorEstado } from './estadoConsumo';
+import { contarPorEstado, estadoDe, eTerminal, mediaNotasPessoais, nomeDoRotulo, rotulosDoTipo, somarPorEstado } from './estadoConsumo';
 
 describe('estadoDe', () => {
   it('traduz o Rótulo de estado de cada Tipo para o Estado de consumo (tabela do CONTEXT.md)', () => {
@@ -104,5 +104,15 @@ describe('somarPorEstado', () => {
       { estado: 'concluido', nome: 'Concluído', total: 3 },
       { estado: 'platinado', nome: 'Platinado', total: 1 },
     ]);
+  });
+});
+
+describe('eTerminal', () => {
+  it('Concluído e Platinado terminaram; os outros Estados e o desconhecido, não', () => {
+    expect(eTerminal('concluido')).toBe(true);
+    expect(eTerminal('platinado')).toBe(true);
+    expect(eTerminal('em_progresso')).toBe(false);
+    expect(eTerminal('abandonado')).toBe(false);
+    expect(eTerminal(null)).toBe(false);
   });
 });

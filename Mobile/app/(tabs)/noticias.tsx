@@ -2,11 +2,11 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
-import { useAtualizar } from '@/api/consulta';
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
 import type { Noticia, Notificacao } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
+import { useAtualizar } from '@/components/useAtualizar';
 import { formatarData } from '@/dominio/datas';
 
 type SubAba = 'noticias' | 'notificacoes';

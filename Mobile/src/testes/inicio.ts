@@ -1,18 +1,18 @@
 // Rotas que o Início pede. Os testes de outras telas que passam pelo Início espalham
 // `rotasDoInicio()` no `simularFetch` e sobrescrevem só o que interessa.
+import { type OrdemCarrossel, POR_CARROSSEL } from '../api/inicio';
 import type { Resposta } from './fetchSimulado';
 
 const TIPOS = ['anime', 'manga', 'jogo'] as const;
-const ORDENS = ['nota_media', 'data_lancamento', 'mais_adicionados', 'mais_concluidos'] as const;
+const ORDENS: readonly OrdemCarrossel[] = ['nota_media', 'data_lancamento', 'mais_adicionados', 'mais_concluidos'];
 /** Os gêneros das Mídias de `midias.ts`: os carrosséis "Porque você curte" pedem por eles. */
 const GENEROS = ['Ação', 'Aventura', 'Drama', 'Fantasia'];
 
 type Tipo = (typeof TIPOS)[number];
-type Ordem = (typeof ORDENS)[number];
 
 /** A rota de um carrossel de catálogo do Início, como o app monta (URLSearchParams). */
-export function rotaCarrossel(tipo: Tipo, ordem: Ordem, genero?: string): string {
-  const params = new URLSearchParams({ tipo, ordem, por_pagina: '20' });
+export function rotaCarrossel(tipo: Tipo, ordem: OrdemCarrossel, genero?: string): string {
+  const params = new URLSearchParams({ tipo, ordem, por_pagina: String(POR_CARROSSEL) });
   if (genero) params.set('genero', genero);
   return `GET /midias?${params}`;
 }

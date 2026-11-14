@@ -206,7 +206,7 @@ describe('detalhe da Mídia', () => {
     expect(screen.getAllByText('Hollow Knight')).toHaveLength(1);
   });
 
-  it('selos: Tipo, Status do Item e "Em exibição"', async () => {
+  it('selos: Tipo, Status do Item e "Em exibição"; a Situação aparece com o nome legível', async () => {
     const frieren = anime({ status_anime: 'em_exibicao' });
     simularFetch(
       detalhe(frieren, {
@@ -216,7 +216,9 @@ describe('detalhe da Mídia', () => {
 
     await abrirDetalhe(frieren.id_midia);
 
-    expect(await screen.findByText('Em exibição')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Situação: Em exibição')).toBeOnTheScreen();
+    // O selo sobre o pôster e o valor da Situação.
+    expect(screen.getAllByText('Em exibição')).toHaveLength(2);
     expect(screen.getByText('Anime')).toBeOnTheScreen();
     // O selo de Status e o valor de "Na sua Lista".
     expect(screen.getAllByText('Pausado')).toHaveLength(2);

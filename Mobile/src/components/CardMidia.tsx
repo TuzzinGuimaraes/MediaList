@@ -6,28 +6,22 @@ import { Text, View } from 'react-native';
 import { useItemEmCache } from '../api/lista';
 import { usePosicaoTop10 } from '../api/midias';
 import type { CartaoMidia, Midia } from '../api/tipos';
-import { estadoDe } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoTipo } from '../dominio/estadoConsumo';
 import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '../dominio/midia';
+import { emLancamento } from '../dominio/situacao';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
-import { nomeDoTipo, Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
+import { Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
 import { Toque } from './Toque';
 
 /** A listagem pode trazer os campos completos (Em alta traz; Populares não). */
-type MidiaDoCard = CartaoMidia & Partial<Pick<Midia, 'banner_url' | 'status_anime' | 'status_manga'>>;
+type MidiaDoCard = CartaoMidia & Partial<Pick<Midia, 'banner_url' | 'status_anime' | 'status_manga' | 'status_jogo'>>;
 
 type Props = {
   midia: MidiaDoCard;
   /** Largura fixa (carrossel) ou ocupando a coluna (grade). */
   largura?: number;
 };
-
-/** Destaque de lançamento sobre o pôster, quando a listagem traz o campo. */
-export function lancamentoDe(midia: MidiaDoCard): string | null {
-  if (midia.status_anime === 'em_exibicao') return 'Em exibição';
-  if (midia.status_manga === 'em_publicacao') return 'Em publicação';
-  return null;
-}
 
 function Poster({ midia }: { midia: CartaoMidia }) {
   return midia.poster_url ? (
@@ -85,7 +79,7 @@ export function CardMidia({ midia, largura }: Props) {
   const item = useItemEmCache(midia.id_midia);
   const top = usePosicaoTop10(midia.id_midia);
   const estado = item ? estadoDe(item.status_consumo, item.tipo) : null;
-  const lancamento = lancamentoDe(midia);
+  const lancamento = emLancamento(midia);
   return (
     <Toque {...a11y} onPress={abrir} className="gap-1.5" caixa={largura ? { width: largura } : { flex: 1 }}>
       <View className="aspect-[2/3] w-full overflow-hidden rounded-md bg-superficie-alta">

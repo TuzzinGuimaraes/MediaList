@@ -93,6 +93,15 @@ export function GrupoFiltro<V>({ rotulo, opcoes, valor, escolher }: PropsGrupo<V
   );
 }
 
+/** O que a tela passa adiante sobre os filtros: o botão e o aviso de lista vazia dependem disso. */
+export type ControleDosFiltros = {
+  /** Gênero ou Situação fora de "todos": o aviso de vazio menciona os filtros. */
+  filtrado: boolean;
+  /** Filtros fora do padrão, para o contador do botão. */
+  ativos: number;
+  abrir(): void;
+};
+
 /** Botão que abre o sheet, com o contador de filtros fora do padrão. */
 export function BotaoFiltros({ ativos, onPress }: { ativos: number; onPress: () => void }) {
   const cores = useCores();

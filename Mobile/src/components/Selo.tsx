@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { type EstadoConsumo, NOMES_ESTADO, NOMES_TIPO, type TipoMidia } from '../dominio/estadoConsumo';
+import { type EstadoConsumo, NOMES_ESTADO, nomeDoTipo } from '../dominio/estadoConsumo';
 import type { Cores, NomeCor } from '../tema/cores';
 import { useCores } from '../tema/TemaContext';
 
@@ -16,11 +16,6 @@ const COR_DO_ESTADO: Record<EstadoConsumo, NomeCor> = {
 
 export function corDoEstado(estado: EstadoConsumo, cores: Cores): string {
   return cores[COR_DO_ESTADO[estado]];
-}
-
-/** Nome do Tipo para exibir e para rótulos de acessibilidade; Tipo desconhecido passa como veio. */
-export function nomeDoTipo(tipo: string): string {
-  return NOMES_TIPO[tipo as TipoMidia] ?? tipo;
 }
 
 /**

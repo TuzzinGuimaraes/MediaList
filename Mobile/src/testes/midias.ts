@@ -94,6 +94,41 @@ export function jogo(dados: Record<string, unknown> = {}) {
   };
 }
 
+/** Um segundo anime, para listas com mais de uma Mídia do mesmo Tipo. */
+export function fullmetal(dados: Record<string, unknown> = {}) {
+  return anime({
+    id_midia: 'MID-ANM-2026-20011',
+    titulo_original: '鋼の錬金術師 FULLMETAL ALCHEMIST',
+    titulo_portugues: 'Fullmetal Alchemist: Brotherhood',
+    nota_media: 9.0,
+    numero_episodios: 64,
+    ...dados,
+  });
+}
+
+/** Item de GET /lista no formato real (conferido contra o backend local): a Mídia mais os campos do Item. */
+export function itemDaLista(
+  midia: { id_midia: string; tipo: string } & Record<string, unknown>,
+  dados: Record<string, unknown> = {},
+) {
+  return {
+    ...midia,
+    id_lista: `LST-${midia.id_midia}`,
+    codigo_lista: 'LST20261106-00001',
+    status_consumo: 'planejado',
+    progresso_atual: 0,
+    progresso_total: (midia.numero_episodios ?? midia.numero_capitulos ?? null) as number | null,
+    nota_usuario: null,
+    favorito: false,
+    privado: false,
+    data_inicio: null,
+    data_conclusao: null,
+    comentario: null,
+    total_rewatches: 0,
+    ...dados,
+  };
+}
+
 /** Linha de vw_midias_populares: subconjunto dos campos, como a API manda (números como número). */
 type Fixture = ReturnType<typeof anime> | ReturnType<typeof manga> | ReturnType<typeof jogo>;
 

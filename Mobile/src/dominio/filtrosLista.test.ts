@@ -1,4 +1,4 @@
-import { buscarNaLista, FILTROS_PADRAO, filtrosAtivos, opcoesDosFiltros, organizarLista, porTipo } from './filtrosLista';
+import { buscarNaLista, FILTROS_PADRAO, filtrosAtivos, filtrosEfetivos, filtrosRestringem, opcoesDosFiltros, organizarLista, porTipo } from './filtrosLista';
 
 type Dados = Partial<{
   titulo_portugues: string | null;
@@ -177,5 +177,28 @@ describe('porTipo', () => {
   it('catálogo de um Tipo só não tem subseção', () => {
     const itens = [item('a', { tipo: 'jogo' }), item('b', { tipo: 'jogo' })];
     expect(porTipo(itens, ['jogo'])).toEqual([{ tipo: null, itens }]);
+  });
+});
+
+describe('filtrosEfetivos e filtrosRestringem', () => {
+  const opcoes = { generos: ['Ação'], situacoes: [{ valor: 'finalizado', titulo: 'Finalizado' }] };
+
+  it('Gênero ou Situação fora do catálogo atual voltam a todos; a Ordem fica', () => {
+    expect(filtrosEfetivos({ genero: 'Drama', situacao: 'hiato', ordem: 'nota' }, opcoes)).toEqual({
+      genero: null,
+      situacao: null,
+      ordem: 'nota',
+    });
+    expect(filtrosEfetivos({ genero: 'Ação', situacao: 'finalizado', ordem: 'titulo' }, opcoes)).toEqual({
+      genero: 'Ação',
+      situacao: 'finalizado',
+      ordem: 'titulo',
+    });
+  });
+
+  it('só Gênero e Situação restringem os Itens', () => {
+    expect(filtrosRestringem({ ...FILTROS_PADRAO, ordem: 'nota' })).toBe(false);
+    expect(filtrosRestringem({ ...FILTROS_PADRAO, genero: 'Ação' })).toBe(true);
+    expect(filtrosRestringem({ ...FILTROS_PADRAO, situacao: 'finalizado' })).toBe(true);
   });
 });

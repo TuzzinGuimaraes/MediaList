@@ -2,7 +2,7 @@ import { userEvent } from '@testing-library/react-native';
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { simularFetch } from './fetchSimulado';
-import { anime, manga } from './midias';
+import { anime, fullmetal, manga } from './midias';
 import { trocarRecorte } from './recorte';
 import { abrirLogado } from './sessao';
 
@@ -28,7 +28,7 @@ function generos(...nomes: string[]) {
 }
 
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist: Brotherhood' });
+const fma = fullmetal();
 
 describe('Explorar', () => {
   it('abre com os animes do Recorte animanga, pela nota', async () => {

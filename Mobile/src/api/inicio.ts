@@ -2,39 +2,27 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
 import { notaDeRanking } from '../dominio/midia';
+import { decrescente } from '../dominio/ordenacao';
 import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
-import type { Midia, PaginaMidias } from './tipos';
+import type { Midia, OrdemCatalogo, PaginaMidias } from './tipos';
 
 /** Quantas Mídias cada Tipo manda para um carrossel do Início. */
 export const POR_CARROSSEL = 20;
 
-/** As ordens de GET /midias que o Início usa (ORDENS em Backend/repositories/catalogo.py). */
-export type OrdemCarrossel = 'nota_media' | 'data_lancamento' | 'mais_adicionados' | 'mais_concluidos';
-
-/** A Mídia de GET /midias: a completa, mais quantos Itens dela estão em Concluído ou Platinado. */
-export type MidiaDoCatalogo = Midia & { total_concluidos: number };
+/** As ordens do catálogo que viram carrossel no Início (a alfabética não). */
+export type OrdemCarrossel = Exclude<OrdemCatalogo, 'titulo'>;
 
 /**
  * Como juntar as respostas dos Tipos de um Recorte na mesma ordem que o backend usou em cada
  * uma: a chave decrescente da ordem, com null no fim.
  */
-const CHAVE_DA_ORDEM: Record<OrdemCarrossel, (m: MidiaDoCatalogo) => number | string | null> = {
+const CHAVE_DA_ORDEM: Record<OrdemCarrossel, (m: Midia) => number | string | null> = {
   nota_media: notaDeRanking,
   data_lancamento: (m) => m.data_lancamento,
   mais_adicionados: (m) => m.total_usuarios,
   mais_concluidos: (m) => m.total_concluidos,
 };
-
-function decrescente(chave: (m: MidiaDoCatalogo) => number | string | null) {
-  return (a: MidiaDoCatalogo, b: MidiaDoCatalogo) => {
-    const [va, vb] = [chave(a), chave(b)];
-    if (va === vb) return 0;
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    return va < vb ? 1 : -1;
-  };
-}
 
 function consultaCarrossel(
   cliente: Cliente,
@@ -54,7 +42,7 @@ function consultaCarrossel(
           return cliente.requisitar<PaginaMidias>(`/midias?${params}`);
         }),
       );
-      return (respostas.flatMap((r) => r.midias) as MidiaDoCatalogo[])
+      return (respostas.flatMap((r) => r.midias) as Midia[])
         .sort(decrescente(CHAVE_DA_ORDEM[ordem]))
         .slice(0, POR_CARROSSEL);
     },

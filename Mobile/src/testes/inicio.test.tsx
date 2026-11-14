@@ -4,12 +4,12 @@ import { AccessibilityInfo } from 'react-native';
 
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
-import { anime, jogo, manga, popular } from './midias';
+import { anime, fullmetal, itemDaLista as item, jogo, manga, popular } from './midias';
 import { pilulaRecorte, trocarRecorte } from './recorte';
 import { abrirLogado } from './sessao';
 
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist: Brotherhood', nota_media: 9.0 });
+const fma = fullmetal();
 const jojo = manga();
 const hollow = jogo();
 
@@ -114,12 +114,12 @@ describe('Início', () => {
     ]);
   });
 
-  it('Top 10 de hoje ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
+  it('Top 10 ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
     simularFetch(catalogo());
 
     await abrirLogado();
 
-    const populares = await screen.findByLabelText('Top 10 de hoje');
+    const populares = await screen.findByLabelText('Top 10');
     expect(await within(populares).findAllByRole('link')).toHaveLength(2);
     expect(within(populares).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
       'JoJo no Kimyou na Bouken, Mangá',
@@ -140,7 +140,7 @@ describe('Início', () => {
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
     expect(api.para('GET /midias/populares?tipo=jogo')).toHaveLength(1);
     // Sem populares no catálogo, o Top 10 some em vez de mostrar um carrossel vazio.
-    expect(screen.queryByLabelText('Top 10 de hoje')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Top 10')).not.toBeOnTheScreen();
   });
 
   it('a pílula abre o menu com as duas opções e a atual marcada', async () => {
@@ -278,10 +278,6 @@ describe('Início: destaques e carrosséis', () => {
   const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Monster', generos: 'Drama' });
   const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_portugues: 'Vagabond', generos: 'Ação' });
 
-  function item(midia: { id_midia: string } & Record<string, unknown>, dados: Record<string, unknown>) {
-    return { ...midia, id_lista: `LST-${midia.id_midia}`, progresso_atual: null, progresso_total: null, nota_usuario: null, ...dados };
-  }
-
   const midias = (...lista: unknown[]) => ({ status: 200, corpo: { midias: lista } });
 
   function completo() {
@@ -320,7 +316,7 @@ describe('Início: destaques e carrosséis', () => {
     expect(secoes).toEqual([
       'Continuar',
       'Em alta',
-      'Top 10 de hoje',
+      'Top 10',
       'Maiores notas',
       'Lançamentos recentes',
       'Porque você curte Aventura',
@@ -362,7 +358,31 @@ describe('Início: destaques e carrosséis', () => {
 
     await screen.findByLabelText('Em alta');
     const secoes = screen.getAllByRole('header').map((h) => h.props.children);
-    expect(secoes).toEqual(['Em alta', 'Top 10 de hoje']);
+    expect(secoes).toEqual(['Em alta', 'Top 10']);
+  });
+
+  it('sem Em alta, só o carrossel dele some: os outros continuam', async () => {
+    simularFetch({
+      ...completo(),
+      'GET /midias/trending?tipo=anime&limite=10': midias(),
+      'GET /midias/trending?tipo=manga&limite=10': midias(),
+    });
+
+    await abrirLogado();
+
+    expect(await screen.findByLabelText('Maiores notas')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Em alta')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Destaques')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Nenhuma Mídia neste catálogo ainda.')).not.toBeOnTheScreen();
+  });
+
+  it('com todos os carrosséis vazios, mostra o estado vazio da tela', async () => {
+    simularFetch(rotasDoInicio());
+
+    await abrirLogado();
+
+    expect(await screen.findByText('Nenhuma Mídia neste catálogo ainda.')).toBeOnTheScreen();
+    expect(screen.queryAllByRole('header')).toHaveLength(0);
   });
 
   it('no catálogo Jogos, os gêneros e os carrosséis seguem os jogos e "Mais concluídos" vira "Mais jogados"', async () => {

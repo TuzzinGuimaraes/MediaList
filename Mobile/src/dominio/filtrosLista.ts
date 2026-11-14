@@ -2,6 +2,8 @@
 // contagens das abas saem dos Itens já filtrados.
 import type { TipoMidia } from './estadoConsumo';
 import { tituloDaMidia } from './midia';
+import { decrescente } from './ordenacao';
+import { nomeDaSituacao, situacaoDe } from './situacao';
 
 /** Alfabética (padrão), Nota pessoal, adicionado recentemente, atualizado recentemente. */
 export type OrdemLista = 'titulo' | 'nota' | 'adicao' | 'atualizacao';
@@ -31,16 +33,6 @@ type ItemFiltravel = {
   data_atualizacao?: string | null;
 };
 
-/** Status de lançamento do Item, lido do campo do seu Tipo. */
-export function situacaoDe(item: Pick<ItemFiltravel, 'tipo' | 'status_anime' | 'status_manga' | 'status_jogo'>): string | null {
-  const porTipo: Record<TipoMidia, string | null> = {
-    anime: item.status_anime,
-    manga: item.status_manga,
-    jogo: item.status_jogo,
-  };
-  return porTipo[item.tipo] ?? null;
-}
-
 const colacao = new Intl.Collator('pt-BR', { sensitivity: 'base' });
 
 /** Alfabética pelo título exibido, sem caixa nem acento; o id_lista desempata, como no backend. */
@@ -48,18 +40,17 @@ function alfabetica(a: ItemFiltravel, b: ItemFiltravel): number {
   return colacao.compare(tituloDaMidia(a), tituloDaMidia(b)) || (a.id_lista < b.id_lista ? -1 : a.id_lista > b.id_lista ? 1 : 0);
 }
 
-/** Maior primeiro; sem valor vai para o fim. */
-function decrescente(valor: (i: ItemFiltravel) => number | null) {
-  return (a: ItemFiltravel, b: ItemFiltravel) => (valor(b) ?? -Infinity) - (valor(a) ?? -Infinity);
+/** Instante da data ISO, para comparar; ausente ou ilegível é null (vai para o fim). */
+function momento(data: string | null | undefined): number | null {
+  const instante = data ? Date.parse(data) : NaN;
+  return Number.isNaN(instante) ? null : instante;
 }
-
-const momento = (data: string | null | undefined) => (data ? Date.parse(data) : null);
 
 const COMPARAR: Record<OrdemLista, (a: ItemFiltravel, b: ItemFiltravel) => number> = {
   titulo: alfabetica,
-  nota: decrescente((i) => i.nota_usuario),
-  adicao: decrescente((i) => momento(i.data_adicao)),
-  atualizacao: decrescente((i) => momento(i.data_atualizacao)),
+  nota: decrescente<ItemFiltravel>((i) => i.nota_usuario),
+  adicao: decrescente<ItemFiltravel>((i) => momento(i.data_adicao)),
+  atualizacao: decrescente<ItemFiltravel>((i) => momento(i.data_atualizacao)),
 };
 
 /** Os Itens que passam nos filtros, na Ordem escolhida (alfabética no empate). */
@@ -96,19 +87,6 @@ export function buscarNaLista<T extends ItemFiltravel & { titulo_ingles?: string
 }
 
 
-/** Nomes na tela dos status de lançamento (CHECKs de anime, mangá e jogo no banco). */
-const NOMES_SITUACAO: Record<string, string> = {
-  em_exibicao: 'Em exibição',
-  em_publicacao: 'Em publicação',
-  finalizado: 'Finalizado',
-  aguardando: 'Aguardando',
-  hiato: 'Em hiato',
-  cancelado: 'Cancelado',
-  lancado: 'Lançado',
-  em_desenvolvimento: 'Em desenvolvimento',
-  remasterizado: 'Remasterizado',
-};
-
 export type OpcoesDosFiltros = {
   generos: string[];
   situacoes: { valor: string; titulo: string }[];
@@ -121,7 +99,7 @@ export function opcoesDosFiltros(itens: readonly ItemFiltravel[]): OpcoesDosFilt
   return {
     generos: [...generos].sort(colacao.compare),
     situacoes: [...situacoes]
-      .map((valor) => ({ valor, titulo: NOMES_SITUACAO[valor] ?? valor }))
+      .map((valor) => ({ valor, titulo: nomeDaSituacao(valor) }))
       .sort((a, b) => colacao.compare(a.titulo, b.titulo)),
   };
 }
@@ -142,4 +120,18 @@ export function porTipo<T extends { tipo: TipoMidia }>(
 ): { tipo: TipoMidia | null; itens: T[] }[] {
   if (tipos.length < 2) return [{ tipo: null, itens: [...itens] }];
   return tipos.map((tipo) => ({ tipo, itens: itens.filter((i) => i.tipo === tipo) })).filter((s) => s.itens.length);
+}
+
+/** Gênero ou Situação que não existe no catálogo atual (ex.: depois de trocá-lo) volta a "todos". */
+export function filtrosEfetivos(filtros: FiltrosLista, opcoes: OpcoesDosFiltros): FiltrosLista {
+  return {
+    ...filtros,
+    genero: filtros.genero !== null && opcoes.generos.includes(filtros.genero) ? filtros.genero : null,
+    situacao: opcoes.situacoes.some((s) => s.valor === filtros.situacao) ? filtros.situacao : null,
+  };
+}
+
+/** Se os filtros tiram Itens (Gênero ou Situação escolhidos); a Ordem só reordena. */
+export function filtrosRestringem(filtros: FiltrosLista): boolean {
+  return filtros.genero !== null || filtros.situacao !== null;
 }
