@@ -6,7 +6,7 @@ Cria, sem tocar em RAWG nem AniList:
 
 - Mídias reais (animes, mangás e jogos) com os `anilist_id`/`rawg_slug` de verdade:
   `make import-*` depois atualiza essas Mídias no lugar em vez de duplicá-las;
-- três Usuários de dev (comum, admin e moderador), cada um no seu Grupo;
+- dois Usuários de dev, um com cada Nível de acesso (`usuario` e `admin`);
 - a Lista pessoal do Usuário comum com todos os Estados de consumo de cada Tipo,
   gravada pelo módulo de domínio (`ListaPessoal`), que aplica Concluído ⇔ Progresso = total;
 - Avaliações de Usuários diferentes (há Nota média), Notícias, Atualizações de mídia e
@@ -15,7 +15,7 @@ Cria, sem tocar em RAWG nem AniList:
 Idempotente pelas chaves naturais: `anilist_id`/`rawg_slug` da Mídia, e-mail do Usuário,
 (Usuário, Mídia) do Item e da Avaliação, (título, autor) da Notícia, (Mídia, tipo, título)
 da Atualização. O que já existe fica como está, inclusive uma Mídia que a Importação
-atualizou. `--recriar` apaga os três Usuários do seed e o que pertence a eles (Itens,
+atualizou. `--recriar` apaga os dois Usuários do seed e o que pertence a eles (Itens,
 Avaliações, Notificações, Notícias) e cria de novo; Mídias e dados de outros Usuários ficam.
 
 Recusa rodar com APP_ENV=production.
@@ -207,13 +207,11 @@ _TABELA = {'anime': 'animes', 'manga': 'mangas', 'jogo': 'jogos'}
 
 TESTE = 'teste@medialist.dev'
 ADMIN = 'admin@medialist.dev'
-MODERADOR = 'moderador@medialist.dev'
 
-#: e-mail -> (nome, senha, Grupo)
+#: e-mail -> (nome, senha, Nível de acesso)
 USUARIOS = {
-    TESTE: ('Usuário de Teste', 'teste123', 'Usuários'),
-    ADMIN: ('Admin de Dev', 'admin123', 'Administradores'),
-    MODERADOR: ('Moderador de Dev', 'moderador123', 'Moderadores'),
+    TESTE: ('Usuário de Teste', 'teste123', 'usuario'),
+    ADMIN: ('Admin de Dev', 'admin123', 'admin'),
 }
 
 #: Lista pessoal do Usuário comum: ((tipo, chave da fonte), payload do Item). Cobre todos
@@ -259,12 +257,8 @@ AVALIACOES = [
      'Final amarrado, personagens que crescem de verdade. Só o ritmo do começo cansa.'),
     (ADMIN, ('anime', 5114), 10.0, 'Obra-prima',
      'A melhor adaptação de mangá que já vi. Nenhum episódio sobrando.'),
-    (MODERADOR, ('anime', 5114), 9.5, 'Referência do gênero',
-     'Ação, drama e um vilão à altura. Recomendo para quem está começando em anime.'),
     (ADMIN, ('jogo', 'the-witcher-3-wild-hunt'), 10.0, 'RPG de mundo aberto definitivo',
      'Missões secundárias melhores que a história principal de muito jogo.'),
-    (MODERADOR, ('jogo', 'the-witcher-3-wild-hunt'), 8.5, 'Ótimo, mas longo',
-     'Combate é o ponto fraco; a escrita compensa.'),
 ]
 
 #: Publicadas pelo admin: (título, conteúdo, categoria, tags)
@@ -338,20 +332,15 @@ def _semear_midias(rel: Relatorio) -> dict[tuple[str, object], str]:
 
 def _semear_usuarios(rel: Relatorio) -> dict[str, str]:
     ids = {}
-    for email, (nome, senha, grupo) in USUARIOS.items():
+    for email, (nome, senha, nivel) in USUARIOS.items():
         with banco.transacao() as t:
             criado = t.consultar_um(
-                'INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES (%s, %s, %s) '
+                'INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES (%s, %s, %s, %s) '
                 'ON CONFLICT (email) DO NOTHING RETURNING id_usuario',
-                (nome, email, generate_password_hash(senha)),
+                (nome, email, generate_password_hash(senha), nivel),
             )
             id_usuario = (criado or t.consultar_um(
                 'SELECT id_usuario FROM usuarios WHERE email = %s', (email,)))['id_usuario']
-            t.executar(
-                'INSERT INTO usuarios_grupos (id_usuario, id_grupo) '
-                'SELECT %s, id_grupo FROM grupos_usuarios WHERE nome_grupo = %s ON CONFLICT DO NOTHING',
-                (id_usuario, grupo),
-            )
         rel.contar('Usuários', criado is not None)
         ids[email] = id_usuario
     return ids
@@ -417,7 +406,7 @@ def _semear_atualizacoes(rel: Relatorio, id_teste: str, midias: dict) -> None:
 
 
 def _apagar_dados_do_seed() -> int:
-    """Apaga os Usuários do seed; o CASCADE leva Itens, Avaliações, Notificações e grupos.
+    """Apaga os Usuários do seed; o CASCADE leva Itens, Avaliações e Notificações.
     As Notícias deles saem antes: a FK do autor é SET NULL, e elas ficariam órfãs."""
     with banco.transacao() as t:
         t.executar(
@@ -455,8 +444,8 @@ def main(argv: list[str] | None = None) -> int:
     print('Seed de desenvolvimento:')
     print('\n'.join(rel.linhas()))
     print('Credenciais de dev:')
-    for email, (_, senha, grupo) in USUARIOS.items():
-        print(f'  {email} / {senha} ({grupo})')
+    for email, (_, senha, nivel) in USUARIOS.items():
+        print(f'  {email} / {senha} ({nivel})')
     return 0
 
 

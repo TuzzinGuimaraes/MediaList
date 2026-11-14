@@ -1,17 +1,18 @@
-"""Teste rapido e deterministico da funcao get_user_permissions contra o PostgreSQL."""
+"""Teste rapido e deterministico do Nivel de acesso (nivel_de_acesso) contra o PostgreSQL."""
 from __future__ import annotations
 
 import sys
 
 from banco import consultar
-from decorators import get_user_permissions
+from decorators import nivel_de_acesso
 
 #: uuid que nenhum Usuário tem (os ids são uuidv7).
 USUARIO_INEXISTENTE = '00000000-0000-0000-0000-000000000000'
+NIVEIS = {'usuario', 'admin'}
 
 
 def run_checks() -> dict:
-    """Valida contrato basico de permissao com e sem usuarios reais."""
+    """Todo Usuário tem um Nível conhecido; o inexistente é `usuario`."""
     report = {
         'usuarios_consultados': 0,
         'usuarios_validos': 0,
@@ -22,22 +23,11 @@ def run_checks() -> dict:
     report['usuarios_consultados'] = len(usuarios)
 
     for usuario in usuarios:
-        perms = get_user_permissions(usuario['id_usuario'])
-        if perms and perms.get('nivel_acesso') and perms.get('grupos'):
+        if nivel_de_acesso(usuario['id_usuario']) in NIVEIS:
             report['usuarios_validos'] += 1
 
-    # Usuário inexistente não pode receber poder algum: a ausência de grupo
-    # nunca concede mais do que a presença de um.
-    perms_fallback = get_user_permissions(USUARIO_INEXISTENTE)
-    report['fallback_ok'] = bool(
-        perms_fallback
-        and perms_fallback.get('nivel_acesso') == 'usuario'
-        and not perms_fallback.get('grupos')
-        and not perms_fallback.get('pode_criar')
-        and not perms_fallback.get('pode_editar')
-        and not perms_fallback.get('pode_deletar')
-        and not perms_fallback.get('pode_moderar')
-    )
+    # Usuário inexistente não ganha nada além do Nível comum.
+    report['fallback_ok'] = nivel_de_acesso(USUARIO_INEXISTENTE) == 'usuario'
 
     return report
 
@@ -45,7 +35,7 @@ def run_checks() -> dict:
 def main() -> int:
     try:
         report = run_checks()
-        print("TESTANDO GET_USER_PERMISSIONS")
+        print("TESTANDO NIVEL_DE_ACESSO")
         print(f"usuarios_consultados={report['usuarios_consultados']}")
         print(f"usuarios_validos={report['usuarios_validos']}")
         print(f"fallback_ok={report['fallback_ok']}")
@@ -59,4 +49,3 @@ def main() -> int:
 
 if __name__ == '__main__':
     sys.exit(main())
-

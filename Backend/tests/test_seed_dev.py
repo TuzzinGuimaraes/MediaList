@@ -27,7 +27,7 @@ def test_recusa_rodar_em_producao(monkeypatch, capsys):
 
 
 
-EMAILS_DO_SEED = ['teste@medialist.dev', 'admin@medialist.dev', 'moderador@medialist.dev']
+EMAILS_DO_SEED = ['teste@medialist.dev', 'admin@medialist.dev']
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ def _contagem_do_seed() -> dict:
         WITH seed AS (SELECT id_usuario FROM usuarios WHERE email = ANY(%(emails)s))
         SELECT
             (SELECT count(*) FROM usuarios WHERE email = ANY(%(emails)s)) AS usuarios,
-            (SELECT count(*) FROM usuarios_grupos WHERE id_usuario IN (SELECT * FROM seed)) AS grupos,
+            (SELECT count(*) FROM usuarios WHERE email = ANY(%(emails)s) AND nivel_acesso = 'admin') AS admins,
             (SELECT count(*) FROM lista_usuarios WHERE id_usuario IN (SELECT * FROM seed)) AS itens,
             (SELECT count(*) FROM avaliacoes WHERE id_usuario IN (SELECT * FROM seed)) AS avaliacoes,
             (SELECT count(*) FROM noticias WHERE id_autor IN (SELECT * FROM seed)) AS noticias,
@@ -74,11 +74,14 @@ def test_rodar_duas_vezes_nao_duplica(pg, capsys):
     segunda = _contagem_do_seed()
 
     assert segunda == primeira
-    assert primeira['usuarios'] == 3
+    assert primeira['usuarios'] == 2
+    assert primeira['admins'] == 1
     assert primeira['noticias'] == 2
     assert primeira['notificacoes'] == 2
-    assert 'teste@medialist.dev / teste123' in capsys.readouterr().out
-
+    saida = capsys.readouterr().out
+    assert 'teste@medialist.dev / teste123 (usuario)' in saida
+    assert 'admin@medialist.dev / admin123 (admin)' in saida
+    assert 'moderador' not in saida
 
 
 def _id_do_teste():

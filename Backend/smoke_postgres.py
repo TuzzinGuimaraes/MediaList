@@ -11,7 +11,7 @@ from config import database_url
 CONSULTAS = {
     'simple_query': 'SELECT 1 AS test',
     'tables': "SELECT count(*) AS total FROM information_schema.tables WHERE table_schema = 'public'",
-    'groups': 'SELECT count(*) AS total FROM grupos_usuarios',
+    'tipos': 'SELECT count(*) AS total FROM tipo_midia',
     'users': 'SELECT count(*) AS total FROM usuarios',
     'migration': 'SELECT version_num FROM alembic_version',
     'create': "SELECT has_schema_privilege(current_user, 'public', 'CREATE') AS pode",
@@ -28,12 +28,12 @@ def run_checks() -> dict:
         'connection_ok': False,
         'simple_query_ok': False,
         'tables_ok': False,
-        'groups_ok': False,
+        'tipos_ok': False,
         'users_table_ok': False,
         'migrated_ok': False,
         'no_ddl_ok': False,
         'table_count': 0,
-        'group_count': 0,
+        'tipo_count': 0,
         'user_count': None,
         'migration': None,
     }
@@ -53,8 +53,8 @@ def run_checks() -> dict:
         report['simple_query_ok'] = um('simple_query')['test'] == 1
         report['table_count'] = um('tables')['total']
         report['tables_ok'] = report['table_count'] > 0
-        report['group_count'] = um('groups')['total']
-        report['groups_ok'] = report['group_count'] >= 3
+        report['tipo_count'] = um('tipos')['total']
+        report['tipos_ok'] = report['tipo_count'] >= 3
         report['user_count'] = um('users')['total']
         report['users_table_ok'] = True
         migracao = um('migration')
@@ -79,7 +79,7 @@ def main() -> int:
         report['connection_ok'],
         report['simple_query_ok'],
         report['tables_ok'],
-        report['groups_ok'],
+        report['tipos_ok'],
         report['users_table_ok'],
         report['migrated_ok'],
         report['no_ddl_ok'],
