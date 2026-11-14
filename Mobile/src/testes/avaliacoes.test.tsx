@@ -1,11 +1,9 @@
-import path from 'node:path';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { rotasDoInicio } from './inicio';
 import { anime } from './midias';
-
-const APP = path.resolve(__dirname, '../../app');
+import { abrirLogado } from './sessao';
 
 /** Item de GET /avaliacoes/<id> no formato real (conferido contra o backend local). */
 function avaliacao(dados: Record<string, unknown> = {}) {
@@ -52,10 +50,7 @@ function rotas(avaliacoes: unknown[], extras: Record<string, Resposta | ((r: any
   };
 }
 
-async function abrirDetalhe() {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: `/midia/${ID}` });
-}
+const abrirDetalhe = () => abrirLogado(`/midia/${ID}`);
 
 describe('Avaliações no detalhe da Mídia', () => {
   it('lista as Avaliações com autor, nota, título e texto', async () => {
@@ -120,6 +115,7 @@ describe('Avaliações no detalhe da Mídia', () => {
 
   it('uma Avaliação nova refaz as listagens que ordenam pela Nota média e a Lista', async () => {
     const api = simularFetch({
+      ...rotasDoInicio(),
       ...rotas([]),
       'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: [frieren] } },
       'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [] } },
@@ -127,8 +123,7 @@ describe('Avaliações no detalhe da Mídia', () => {
       'GET /midias/populares?tipo=manga': { status: 200, corpo: { midias: [] } },
       'POST /avaliacoes': { status: 201, corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA' } },
     });
-    await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-    await renderRouter(APP, { initialUrl: '/' });
+    await abrirLogado('/');
 
     const emAlta = await screen.findByLabelText('Em alta');
     await fireEvent.press(within(emAlta).getByRole('link', { name: 'Sousou no Frieren, Anime' }));

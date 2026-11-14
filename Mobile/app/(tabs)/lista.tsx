@@ -1,23 +1,27 @@
 import { useState } from 'react';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { mensagemDeErro } from '@/api/erros';
 import { useLista, useMudarProgresso } from '@/api/lista';
-import type { ItemLista } from '@/api/tipos';
+import { ResultadosDaBusca, useCabecalhoDeBusca } from '@/components/BuscaDaLista';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
-import { LinhaItem } from '@/components/LinhaItem';
-import { Opcoes } from '@/components/Opcoes';
-import { contarPorEstado, type EstadoConsumo, NOMES_ESTADO } from '@/dominio/estadoConsumo';
-import { estadosDaLista, itensDoEstado } from '@/dominio/itemLista';
+import type { AcoesDoItem } from '@/components/LinhaItem';
+import { PaginasStatus } from '@/components/PaginasStatus';
+import { SheetDaLista } from '@/components/SheetDaLista';
+import type { ControleDosFiltros } from '@/components/SheetFiltros';
+import type { EstadoConsumo } from '@/dominio/estadoConsumo';
+import {
+  buscarNaLista,
+  FILTROS_PADRAO,
+  type FiltrosLista,
+  filtrosAtivos,
+  filtrosEfetivos,
+  filtrosRestringem,
+  opcoesDosFiltros,
+  organizarLista,
+} from '@/dominio/filtrosLista';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
-import paleta from '@/tema/paleta';
-
-const textos = {
-  abas: 'Estados de consumo',
-  itens: 'Itens da Lista',
-  vazio: (estado: string) => `Nenhum Item em ${estado}.`,
-};
 
 export default function Lista() {
   const { recorte } = useRecorte();
@@ -25,60 +29,59 @@ export default function Lista() {
   const lista = useLista();
   const progresso = useMudarProgresso();
   const [estado, setEstado] = useState<EstadoConsumo>('em_progresso');
+  const [filtros, setFiltros] = useState<FiltrosLista>(FILTROS_PADRAO);
+  const [sheetAberto, setSheetAberto] = useState(false);
+  // null: busca fechada (o cabeçalho mostra a lupa); texto: o campo no cabeçalho.
+  const [busca, setBusca] = useState<string | null>(null);
   // Guarda só o id: o editor lê o Item atual da Lista.
   const [editando, setEditando] = useState<string | null>(null);
 
-  const estados = estadosDaLista(tipos);
-  const aba = estados.includes(estado) ? estado : estados[0];
+  useCabecalhoDeBusca(busca, setBusca);
+
+  const acoes: AcoesDoItem = {
+    editar: setEditando,
+    mudarProgresso: (item, p) =>
+      progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: p - (item.progresso_atual ?? 0) }),
+  };
 
   let conteudo: React.ReactNode;
   if (lista.data) {
     const doRecorte = lista.data.filter((i) => (tipos as string[]).includes(i.tipo));
-    const contagem = contarPorEstado(doRecorte);
-    const itens = itensDoEstado(doRecorte, aba);
+    const opcoes = opcoesDosFiltros(doRecorte);
+    const efetivos = filtrosEfetivos(filtros, opcoes);
+    const filtrados = organizarLista(doRecorte, efetivos);
     const emEdicao = lista.data.find((i) => i.id_lista === editando);
+    const termo = busca?.trim() ?? '';
+    const controle: ControleDosFiltros = {
+      filtrado: filtrosRestringem(efetivos),
+      ativos: filtrosAtivos(efetivos),
+      abrir: () => setSheetAberto(true),
+    };
 
     conteudo = (
       <>
-        <View className="pb-2 pt-3">
-          <Opcoes
-            rotulo={textos.abas}
-            opcoes={estados.map((e) => ({ valor: e, titulo: `${NOMES_ESTADO[e]} (${contagem[e]})` }))}
-            valor={aba}
-            escolher={setEstado}
-          />
-        </View>
         {progresso.isError ? (
-          <Text accessibilityRole="alert" className="px-4 pb-2 text-corpo text-accent-red">
+          <Text accessibilityRole="alert" className="px-4 pb-2 pt-2 text-corpo text-erro">
             {mensagemDeErro(progresso.error)}
           </Text>
         ) : null}
-        <FlatList<ItemLista>
-          accessibilityLabel={textos.itens}
-          data={itens}
-          keyExtractor={(i) => i.id_lista}
-          renderItem={({ item }) => (
-            <LinhaItem
-              item={item}
-              editar={() => setEditando(item.id_lista)}
-              mudarProgresso={(p) =>
-                progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: p - (item.progresso_atual ?? 0) })
-              }
-            />
-          )}
-          ItemSeparatorComponent={() => <View className="mx-4 h-px bg-dark-border" />}
-          ListEmptyComponent={
-            <Text className="p-6 text-center text-corpo text-text-secondary">{textos.vazio(NOMES_ESTADO[aba])}</Text>
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={lista.isRefetching && !progresso.isPending}
-              onRefresh={() => void lista.refetch()}
-              tintColor={paleta.accent.blue}
-            />
-          }
-          contentContainerClassName="pb-6"
-        />
+        {termo ? (
+          <ResultadosDaBusca itens={buscarNaLista(filtrados, termo)} termo={termo} filtros={controle} acoes={acoes} />
+        ) : (
+          <PaginasStatus
+            // Trocar de catálogo muda o número de páginas: recomeça o pager.
+            key={tipos.join()}
+            itens={filtrados}
+            tipos={tipos}
+            estado={estado}
+            escolher={setEstado}
+            filtros={controle}
+            acoes={acoes}
+          />
+        )}
+        {sheetAberto ? (
+          <SheetDaLista filtros={efetivos} opcoes={opcoes} mudar={setFiltros} aoFechar={() => setSheetAberto(false)} />
+        ) : null}
         {emEdicao ? <EditorItem midia={emEdicao} item={emEdicao} aoFechar={() => setEditando(null)} /> : null}
       </>
     );
@@ -88,9 +91,5 @@ export default function Lista() {
     conteudo = <Carregando />;
   }
 
-  return (
-    <ConteudoRecorte>
-      {conteudo}
-    </ConteudoRecorte>
-  );
+  return <ConteudoRecorte>{conteudo}</ConteudoRecorte>;
 }

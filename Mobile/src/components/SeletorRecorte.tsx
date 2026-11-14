@@ -4,11 +4,12 @@ import { AccessibilityInfo, Animated, Modal, Pressable, Text, useWindowDimension
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NOMES_RECORTE, type Recorte, useRecorte } from '../recorte/RecorteContext';
-import paleta from '../tema/paleta';
+import { useCores } from '../tema/TemaContext';
 import { useReduzirMovimento } from '../tema/movimento';
 
 const RECORTES: Recorte[] = ['animanga', 'jogos'];
-const ROTULO = 'Recorte de catálogo';
+// A palavra Recorte não aparece na tela: o leitor de tela diz "Catálogo".
+const ROTULO = 'Catálogo';
 const ABRIR_MS = 150;
 const FECHAR_MS = 100;
 
@@ -19,6 +20,7 @@ type Ancora = { topo: number; direita: number };
  * Abre um menu ancorado com as duas opções; só troca ao escolher a outra.
  */
 export function SeletorRecorte() {
+  const cores = useCores();
   const { recorte, destino, escolher } = useRecorte();
   const reduzir = useReduzirMovimento();
   const { width } = useWindowDimensions();
@@ -62,7 +64,7 @@ export function SeletorRecorte() {
         ref={pilula}
         accessibilityRole="button"
         accessibilityLabel={`${ROTULO}: ${NOMES_RECORTE[destino]}`}
-        accessibilityHint="Abre o menu para trocar o Recorte"
+        accessibilityHint="Abre o menu para trocar o catálogo"
         accessibilityState={{ expanded: aberto }}
         onPress={abrir}
         hitSlop={4}
@@ -70,13 +72,13 @@ export function SeletorRecorte() {
       >
         <View
           className={`flex-row items-center gap-1 rounded-full border px-3 py-1.5 ${
-            emTransicao ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border bg-dark-secondary'
+            emTransicao ? 'border-marca-texto bg-superficie-alta' : 'border-borda bg-superficie'
           }`}
         >
-          <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold text-accent-blue">
+          <Text maxFontSizeMultiplier={1.3} className="text-legenda font-semibold text-marca-texto">
             {NOMES_RECORTE[destino]}
           </Text>
-          <Ionicons name="chevron-down" size={14} color={paleta.text.secondary} />
+          <Ionicons name="chevron-down" size={14} color={cores['texto-suave']} />
         </View>
       </Pressable>
       <Modal transparent statusBarTranslucent visible={aberto} animationType="none" onRequestClose={fechar}>
@@ -90,7 +92,7 @@ export function SeletorRecorte() {
           accessibilityRole="menu"
           accessibilityLabel={ROTULO}
           onAccessibilityEscape={fechar}
-          className="rounded-md border border-dark-border bg-dark-secondary py-1"
+          className="rounded-md border border-borda bg-superficie py-1"
           style={{
             position: 'absolute',
             top: posicao.topo,
@@ -113,10 +115,10 @@ export function SeletorRecorte() {
                 className="flex-row items-center justify-between gap-4 px-4"
                 style={{ minHeight: 48 }}
               >
-                <Text className={`text-corpo ${atual ? 'font-semibold text-accent-blue' : 'text-text-primary'}`}>
+                <Text className={`text-corpo ${atual ? 'font-semibold text-marca-texto' : 'text-texto'}`}>
                   {NOMES_RECORTE[r]}
                 </Text>
-                {atual ? <Ionicons name="checkmark" size={18} color={paleta.accent.blue} /> : null}
+                {atual ? <Ionicons name="checkmark" size={18} color={cores['marca-texto']} /> : null}
               </Pressable>
             );
           })}

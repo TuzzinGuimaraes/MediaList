@@ -20,6 +20,11 @@ export function formatarData(texto: string | null | undefined): string | null {
   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : null;
 }
 
+/** O dia local do aparelho em ISO ("2026-11-06"), sem passar pelo fuso UTC. */
+export function diaIso(data: Date = new Date()): string {
+  return `${data.getFullYear()}-${dois(data.getMonth() + 1)}-${dois(data.getDate())}`;
+}
+
 /** Data do calendário (dia local do aparelho) → "dd/mm/aaaa". */
 export function textoDaData(data: Date): string {
   return `${dois(data.getDate())}/${dois(data.getMonth() + 1)}/${data.getFullYear()}`;

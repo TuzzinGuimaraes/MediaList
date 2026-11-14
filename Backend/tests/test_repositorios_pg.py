@@ -69,7 +69,10 @@ def test_midia_criada_sai_com_notas_nulas_e_plataformas_em_texto(pg):
     assert str(jogo['data_lancamento']) == '2024-05-01'
 
 
-@pytest.mark.parametrize('ordem', ['nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade'])
+@pytest.mark.parametrize(
+    'ordem',
+    ['nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos'],
+)
 def test_listagem_com_todos_os_filtros_roda_no_postgres(pg, ordem):
     id_jogo = _midia(pg, 'jogo', plataformas='PC, Switch', desenvolvedor='Nintendo EPD', modo_jogo='single')
 
@@ -86,6 +89,25 @@ def test_listagem_com_todos_os_filtros_roda_no_postgres(pg, ordem):
     sem_tipo = {'busca': 'x', 'status': 'lancado', 'autor': 'a', 'estudio': 'b', 'demografia': 'seinen',
                 'artista': 'c', 'genero': 'Ação', 'ordem': ordem}
     assert Catalogo().buscar(None, pagina=2, limite=5, filtros=sem_tipo) == []
+
+
+def test_mais_concluidos_ordena_por_itens_em_concluido_ou_platinado(pg):
+    marca = uuid.uuid4().hex
+    um_concluido = _midia(pg, 'jogo', titulo_original=f'{marca} um')
+    dois_concluidos = _midia(pg, 'jogo', titulo_original=f'{marca} dois')
+    so_jogando = _midia(pg, 'jogo', titulo_original=f'{marca} jogando')
+    ana, bia, caio = _usuario(pg), _usuario(pg), _usuario(pg)
+    repo = ItensLista()
+    repo.criar_item(ana, um_concluido, {'status_consumo': 'zerado'})
+    repo.criar_item(ana, dois_concluidos, {'status_consumo': 'platinado'})
+    repo.criar_item(bia, dois_concluidos, {'status_consumo': 'zerado'})
+    for usuario in (ana, bia, caio):
+        repo.criar_item(usuario, so_jogando, {'status_consumo': 'jogando'})
+
+    resultado = Catalogo().buscar('jogo', limite=50, filtros={'busca': marca, 'ordem': 'mais_concluidos'})
+
+    assert [m['id_midia'] for m in resultado] == [dois_concluidos, um_concluido, so_jogando]
+    assert [m['total_concluidos'] for m in resultado] == [2, 1, 0]
 
 
 def test_nota_media_vem_das_avaliacoes_e_ordena_com_nulls_last(pg):

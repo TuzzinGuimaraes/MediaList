@@ -23,7 +23,7 @@ IMPORT_WORKERS ?= 8
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
-.PHONY: help install install-backend install-frontend install-mobile compose-build services-up \
+.PHONY: help install install-backend install-frontend install-mobile mobile-dev compose-build services-up \
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
 	lint-mobile build-frontend build \
@@ -49,6 +49,7 @@ help:
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
+	@printf "  make mobile-dev        Sobe o Expo para o Expo Go; no WSL2, anuncia o IP do Windows na porta 8081\n"
 	@printf "  make smoke             Executa os dois smoke tests no container backend\n"
 	@printf "  make test              Executa os testes do backend, do frontend e do mobile no host\n"
 	@printf "  make test-backend      Executa o pytest do backend no host\n"
@@ -127,6 +128,11 @@ backend-dev:
 
 frontend-dev:
 	cd "$(FRONTEND_DIR)" && $(NPM) start
+
+# No WSL2 confere o portproxy do Windows e fixa a porta 8081 (Mobile/scripts/dev.sh).
+# MOBILE_ARGS vai para o script: --dry-run só verifica; o resto vai para o expo start.
+mobile-dev:
+	cd "$(MOBILE_DIR)" && bash scripts/dev.sh $(MOBILE_ARGS)
 
 smoke-postgres:
 	$(DOCKER_COMPOSE) up -d --wait postgres

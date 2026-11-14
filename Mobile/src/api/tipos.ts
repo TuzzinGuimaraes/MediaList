@@ -120,7 +120,10 @@ export type CartaoMidia = Pick<
   NotasDaMidia;
 
 /** Linha de GET /midias/populares (view vw_midias_populares); não traz `total_avaliacoes`. */
-export type MidiaPopular = MidiaResumo;
+export type MidiaPopular = MidiaResumo & {
+  /** "Aventura, Drama" ou null. */
+  generos: string | null;
+};
 
 /** GET /midias/trending e GET /midias/populares. */
 export type RespostaMidias<M = MidiaResumo> = { midias: M[] };
@@ -153,6 +156,8 @@ export type Midia = MidiaResumo & {
   status_jogo: string | null;
   desenvolvedor: string | null;
   publicadora: string | null;
+  /** Itens desta Mídia em Concluído ou Platinado (ordem `mais_concluidos`). */
+  total_concluidos: number;
 };
 
 /** GET /midias/<id>/distribuicao: quantos Usuários têm a Mídia em cada Rótulo de estado. */
@@ -187,6 +192,9 @@ export type ItemLista = Midia & {
   /** Recontagem. */
   total_rewatches?: number | null;
   comentario?: string | null;
+  /** ISO 8601 ("2026-11-06T10:00:00+00:00"): Ordem "adicionado/atualizado recentemente". */
+  data_adicao?: string;
+  data_atualizacao?: string;
 };
 
 export type RespostaLista = { lista: ItemLista[] };
@@ -220,6 +228,9 @@ export type Notificacao = {
 
 export type RespostaNotificacoes = { notificacoes: Notificacao[] };
 
+
+/** Valores de `ordem` de GET /midias que o app usa (ORDENS em Backend/repositories/catalogo.py). */
+export type OrdemCatalogo = 'nota_media' | 'titulo' | 'data_lancamento' | 'mais_adicionados' | 'mais_concluidos';
 
 /**
  * Uma página de GET /midias. A API não manda total: uma página com menos de

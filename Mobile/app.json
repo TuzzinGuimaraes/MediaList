@@ -4,12 +4,14 @@
     "slug": "medialist",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "medialist",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0b1622",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0E0E10",
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0b1622"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E0E10"
       }
     },
     "plugins": [
@@ -18,7 +20,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0b1622"
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#0E0E10"
         }
       ],
       "expo-font",

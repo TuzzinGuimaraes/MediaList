@@ -1,11 +1,8 @@
-import path from 'node:path';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { type Resposta, simularFetch } from './fetchSimulado';
 import { anime, jogo, manga } from './midias';
-
-const APP = path.resolve(__dirname, '../../app');
+import { APP, abrirLogado } from './sessao';
 
 type Fixture = ReturnType<typeof anime>;
 
@@ -38,10 +35,7 @@ function detalhe(
   };
 }
 
-async function abrirDetalhe(id: string) {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: `/midia/${id}` });
-}
+const abrirDetalhe = (id: string) => abrirLogado(`/midia/${id}`);
 
 describe('detalhe da Mídia', () => {
   it('anime: título, sinopse, lançamento, Gêneros, episódios, Nota média e Total de avaliações', async () => {
@@ -172,8 +166,62 @@ describe('detalhe da Mídia', () => {
 
     await abrirDetalhe(frieren.id_midia);
 
-    expect(await screen.findByText('Fora da sua Lista.')).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Adicionar à Lista' })).toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Na sua Lista/)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Fora da sua Lista.')).not.toBeOnTheScreen();
+  });
+
+  it('na Lista, o botão grande vira "Editar na Lista" e abre o editor do Item', async () => {
+    const frieren = anime();
+    simularFetch(
+      detalhe(frieren, {
+        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'assistindo', progresso_atual: 3, progresso_total: null }],
+      }),
+    );
+
+    await abrirDetalhe(frieren.id_midia);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar na Lista' }));
+    expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Adicionar à Lista' })).not.toBeOnTheScreen();
+  });
+
+  it('sem título em português, o alternativo é o inglês', async () => {
+    const frieren = anime({ titulo_portugues: null, titulo_ingles: "Frieren: Beyond Journey's End" });
+    simularFetch(detalhe(frieren));
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: '葬送のフリーレン' })).toBeOnTheScreen();
+    expect(screen.getByText("Frieren: Beyond Journey's End")).toBeOnTheScreen();
+  });
+
+  it('título igual em todas as línguas não se repete', async () => {
+    const hollow = jogo({ titulo_portugues: 'Hollow Knight', titulo_ingles: 'Hollow Knight' });
+    simularFetch(detalhe(hollow));
+
+    await abrirDetalhe(hollow.id_midia);
+
+    expect(await screen.findByRole('header', { name: 'Hollow Knight' })).toBeOnTheScreen();
+    expect(screen.getAllByText('Hollow Knight')).toHaveLength(1);
+  });
+
+  it('selos: Tipo, Status do Item e "Em exibição"; a Situação aparece com o nome legível', async () => {
+    const frieren = anime({ status_anime: 'em_exibicao' });
+    simularFetch(
+      detalhe(frieren, {
+        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'pausado', progresso_atual: 3, progresso_total: null }],
+      }),
+    );
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByLabelText('Situação: Em exibição')).toBeOnTheScreen();
+    // O selo sobre o pôster e o valor da Situação.
+    expect(screen.getAllByText('Em exibição')).toHaveLength(2);
+    expect(screen.getByText('Anime')).toBeOnTheScreen();
+    // O selo de Status e o valor de "Na sua Lista".
+    expect(screen.getAllByText('Pausado')).toHaveLength(2);
   });
 
   it('deep link sem sessão vai ao login sem chamar a API', async () => {

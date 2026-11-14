@@ -1,31 +1,11 @@
-import path from 'node:path';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import * as SecureStore from 'expo-secure-store';
 
 import { type Requisicao, type Resposta, loginOk, semConexao, simularFetch } from './fetchSimulado';
-
-const APP = path.resolve(__dirname, '../../app');
+import { APP, aba, entrarPeloLogin as entrar, preencherLogin } from './sessao';
 
 async function abrirApp() {
   return renderRouter(APP, { initialUrl: '/' });
-}
-
-async function preencherLogin(email: string, senha: string) {
-  await fireEvent.changeText(await screen.findByLabelText('Email'), email);
-  await fireEvent.changeText(screen.getByLabelText('Senha'), senha);
-  await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }));
-}
-
-/** Botão da barra de abas (o React Navigation rotula como "Perfil, tab, 5 of 5"). */
-function aba(nome: string) {
-  return screen.findByRole('button', { name: new RegExp(`^${nome}, tab`) });
-}
-
-async function entrar() {
-  const app = await abrirApp();
-  await preencherLogin('ana@exemplo.com', 'segredo1');
-  await aba('Início');
-  return app;
 }
 
 const expirado: Resposta = { status: 401, corpo: { msg: 'Token has expired' } };

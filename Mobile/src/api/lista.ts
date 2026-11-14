@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
+import { diaIso } from '../dominio/datas';
 import { aplicarProgresso, type DadosItem, totalDoItem } from '../dominio/itemLista';
-import type { RespostaLista } from './tipos';
+import { useCache } from './consulta';
+import type { ItemLista, RespostaLista } from './tipos';
 
 // As rotas de escrita (Backend/routes/lista.py) só respondem `{mensagem}` (e `id_lista`
 // no POST): o Item gravado, inclusive a promoção a Concluído, vem do GET /lista refeito.
@@ -31,6 +33,11 @@ export function useItemDaLista(id: string) {
     ...useConsultaLista(),
     select: (r: RespostaLista) => r.lista.find((item) => item.id_midia === id) ?? null,
   });
+}
+
+/** O Item desta Mídia se a Lista já está em cache; não busca a Lista (selos e fio dos cards). */
+export function useItemEmCache(idMidia: string): ItemLista | undefined {
+  return useCache<RespostaLista>(CHAVE)?.lista.find((item) => item.id_midia === idMidia);
 }
 
 /**
@@ -70,12 +77,6 @@ export function useRemoverItem() {
   });
 }
 
-/** "2026-11-06" no fuso do aparelho. */
-function hoje(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 type ItemCache = RespostaLista['lista'][number];
 
 /** Estado de uma sequência de toques no stepper de um Item, enquanto houver toque pendente. */
@@ -91,7 +92,7 @@ type Rajada = {
 function comProgresso(original: ItemCache, progresso: number): ItemCache {
   return {
     ...original,
-    ...aplicarProgresso({ ...original, data_conclusao: original.data_conclusao ?? null }, progresso, hoje()),
+    ...aplicarProgresso({ ...original, data_conclusao: original.data_conclusao ?? null }, progresso, diaIso()),
   };
 }
 

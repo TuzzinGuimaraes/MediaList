@@ -1,4 +1,4 @@
-import { dataDoTexto, formatarData, textoDaData } from './datas';
+import { dataDoTexto, diaIso, formatarData, textoDaData } from './datas';
 
 describe('formatarData', () => {
   it('lê a data no formato que o Flask devolve (RFC 1123)', () => {
@@ -28,5 +28,11 @@ describe('data do calendário ⇄ dd/mm/aaaa', () => {
   it('vazio ou ilegível não é data', () => {
     expect(dataDoTexto('')).toBeNull();
     expect(dataDoTexto('31/02/2026')).toBeNull();
+  });
+});
+
+describe('diaIso', () => {
+  it('é o dia local do aparelho, com zeros à esquerda', () => {
+    expect(diaIso(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
   });
 });

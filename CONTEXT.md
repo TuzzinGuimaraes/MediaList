@@ -56,6 +56,9 @@ pessoas com Recortes diferentes veem o mesmo Catálogo.
 > Não confundir com **sessão**, que neste projeto significa a sessão autenticada (login,
 > token, logout). O Recorte de catálogo não tem relação com autenticação.
 
+Na interface aparece só como o valor ("Anime & Mangá", "Jogos"); a palavra Recorte não vai
+para a tela, e o leitor de tela diz "Catálogo".
+
 ---
 
 ## Usuário
@@ -123,6 +126,10 @@ independentes de Tipo de mídia:
 **Platinado é um refinamento de Concluído**, não um sétimo estado paralelo: todo Item
 platinado está concluído. Qualquer contagem de "concluídos" inclui os platinados.
 
+Na interface aparece como **Status** ("Status: Em progresso"). O código e o domínio seguem
+com Estado de consumo; o status de lançamento da obra (em exibição, finalizado...) aparece
+como **Situação**, para não colidir.
+
 ## Rótulo de estado
 
 O nome que um **Estado de consumo** recebe para um **Tipo de mídia** específico. O estado é
@@ -163,6 +170,9 @@ conhecido, o Estado de consumo não segue o Progresso.
 
 Quantas vezes o Usuário reconsumiu uma Mídia depois de concluí-la pela primeira vez —
 reassistir um anime, reler um mangá, rejogar um jogo.
+
+Na interface aparece pelo Tipo: "Reassistido N×" (anime), "Relido N×" (mangá) e
+"Rejogado N×" (jogo).
 
 **O sistema conta recontagens, não guarda o histórico delas.** Um Item de lista tem um único
 par de datas de início e conclusão, sobrescrito a cada nova passagem. Consequência

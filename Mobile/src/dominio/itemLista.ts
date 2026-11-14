@@ -5,8 +5,10 @@
 import { formatarData } from './datas';
 import { lerNota } from './nota';
 import {
+  APRESENTACAO_DO_TIPO,
   type EstadoConsumo,
   estadoDe,
+  eTerminal,
   ROTULOS_POR_TIPO,
   rotuloPara,
   type TipoMidia,
@@ -30,6 +32,13 @@ export function totalDoItem(item: ComTotal): number | null {
   if (item.progresso_total != null) return item.progresso_total;
   const daMidia = item.tipo === 'anime' ? item.numero_episodios : item.numero_capitulos;
   return daMidia ?? null;
+}
+
+/** Progresso para ler na tela: "3 de 28", ou só "3" sem total. */
+export function textoDoProgresso(item: ComTotal & { progresso_atual: number | null }): string {
+  const total = totalDoItem(item);
+  const atual = item.progresso_atual ?? 0;
+  return total !== null ? `${atual} de ${total}` : String(atual);
 }
 
 /** Próximo Progresso ao tocar − (−1) ou + (+1); null se o toque não é permitido. */
@@ -131,7 +140,7 @@ export function itensDoEstado<T extends { tipo: TipoMidia; status_consumo: strin
 ): T[] {
   return itens.filter((item) => {
     const doItem = estadoDe(item.status_consumo, item.tipo);
-    return doItem === estado || (estado === 'concluido' && doItem === 'platinado');
+    return doItem === estado || (estado === 'concluido' && eTerminal(doItem));
   });
 }
 
@@ -276,7 +285,7 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   const falha = (erro: string): ResultadoItem => ({ ok: false, erro });
 
   if (!estadoDe(f.status_consumo, midia.tipo)) {
-    return falha('Escolha um Estado de consumo válido para o Tipo.');
+    return falha('Escolha um Status válido para o Tipo.');
   }
 
   const textoProgresso = f.progresso.trim() || '0';
@@ -294,7 +303,7 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   }
 
   const textoRecontagem = f.recontagem.trim() || '0';
-  if (!INTEIRO.test(textoRecontagem)) return falha('A Recontagem é um número inteiro a partir de 0.');
+  if (!INTEIRO.test(textoRecontagem)) return falha(`${nomeDaRecontagem(midia.tipo)}: use um número inteiro a partir de 0.`);
 
   const inicio = dataIso(f.inicio);
   const conclusao = dataIso(f.conclusao);
@@ -316,9 +325,20 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   };
 }
 
+/** Recontagem como aparece na tela, pelo Tipo ("Reassistido 2×"). */
+export function nomeDaRecontagem(tipo: TipoMidia): string {
+  return APRESENTACAO_DO_TIPO[tipo].recontagem;
+}
+
 /** Unidade do Progresso, para rótulos ("Episódios", "Capítulos", "Horas jogadas"). */
 export function nomeDoProgresso(tipo: string): string {
-  if (tipo === 'anime') return 'Episódios';
-  if (tipo === 'manga') return 'Capítulos';
-  return 'Horas jogadas';
+  return (APRESENTACAO_DO_TIPO[tipo as TipoMidia] ?? APRESENTACAO_DO_TIPO.jogo).progresso;
+}
+
+/** Quanto do fio de progresso fica preenchido (0 a 1); null: sem total, só um traço curto. */
+export function proporcaoDoFio(item: ComTotal & { status_consumo: string; progresso_atual: number | null }): number | null {
+  if (eTerminal(estadoDe(item.status_consumo, item.tipo))) return 1;
+  const total = totalDoItem(item);
+  if (!total) return null;
+  return Math.min(1, (item.progresso_atual ?? 0) / total);
 }

@@ -1,11 +1,9 @@
-import path from 'node:path';
 import { focusManager } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { loginOk, simularFetch } from './fetchSimulado';
-
-const APP = path.resolve(__dirname, '../../app');
+import { aba, entrarPeloLogin as entrar } from './sessao';
 
 afterEach(() => focusManager.setFocused(undefined));
 
@@ -24,23 +22,10 @@ async function puxarParaAtualizar(testID: string) {
   await act(async () => lista.props.refreshControl.props.onRefresh());
 }
 
-/** Botão da barra de abas (o React Navigation rotula como "Notícias, tab, 4 of 5"). */
-function aba(nome: string) {
-  return screen.findByRole('button', { name: new RegExp(`^${nome}, tab`) });
-}
-
 /** Texto do badge da aba Notícias, ou null sem badge. */
 function badgeNoticias() {
   const botao = screen.getByRole('button', { name: /^Notícias, tab/ });
   return within(botao).queryByText(/^\d+$/)?.props.children ?? null;
-}
-
-async function entrar() {
-  await renderRouter(APP, { initialUrl: '/' });
-  await fireEvent.changeText(await screen.findByLabelText('Email'), 'ana@exemplo.com');
-  await fireEvent.changeText(screen.getByLabelText('Senha'), 'segredo1');
-  await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }));
-  await aba('Início');
 }
 
 /** Formato de GET /notificacoes (Backend/routes/midias.py cria; Flask serializa a data em RFC 1123). */

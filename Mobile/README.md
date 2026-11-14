@@ -24,12 +24,21 @@ como administrador:
 powershell -ExecutionPolicy Bypass -File C:\Users\user\expo-portproxy.ps1
 ```
 
-O script encaminha as portas 8081 (Metro) e 5000 (API) do Windows para o IP atual do WSL,
-libera as duas no firewall e mostra o comando para iniciar o Expo com o IP do Windows na rede:
+O script encaminha as portas 8081 (Metro) e 5000 (API) do Windows para o IP atual do WSL e
+libera as duas no firewall. Depois, na raiz do repo:
 
 ```bash
-REACT_NATIVE_PACKAGER_HOSTNAME=<ip-do-windows> npx expo start --lan
+make mobile-dev
 ```
+
+O alvo (`scripts/dev.sh`) descobre o IP do Windows na rede via `powershell.exe`, avisa se o
+portproxy não aponta para o IP atual do WSL e sobe o Expo com
+`REACT_NATIVE_PACKAGER_HOSTNAME=<ip-do-windows>`, `--lan` e `--port 8081` fixo. Se a 8081 já
+estiver ocupada no WSL, ele para com erro: o portproxy só encaminha essa porta. Fora do WSL,
+roda um `npx expo start` simples.
+
+- `make mobile-dev MOBILE_ARGS=--dry-run` faz as verificações e só mostra o comando.
+- Outros argumentos vão para o `expo start`: `make mobile-dev MOBILE_ARGS=--clear`.
 
 ## URL da API
 
@@ -52,6 +61,12 @@ Escala única em `src/tema/tipografia.js`, exposta como classes do Tailwind (tam
 `text-xs`/`text-sm`/`fontSize` solto. O ajuste de fonte do sistema vale em todo o app (nunca
 `allowFontScaling={false}`); só pílulas, selos e o stepper limitam o crescimento com
 `maxFontSizeMultiplier={1.3}`.
+
+## Testes de tela
+
+Os testes em `src/testes/` simulam só o `fetch` (`fetchSimulado.ts`). O login fica em
+`src/testes/sessao.tsx`: `abrirLogado(url)` guarda a sessão e abre a tela direto;
+`entrarPeloLogin()` passa pela tela de login (precisa da rota `POST /auth/login` com `loginOk`).
 
 ## Verificação
 

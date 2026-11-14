@@ -1,44 +1,16 @@
-import path from 'node:path';
 import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
-import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { type Requisicao, type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
-import { anime, jogo, manga } from './midias';
+import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
+import { anime, fullmetal, itemDaLista as item, jogo, manga } from './midias';
 import { trocarRecorte } from './recorte';
-
-const APP = path.resolve(__dirname, '../../app');
-
-/** Item de GET /lista no formato real (conferido contra o backend local): a Mídia mais os campos do Item. */
-function item(midia: { id_midia: string; tipo: string } & Record<string, unknown>, dados: Record<string, unknown> = {}) {
-  return {
-    ...midia,
-    id_lista: `LST-${midia.id_midia}`,
-    codigo_lista: 'LST20261106-00001',
-    status_consumo: 'planejado',
-    progresso_atual: 0,
-    progresso_total: (midia.numero_episodios ?? midia.numero_capitulos ?? null) as number | null,
-    nota_usuario: null,
-    favorito: false,
-    privado: false,
-    data_inicio: null,
-    data_conclusao: null,
-    comentario: null,
-    total_rewatches: 0,
-    ...dados,
-  };
-}
+import { abrirLogado as abrir } from './sessao';
 
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist', numero_episodios: 64 });
+const fma = fullmetal();
 const jojo = manga();
 const hollow = jogo();
 const celeste = jogo({ id_midia: 'MID-JOG-2026-40002', titulo_original: 'Celeste' });
-
-async function abrir(url: string) {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: url });
-}
 
 /** Servidor de mentira com estado: as escritas mudam o que o GET /lista devolve. */
 function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Resposta | ((r: Requisicao) => Resposta | Promise<Resposta>)> = {}) {
@@ -72,7 +44,7 @@ function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Res
   return { api, rotas, adicionar: (novo: ReturnType<typeof item>) => (lista = [novo, ...lista]) };
 }
 
-const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${nome} (${n})` });
+const aba = (nome: string, n: number) => screen.findByRole('tab', { name: `${nome} (${n})` });
 const linha = (titulo: string) => screen.findByLabelText(`Item ${titulo}`);
 
 describe('aba Lista', () => {
@@ -91,21 +63,21 @@ describe('aba Lista', () => {
     await abrir('/lista');
 
     expect(await aba('Em progresso', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Concluído (1)' })).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /^Platinado/ })).not.toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Concluído (1)' })).toBeOnTheScreen();
+    expect(screen.queryByRole('tab', { name: /^Platinado/ })).not.toBeOnTheScreen();
     expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item JoJo no Kimyou na Bouken')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Fullmetal Alchemist: Brotherhood')).not.toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
-    expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('tab', { name: 'Concluído (1)' }));
+    expect(await linha('Fullmetal Alchemist: Brotherhood')).toBeOnTheScreen();
 
     await trocarRecorte('Jogos');
     expect(await aba('Concluído', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Platinado (1)' })).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Platinado (1)' })).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Hollow Knight')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Celeste')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Fullmetal Alchemist: Brotherhood')).not.toBeOnTheScreen();
   });
 
   it('cada linha mostra o selo do Tipo de mídia, também no rótulo de acessibilidade', async () => {
@@ -187,7 +159,7 @@ describe('aba Lista', () => {
     // Concluído na hora (otimista) e confirmado pela Lista refeita.
     expect(await aba('Concluído', 1)).toBeOnTheScreen();
     expect(await aba('Em progresso', 1)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Concluído (1)' }));
     const concluido = await linha('Sousou no Frieren');
     expect(within(concluido).getByLabelText('Progresso: 28 de 28')).toBeOnTheScreen();
     expect(within(concluido).getByRole('button', { name: 'Mais um em Sousou no Frieren' })).toBeDisabled();
@@ -261,24 +233,24 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Episódios (de 10)')).toHaveDisplayValue('0');
   });
 
-  it('editor: Recontagem com − e +, mínimo 0, sem campo digitável', async () => {
+  it('editor: Recontagem (Reassistido) com − e +, mínimo 0, sem campo digitável', async () => {
     const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3, total_rewatches: 1 })]);
 
     await abrir('/lista');
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
     expect(screen.queryByDisplayValue('1')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Recontagem: 1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 1')).toBeOnTheScreen();
 
-    const menos = screen.getByRole('button', { name: 'Diminuir Recontagem' });
+    const menos = screen.getByRole('button', { name: 'Diminuir Reassistido' });
     await fireEvent.press(menos);
-    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 0')).toBeOnTheScreen();
     expect(menos).toBeDisabled();
     await fireEvent.press(menos);
-    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 0')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
-    expect(screen.getByLabelText('Recontagem: 2')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Reassistido' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Reassistido' }));
+    expect(screen.getByLabelText('Reassistido: 2')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')).toHaveLength(1));
@@ -342,7 +314,7 @@ describe('aba Lista', () => {
 
     await abrir('/lista');
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
-    const estados = within(screen.getByLabelText('Estado de consumo'));
+    const estados = within(screen.getByLabelText('Status'));
     expect(estados.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
       'Planejado',
       'Em progresso',
@@ -357,7 +329,7 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Horas jogadas')).toHaveDisplayValue('42');
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));
     await fireEvent.changeText(screen.getByLabelText('Nota pessoal'), '9,5');
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Rejogado' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Início: sem data' }));
     await act(async () => screen.getByTestId('calendario').props.onChange({ type: 'set' }, new Date(2026, 9, 1)));
     await fireEvent.changeText(screen.getByLabelText('Comentário'), 'Panteão feito');
@@ -454,8 +426,7 @@ describe('adicionar pelo detalhe', () => {
     });
 
     await abrir(`/midia/${frieren.id_midia}`);
-    expect(await screen.findByText('Fora da sua Lista.')).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar à Lista' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Adicionar à Lista' }));
 
     expect(screen.getByRole('radio', { name: 'Planejado' })).toBeChecked();
     expect(screen.queryByRole('radio', { name: 'Platinado' })).not.toBeOnTheScreen();
@@ -505,5 +476,124 @@ describe('adicionar pelo detalhe', () => {
 
     expect(await screen.findByLabelText('Email')).toBeOnTheScreen();
     expect(api.para('POST /auth/refresh')[0].corpo).toEqual({ refresh_token: 'R1' });
+  });
+});
+
+
+describe('aba Lista: páginas, filtros, busca e sugestões', () => {
+  const titulos = () => screen.getAllByLabelText(/^Item /).map((e) => e.props.accessibilityLabel);
+  const trending = (anime: unknown[], mangas: unknown[] = []) => ({
+    'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: anime } },
+    'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: mangas } },
+  });
+
+  it('a página tem o título do Status e as subseções Anime e Mangá com contagem', async () => {
+    servidor([
+      item(frieren, { status_consumo: 'assistindo' }),
+      item(fma, { status_consumo: 'assistindo' }),
+      item(jojo, { status_consumo: 'lendo' }),
+    ]);
+
+    await abrir('/lista');
+
+    expect(await screen.findByRole('header', { name: 'Em progresso · 3' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Anime · 2' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Mangá · 1' })).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Em progresso (3)' })).toBeSelected();
+
+    await fireEvent.press(screen.getByRole('tab', { name: 'Planejado (0)' }));
+    expect(await screen.findByRole('header', { name: 'Planejado · 0' })).toBeOnTheScreen();
+    expect(screen.getByText('Nenhum Item em Planejado.')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
+  });
+
+  it('Gênero no sheet filtra todas as páginas e as contagens; Ordem por Nota pessoal', async () => {
+    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Naruto', generos_lista: ['Ação'] });
+    const akira = anime({ id_midia: 'MID-ANM-2026-20098', titulo_portugues: 'Akira', generos_lista: ['Ação'] });
+    servidor([
+      item(frieren, { status_consumo: 'assistindo', nota_usuario: 9 }),
+      item(naruto, { status_consumo: 'assistindo', nota_usuario: 6 }),
+      item(akira, { status_consumo: 'assistindo', nota_usuario: 5 }),
+      item(jojo, { status_consumo: 'lendo', nota_usuario: 8 }),
+      item(fma, { status_consumo: 'completo', generos_lista: ['Ação'] }),
+    ]);
+
+    await abrir('/lista');
+    expect(await aba('Em progresso', 4)).toBeOnTheScreen();
+    expect(titulos()).toEqual(['Item Akira', 'Item Naruto', 'Item Sousou no Frieren', 'Item JoJo no Kimyou na Bouken']);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Ação' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Nota pessoal' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+
+    expect(await aba('Em progresso', 3)).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Concluído (1)' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Filtros, 2 ativos' })).toBeOnTheScreen();
+    // Anime antes de Mangá; dentro de cada subseção, a maior Nota pessoal primeiro.
+    expect(titulos()).toEqual(['Item Naruto', 'Item Akira', 'Item JoJo no Kimyou na Bouken']);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros, 2 ativos' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Limpar' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(await aba('Em progresso', 4)).toBeOnTheScreen();
+  });
+
+  it('a lupa vira campo no cabeçalho e busca em todos os Status, com o selo de Status', async () => {
+    servidor([
+      item(frieren, { status_consumo: 'assistindo' }),
+      item(fma, { status_consumo: 'completo' }),
+      item(jojo, { status_consumo: 'lendo' }),
+    ]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Buscar na Lista' }));
+    await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'ALCHEM');
+
+    const resultado = await linha('Fullmetal Alchemist: Brotherhood');
+    expect(within(resultado).getByText('Concluído')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('tab', { name: /^Em progresso/ })).not.toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'zelda');
+    expect(await screen.findByText('Nada na Lista com "zelda".')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fechar a busca' }));
+    expect(await aba('Em progresso', 2)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Buscar na Lista' })).toBeOnTheScreen();
+  });
+
+  it('com a busca aberta, o botão de filtros continua visível e os filtros seguem valendo', async () => {
+    servidor([
+      item(frieren, { status_consumo: 'assistindo' }),
+      item(fma, { status_consumo: 'completo', generos_lista: ['Ação'] }),
+    ]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Ação' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Buscar na Lista' }));
+    await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'e');
+    expect(await linha('Fullmetal Alchemist: Brotherhood')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros, 1 ativo' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Limpar' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeOnTheScreen();
+  });
+
+  it('"Sugestões para você" traz Em alta do catálogo que não está na Lista', async () => {
+    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Naruto' });
+    servidor([item(frieren, { status_consumo: 'assistindo' })], trending([frieren, naruto]));
+
+    await abrir('/lista');
+
+    const sugestoes = await screen.findByLabelText('Sugestões para você');
+    expect(within(sugestoes).getByRole('link', { name: 'Naruto, Anime' })).toBeOnTheScreen();
+    expect(within(sugestoes).queryByRole('link', { name: 'Sousou no Frieren, Anime' })).not.toBeOnTheScreen();
   });
 });

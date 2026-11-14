@@ -1,7 +1,19 @@
 import type { Midia, MidiaResumo, NotasDaMidia } from '../api/tipos';
+import { nomeDaSituacao, situacaoDe } from './situacao';
 
 export function tituloDaMidia(midia: Pick<MidiaResumo, 'titulo_portugues' | 'titulo_original'>): string {
   return midia.titulo_portugues || midia.titulo_original;
+}
+
+/**
+ * O título que o detalhe mostra em texto suave abaixo do principal: o primeiro entre o
+ * original e o inglês que for diferente do principal; null se nenhum for.
+ */
+export function tituloAlternativo(
+  midia: Pick<Midia, 'titulo_portugues' | 'titulo_original' | 'titulo_ingles'>,
+): string | null {
+  const principal = tituloDaMidia(midia);
+  return [midia.titulo_original, midia.titulo_ingles].find((t) => t && t !== principal) ?? null;
 }
 
 /** Uma nota pronta para a tela: rótulo inteiro (detalhe, leitor de tela) e curto (card). */
@@ -41,24 +53,27 @@ export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fon
 
 type Atributo = [rotulo: string, valor: string | number | null];
 
-/** Atributos específicos do Tipo de mídia; os vazios ficam de fora. */
+/** Atributos específicos do Tipo de mídia; os vazios ficam de fora. O status de lançamento aparece como
+ * "Situação", com o nome legível, porque "Status" na tela é o Estado de consumo. */
 export function atributosDoTipo(midia: Midia): [string, string][] {
+  const situacao = situacaoDe(midia);
+  const nomeSituacao = situacao && nomeDaSituacao(situacao);
   const porTipo: Record<Midia['tipo'], Atributo[]> = {
     anime: [
       ['Episódios', midia.numero_episodios],
-      ['Status', midia.status_anime],
+      ['Situação', nomeSituacao],
       ['Estúdio', midia.estudio],
     ],
     manga: [
       ['Capítulos', midia.numero_capitulos],
       ['Volumes', midia.numero_volumes],
-      ['Status', midia.status_manga],
+      ['Situação', nomeSituacao],
       ['Autor', midia.autor],
       ['Demografia', midia.demografia],
     ],
     jogo: [
       ['Plataformas', midia.plataformas],
-      ['Status', midia.status_jogo],
+      ['Situação', nomeSituacao],
       ['Desenvolvedor', midia.desenvolvedor],
       ['Publicadora', midia.publicadora],
     ],

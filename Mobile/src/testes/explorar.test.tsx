@@ -1,18 +1,12 @@
-import path from 'node:path';
 import { userEvent } from '@testing-library/react-native';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { usuarioAna, simularFetch } from './fetchSimulado';
-import { anime, manga } from './midias';
+import { simularFetch } from './fetchSimulado';
+import { anime, fullmetal, manga } from './midias';
 import { trocarRecorte } from './recorte';
+import { abrirLogado } from './sessao';
 
-const APP = path.resolve(__dirname, '../../app');
-
-async function abrirExplorar() {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: '/explorar' });
-}
+const abrirExplorar = () => abrirLogado('/explorar');
 
 /** GET /midias como a API responde (conferido contra o backend local). */
 function pagina(midias: unknown[], numero = 1, tipo = 'anime') {
@@ -34,7 +28,7 @@ function generos(...nomes: string[]) {
 }
 
 const frieren = anime();
-const fma = anime({ id_midia: 'MID-ANM-2026-20011', titulo_portugues: 'Fullmetal Alchemist: Brotherhood' });
+const fma = fullmetal();
 
 describe('Explorar', () => {
   it('abre com os animes do Recorte animanga, pela nota', async () => {
@@ -64,12 +58,15 @@ describe('Explorar', () => {
     await abrirExplorar();
     await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Mangá' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Seinen' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Título' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Mangá' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Seinen' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Título' }));
+    expect(screen.getByRole('radio', { name: 'Seinen', checked: true })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
     await userEvent.setup().type(screen.getByLabelText('Buscar por título'), 'jojo');
 
-    expect(await screen.findByRole('button', { name: 'Seinen', selected: true })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Filtros, 3 ativos' })).toBeOnTheScreen();
     await waitFor(() =>
       expect(
         api.para('GET /midias?tipo=manga&ordem=titulo&genero=Seinen&busca=jojo&pagina=1&por_pagina=24'),
@@ -92,8 +89,35 @@ describe('Explorar', () => {
     await trocarRecorte('Jogos');
 
     expect(await screen.findByText('Nenhuma Mídia com esses filtros.')).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: 'Anime' })).not.toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    expect(await screen.findByRole('radio', { name: 'Ação' })).toBeOnTheScreen();
+    expect(screen.queryByRole('radio', { name: 'Anime' })).not.toBeOnTheScreen();
     expect(api.para('GET /midias?tipo=jogo&ordem=nota_media&pagina=1&por_pagina=24')).toHaveLength(1);
+  });
+
+  it('"Limpar filtros" volta Tipo, Gênero e ordem ao padrão e zera o contador', async () => {
+    const api = simularFetch({
+      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos('Ação', 'Drama'),
+      'GET /midias?tipo=anime&ordem=nota_media&genero=Drama&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&ordem=data_lancamento&genero=Drama&pagina=1&por_pagina=24': pagina([frieren]),
+    });
+    await abrirExplorar();
+    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Drama' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Lançamento' }));
+    expect(screen.getByRole('button', { name: 'Filtros, 2 ativos' })).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Limpar filtros' }));
+
+    expect(screen.getByRole('radio', { name: 'Todos', checked: true })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Nota', checked: true })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(screen.queryByRole('button', { name: 'Ver resultados' })).not.toBeOnTheScreen();
+    expect(api.para('GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24').length).toBeGreaterThan(0);
   });
 
   it('busca sem resultado diz o que foi buscado', async () => {
@@ -136,13 +160,14 @@ describe('Explorar', () => {
 
     await abrirExplorar();
 
+    expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
     expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('Falha no servidor');
-    expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
 
     falhando = false;
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('button', { name: 'Drama' })).toBeOnTheScreen();
+    expect(await screen.findByRole('radio', { name: 'Drama' })).toBeOnTheScreen();
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
   });
 

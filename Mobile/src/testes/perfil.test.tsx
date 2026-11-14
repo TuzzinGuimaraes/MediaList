@@ -1,9 +1,7 @@
-import path from 'node:path';
-import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { fireEvent, screen, within } from 'expo-router/testing-library';
 
 import { loginOk, simularFetch } from './fetchSimulado';
-
-const APP = path.resolve(__dirname, '../../app');
+import { aba, entrarPeloLogin } from './sessao';
 
 const me = {
   status: 200,
@@ -45,11 +43,8 @@ const lista = {
 };
 
 async function abrirPerfil() {
-  await renderRouter(APP, { initialUrl: '/' });
-  await fireEvent.changeText(await screen.findByLabelText('Email'), 'ana@exemplo.com');
-  await fireEvent.changeText(screen.getByLabelText('Senha'), 'segredo1');
-  await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }));
-  await fireEvent.press(await screen.findByRole('button', { name: /^Perfil, tab/ }));
+  await entrarPeloLogin();
+  await fireEvent.press(await aba('Perfil'));
 }
 
 function barra(nome: string) {
@@ -97,7 +92,7 @@ describe('estatísticas no Perfil', () => {
     await abrirPerfil();
 
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
-    expect(await screen.findByText('Por Estado de consumo')).toBeOnTheScreen();
+    expect(await screen.findByText('Por Status')).toBeOnTheScreen();
   });
 });
 
