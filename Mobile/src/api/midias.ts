@@ -6,22 +6,23 @@ import { type Recorte, TIPOS_DO_RECORTE, useRecorte } from '../recorte/RecorteCo
 import type { Cliente } from './cliente';
 import { useCache } from './consulta';
 import type {
-  Midia,
+  MidiaDetalhe,
   MidiaPopular,
   RespostaDistribuicao,
-  RespostaMidias,
+  RespostaPopulares,
+  RespostaTrending,
 } from './tipos';
 
 const LIMITE_EM_ALTA = 10;
 
 /** Os endpoints filtram por um Tipo só: um Recorte com dois Tipos vira duas requisições. */
-async function porTipo<M>(
+async function porTipo<R extends RespostaTrending | RespostaPopulares>(
   cliente: Cliente,
   recorte: Recorte,
   caminho: (tipo: string) => string,
-): Promise<M[]> {
+): Promise<R['midias']> {
   const respostas = await Promise.all(
-    TIPOS_DO_RECORTE[recorte].map((tipo) => cliente.requisitar<RespostaMidias<M>>(caminho(tipo))),
+    TIPOS_DO_RECORTE[recorte].map((tipo) => cliente.requisitar<R>(caminho(tipo))),
   );
   return respostas.flatMap((r) => r.midias);
 }
@@ -39,7 +40,7 @@ export function useEmAlta(recorte: Recorte) {
     queryKey: ['midias', 'em-alta', recorte],
     queryFn: async () =>
       (
-        await porTipo<Midia>(cliente, recorte, (t) => `/midias/trending?tipo=${t}&limite=${LIMITE_EM_ALTA}`)
+        await porTipo<RespostaTrending>(cliente, recorte, (t) => `/midias/trending?tipo=${t}&limite=${LIMITE_EM_ALTA}`)
       ).sort(decrescente(notaDeRanking)),
   });
 }
@@ -51,7 +52,7 @@ export function usePopulares(recorte: Recorte) {
     enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', 'populares', recorte],
     queryFn: async () =>
-      (await porTipo<MidiaPopular>(cliente, recorte, (t) => `/midias/populares?tipo=${t}`)).sort(
+      (await porTipo<RespostaPopulares>(cliente, recorte, (t) => `/midias/populares?tipo=${t}`)).sort(
         decrescente((m) => m.total_usuarios),
       ),
   });
@@ -71,7 +72,7 @@ export function useMidia(id: string) {
   return useQuery({
     enabled: sessao.estado === 'autenticada',
     queryKey: ['midias', id],
-    queryFn: () => cliente.requisitar<Midia>(`/midias/${encodeURIComponent(id)}`),
+    queryFn: () => cliente.requisitar<MidiaDetalhe>(`/midias/${encodeURIComponent(id)}`),
   });
 }
 

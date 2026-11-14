@@ -39,15 +39,12 @@ TOTAL_DA_MIDIA = 'COALESCE(' + ', '.join(
     f'{t.apelido}.{t.coluna_total}' for t in TIPOS.values() if t.coluna_total
 ) + ')'
 
-#: Colunas do Item que a listagem acrescenta às da Mídia. Os aliases
-#: (`status_visualizacao`, `episodios_assistidos`) são contrato com o web antigo.
+#: Colunas do Item que a listagem acrescenta às da Mídia; o que sai na
+#: resposta é decidido pelo modelo `ItemLista` (schemas/lista.py).
 COLUNAS_DO_ITEM = """
     lu.id_lista,
-    lu.codigo_lista,
     lu.status_consumo,
-    lu.status_consumo AS status_visualizacao,
     lu.progresso_atual,
-    lu.progresso_atual AS episodios_assistidos,
     lu.progresso_total,
     lu.nota_usuario,
     lu.favorito,

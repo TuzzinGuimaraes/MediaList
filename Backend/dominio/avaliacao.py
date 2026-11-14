@@ -51,15 +51,19 @@ class Avaliacoes:
         self._avaliacoes = repositorio
         self._catalogo = catalogo
 
-    def listar(self, id_midia: str) -> Resultado:
+    def listar(self, id_midia: str, limite: int, deslocamento: int) -> Resultado:
+        """Uma página das Avaliações da Mídia. `dados`: avaliacoes e total (todas as páginas)."""
         if not self._catalogo.obter(id_midia):
             return Resultado(NAO_ENCONTRADO, 'Mídia não encontrada')
-        return Resultado(OK, dados={'avaliacoes': self._avaliacoes.listar(id_midia)})
+        return Resultado(OK, dados={
+            'avaliacoes': self._avaliacoes.listar(id_midia, limite, deslocamento),
+            'total': self._avaliacoes.contar(id_midia),
+        })
 
     def criar(self, id_usuario: str, payload: dict[str, Any] | None) -> Resultado:
         """Grava a Avaliação. `dados`: id_avaliacao, nota_media e total_avaliacoes da Mídia."""
         payload = payload if isinstance(payload, dict) else {}
-        id_midia = payload.get('id_midia') or payload.get('id_anime')
+        id_midia = payload.get('id_midia')
 
         # Nota 0 é nota: só a ausência é recusada aqui.
         if not id_midia or payload.get('nota') is None:

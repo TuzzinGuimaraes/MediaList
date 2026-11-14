@@ -3,47 +3,50 @@ Blueprint de Preferências: `usuarios.preferencias` (jsonb).
 
 O jsonb guarda só o que o Usuário mudou; a leitura completa com os padrões.
 """
-import json
+import json as jsonlib
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from spectree import Response
 
 from banco import consultar_um, executar
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
+from schemas.preferencias import CorpoPreferencias, PreferenciasAtualizadas, RespostaPreferencias
 
 preferencias_bp = Blueprint('preferencias', __name__)
 
 PADROES = {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
-TIPOS = {'tema': str, 'idioma': str, 'notificacoes_ativas': bool}
 
 
 @preferencias_bp.route('', methods=['GET'])
 @jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaPreferencias, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['preferencias'], security=AUTENTICADO,
+)
 def obter_preferencias():
     """Preferências do Usuário, com os padrões no que ele não mudou."""
-    user_id = get_jwt_identity()
-    linha = consultar_um('SELECT preferencias FROM usuarios WHERE id_usuario = %s', (user_id,))
+    linha = consultar_um('SELECT preferencias FROM usuarios WHERE id_usuario = %s', (get_jwt_identity(),))
     if linha is None:
-        return jsonify({'erro': 'Usuário não encontrado'}), 404
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
     salvas = {campo: valor for campo, valor in linha['preferencias'].items() if campo in PADROES}
-    return jsonify({'preferencias': {'id_usuario': user_id, **PADROES, **salvas}}), 200
+    return {'preferencias': {**PADROES, **salvas}}
 
 
 @preferencias_bp.route('', methods=['PUT'])
 @jwt_required()
-def atualizar_preferencias():
-    """Grava os campos permitidos; os outros ficam como estão."""
-    data = request.get_json(silent=True) or {}
-    mudancas = {campo: data[campo] for campo in PADROES if campo in data}
+@contrato.validate(
+    resp=Response(HTTP_200=PreferenciasAtualizadas, **ERROS_AUTENTICADA), tags=['preferencias'], security=AUTENTICADO,
+)
+def atualizar_preferencias(json: CorpoPreferencias):
+    """Grava os campos enviados; os outros ficam como estão."""
+    mudancas = json.model_dump(exclude_none=True) if json is not None else {}
     if not mudancas:
-        return jsonify({'erro': 'Nenhuma preferência válida fornecida'}), 400
-
-    errados = [campo for campo, valor in mudancas.items() if not isinstance(valor, TIPOS[campo])]
-    if errados:
-        return jsonify({'erro': f"Tipo inválido em: {', '.join(errados)}"}), 400
+        return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Nenhuma preferência válida fornecida')
 
     linhas = executar(
         'UPDATE usuarios SET preferencias = preferencias || %s::jsonb WHERE id_usuario = %s',
-        (json.dumps(mudancas), get_jwt_identity()),
+        (jsonlib.dumps(mudancas), get_jwt_identity()),
     )
-    return jsonify({'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': linhas > 0}), 200
+    return {'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': linhas > 0}

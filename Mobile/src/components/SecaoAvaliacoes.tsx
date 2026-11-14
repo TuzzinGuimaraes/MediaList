@@ -1,11 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { useApagarAvaliacao } from '../api/avaliacoes';
 import { mensagemDeErro } from '../api/erros';
-import type { AvaliacaoCompleta } from '../api/tipos';
-import { useSessao } from '../auth/SessaoContext';
+import type { Avaliacao } from '../api/tipos';
 import { formatarData } from '../dominio/datas';
 import { useCores } from '../tema/TemaContext';
 import { Botao } from './Botao';
@@ -51,7 +50,7 @@ function ApagarAvaliacao({ idMidia, idAvaliacao }: { idMidia: string; idAvaliaca
   );
 }
 
-function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
+function ItemAvaliacao({ a }: { a: Avaliacao }) {
   const cores = useCores();
   return (
     <View accessibilityLabel={`Avaliação de ${a.nome_completo}`} className="gap-1 rounded-md bg-superficie-alta p-3">
@@ -71,18 +70,30 @@ function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
   );
 }
 
-export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; avaliacoes?: AvaliacaoCompleta[] }) {
-  const { sessao } = useSessao();
+/**
+ * `avaliacoes`: a 1ª página. `minha`: a Avaliação do Usuário (GET /midias/<id>/notas), que pode
+ * não estar na página; null sem Avaliação, undefined enquanto carrega. `falha`: o aviso de
+ * erro da página, no lugar da lista.
+ */
+export function SecaoAvaliacoes({
+  idMidia,
+  avaliacoes,
+  minha,
+  falha,
+}: {
+  idMidia: string;
+  avaliacoes?: Avaliacao[];
+  minha?: Avaliacao | null;
+  falha?: ReactNode;
+}) {
   const [formulario, setFormulario] = useState<'novo' | 'edicao' | null>(null);
-  const idUsuario = sessao.estado === 'autenticada' ? sessao.usuario.id : null;
-  const minha = avaliacoes?.find((a) => a.id_usuario === idUsuario);
   const fechar = () => setFormulario(null);
 
   return (
     <View className="gap-3 rounded-md bg-superficie p-4">
       <TituloSecao>{textos.titulo}</TituloSecao>
       {/* No máximo uma Avaliação por Mídia: com a própria, o botão vira editar. */}
-      {!avaliacoes ? null : minha ? (
+      {minha === undefined ? null : minha ? (
         <View className="gap-2">
           <Botao titulo={textos.editar} variante="secundario" onPress={() => setFormulario('edicao')} />
           <ApagarAvaliacao idMidia={idMidia} idAvaliacao={minha.id_avaliacao} />
@@ -90,7 +101,9 @@ export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; aval
       ) : (
         <Botao titulo={textos.escrever} onPress={() => setFormulario('novo')} />
       )}
-      {avaliacoes?.length ? (
+      {falha ? (
+        falha
+      ) : avaliacoes?.length ? (
         avaliacoes.map((a) => <ItemAvaliacao key={a.id_avaliacao} a={a} />)
       ) : avaliacoes ? (
         <Text className="text-corpo text-texto-suave">{textos.nenhuma}</Text>

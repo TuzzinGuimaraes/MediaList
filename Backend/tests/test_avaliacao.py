@@ -33,9 +33,10 @@ def test_criar_grava_e_devolve_a_nota_media_da_midia(avaliacoes, repositorio):
     assert repositorio.avaliacoes['AVL-2']['titulo_avaliacao'] == 'Bom'
 
 
-def test_id_anime_vale_como_id_midia(avaliacoes, repositorio):
-    assert avaliacoes.criar('USR-1', {'id_anime': 'MID-2', 'nota': 5}).codigo == OK
-    assert repositorio.avaliacoes['AVL-1']['id_midia'] == 'MID-2'
+def test_id_anime_nao_vale_mais_como_id_midia(avaliacoes, repositorio):
+    """Alias legado sem cliente: saiu com o contrato da API (ticket 05)."""
+    assert avaliacoes.criar('USR-1', {'id_anime': 'MID-2', 'nota': 5}).codigo == INVALIDO
+    assert repositorio.avaliacoes == {}
 
 
 @pytest.mark.parametrize('nota', [0, 10, '8,5', '7.5', 9.9])
@@ -149,7 +150,18 @@ def test_apagar_inexistente(avaliacoes):
 def test_listar_so_de_midia_que_existe(avaliacoes):
     _criar(avaliacoes)
 
-    assert [a['id_avaliacao'] for a in avaliacoes.listar('MID-1').dados['avaliacoes']] == ['AVL-1']
-    assert avaliacoes.listar('MID-2').dados == {'avaliacoes': []}
-    assert (avaliacoes.listar('MID-404').codigo, avaliacoes.listar('MID-404').erro) == (
+    assert [a['id_avaliacao'] for a in avaliacoes.listar('MID-1', 20, 0).dados['avaliacoes']] == ['AVL-1']
+    assert avaliacoes.listar('MID-2', 20, 0).dados == {'avaliacoes': [], 'total': 0}
+    assert (avaliacoes.listar('MID-404', 20, 0).codigo, avaliacoes.listar('MID-404', 20, 0).erro) == (
         NAO_ENCONTRADO, 'Mídia não encontrada')
+
+
+def test_listar_devolve_a_pagina_pedida_e_o_total_da_midia(avaliacoes):
+    for usuario in ('USR-1', 'USR-2', 'USR-3'):
+        _criar(avaliacoes, usuario)
+    avaliacoes.criar('USR-1', {'id_midia': 'MID-2', 'nota': 5})
+
+    segunda = avaliacoes.listar('MID-1', 2, 2).dados  # 2ª página de 2
+
+    assert segunda['total'] == 3
+    assert len(segunda['avaliacoes']) == 1

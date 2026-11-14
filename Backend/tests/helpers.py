@@ -1,9 +1,45 @@
 import uuid
 from contextlib import contextmanager
+from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from repositories.itens_lista import COLUNAS_GRAVAVEIS
 
 INTERFACE_BANCO = ('consultar', 'consultar_um', 'executar', 'transacao')
+
+
+def linha_de_midia(**campos):
+    """Uma linha de `SELECT_MIDIA` (Catálogo e Itens de lista) como o psycopg devolve: um anime, com
+    Decimal, date e os apelidos legados que o contrato não deixa sair."""
+    return {
+        'id_midia': 'MID-1', 'id_anime': 'MID-1', 'codigo_midia': 'ANI-1', 'codigo_anime': 'ANI-1',
+        'tipo': 'anime', 'tipo_label': 'Anime', 'titulo_original': 'Frieren', 'titulo_ingles': None,
+        'titulo_portugues': None, 'sinopse': None, 'data_lancamento': date(2023, 9, 29),
+        'nota_media': None, 'total_avaliacoes': None, 'nota_fonte': Decimal('8.9'), 'origem_nota': 'AniList',
+        'poster_url': None, 'banner_url': None, 'status_anime': 'finalizado', 'numero_episodios': 28,
+        'duracao_episodio': 24, 'classificacao_etaria': None, 'anime_trailer_url': None, 'estudio': 'Madhouse',
+        'fonte_original': None, 'anime_anilist_id': 154587, 'status_manga': None, 'numero_capitulos': None,
+        'numero_volumes': None, 'autor': None, 'manga_artista': None, 'publicadora_original': None,
+        'revista': None, 'demografia': None, 'manga_anilist_id': None, 'desenvolvedor': None,
+        'publicadora': None, 'plataformas': None, 'status_jogo': None, 'modo_jogo': None, 'classificacao': None,
+        'jogo_trailer_url': None, 'rawg_slug': None, 'trailer_url': None, 'status_catalogo': 'finalizado',
+        'progresso_total_padrao': 28, 'unidade_progresso': 'episódios', 'generos': 'Aventura, Drama',
+        'generos_lista': ['Aventura', 'Drama'], 'total_usuarios': 3, 'total_concluidos': 1,
+        **campos,
+    }
+
+
+def linha_de_item(**campos):
+    """Uma linha de `ItensLista.listar`: a Mídia de `linha_de_midia` mais os campos do Item."""
+    return linha_de_midia(**{
+        'id_lista': 'LST-1', 'codigo_lista': None, 'status_consumo': 'assistindo',
+        'status_visualizacao': 'assistindo', 'progresso_atual': 5, 'episodios_assistidos': 5,
+        'progresso_total': 28, 'nota_usuario': Decimal('8.5'), 'favorito': True, 'data_inicio': date(2026, 10, 1),
+        'data_conclusao': None, 'comentario': None, 'total_rewatches': 0, 'privado': False,
+        'data_adicao': datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc),
+        'data_atualizacao': datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc),
+        **campos,
+    })
 
 
 class FakeBanco:
@@ -87,6 +123,10 @@ class FakeCatalogo:
         self.chamadas.append(('buscar', tipo, pagina, limite, filtros))
         midias = [dict(m, id_midia=i) for i, m in self.midias.items() if not tipo or m.get('tipo') == tipo]
         return midias[(pagina - 1) * limite:pagina * limite]
+
+    def contar(self, tipo=None, filtros=None):
+        self.chamadas.append(('contar', tipo, filtros))
+        return sum(1 for m in self.midias.values() if not tipo or m.get('tipo') == tipo)
 
     def populares(self, tipo=None):
         self.chamadas.append(('populares', tipo))
@@ -339,8 +379,12 @@ class FakeAvaliacaoRepository:
             return {'nota_media': None, 'total_avaliacoes': None}
         return {'nota_media': sum(notas) / len(notas), 'total_avaliacoes': len(notas)}
 
-    def listar(self, id_midia):
-        return [dict(a) for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+    def listar(self, id_midia, limite, deslocamento):
+        da_midia = [dict(a) for a in self.avaliacoes.values() if a['id_midia'] == id_midia]
+        return da_midia[deslocamento:deslocamento + limite]
+
+    def contar(self, id_midia):
+        return sum(1 for a in self.avaliacoes.values() if a['id_midia'] == id_midia)
 
     def criar(self, id_usuario, id_midia, nota, titulo, texto):
         from banco import Conflito

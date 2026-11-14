@@ -1,7 +1,7 @@
-import type { Midia, MidiaResumo, NotasDaMidia } from '../api/tipos';
+import type { Midia, NotasDaMidia } from '../api/tipos';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
-export function tituloDaMidia(midia: Pick<MidiaResumo, 'titulo_portugues' | 'titulo_original'>): string {
+export function tituloDaMidia(midia: Pick<Midia, 'titulo_portugues' | 'titulo_original'>): string {
   return midia.titulo_portugues || midia.titulo_original;
 }
 
@@ -53,6 +53,15 @@ export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fon
 
 type Atributo = [rotulo: string, valor: string | number | null];
 
+/** Nomes na tela das Demografias (o enum da API vem em minúsculas). */
+const NOMES_DEMOGRAFIA: Record<NonNullable<Midia['demografia']>, string> = {
+  shounen: 'Shounen',
+  shoujo: 'Shoujo',
+  seinen: 'Seinen',
+  josei: 'Josei',
+  kodomomuke: 'Kodomomuke',
+};
+
 /** Atributos específicos do Tipo de mídia; os vazios ficam de fora. O status de lançamento aparece como
  * "Situação", com o nome legível, porque "Status" na tela é o Estado de consumo. */
 export function atributosDoTipo(midia: Midia): [string, string][] {
@@ -69,7 +78,7 @@ export function atributosDoTipo(midia: Midia): [string, string][] {
       ['Volumes', midia.numero_volumes],
       ['Situação', nomeSituacao],
       ['Autor', midia.autor],
-      ['Demografia', midia.demografia],
+      ['Demografia', midia.demografia && NOMES_DEMOGRAFIA[midia.demografia]],
     ],
     jogo: [
       ['Plataformas', midia.plataformas],
@@ -81,14 +90,4 @@ export function atributosDoTipo(midia: Midia): [string, string][] {
   return (porTipo[midia.tipo] ?? [])
     .filter(([, valor]) => valor != null && valor !== '')
     .map(([rotulo, valor]) => [rotulo, String(valor)]);
-}
-
-/** Quantas Avaliações caíram em cada nota inteira de 1 a 10 (arredondada). */
-export function distribuicaoDeNotas(notas: number[]): { nota: number; total: number }[] {
-  const totais = Array.from({ length: 10 }, (_, i) => ({ nota: i + 1, total: 0 }));
-  for (const n of notas) {
-    const nota = Math.round(Number(n));
-    if (nota >= 1 && nota <= 10) totais[nota - 1].total++;
-  }
-  return totais;
 }

@@ -1,15 +1,17 @@
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
+import type { Avaliacao, AvaliacaoCriada, MidiaDetalhe } from '../api/tipos';
+import { AVALIACOES_POR_PAGINA } from '../api/avaliacoes';
+import { erro, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
 import { rotasDoInicio } from './inicio';
 import { anime } from './midias';
 import { abrirLogado } from './sessao';
 
-/** Item de GET /avaliacoes/<id> no formato real (conferido contra o backend local). */
-function avaliacao(dados: Record<string, unknown> = {}) {
+/** Item de GET /avaliacoes/<id>. */
+function avaliacao(dados: Partial<Avaliacao> = {}): Avaliacao {
   return {
     id_avaliacao: 'AVL-1793977663-0000000001',
-    codigo_avaliacao: 'AVL20261106-00001',
     id_midia: 'MID-ANM-2026-20053',
     id_usuario: 'USR-20261106-00099',
     nome_completo: 'Bruno Lima',
@@ -17,16 +19,13 @@ function avaliacao(dados: Record<string, unknown> = {}) {
     nota: 8.5,
     titulo_avaliacao: 'Melancólico e bonito',
     texto_avaliacao: 'O tempo passa diferente para uma elfa.',
-    data_avaliacao: '2026-11-05T10:00:00',
+    data_avaliacao: '2026-11-05T10:00:00Z',
     data_edicao: null,
-    likes: 0,
-    dislikes: 0,
-    generos_lista: [],
     ...dados,
   };
 }
 
-const minha = (dados: Record<string, unknown> = {}) =>
+const minha = (dados: Partial<Avaliacao> = {}) =>
   avaliacao({
     id_avaliacao: 'AVL-MINHA',
     id_usuario: usuarioAna.id,
@@ -40,11 +39,16 @@ const minha = (dados: Record<string, unknown> = {}) =>
 const frieren = anime({ nota_media: 8.5, total_avaliacoes: 1 });
 const ID = frieren.id_midia;
 
-function rotas(avaliacoes: unknown[], extras: Record<string, Resposta | ((r: any) => Resposta)> = {}) {
+/** GET /midias/<id>/notas como a API responderia a Ana: a Avaliação dela, se houver. */
+const notasPara = (avaliacoes: Avaliacao[]) =>
+  respostaNotas({}, avaliacoes.find((a) => a.id_usuario === usuarioAna.id) ?? null);
+
+function rotas(avaliacoes: Avaliacao[], extras: Record<string, Resposta | ((r: any) => Resposta)> = {}) {
   return {
     [`GET /midias/${ID}`]: { status: 200, corpo: frieren },
     [`GET /midias/${ID}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
-    [`GET /avaliacoes/${ID}`]: { status: 200, corpo: { avaliacoes } },
+    [rotaAvaliacoes(ID)]: paginaAvaliacoes(avaliacoes),
+    [rotaNotas(ID)]: notasPara(avaliacoes),
     'GET /lista': { status: 200, corpo: { lista: [] } },
     ...extras,
   };
@@ -75,18 +79,24 @@ describe('Avaliações no detalhe da Mídia', () => {
   });
 
   it('criar envia o payload certo e atualiza Nota média e Total de avaliações', async () => {
-    let avaliacoes: unknown[] = [];
+    let avaliacoes: Avaliacao[] = [];
     let midia = anime({ nota_media: null, total_avaliacoes: null });
     const api = simularFetch({
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
-      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'POST /avaliacoes': (req) => {
         avaliacoes = [minha({ nota: 9, titulo_avaliacao: 'Obra-prima', texto_avaliacao: 'Chorei.' })];
         midia = { ...midia, nota_media: 9, total_avaliacoes: 1 };
         return {
           status: 201,
-          corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA', nota_media_atualizada: 9, total_avaliacoes: 1 },
+          corpo: {
+            mensagem: 'Avaliação criada com sucesso!',
+            id_avaliacao: 'AVL-MINHA',
+            nota_media_atualizada: 9,
+            total_avaliacoes: 1,
+          } satisfies AvaliacaoCriada,
         };
       },
     });
@@ -121,7 +131,15 @@ describe('Avaliações no detalhe da Mídia', () => {
       'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [] } },
       'GET /midias/populares?tipo=anime': { status: 200, corpo: { midias: [] } },
       'GET /midias/populares?tipo=manga': { status: 200, corpo: { midias: [] } },
-      'POST /avaliacoes': { status: 201, corpo: { mensagem: 'Avaliação criada com sucesso!', id_avaliacao: 'AVL-MINHA' } },
+      'POST /avaliacoes': {
+        status: 201,
+        corpo: {
+          mensagem: 'Avaliação criada com sucesso!',
+          id_avaliacao: 'AVL-MINHA',
+          nota_media_atualizada: 9,
+          total_avaliacoes: 2,
+        } satisfies AvaliacaoCriada,
+      },
     });
     await abrirLogado('/');
 
@@ -145,7 +163,8 @@ describe('Avaliações no detalhe da Mídia', () => {
     let avaliacoes = [avaliacao(), minha()];
     const api = simularFetch({
       ...rotas([]),
-      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'PUT /avaliacoes/AVL-MINHA': (req) => {
         avaliacoes = [avaliacao(), minha({ nota: 6.5, titulo_avaliacao: 'Revisto' })];
         return { status: 200, corpo: { mensagem: 'Avaliação atualizada com sucesso!', nota_media_atualizada: 7.5 } };
@@ -173,14 +192,32 @@ describe('Avaliações no detalhe da Mídia', () => {
     expect(api.para(`GET /midias/${ID}`).length).toBeGreaterThan(1);
   });
 
+  it('reconhece a Avaliação própria pela /notas, mesmo fora da 1ª página', async () => {
+    const outras = Array.from({ length: AVALIACOES_POR_PAGINA }, (_, i) =>
+      avaliacao({ id_avaliacao: `AVL-${i}`, id_usuario: `USR-${i}`, nome_completo: `Usuário ${i}` }),
+    );
+    simularFetch({
+      ...rotas([]),
+      [`GET /midias/${ID}`]: { status: 200, corpo: anime({ nota_media: 8.5, total_avaliacoes: 51 }) },
+      [rotaAvaliacoes(ID)]: paginaAvaliacoes(outras, 51),
+      [rotaNotas(ID)]: respostaNotas({}, minha()),
+    });
+
+    await abrirDetalhe();
+
+    expect(await screen.findByRole('button', { name: 'Editar minha Avaliação' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Escrever Avaliação' })).not.toBeOnTheScreen();
+  });
+
   it('apagar pede confirmação, envia DELETE e volta a oferecer escrever', async () => {
     let avaliacoes = [minha()];
     // Sem Avaliações a Nota média e o Total vêm null (calculados na leitura).
-    let midia: Record<string, unknown> = anime({ nota_media: 7, total_avaliacoes: 1 });
+    let midia: MidiaDetalhe = anime({ nota_media: 7, total_avaliacoes: 1 });
     const api = simularFetch({
       ...rotas([]),
       [`GET /midias/${ID}`]: () => ({ status: 200, corpo: midia }),
-      [`GET /avaliacoes/${ID}`]: () => ({ status: 200, corpo: { avaliacoes } }),
+      [rotaAvaliacoes(ID)]: () => paginaAvaliacoes(avaliacoes),
+      [rotaNotas(ID)]: () => notasPara(avaliacoes),
       'DELETE /avaliacoes/AVL-MINHA': () => {
         avaliacoes = [];
         midia = { ...midia, nota_media: null, total_avaliacoes: null };
@@ -218,7 +255,7 @@ describe('Avaliações no detalhe da Mídia', () => {
   it('mostra o erro da API sem fechar o formulário', async () => {
     simularFetch({
       ...rotas([]),
-      'POST /avaliacoes': { status: 409, corpo: { erro: 'Você já avaliou esta mídia' } },
+      'POST /avaliacoes': erro(409, 'conflito', 'Você já avaliou esta mídia'),
     });
 
     await abrirDetalhe();

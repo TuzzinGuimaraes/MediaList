@@ -1,23 +1,37 @@
 import { fireEvent, screen, within } from 'expo-router/testing-library';
 
+import type { RespostaEstatisticas, RespostaMe, RespostaPermissoes } from '../api/tipos';
+import { erro } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
 import { aba, entrarPeloLogin } from './sessao';
 
-const me = {
+const me: { status: 200; corpo: RespostaMe } = {
   status: 200,
   corpo: {
     usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
   },
 };
-const permissoes = { status: 200, corpo: { permissoes: { nivel_acesso: 'usuario', grupos: 'Usuários' } } };
+const permissoes: { status: 200; corpo: RespostaPermissoes } = {
+  status: 200,
+  corpo: {
+    permissoes: {
+      nivel_acesso: 'usuario',
+      grupos: 'Usuários',
+      pode_criar: false,
+      pode_editar: false,
+      pode_deletar: false,
+      pode_moderar: false,
+    },
+  },
+};
 
-// Formato real de GET /usuario/estatisticas: contagens e somas como inteiro, nota_media como número ou null.
-const estatisticas = {
+// GET /usuario/estatisticas: contagens e somas como inteiro, nota_media como número ou null.
+const estatisticas: { status: 200; corpo: RespostaEstatisticas } = {
   status: 200,
   corpo: {
     estatisticas: [
-      { tipo: 'anime', label: 'Anime', total_midias: 2, concluidos: 1, em_andamento: 1, nota_media: 7, favoritos: 0, progresso_total_consumido: 0 },
-      { tipo: 'jogo', label: 'Jogo', total_midias: 3, concluidos: 3, em_andamento: 0, nota_media: 9, favoritos: 1, progresso_total_consumido: 0 },
+      { tipo: 'anime', total_midias: 2, concluidos: 1, em_andamento: 1, nota_media: 7, favoritos: 0, progresso_total_consumido: 0 },
+      { tipo: 'jogo', total_midias: 3, concluidos: 3, em_andamento: 0, nota_media: 9, favoritos: 1, progresso_total_consumido: 0 },
     ],
     resumo: { total_midias: 5, concluidos: 4, em_andamento: 1, favoritos: 1 },
   },
@@ -120,7 +134,7 @@ describe('estatísticas com erro', () => {
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
       'GET /auth/me': me,
       'GET /usuario/permissoes': permissoes,
-      'GET /usuario/estatisticas': () => (falhar ? { status: 500, corpo: { erro: 'Erro ao buscar estatísticas' } } : estatisticas),
+      'GET /usuario/estatisticas': () => (falhar ? erro(500, 'erro_interno', 'Erro ao buscar estatísticas') : estatisticas),
       'GET /lista': lista,
     });
     await abrirPerfil();

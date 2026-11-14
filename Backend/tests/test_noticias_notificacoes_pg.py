@@ -75,19 +75,36 @@ def test_noticia_publicada_sai_na_lista_com_o_nome_do_autor(pg, client, entrar):
     admin = _usuario(pg, 'Administradores', nome='Ana Admin')
     titulo = f'Notícia PG {uuid.uuid4().hex}'
 
+    antes = client.get('/api/noticias').get_json()['total']
     criada = client.post('/api/noticias', headers=entrar(admin), json={
         'titulo': titulo, 'conteudo': 'Texto', 'tags': ['anime', 'estreia'],
     })
-    pg['noticias'].append(criada.get_json()['id'])
-    lista = client.get('/api/noticias?limite=50').get_json()['noticias']
+    pg['noticias'].append(criada.get_json()['id_noticia'])
+    pagina = client.get('/api/noticias?por_pagina=1').get_json()
 
     assert criada.status_code == 201
-    [noticia] = [n for n in lista if n['titulo'] == titulo]
+    assert pagina['total'] == antes + 1
+    [noticia] = pagina['itens']
+    assert noticia['id_noticia'] == criada.get_json()['id_noticia']
+    assert noticia['titulo'] == titulo
     assert noticia['autor'] == 'Ana Admin'
     assert noticia['tags'] == ['anime', 'estreia']
     assert noticia['categoria'] == 'geral'
-    assert noticia['visualizacoes'] == 0
     assert 'T' in noticia['data_publicacao']
+
+
+def test_noticias_paginadas_sem_repetir_nem_pular(pg, client, entrar):
+    admin = _usuario(pg, 'Administradores')
+    for i in range(3):
+        criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': f'Página {i}'})
+        pg['noticias'].append(criada.get_json()['id_noticia'])
+
+    primeira = client.get('/api/noticias?por_pagina=2').get_json()
+    segunda = client.get('/api/noticias?por_pagina=2&pagina=2').get_json()
+
+    ids = [n['id_noticia'] for n in primeira['itens'] + segunda['itens']]
+    assert ids[:3] == list(reversed(pg['noticias']))
+    assert len(set(ids)) == len(ids)
 
 
 def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
@@ -111,8 +128,8 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     assert response.get_json()['notificacoes_enviadas'] == 2
     [notificacao] = client.get('/api/notificacoes', headers=entrar(assistindo)).get_json()['notificacoes']
     assert {k: v for k, v in notificacao.items() if k != 'data_criacao'} == {
-        'id_usuario': assistindo, 'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
-        'titulo': 'Episódio 12', 'midia_nome': 'Anime PG', 'anime_nome': 'Anime PG',
+        'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
+        'titulo': 'Episódio 12', 'midia_nome': 'Anime PG',
         'mensagem': 'Novidade em anime da sua lista: Anime PG', 'lida': False,
     }
     assert len(client.get('/api/notificacoes', headers=entrar(favorito_completo)).get_json()['notificacoes']) == 1
@@ -177,6 +194,6 @@ def test_preferencias_salvas_sao_lidas_com_os_padroes_no_resto(pg, client, entra
     salvo = client.put('/api/preferencias', headers=entrar(eu), json={'notificacoes_ativas': False})
     depois = client.get('/api/preferencias', headers=entrar(eu)).get_json()['preferencias']
 
-    assert inicial == {'id_usuario': eu, 'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
+    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
     assert salvo.get_json()['modificado'] is True
-    assert depois == {'id_usuario': eu, 'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}
+    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}

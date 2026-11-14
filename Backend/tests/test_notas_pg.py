@@ -87,7 +87,7 @@ def test_rotas_de_ranking_ordenam_com_fallback_e_trazem_a_origem(pg, prefixo, cl
             (usuario, id_midia),
         )
 
-    midias = client.get(f'/api/midias?tipo=jogo&busca={prefixo}&ordem=nota_media').get_json()['midias']
+    midias = client.get(f'/api/midias?tipo=jogo&busca={prefixo}&ordem=nota_media').get_json()['itens']
     assert [m['id_midia'] for m in midias] == [so_fonte, avaliada]
     assert (midias[0]['nota_fonte'], midias[0]['origem_nota'], midias[0]['nota_media']) == (9.9, 'RAWG', None)
 
@@ -109,7 +109,7 @@ def test_nota_media_recalculada_ao_criar_editar_e_apagar_avaliacao(pg, prefixo, 
     criada = client.post('/api/avaliacoes', headers=cabecalho[ana], json={'id_midia': anime, 'nota': 8})
     assert criada.status_code == 201 and criada.get_json()['nota_media_atualizada'] == 8.0
     id_ana = criada.get_json()['id_avaliacao']
-    client.post('/api/avaliacoes', headers=cabecalho[bia], json={'id_midia': anime, 'nota': '9,5'})
+    client.post('/api/avaliacoes', headers=cabecalho[bia], json={'id_midia': anime, 'nota': 9.5})
     assert notas() == (8.75, 2, 5.0)
 
     editada = client.put(f'/api/avaliacoes/{id_ana}', headers=cabecalho[ana], json={'nota': 10})
@@ -123,7 +123,7 @@ def test_nota_media_recalculada_ao_criar_editar_e_apagar_avaliacao(pg, prefixo, 
     client.delete(f'/api/avaliacoes/{id_ana}', headers=cabecalho[ana])
     assert notas() == (9.5, 1, 5.0)
 
-    id_bia = client.get(f'/api/avaliacoes/{anime}').get_json()['avaliacoes'][0]['id_avaliacao']
+    id_bia = client.get(f'/api/avaliacoes/{anime}').get_json()['itens'][0]['id_avaliacao']
     client.delete(f'/api/avaliacoes/{id_bia}', headers=cabecalho[bia])
     # Sem Avaliações a Nota média é NULL (não 0); a Nota da fonte fica.
     assert notas() == (None, None, 5.0)
@@ -139,5 +139,5 @@ def test_avaliacao_repetida_responde_409_e_nao_muda_a_nota(pg, prefixo, client, 
     repetida = client.post('/api/avaliacoes', headers=cabecalho, json={'id_midia': anime, 'nota': 3})
 
     assert repetida.status_code == 409
-    assert repetida.get_json() == {'erro': 'Você já avaliou esta mídia'}
+    assert repetida.get_json() == {'erro': 'Você já avaliou esta mídia', 'codigo': 'conflito'}
     assert client.get(f'/api/midias/{anime}').get_json()['nota_media'] == 8.0

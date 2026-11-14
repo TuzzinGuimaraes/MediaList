@@ -12,15 +12,16 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from pydantic import ValidationError as PydanticValidationError
 from werkzeug.exceptions import HTTPException
 
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
-from parametros import ErroEntrada
+from contrato import CodigoErro, detalhes_de_validacao, registrar_documentacao, resposta_erro
 from routes import auth as rotas_auth
 from routes import (
     auth_bp,
@@ -121,6 +122,9 @@ app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')
 app.register_blueprint(preferencias_bp, url_prefix='/api/preferencias')
 app.register_blueprint(utils_bp, url_prefix='/api')
 
+# Depois dos blueprints: o OpenAPI é gerado a partir das rotas registradas.
+registrar_documentacao(app, EM_PRODUCAO)
+
 
 @jwt.token_in_blocklist_loader
 def check_if_token_revoked(jwt_header, jwt_payload):
@@ -142,7 +146,34 @@ def usuario_do_token(jwt_header, jwt_payload):
 @jwt.user_lookup_error_loader
 def usuario_sem_acesso(jwt_header, jwt_payload):
     # 401, não 403: o cliente trata como sessão encerrada (refresh ou login).
-    return jsonify({'erro': 'Sessão inválida: Usuário inexistente ou desativado'}), 401
+    return resposta_erro(401, CodigoErro.SESSAO_INVALIDA, 'Sessão inválida: Usuário inexistente ou desativado')
+
+
+# Loaders do flask-jwt no envelope de erro (sem `msg`); os status são os padrões
+# da biblioteca, inclusive o 422 do token malformado.
+@jwt.unauthorized_loader
+def sem_token(_motivo):
+    return resposta_erro(401, CodigoErro.NAO_AUTENTICADO, 'Faça login para continuar')
+
+
+@jwt.invalid_token_loader
+def token_malformado(_motivo):
+    return resposta_erro(422, CodigoErro.TOKEN_INVALIDO, 'Token inválido')
+
+
+@jwt.expired_token_loader
+def token_expirado(_jwt_header, _jwt_payload):
+    return resposta_erro(401, CodigoErro.TOKEN_EXPIRADO, 'Sessão expirada')
+
+
+@jwt.revoked_token_loader
+def token_revogado(_jwt_header, _jwt_payload):
+    return resposta_erro(401, CodigoErro.TOKEN_REVOGADO, 'Sessão encerrada')
+
+
+@jwt.needs_fresh_token_loader
+def token_nao_recente(_jwt_header, _jwt_payload):
+    return resposta_erro(401, CodigoErro.TOKEN_INVALIDO, 'Entre de novo para continuar')
 
 
 @jwt.token_verification_loader
@@ -155,56 +186,63 @@ def token_serve_para_a_rota(jwt_header, jwt_payload):
 
 @jwt.token_verification_failed_loader
 def token_fora_da_rota(jwt_header, jwt_payload):
-    return jsonify({'erro': 'Token inválido para esta operação'}), 401
+    return resposta_erro(401, CodigoErro.TOKEN_INVALIDO, 'Token inválido para esta operação')
+
+
+# ============================================
+# Erros no envelope {erro, codigo, detalhes?} (ADR 0011)
+# ============================================
+
+@app.errorhandler(PydanticValidationError)
+def entrada_fora_do_modelo(erro):
+    """Entrada recusada pelo SpecTree (ou por um modelo Pydantic na rota)."""
+    return resposta_erro(
+        400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos', detalhes_de_validacao(erro.errors(include_url=False)),
+    )
 
 
 @app.errorhandler(Conflito)
 def conflito(_erro):
-    return jsonify({'erro': 'Registro já existe'}), 409
+    return resposta_erro(409, CodigoErro.CONFLITO, 'Registro já existe')
 
 
 @app.errorhandler(Integridade)
 def integridade(_erro):
-    return jsonify({'erro': 'Dados inválidos'}), 400
+    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos')
 
 
 @app.errorhandler(Indisponivel)
 def indisponivel(_erro):
-    return jsonify({'erro': 'Serviço temporariamente indisponível'}), 503
+    return resposta_erro(503, CodigoErro.INDISPONIVEL, 'Serviço temporariamente indisponível')
 
 
-@app.errorhandler(ErroEntrada)
-def erro_entrada(erro):
-    return jsonify({'erro': str(erro)}), 400
+# Erros HTTP do Flask/Werkzeug (404 de rota, 405, abort(...)): status -> (código, mensagem).
+ERROS_HTTP = {
+    400: (CodigoErro.REQUISICAO_INVALIDA, 'Requisição inválida'),
+    401: (CodigoErro.NAO_AUTENTICADO, 'Não autorizado'),
+    403: (CodigoErro.ACESSO_NEGADO, 'Acesso negado'),
+    404: (CodigoErro.NAO_ENCONTRADO, 'Endpoint não encontrado'),
+    405: (CodigoErro.METODO_NAO_PERMITIDO, 'Método não permitido'),
+    409: (CodigoErro.CONFLITO, 'Registro já existe'),
+}
+
+
+@app.errorhandler(HTTPException)
+def erro_http(erro):
+    if erro.response is not None:  # abort(resposta): a resposta já está pronta
+        return erro.response
+    status = erro.code or 500
+    if status >= 500:
+        return resposta_erro(status, CodigoErro.ERRO_INTERNO, 'Erro interno do servidor')
+    codigo, mensagem = ERROS_HTTP.get(status, (CodigoErro.REQUISICAO_INVALIDA, 'Requisição inválida'))
+    return resposta_erro(status, codigo, mensagem)
 
 
 @app.errorhandler(Exception)
-def erro_inesperado(erro):
+def erro_inesperado(_erro):
     """Qualquer outra exceção: log com traceback, 500 sem detalhe para o cliente."""
-    if isinstance(erro, HTTPException):
-        return erro
     logger.exception('Erro não tratado em %s %s', request.method, request.path)
-    return jsonify({'erro': 'Erro interno do servidor'}), 500
-
-
-@app.errorhandler(404)
-def not_found(_error):
-    return jsonify({'erro': 'Endpoint não encontrado'}), 404
-
-
-@app.errorhandler(500)
-def internal_error(_error):
-    return jsonify({'erro': 'Erro interno do servidor'}), 500
-
-
-@app.errorhandler(401)
-def unauthorized(_error):
-    return jsonify({'erro': 'Não autorizado'}), 401
-
-
-@app.errorhandler(403)
-def forbidden(_error):
-    return jsonify({'erro': 'Acesso negado'}), 403
+    return resposta_erro(500, CodigoErro.ERRO_INTERNO, 'Erro interno do servidor')
 
 
 if __name__ == '__main__':

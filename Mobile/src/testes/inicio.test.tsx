@@ -2,6 +2,9 @@ import { userEvent } from '@testing-library/react-native';
 import { fireEvent, screen, within } from 'expo-router/testing-library';
 import { AccessibilityInfo } from 'react-native';
 
+import { POR_CARROSSEL } from '../api/inicio';
+import type { Midia } from '../api/tipos';
+import { pagina, rotasSemAvaliacoes } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
 import { anime, fullmetal, itemDaLista as item, jogo, manga, popular } from './midias';
@@ -256,7 +259,7 @@ describe('Início', () => {
       ...catalogo(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
-      'GET /avaliacoes/MID-ANM-2026-20053': { status: 200, corpo: { avaliacoes: [] } },
+      ...rotasSemAvaliacoes('MID-ANM-2026-20053'),
       'GET /lista': { status: 200, corpo: { lista: [] } },
     });
     const app = await abrirLogado();
@@ -278,7 +281,7 @@ describe('Início: destaques e carrosséis', () => {
   const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Monster', generos: 'Drama' });
   const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_portugues: 'Vagabond', generos: 'Ação' });
 
-  const midias = (...lista: unknown[]) => ({ status: 200, corpo: { midias: lista } });
+  const midias = (...lista: Midia[]) => pagina(lista, { por_pagina: POR_CARROSSEL });
 
   function completo() {
     return {
@@ -377,8 +380,8 @@ describe('Início: destaques e carrosséis', () => {
   it('sem Em alta, só o carrossel dele some: os outros continuam', async () => {
     simularFetch({
       ...completo(),
-      'GET /midias/trending?tipo=anime&limite=10': midias(),
-      'GET /midias/trending?tipo=manga&limite=10': midias(),
+      'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: [] } },
+      'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: [] } },
     });
 
     await abrirLogado();

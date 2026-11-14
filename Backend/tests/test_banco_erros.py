@@ -44,7 +44,7 @@ def test_conexao_perdida_continua_indisponivel():
 
 def test_rota_responde_500_em_deadlock(client, monkeypatch):
     t = banco.Transacao(_ConexaoQueFalha(errors.DeadlockDetected('deadlock detected')))
-    monkeypatch.setattr('routes.avaliacoes.avaliacoes.listar', lambda _id: t.consultar('x'))
+    monkeypatch.setattr('routes.avaliacoes.avaliacoes.listar', lambda *_: t.consultar('x'))
 
     resposta = client.get('/api/avaliacoes/qualquer')
 

@@ -8,14 +8,14 @@ import { usePosicaoTop10 } from '../api/midias';
 import type { CartaoMidia, Midia } from '../api/tipos';
 import { estadoDe, nomeDoTipo } from '../dominio/estadoConsumo';
 import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '../dominio/midia';
-import { emLancamento } from '../dominio/situacao';
+import { type ComSituacao, emLancamento } from '../dominio/situacao';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
 import { Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
 import { Toque } from './Toque';
 
-/** A listagem pode trazer os campos completos (Em alta traz; Populares não). */
-type MidiaDoCard = CartaoMidia & Partial<Pick<Midia, 'banner_url' | 'status_anime' | 'status_manga' | 'status_jogo'>>;
+/** A listagem pode trazer os campos completos (Em alta e a Lista trazem; Populares não). */
+type MidiaDoCard = CartaoMidia & Partial<Pick<Midia, 'banner_url'>> & ComSituacao;
 
 type Props = {
   midia: MidiaDoCard;

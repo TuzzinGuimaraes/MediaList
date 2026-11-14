@@ -27,7 +27,8 @@ def banco_isolado(monkeypatch):
 
 @pytest.fixture
 def app():
-    flask_app.config.update(TESTING=True)
+    # Resposta fora do modelo do contrato falha o teste (500), em vez de só ir para o log.
+    flask_app.config.update(TESTING=True, CONTRATO_RESPOSTA_ESTRITA=True)
     return flask_app
 
 

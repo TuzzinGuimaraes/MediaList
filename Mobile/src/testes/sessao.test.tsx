@@ -1,6 +1,8 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import * as SecureStore from 'expo-secure-store';
 
+import type { NivelAcesso, RespostaMe, RespostaPermissoes } from '../api/tipos';
+import { erro } from './contrato';
 import { type Requisicao, type Resposta, loginOk, semConexao, simularFetch } from './fetchSimulado';
 import { APP, aba, entrarPeloLogin as entrar, preencherLogin } from './sessao';
 
@@ -8,17 +10,27 @@ async function abrirApp() {
   return renderRouter(APP, { initialUrl: '/' });
 }
 
-const expirado: Resposta = { status: 401, corpo: { msg: 'Token has expired' } };
+const expirado: Resposta = erro(401, 'token_expirado', 'Sessão expirada');
 
 /** Rotas do Perfil: respondem só a quem manda o access token válido. */
-function perfilResponde(accessValido: string, nivel = 'usuario') {
-  const exige = (corpo: unknown) => (req: Requisicao) =>
+function perfilResponde(accessValido: string, nivel: NivelAcesso = 'usuario') {
+  const exige = (corpo: RespostaMe | RespostaPermissoes) => (req: Requisicao) =>
     req.autorizacao === `Bearer ${accessValido}` ? { status: 200, corpo } : expirado;
+  const pode = nivel !== 'usuario';
   return {
     'GET /auth/me': exige({
       usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
     }),
-    'GET /usuario/permissoes': exige({ permissoes: { nivel_acesso: nivel, grupos: 'Usuários' } }),
+    'GET /usuario/permissoes': exige({
+      permissoes: {
+        nivel_acesso: nivel,
+        grupos: 'Usuários',
+        pode_criar: pode,
+        pode_editar: pode,
+        pode_deletar: pode,
+        pode_moderar: pode,
+      },
+    }),
   };
 }
 
@@ -37,7 +49,7 @@ describe('sessão autenticada', () => {
   });
 
   it('com senha errada, mostra a mensagem da API e continua no login', async () => {
-    simularFetch({ 'POST /auth/login': { status: 401, corpo: { erro: 'Email ou senha incorretos' } } });
+    simularFetch({ 'POST /auth/login': erro(401, 'nao_autenticado', 'Email ou senha incorretos') });
 
     await abrirApp();
     await preencherLogin('ana@exemplo.com', 'errada');
@@ -81,7 +93,7 @@ describe('renovação da sessão', () => {
   const renovaPara = (access: string, refresh: string) => (req: Requisicao) =>
     req.corpo?.refresh_token === 'R1'
       ? { status: 200, corpo: { access_token: access, refresh_token: refresh } }
-      : { status: 401, corpo: { erro: 'Refresh token inválido' } };
+      : erro(401, 'token_invalido', 'Refresh token inválido');
 
   it('com o access token expirado, renova em silêncio e repete a requisição', async () => {
     const api = simularFetch({
@@ -153,7 +165,7 @@ describe('renovação da sessão', () => {
   });
 
   it.each([
-    ['com 5xx', () => ({ status: 503, corpo: { erro: 'Serviço indisponível' } }), 'Serviço indisponível'],
+    ['com 5xx', () => (erro(503, 'indisponivel', 'Serviço indisponível')), 'Serviço indisponível'],
     ['sem rede', semConexao, 'Sem conexão com o servidor.'],
   ])('se a renovação falha %s, mantém a sessão e "Tentar de novo" renova', async (_caso, falha, aviso) => {
     let servidorOk = false;
@@ -212,7 +224,7 @@ describe('renovação da sessão', () => {
 
 describe('casos de borda da sessão', () => {
   it('Usuário desativado vê o aviso no login', async () => {
-    simularFetch({ 'POST /auth/login': { status: 403, corpo: { erro: 'Usuário desativado' } } });
+    simularFetch({ 'POST /auth/login': erro(403, 'acesso_negado', 'Usuário desativado') });
 
     await abrirApp();
     await preencherLogin('ana@exemplo.com', 'segredo1');
@@ -305,7 +317,7 @@ describe('criar conta', () => {
 
   it('com email já usado, mostra a mensagem da API', async () => {
     simularFetch({
-      'POST /auth/registro': { status: 400, corpo: { erro: 'Email já cadastrado ou erro ao criar usuário' } },
+      'POST /auth/registro': erro(409, 'conflito', 'Email já cadastrado ou erro ao criar usuário'),
     });
 
     await abrirRegistro();

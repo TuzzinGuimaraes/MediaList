@@ -7,6 +7,9 @@ import ListEditorModal from '../components/media/ListEditorModal';
 import { STATUS_COLORS, STATUS_LABELS } from '../constants/mediaStatus';
 import { notasDaMidia } from '../constants/notas';
 
+// Avaliações que o detalhe mostra: só a 1ª página.
+const AVALIACOES_NA_TELA = 10;
+
 const blocoEspecifico = (midia) => {
     switch (midia.tipo) {
         case 'anime':
@@ -47,8 +50,10 @@ const MediaDetailPage = () => {
     const { apiCall } = useApi();
     const [midia, setMidia] = useState(null);
     const [avaliacoes, setAvaliacoes] = useState([]);
+    const [totalAvaliacoes, setTotalAvaliacoes] = useState(0);
     const [listaItem, setListaItem] = useState(null);
     const [distribuicao, setDistribuicao] = useState([]);
+    const [notasPorFaixa, setNotasPorFaixa] = useState([]);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState('');
     const [listEditorOpen, setListEditorOpen] = useState(false);
@@ -57,21 +62,21 @@ const MediaDetailPage = () => {
         setLoading(true);
         setErro('');
         try {
-            const [midiaData, avalData, listaData, distData] = await Promise.all([
+            const [midiaData, avalData, notasData, listaData, distData] = await Promise.all([
                 apiCall(`/midias/${id}`),
-                apiCall(`/avaliacoes/${id}`).catch(() => ({ avaliacoes: [] })),
+                // Só a 1ª página (as que a tela mostra); o contador usa o `total`.
+                apiCall(`/avaliacoes/${id}?por_pagina=${AVALIACOES_NA_TELA}`).catch(() => ({ itens: [], total: 0 })),
+                // A distribuição das notas vem pronta, das Avaliações de todas as páginas.
+                apiCall(`/midias/${id}/notas`).catch(() => ({ distribuicao: [] })),
                 apiCall('/lista').catch(() => ({ lista: [] })),
                 apiCall(`/midias/${id}/distribuicao`).catch(() => ({ distribuicao: [] })),
             ]);
 
-            const m = midiaData.id_midia ? midiaData : (midiaData.midia || midiaData);
-            if (!m.generos && m.generos_lista) {
-                m.generos = m.generos_lista;
-            } else if (typeof m.generos === 'string' && m.generos) {
-                m.generos = m.generos.split(',').map(g => g.trim()).filter(Boolean);
-            }
-            setMidia(m);
-            setAvaliacoes(avalData.avaliacoes || []);
+            // `generos` é o texto 'Ação, Drama'; `generos_lista` já vem separado.
+            setMidia({ ...midiaData, generos: midiaData.generos_lista || [] });
+            setAvaliacoes(avalData.itens);
+            setTotalAvaliacoes(avalData.total);
+            setNotasPorFaixa(notasData.distribuicao || []);
             setDistribuicao(distData.distribuicao || []);
 
             const lista = listaData.lista || [];
@@ -94,16 +99,12 @@ const MediaDetailPage = () => {
         setListEditorOpen(false);
     };
 
-    // Score distribution (1-10 buckets)
-    const scoreDistribution = useMemo(() => {
-        const buckets = {};
-        for (let i = 1; i <= 10; i++) buckets[i] = 0;
-        avaliacoes.forEach(av => {
-            const nota = Math.round(Number(av.nota));
-            if (nota >= 1 && nota <= 10) buckets[nota]++;
-        });
-        return Object.entries(buckets).map(([score, count]) => ({ score: Number(score), count }));
-    }, [avaliacoes]);
+    // Faixas de 1 a 10 de GET /midias/<id>/notas, no formato do gráfico.
+    const scoreDistribution = useMemo(
+        () => notasPorFaixa.map(({ nota, total }) => ({ score: nota, count: total })),
+        [notasPorFaixa],
+    );
+    const temNotas = scoreDistribution.some((faixa) => faixa.count > 0);
 
     if (loading) {
         return (
@@ -195,7 +196,7 @@ const MediaDetailPage = () => {
                             ))}
                             <div className="flex items-center gap-1.5">
                                 <MessageSquare size={16} className="text-accent-blue" />
-                                <span className="font-bold text-text-bright">{avaliacoes.length}</span>
+                                <span className="font-bold text-text-bright">{totalAvaliacoes}</span>
                                 <span className="text-xs text-text-secondary">Avaliações</span>
                             </div>
                             {midia.total_usuarios > 0 && (
@@ -241,7 +242,7 @@ const MediaDetailPage = () => {
                                     <div className="flex flex-wrap gap-1 mt-1">
                                         {midia.generos.map((g, i) => (
                                             <span key={i} className="bg-accent-blue/15 text-accent-blue text-xs px-2 py-0.5 rounded">
-                                                {typeof g === 'string' ? g : g.nome}
+                                                {g}
                                             </span>
                                         ))}
                                     </div>
@@ -291,7 +292,7 @@ const MediaDetailPage = () => {
                         )}
 
                         {/* Score Distribution */}
-                        {avaliacoes.length > 0 && (
+                        {temNotas && (
                             <div className="bg-dark-secondary rounded-md p-5">
                                 <h3 className="text-sm font-semibold text-text-bright mb-4">Score Distribution</h3>
                                 <ResponsiveContainer width="100%" height={180}>
@@ -311,7 +312,7 @@ const MediaDetailPage = () => {
                         {/* Reviews */}
                         <div>
                             <h3 className="text-lg font-semibold text-text-bright mb-4">
-                                {avaliacoes.length > 0 ? `Avaliações (${avaliacoes.length})` : 'Sem avaliações'}
+                                {totalAvaliacoes > 0 ? `Avaliações (${totalAvaliacoes})` : 'Sem avaliações'}
                             </h3>
                             {avaliacoes.length === 0 ? (
                                 <div className="bg-dark-secondary rounded-md p-8 text-center">
@@ -320,7 +321,7 @@ const MediaDetailPage = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {avaliacoes.slice(0, 10).map(av => (
+                                    {avaliacoes.map(av => (
                                         <div key={av.id_avaliacao} className="bg-dark-secondary rounded-md p-4">
                                             <div className="flex items-start justify-between mb-2">
                                                 <div className="flex items-center gap-2">

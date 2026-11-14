@@ -4,47 +4,45 @@ Blueprint de Notícias.
 `autor` sai como o nome do Usuário que publicou (`noticias.id_autor`); Notícia
 de Usuário apagado sai com 'Admin', o autor padrão de antes.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from spectree import Response
 
 from banco import consultar, consultar_um
+from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, deslocamento, montar_pagina
 from decorators import permission_required
-from parametros import POR_PAGINA_MAX, ler_int
+from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
 noticias_bp = Blueprint('noticias', __name__)
 
 
 @noticias_bp.route('', methods=['GET'])
-def listar_noticias():
-    """As Notícias mais recentes."""
-    limite = ler_int('limite', 10, minimo=1, maximo=POR_PAGINA_MAX)
+@contrato.validate(resp=Response(HTTP_200=Pagina[Noticia]), tags=['noticias'])
+def listar_noticias(query: ConsultaPaginada):
+    """Uma página das Notícias, mais recentes primeiro."""
     noticias = consultar(
         """
-        SELECT n.titulo, n.conteudo, COALESCE(u.nome_completo, 'Admin') AS autor,
-               n.categoria, n.tags, n.imagem_url, n.data_publicacao, n.visualizacoes
+        SELECT n.id_noticia, n.titulo, n.conteudo, COALESCE(u.nome_completo, 'Admin') AS autor,
+               n.categoria, n.tags, n.imagem_url, n.data_publicacao
         FROM noticias n
         LEFT JOIN usuarios u ON u.id_usuario = n.id_autor
-        ORDER BY n.data_publicacao DESC
-        LIMIT %s
+        ORDER BY n.data_publicacao DESC, n.id_noticia DESC
+        LIMIT %s OFFSET %s
         """,
-        (limite,),
+        (query.por_pagina, deslocamento(query)),
     )
-    return jsonify({'noticias': noticias}), 200
+    total = consultar_um('SELECT count(*) AS total FROM noticias')['total']
+    return montar_pagina(noticias, total, query.pagina, query.por_pagina)
 
 
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('criar')
-def criar_noticia():
+@contrato.validate(
+    resp=Response(HTTP_201=NoticiaCriada, **ERROS_COM_PERMISSAO), tags=['noticias'], security=AUTENTICADO,
+)
+def criar_noticia(json: CorpoNoticia):
     """Criar Notícia; o autor é o Usuário logado."""
-    data = request.get_json(silent=True) or {}
-    if not data.get('titulo'):
-        return jsonify({'erro': 'Título é obrigatório'}), 400
-
-    tags = data.get('tags') or []
-    if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
-        return jsonify({'erro': 'Tags devem ser uma lista de textos'}), 400
-
     criada = consultar_um(
         """
         INSERT INTO noticias (titulo, conteudo, id_autor, categoria, tags, imagem_url)
@@ -52,12 +50,12 @@ def criar_noticia():
         RETURNING id_noticia
         """,
         (
-            data['titulo'],
-            data.get('conteudo') or '',
+            json.titulo,
+            json.conteudo or '',
             get_jwt_identity(),
-            data.get('categoria') or 'geral',
-            tags,
-            data.get('imagem_url') or None,
+            json.categoria or 'geral',
+            json.tags or [],
+            json.imagem_url or None,
         ),
     )
-    return jsonify({'mensagem': 'Notícia criada!', 'id': criada['id_noticia']}), 201
+    return {'mensagem': 'Notícia criada!', 'id_noticia': criada['id_noticia']}, 201

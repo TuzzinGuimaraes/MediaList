@@ -1,4 +1,5 @@
 """Contrato HTTP comum a todas as rotas: parâmetros, erros e serialização."""
+import json
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -8,9 +9,8 @@ import pytest
 import banco
 from routes import avaliacoes as avaliacoes_routes
 from routes import midias as midias_routes
-from routes import usuario as usuario_routes
 
-from .helpers import FakeBanco, FakeCatalogo
+from .helpers import FakeCatalogo
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def test_pagina_que_nao_e_numero_responde_400(client):
     response = client.get('/api/midias?pagina=abc')
 
     assert response.status_code == 400
-    assert 'pagina' in response.get_json()['erro']
+    assert response.get_json()['detalhes'] == {'pagina': 'Tipo inválido'}
 
 
 def test_pagina_zero_responde_400(client):
@@ -96,7 +96,7 @@ def test_erro_inesperado_responde_500_sem_detalhe(client, auth_headers, avaliaca
     response = client.post('/api/avaliacoes', headers=auth_headers, json=AVALIACAO)
 
     assert response.status_code == 500
-    assert response.get_json() == {'erro': 'Erro interno do servidor'}
+    assert response.get_json() == {'erro': 'Erro interno do servidor', 'codigo': 'erro_interno'}
     assert 'segredo interno' in caplog.text
 
 
@@ -105,31 +105,31 @@ def test_rota_inexistente_continua_404(client):
 
 
 def test_metodo_nao_permitido_continua_405(client):
-    assert client.delete('/api/health').status_code == 405
+    response = client.delete('/api/health')
+
+    assert response.status_code == 405
+    assert response.get_json() == {'erro': 'Método não permitido', 'codigo': 'metodo_nao_permitido'}
 
 
 # ============================================
 # Serialização
 # ============================================
 
-def test_json_com_datas_iso_e_numeros(client, auth_headers, monkeypatch):
-    id_usuario = uuid.UUID('0190a3b2-0000-7000-8000-0000000000aa')
-    FakeBanco({'vw_perfil_usuario': {
-        'id_usuario': id_usuario,
-        'data_cadastro': datetime(2026, 11, 13, 10, 30, tzinfo=timezone.utc),
-        'data_nascimento': date(2000, 1, 2),
-        'nota_media_usuario': Decimal('8.50'),
-        'total_midias': 3,
-    }}).instalar(monkeypatch, usuario_routes)
+def test_json_com_datas_iso_e_numeros(app):
+    """Fora do contrato (rota sem modelo, `jsonify`): o provedor JSON do app."""
+    with app.app_context():
+        corpo = app.json.dumps({
+            'id': uuid.UUID('0190a3b2-0000-7000-8000-0000000000aa'),
+            'instante': datetime(2026, 11, 13, 10, 30, tzinfo=timezone.utc),
+            'data': date(2000, 1, 2),
+            'nota': Decimal('8.50'),
+        })
 
-    perfil = client.get('/api/usuario/perfil', headers=auth_headers).get_json()['perfil']
-
-    assert perfil == {
-        'id_usuario': '0190a3b2-0000-7000-8000-0000000000aa',
-        'data_cadastro': '2026-11-13T10:30:00+00:00',
-        'data_nascimento': '2000-01-02',
-        'nota_media_usuario': 8.5,
-        'total_midias': 3,
+    assert json.loads(corpo) == {
+        'id': '0190a3b2-0000-7000-8000-0000000000aa',
+        'instante': '2026-11-13T10:30:00+00:00',
+        'data': '2000-01-02',
+        'nota': 8.5,
     }
 
 

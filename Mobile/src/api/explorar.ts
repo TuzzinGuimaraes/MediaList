@@ -14,7 +14,7 @@ export type FiltrosBusca = {
   busca: string;
 };
 
-/** GET /midias página a página; a próxima só existe se a última veio cheia. */
+/** GET /midias página a página; a próxima só existe enquanto as já lidas não somam o `total`. */
 export function useBuscaMidias(filtros: FiltrosBusca) {
   const { cliente } = useSessao();
   return useInfiniteQuery({
@@ -28,9 +28,9 @@ export function useBuscaMidias(filtros: FiltrosBusca) {
       params.set('por_pagina', String(POR_PAGINA));
       return cliente.requisitar<PaginaMidias>(`/midias?${params}`);
     },
-    getNextPageParam: (ultima, _todas, numero) =>
-      ultima.midias.length < POR_PAGINA ? undefined : numero + 1,
-    select: (dados) => dados.pages.flatMap((p) => p.midias),
+    getNextPageParam: (ultima) =>
+      ultima.pagina * ultima.por_pagina >= ultima.total ? undefined : ultima.pagina + 1,
+    select: (dados) => dados.pages.flatMap((p) => p.itens),
   });
 }
 

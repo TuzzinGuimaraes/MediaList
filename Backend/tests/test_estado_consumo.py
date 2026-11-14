@@ -86,3 +86,9 @@ def test_uniao_bate_com_o_enum_do_banco():
         'jogando', 'zerado', 'platinado', 'na_fila',
     }
     assert set(ec.ROTULOS_VALIDOS) == enum_do_ddl
+
+
+def test_rotulo_de_estado_do_contrato_e_o_mesmo_conjunto_dos_rotulos_validos():
+    from typing import get_args
+
+    assert frozenset(get_args(ec.RotuloDeEstado)) == ec.ROTULOS_VALIDOS

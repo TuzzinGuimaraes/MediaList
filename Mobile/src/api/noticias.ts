@@ -1,16 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { RespostaNoticias, RespostaNotificacoes } from './tipos';
+import type { PaginaNoticias, RespostaNotificacoes } from './tipos';
 
 const chaveNotificacoes = ['notificacoes'] as const;
 
+/** As 20 Notícias mais recentes (a 1ª página; o app não pagina as Notícias). */
 export function useNoticias() {
   const { cliente } = useSessao();
   return useQuery({
     queryKey: ['noticias'],
-    queryFn: () => cliente.requisitar<RespostaNoticias>('/noticias?limite=20'),
-    select: (r) => r.noticias,
+    queryFn: () => cliente.requisitar<PaginaNoticias>('/noticias?por_pagina=20'),
+    select: (r) => r.itens,
   });
 }
 

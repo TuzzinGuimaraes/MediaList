@@ -8,14 +8,28 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, jwt_required
+from spectree import Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from banco import Conflito, consultar_um, executar, transacao
 from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from decorators import get_user_permissions
 from repositories import AcessoRepository, RefreshTokenRepository
+from schemas.auth import (
+    CorpoEsqueciSenha,
+    CorpoLogin,
+    CorpoLogout,
+    CorpoRedefinirSenha,
+    CorpoRefresh,
+    CorpoRegistro,
+    RespostaLogin,
+    RespostaMe,
+    RespostaRefresh,
+    UsuarioCriado,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,22 +82,17 @@ def _revogar_access(claims):
 # ============================================
 
 @auth_bp.route('/registro', methods=['POST'])
-def registro():
+@contrato.validate(
+    resp=Response(HTTP_201=UsuarioCriado, HTTP_409=Erro, HTTP_500=Erro), tags=['auth'],
+)
+def registro(json: CorpoRegistro):
     """Registrar novo usuário"""
-    data = request.get_json(silent=True)
-    if not data:
-        return jsonify({'erro': 'Dados não fornecidos'}), 400
-
-    required_fields = ['nome_completo', 'email', 'senha']
-    if not all(field in data for field in required_fields):
-        return jsonify({'erro': 'Campos obrigatórios faltando'}), 400
-
     params = (
-        data['nome_completo'],
-        data['email'],
-        generate_password_hash(data['senha']),
-        data.get('data_nascimento'),
-        data.get('biografia', ''),
+        json.nome_completo,
+        json.email,
+        generate_password_hash(json.senha),
+        json.data_nascimento,
+        json.biografia,
     )
 
     # Usuário e grupo padrão são criados na mesma transação: um usuário sem
@@ -109,34 +118,28 @@ def registro():
                 (user_id, grupo['id_grupo']),
             )
     except Conflito:
-        return jsonify({'erro': 'Email já cadastrado'}), 409
+        return resposta_erro(409, CodigoErro.CONFLITO, 'Email já cadastrado')
     except GrupoPadraoAusente:
         logger.error("Grupo padrão '%s' ausente no banco; cadastro abortado", GRUPO_PADRAO)
-        return jsonify({'erro': 'Configuração de grupos inválida'}), 500
+        return resposta_erro(500, CodigoErro.ERRO_INTERNO, 'Configuração de grupos inválida')
 
-    return jsonify({
-        'mensagem': 'Usuário criado com sucesso!',
-        'id_usuario': user_id
-    }), 201
+    return {'mensagem': 'Usuário criado com sucesso!', 'id_usuario': user_id}, 201
 
 
 @auth_bp.route('/login', methods=['POST'])
-def login():
+@contrato.validate(resp=Response(HTTP_200=RespostaLogin, HTTP_401=Erro, HTTP_403=Erro), tags=['auth'])
+def login(json: CorpoLogin):
     """Login de usuário"""
-    data = request.get_json(silent=True)
-    if not data or not data.get('email') or not data.get('senha'):
-        return jsonify({'erro': 'Email e senha são obrigatórios'}), 400
-
     usuario = consultar_um(
         "SELECT id_usuario, nome_completo, email, senha_hash, ativo FROM usuarios WHERE email = %s",
-        (data['email'],),
+        (json.email,),
     )
 
-    if not usuario or not check_password_hash(usuario['senha_hash'], data['senha']):
-        return jsonify({'erro': 'Email ou senha incorretos'}), 401
+    if not usuario or not check_password_hash(usuario['senha_hash'], json.senha):
+        return resposta_erro(401, CodigoErro.NAO_AUTENTICADO, 'Email ou senha incorretos')
 
     if not usuario['ativo']:
-        return jsonify({'erro': 'Usuário desativado'}), 403
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Usuário desativado')
 
     permissions = get_user_permissions(usuario['id_usuario'])
     access_token = create_access_token(identity=usuario['id_usuario'])
@@ -151,48 +154,40 @@ def login():
     # acessou o sistema (antes vinha de um trigger em qualquer UPDATE).
     executar("UPDATE usuarios SET ultimo_acesso = now() WHERE id_usuario = %s", (usuario['id_usuario'],))
 
-    return jsonify({
-        'token': access_token,
+    return {
         'access_token': access_token,
         'refresh_token': refresh_token,
         'usuario': {
             'id': usuario['id_usuario'],
             'nome': usuario['nome_completo'],
             'email': usuario['email'],
-            'nivel_acesso': permissions['nivel_acesso'],
-            'grupos': permissions['grupos'],
-            'permissoes': {
-                'pode_criar': permissions['pode_criar'],
-                'pode_editar': permissions['pode_editar'],
-                'pode_deletar': permissions['pode_deletar'],
-                'pode_moderar': permissions['pode_moderar']
-            }
+            'permissoes': permissions,
         }
-    }), 200
+    }
 
 
 @auth_bp.route('/refresh', methods=['POST'])
-def refresh():
+@contrato.validate(resp=Response(HTTP_200=RespostaRefresh, HTTP_401=Erro, HTTP_403=Erro), tags=['auth'])
+def refresh(json: CorpoRefresh):
     """Trocar um refresh token por um par novo de access + refresh (rotação).
 
     Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de
     qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
     """
-    data = request.get_json(silent=True) or {}
-    token = data.get('refresh_token')
-    if not token or not isinstance(token, str):
-        return jsonify({'erro': 'Refresh token inválido'}), 401
+    token = json.refresh_token
+    if not token:
+        return _refresh_invalido()
 
     atual = refresh_token_repository.buscar_por_hash(_hash_refresh(token))
     if not atual:
-        return jsonify({'erro': 'Refresh token inválido'}), 401
+        return _refresh_invalido()
 
     if not atual['usuario_ativo']:
         # Antes da checagem de revogado: desativar pela moderação já revoga os
         # refresh do Usuário, e a resposta continua a do login (403). A família
         # é revogada para que reativar a conta exija um login novo.
         refresh_token_repository.revogar_familia(atual['familia'])
-        return jsonify({'erro': 'Usuário desativado'}), 403
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Usuário desativado')
 
     if atual['revogado']:
         # Já trocado por um sucessor: alguém está reapresentando um token
@@ -201,26 +196,33 @@ def refresh():
         # só é recusado.
         if atual['substituido_por']:
             refresh_token_repository.revogar_familia(atual['familia'])
-        return jsonify({'erro': 'Refresh token inválido'}), 401
+        return _refresh_invalido()
 
     if atual['expira_em'] <= datetime.now(timezone.utc):
-        return jsonify({'erro': 'Refresh token expirado'}), 401
+        return resposta_erro(401, CodigoErro.TOKEN_EXPIRADO, 'Refresh token expirado')
 
     novo_token, novo_hash, expira_em = _novo_refresh()
     if not refresh_token_repository.rotacionar(atual['id_refresh'], novo_hash, expira_em):
         # Outra requisição rotacionou este token entre a leitura e a troca:
         # é o mesmo caso do reuso.
         refresh_token_repository.revogar_familia(atual['familia'])
-        return jsonify({'erro': 'Refresh token inválido'}), 401
+        return _refresh_invalido()
 
-    return jsonify({
+    return {
         'access_token': create_access_token(identity=atual['id_usuario']),
         'refresh_token': novo_token,
-    }), 200
+    }
+
+
+def _refresh_invalido():
+    return resposta_erro(401, CodigoErro.TOKEN_INVALIDO, 'Refresh token inválido')
 
 
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaMe, HTTP_404=Erro, **ERROS_AUTENTICADA), tags=['auth'], security=AUTENTICADO,
+)
 def obter_usuario_atual():
     """Obter informações do usuário autenticado"""
     usuario = consultar_um(
@@ -228,37 +230,33 @@ def obter_usuario_atual():
         (get_jwt_identity(),),
     )
     if not usuario:
-        return jsonify({'erro': 'Usuário não encontrado'}), 404
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
-    return jsonify({'usuario': usuario}), 200
+    return {'usuario': usuario}
 
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
-def logout():
+@contrato.validate(resp=Response(HTTP_200=Mensagem, **ERROS_AUTENTICADA), tags=['auth'], security=AUTENTICADO)
+def logout(json: CorpoLogout):
     """Fazer logout e revogar o token"""
     _revogar_access(get_jwt())
 
     # Opcional: o app manda o refresh do aparelho para encerrar a sessão
-    # de verdade. Só revoga token do próprio usuário.
-    data = request.get_json(silent=True) or {}
-    refresh_token = data.get('refresh_token')
-    if refresh_token and isinstance(refresh_token, str):
-        refresh_token_repository.revogar(_hash_refresh(refresh_token), get_jwt_identity())
+    # de verdade. Só revoga token do próprio usuário. Sem corpo JSON, `json` é None.
+    if json is not None and json.refresh_token:
+        refresh_token_repository.revogar(_hash_refresh(json.refresh_token), get_jwt_identity())
 
-    return jsonify({'mensagem': 'Logout realizado com sucesso'}), 200
+    return {'mensagem': 'Logout realizado com sucesso'}
 
 
 @auth_bp.route('/esqueci-senha', methods=['POST'])
-def esqueci_senha():
+@contrato.validate(resp=Response(HTTP_200=Mensagem), tags=['auth'])
+def esqueci_senha(json: CorpoEsqueciSenha):
     """Solicitar redefinição de senha"""
-    data = request.get_json(silent=True)
-    if not data or not data.get('email'):
-        return jsonify({'erro': 'Email é obrigatório'}), 400
-
     usuario = consultar_um(
         "SELECT id_usuario, nome_completo, email FROM usuarios WHERE email = %s AND ativo = TRUE",
-        (data['email'],),
+        (json.email,),
     )
 
     if usuario:
@@ -273,35 +271,29 @@ def esqueci_senha():
         if not EM_PRODUCAO:
             logger.info('Token de recuperação para %s: %s', usuario['id_usuario'], token_recuperacao)
 
-    return jsonify({
-        'mensagem': 'Se o email existir, você receberá instruções.'
-    }), 200
+    return {'mensagem': 'Se o email existir, você receberá instruções.'}
 
 
 @auth_bp.route('/redefinir-senha', methods=['POST'])
 @jwt_required()
-def redefinir_senha():
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['auth'], security=AUTENTICADO,
+)
+def redefinir_senha(json: CorpoRedefinirSenha):
     """Redefinir senha com token de recuperação"""
     claims = get_jwt()
     if claims.get('tipo') != 'recuperacao_senha':
-        return jsonify({'erro': 'Token inválido para esta operação'}), 403
-
-    data = request.get_json(silent=True)
-    if not data or not data.get('nova_senha'):
-        return jsonify({'erro': 'Nova senha é obrigatória'}), 400
-
-    nova_senha = data['nova_senha']
-    if len(nova_senha) < 6:
-        return jsonify({'erro': 'Senha deve ter no mínimo 6 caracteres'}), 400
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Token inválido para esta operação')
 
     alterados = executar(
         "UPDATE usuarios SET senha_hash = %s WHERE id_usuario = %s",
-        (generate_password_hash(nova_senha), get_jwt_identity()),
+        (generate_password_hash(json.nova_senha), get_jwt_identity()),
     )
     if not alterados:
-        return jsonify({'erro': 'Usuário não encontrado'}), 404
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
     # Uso único: o mesmo token não redefine a senha de novo.
     _revogar_access(claims)
 
-    return jsonify({'mensagem': 'Senha redefinida com sucesso!'}), 200
+    return {'mensagem': 'Senha redefinida com sucesso!'}

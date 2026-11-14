@@ -1,8 +1,6 @@
 """
 Exports dos schemas.
 """
-from .anime_schema import AnimeSchema
-from .base import ValidationError
 from .estado_consumo import (
     ESTADOS,
     ESTADOS_TERMINAIS,
@@ -15,14 +13,8 @@ from .estado_consumo import (
     rotulo_valido,
     rotulos_do_tipo,
 )
-from .jogo_schema import JogoSchema
-from .manga_schema import MangaSchema
 
 __all__ = [
-    'ValidationError',
-    'AnimeSchema',
-    'MangaSchema',
-    'JogoSchema',
     'ESTADOS',
     'ESTADOS_TERMINAIS',
     'ROTULOS_POR_TIPO',

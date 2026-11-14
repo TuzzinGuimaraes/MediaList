@@ -55,13 +55,12 @@ def login(client, monkeypatch, tokens):
     return _login
 
 
-def test_login_devolve_refresh_token_sem_mudar_o_contrato_antigo(login, tokens):
+def test_login_devolve_access_e_refresh_token(login, tokens):
     data = login()
 
-    assert data['refresh_token']
-    assert data['token'] == data['access_token']
+    assert data['refresh_token'] and data['access_token']
     assert data['usuario']['id'] == ID_USUARIO
-    assert set(data) == {'token', 'access_token', 'refresh_token', 'usuario'}
+    assert set(data) == {'access_token', 'refresh_token', 'usuario'}
 
 
 def test_refresh_token_nunca_e_guardado_em_claro(login, tokens):
@@ -130,13 +129,20 @@ def test_reuso_nao_derruba_outras_sessoes_do_usuario(client, login):
 @pytest.mark.parametrize('corpo', [
     {'refresh_token': 'token-que-nunca-existiu'},
     {'refresh_token': ''},
-    {'refresh_token': 123},
     {},
 ])
 def test_refresh_desconhecido_ou_ausente_da_401(client, corpo):
     response = client.post('/api/auth/refresh', json=corpo)
 
     assert response.status_code == 401
+    assert response.get_json() == {'erro': 'Refresh token inválido', 'codigo': 'token_invalido'}
+
+
+def test_refresh_que_nao_e_texto_responde_400(client):
+    response = client.post('/api/auth/refresh', json={'refresh_token': 123})
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'refresh_token': 'Tipo inválido'}
 
 
 def test_refresh_expirado_da_401(client, login, tokens):

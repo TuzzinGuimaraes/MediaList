@@ -16,7 +16,8 @@ const CreateNoticiaModal = ({ isOpen, onClose, onSave, userName }) => {
         setError('');
         try {
             const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
-            await onSave({ ...formData, autor: userName || 'Admin', tags: tagsArray });
+            // O autor é o Usuário logado: a API não lê `autor` do corpo.
+            await onSave({ ...formData, tags: tagsArray });
             setFormData({ titulo: '', conteudo: '', categoria: 'geral', tags: '', imagem_url: '' });
             onClose();
         } catch (err) {

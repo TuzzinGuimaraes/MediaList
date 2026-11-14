@@ -1,57 +1,47 @@
 """
 Blueprint de lista do usuário: adaptador HTTP de `dominio.lista_pessoal`.
 
-Aqui não há regra de Item de lista. A rota faz três coisas: renomear os aliases
-legados do fio para o nome canônico do campo, chamar o módulo e traduzir o
-`Resultado` para um código HTTP. Escrever regra aqui é o que deixou a lógica
-duplicada em três lugares antes. A única exigência que sobra do lado HTTP é o
-que cada endpoint pede do corpo — `/progresso` sem progresso não é chamada —,
-que é contrato do endpoint, não do Item.
+Aqui não há regra de Item de lista. A rota faz três coisas: receber o corpo já
+validado no formato pelo modelo (`schemas/lista.py`), chamar o módulo com os
+campos que vieram e traduzir o `Resultado` para um código HTTP. Escrever regra
+aqui é o que deixou a lógica duplicada em três lugares antes.
 
 A leitura é a exceção: `obter_lista_usuario` lê de `itens_lista` direto,
 porque não decide nada. Os testes trocam `lista_pessoal` e `itens_lista`.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from spectree import Response
 
+from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
 from repositories.catalogo import Catalogo
 from repositories.itens_lista import ItensLista
+from schemas.lista import (
+    ConsultaLista,
+    EdicaoItemLista,
+    ItemCriado,
+    NovoItemLista,
+    ProgressoItemLista,
+    RespostaLista,
+)
 
 lista_bp = Blueprint('lista', __name__)
 
 itens_lista = ItensLista()
 lista_pessoal = ListaPessoal(itens_lista, Catalogo())
 
-#: Nomes antigos que os clientes ainda mandam -> nome canônico do campo. Só o
-#: adaptador os conhece: o módulo trabalha com um nome por campo.
-#:
-#: O nome canônico enviado junto vence o alias, e entre dois aliases do mesmo
-#: campo vence o primeiro desta lista — `status` antes de `status_visualizacao`.
-ALIASES_LEGADOS = {
-    'id_anime': 'id_midia',
-    'status': 'status_consumo',
-    'status_visualizacao': 'status_consumo',
-    'episodios_assistidos': 'progresso_atual',
-    'data_fim': 'data_conclusao',
-    'notas_pessoais': 'comentario',
-}
-
 #: Resposta única para `nao_encontrado` e `negado`: distinguir os dois revelaria
 #: quais Itens existem nas listas dos outros usuários.
 ERRO_SEM_ACESSO = 'Item não encontrado ou sem permissão'
 
+#: Respostas de erro comuns às rotas de escrita.
+ERROS_DA_ESCRITA = {'HTTP_400': Erro, 'HTTP_403': Erro, **ERROS_AUTENTICADA}
 
-def _normalizar_payload_lista(data: dict | None) -> dict:
-    """Payload com os aliases legados reescritos no nome canônico."""
-    data = data if isinstance(data, dict) else {}
-    payload = {campo: valor for campo, valor in data.items() if campo not in ALIASES_LEGADOS}
 
-    for alias, canonico in ALIASES_LEGADOS.items():
-        if alias in data and canonico not in payload:
-            payload[canonico] = data[alias]
-
-    return payload
+def _campos(corpo) -> dict:
+    """O corpo como o módulo espera: só os campos enviados, datas em texto."""
+    return corpo.model_dump(mode='json', exclude_unset=True)
 
 
 def _resposta(resultado, mensagem: str, status_ok: int = 200):
@@ -60,13 +50,13 @@ def _resposta(resultado, mensagem: str, status_ok: int = 200):
         corpo = {'mensagem': mensagem}
         if resultado.id_lista:
             corpo['id_lista'] = resultado.id_lista
-        return jsonify(corpo), status_ok
+        return corpo, status_ok
 
     if resultado.codigo == INVALIDO:
-        return jsonify({'erro': _erro_legivel(resultado.detalhes), 'detalhes': resultado.detalhes}), 400
+        return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, _erro_legivel(resultado.detalhes), resultado.detalhes)
 
     if resultado.codigo in (NAO_ENCONTRADO, NEGADO):
-        return jsonify({'erro': ERRO_SEM_ACESSO}), 403
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, ERRO_SEM_ACESSO)
 
     # Código novo no módulo sem tradução aqui: melhor 500 do que virar 403 calado.
     raise ValueError(f'Resultado sem tradução HTTP: {resultado.codigo}')
@@ -79,77 +69,83 @@ def _erro_legivel(detalhes: dict) -> str:
     return 'Payload inválido'
 
 
+def _lista(user_id: str, query: ConsultaLista):
+    return {'lista': itens_lista.listar(user_id, tipo=query.tipo, status=query.status_consumo)}
+
+
 @lista_bp.route('', methods=['GET'])
 @jwt_required()
-def obter_lista_usuario():
-    """Obter lista do usuário autenticado, com filtro por tipo."""
-    user_id = get_jwt_identity()
-    tipo = request.args.get('tipo')
-    status = request.args.get('status') or request.args.get('status_consumo')
-    return jsonify({'lista': itens_lista.listar(user_id, tipo=tipo, status=status)}), 200
+@contrato.validate(resp=Response(HTTP_200=RespostaLista, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO)
+def obter_lista_usuario(query: ConsultaLista):
+    """Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado."""
+    return _lista(get_jwt_identity(), query)
 
 
 @lista_bp.route('/<string:target_user_id>', methods=['GET'])
 @jwt_required()
-def obter_lista_usuario_por_id(target_user_id):
-    """Obter lista de um usuário específico."""
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaLista, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+)
+def obter_lista_usuario_por_id(target_user_id, query: ConsultaLista):
+    """Lista pessoal de um Usuário: só o próprio."""
     user_id = get_jwt_identity()
     if target_user_id != user_id:
-        return jsonify({'erro': 'Sem permissão para acessar esta lista'}), 403
-    return obter_lista_usuario()
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Sem permissão para acessar esta lista')
+    return _lista(user_id, query)
+
+
+def _adicionar(corpo: NovoItemLista):
+    resultado = lista_pessoal.adicionar(get_jwt_identity(), _campos(corpo))
+    return _resposta(resultado, 'Mídia adicionada à lista!', status_ok=201)
 
 
 @lista_bp.route('/adicionar', methods=['POST'])
 @jwt_required()
-def adicionar_midia_lista():
-    """Adicionar mídia à lista do usuário."""
-    user_id = get_jwt_identity()
-    payload = _normalizar_payload_lista(request.get_json(silent=True))
-    resultado = lista_pessoal.adicionar(user_id, payload)
-    return _resposta(resultado, 'Mídia adicionada à lista!', status_ok=201)
+@contrato.validate(resp=Response(HTTP_201=ItemCriado, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO)
+def adicionar_midia_lista(json: NovoItemLista):
+    """Pôr uma Mídia na Lista pessoal."""
+    return _adicionar(json)
 
 
 @lista_bp.route('', methods=['POST'])
 @jwt_required()
-def adicionar_midia_lista_v2():
-    """Adicionar mídia à lista sem usar /adicionar."""
-    return adicionar_midia_lista()
+@contrato.validate(resp=Response(HTTP_201=ItemCriado, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO)
+def adicionar_midia_lista_v2(json: NovoItemLista):
+    """Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar)."""
+    return _adicionar(json)
 
 
 @lista_bp.route('/<string:lista_id>/progresso', methods=['PUT'])
 @jwt_required()
-def atualizar_progresso(lista_id):
-    """Atualizar progresso de consumo.
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
+)
+def atualizar_progresso(lista_id, json: ProgressoItemLista):
+    """Atualizar o Progresso de um Item.
 
-    O progresso é o motivo da chamada: sem ele não há o que fazer. O resto —
-    teto, promoção a Concluído, dono do Item — é decisão do módulo.
+    Teto, promoção a Concluído e dono do Item são decisão do módulo.
     """
-    user_id = get_jwt_identity()
-    payload = _normalizar_payload_lista(request.get_json(silent=True))
-    if 'progresso_atual' not in payload:
-        return jsonify({
-            'erro': 'Progresso é obrigatório',
-            'detalhes': {'progresso_atual': 'Campo obrigatório'},
-        }), 400
-
-    resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+    resultado = lista_pessoal.atualizar(get_jwt_identity(), lista_id, _campos(json))
     return _resposta(resultado, 'Progresso atualizado com sucesso!')
 
 
 @lista_bp.route('/<string:lista_id>', methods=['PUT'])
 @jwt_required()
-def atualizar_item_lista(lista_id):
-    """Atualizar item da lista."""
-    user_id = get_jwt_identity()
-    payload = _normalizar_payload_lista(request.get_json(silent=True))
-    resultado = lista_pessoal.atualizar(user_id, lista_id, payload)
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, **ERROS_DA_ESCRITA), tags=['lista'], security=AUTENTICADO,
+)
+def atualizar_item_lista(lista_id, json: EdicaoItemLista):
+    """Gravar os campos enviados num Item."""
+    resultado = lista_pessoal.atualizar(get_jwt_identity(), lista_id, _campos(json))
     return _resposta(resultado, 'Lista atualizada com sucesso!')
 
 
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
 @jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+)
 def remover_item_lista(lista_id):
-    """Remover item da lista."""
-    user_id = get_jwt_identity()
-    resultado = lista_pessoal.remover(user_id, lista_id)
+    """Tirar um Item da Lista pessoal."""
+    resultado = lista_pessoal.remover(get_jwt_identity(), lista_id)
     return _resposta(resultado, 'Mídia removida da lista')

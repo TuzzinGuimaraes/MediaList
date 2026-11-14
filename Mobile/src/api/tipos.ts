@@ -1,273 +1,112 @@
-// Tipos escritos à mão, só para os endpoints que o app usa (Backend/routes/).
+// Tipos da API: reexportados de contrato/api.d.ts, gerado do OpenAPI do Backend com
+// `make api-tipos` (ADR 0011). Não escrever tipo de resposta à mão aqui; os que não vêm
+// da API (CartaoMidia, NotasDaMidia, DadosAvaliacao) são recortes dos gerados.
 
+import type { components } from '../../../contrato/api';
 import type { TipoMidia } from '../dominio/estadoConsumo';
+
+type Esquemas = components['schemas'];
 
 export type { TipoMidia };
 
-export type NivelAcesso = 'admin' | 'moderador' | 'usuario';
+// Erro
 
+/** Envelope de todo erro da API: `{erro, codigo, detalhes?}`. */
+export type Erro = Esquemas['Erro'];
+export type CodigoErro = Esquemas['CodigoErro'];
+
+// Sessão e Usuário
+
+export type NivelAcesso = Esquemas['Permissoes']['nivel_acesso'];
 /** `usuario` da resposta de POST /auth/login. */
-export type UsuarioSessao = {
-  /** uuid. */
-  id: string;
-  nome: string;
-  email: string;
-  nivel_acesso: NivelAcesso;
-  grupos: string | null;
-  /** 0 ou 1: a rota manda o MAX(CASE ... THEN 1 ELSE 0) dos Grupos do Usuário. */
-  permissoes: {
-    pode_criar: number;
-    pode_editar: number;
-    pode_deletar: number;
-    pode_moderar: number;
-  };
-};
-
-/** POST /auth/login. `refresh_token` é null quando o banco não tem a tabela (ADR 0006). */
-export type RespostaLogin = {
-  token: string;
-  access_token: string;
-  refresh_token: string | null;
-  usuario: UsuarioSessao;
-};
-
-/** POST /auth/refresh. */
-export type RespostaRefresh = {
-  access_token: string;
-  refresh_token: string;
-};
-
-/** POST /auth/registro. */
-export type DadosRegistro = {
-  nome_completo: string;
-  email: string;
-  senha: string;
-};
-
-/** GET /auth/me. */
-export type RespostaMe = {
-  usuario: {
-    id_usuario: string;
-    nome_completo: string;
-    email: string;
-    foto_perfil: string | null;
-  };
-};
-
+export type UsuarioSessao = Esquemas['UsuarioDaSessao'];
+/** POST /auth/login. `refresh_token` é null quando o banco não gravou o refresh (ADR 0006). */
+export type RespostaLogin = Esquemas['RespostaLogin'];
+export type RespostaRefresh = Esquemas['RespostaRefresh'];
+/** O que o formulário de registro do app manda em POST /auth/registro. */
+export type DadosRegistro = Pick<Esquemas['CorpoRegistro'], 'nome_completo' | 'email' | 'senha'>;
+export type RespostaRegistro = Esquemas['UsuarioCriado'];
+export type RespostaMe = Esquemas['RespostaMe'];
+export type RespostaPermissoes = Esquemas['RespostaPermissoes'];
 /** GET /usuario/estatisticas: uma linha por Tipo de mídia presente na Lista pessoal. */
-export type RespostaEstatisticas = {
-  estatisticas: {
-    tipo: string;
-    label: string;
-    total_midias: number;
-    concluidos: number;
-    em_andamento: number;
-    /** Média das Notas pessoais do Tipo; null se nenhuma foi dada. */
-    nota_media: number | null;
-    favoritos: number;
-    progresso_total_consumido: number;
-  }[];
-  resumo: {
-    total_midias: number;
-    concluidos: number;
-    em_andamento: number;
-    favoritos: number;
-  };
-};
+export type RespostaEstatisticas = Esquemas['RespostaEstatisticas'];
 
-/** GET /usuario/permissoes. */
-export type RespostaPermissoes = {
-  permissoes: {
-    nivel_acesso: NivelAcesso;
-    grupos: string | null;
-  };
-};
+// Mídias
 
-
-
-/** Fonte da Nota da fonte, derivada do id externo da Mídia. */
-export type OrigemNota = 'AniList' | 'RAWG';
+/** A Mídia das listagens (GET /midias, /midias/trending): os campos de todos os Tipos. */
+export type Midia = Esquemas['Midia'];
+/** GET /midias/<id>: a Mídia com as Atualizações de mídia recentes. */
+export type MidiaDetalhe = Esquemas['MidiaDetalhe'];
+/** Linha de GET /midias/populares (view vw_midias_populares). */
+export type MidiaPopular = Esquemas['MidiaPopular'];
+export type RespostaTrending = Esquemas['RespostaTrending'];
+export type RespostaPopulares = Esquemas['RespostaPopulares'];
+/**
+ * O envelope `Pagina[T]` do contrato (`Backend/contrato.py`): `total` conta todas as páginas.
+ * O OpenAPI só tem as instâncias (`PaginaMidia`, `PaginaNoticia`...), cada uma com nome próprio;
+ * o genérico fica aqui, conferido contra elas logo abaixo.
+ */
+export type Pagina<T> = { itens: T[]; pagina: number; por_pagina: number; total: number };
+/** Uma página de GET /midias. */
+export type PaginaMidias = Esquemas['PaginaMidia'];
+/** GET /midias/<id>/distribuicao: quantos Usuários têm a Mídia em cada Rótulo de estado. */
+export type RespostaDistribuicao = Esquemas['RespostaDistribuicao'];
+export type Genero = Esquemas['Genero'];
+export type RespostaGeneros = Esquemas['RespostaGeneros'];
+export type OrigemNota = NonNullable<Midia['origem_nota']>;
 
 /**
- * As notas de uma Mídia. `nota_media` é a média das Avaliações, null sem elas;
- * `nota_fonte` é a do AniList/RAWG, gravada pela Importação. As duas vêm como número.
+ * Valores de `ordem` de GET /midias que o app usa. `popularidade` fica de fora: é a mesma
+ * chave de `mais_adicionados` (total_usuarios) no Backend.
  */
-export type NotasDaMidia = {
-  nota_media: number | null;
-  nota_fonte?: number | null;
-  origem_nota?: OrigemNota | null;
-};
+export type OrdemCatalogo = Exclude<NonNullable<Esquemas['ConsultaMidias']['ordem']>, 'popularidade'>;
 
-/** A Mídia como vem nas listagens (GET /midias, /midias/trending). */
-export type MidiaResumo = NotasDaMidia & {
-  /** uuid. */
-  id_midia: string;
-  tipo: TipoMidia;
-  /** "Anime", "Mangá", "Jogo". */
-  tipo_label: string;
-  titulo_original: string;
-  titulo_portugues: string | null;
-  poster_url: string | null;
-  nota_media: number | null;
-  total_usuarios: number;
-};
+/** As notas de uma Mídia (CONTEXT.md: Nota média, Nota da fonte), em qualquer listagem. */
+export type NotasDaMidia = Pick<Midia, 'nota_media' | 'nota_fonte' | 'origem_nota'>;
 
-/** O que o card de Mídia lê: serve para qualquer listagem, inclusive populares. */
-export type CartaoMidia = Pick<
-  MidiaResumo,
-  'id_midia' | 'tipo' | 'tipo_label' | 'titulo_original' | 'titulo_portugues' | 'poster_url'
-> &
+/** O que o card de Mídia lê: serve para qualquer listagem (Mídia, populares, Item de lista). */
+export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'poster_url'> &
   NotasDaMidia;
 
-/** Linha de GET /midias/populares (view vw_midias_populares); não traz `total_avaliacoes`. */
-export type MidiaPopular = MidiaResumo & {
-  /** "Aventura, Drama" ou null. */
-  generos: string | null;
-};
+// Avaliações
 
-/** GET /midias/trending e GET /midias/populares. */
-export type RespostaMidias<M = MidiaResumo> = { midias: M[] };
-
-/** GET /midias/<id> e cada item de GET /midias/trending: a Mídia com os campos de todos os Tipos. */
-export type Midia = MidiaResumo & {
-  titulo_ingles: string | null;
-  sinopse: string | null;
-  /** "2023-09-29". */
-  data_lancamento: string | null;
-  banner_url: string | null;
-  /** null quando a Mídia não tem Avaliações (como `nota_media`). */
-  total_avaliacoes: number | null;
-  /** "Aventura, Drama" ou null; `generos_lista` é a mesma coisa já separada. */
-  generos: string | null;
-  generos_lista: string[];
-  // anime
-  numero_episodios: number | null;
-  status_anime: string | null;
-  estudio: string | null;
-  // manga
-  numero_capitulos: number | null;
-  numero_volumes: number | null;
-  status_manga: string | null;
-  autor: string | null;
-  demografia: string | null;
-  // jogo
-  /** "PC, Switch, PS4". */
-  plataformas: string | null;
-  status_jogo: string | null;
-  desenvolvedor: string | null;
-  publicadora: string | null;
-  /** Itens desta Mídia em Concluído ou Platinado (ordem `mais_concluidos`). */
-  total_concluidos: number;
-};
-
-/** GET /midias/<id>/distribuicao: quantos Usuários têm a Mídia em cada Rótulo de estado. */
-export type RespostaDistribuicao = {
-  distribuicao: { status_consumo: string; total: number }[];
-};
-
-/** Cada item de GET /avaliacoes/<id_midia>. Só o que o detalhe lê por enquanto. */
-export type Avaliacao = {
-  id_avaliacao: string;
-  id_usuario: string;
-  /** De 0 a 10, uma casa. */
-  nota: number;
-};
-
-export type RespostaAvaliacoes = { avaliacoes: Avaliacao[] };
-
-/** Cada item de GET /lista: a Mídia mais os campos do Item de lista. */
-export type ItemLista = Midia & {
-  id_lista: string;
-  /** Rótulo de estado, ex.: "assistindo", "zerado". */
-  status_consumo: string;
-  progresso_atual: number | null;
-  progresso_total: number | null;
-  /** Nota pessoal, de 0 a 10 com uma casa. */
-  nota_usuario: number | null;
-  favorito?: boolean;
-  privado?: boolean;
-  /** "2026-10-01" ou null. */
-  data_inicio?: string | null;
-  data_conclusao?: string | null;
-  /** Recontagem. */
-  total_rewatches?: number | null;
-  comentario?: string | null;
-  /** ISO 8601 ("2026-11-06T10:00:00+00:00"): Ordem "adicionado/atualizado recentemente". */
-  data_adicao?: string;
-  data_atualizacao?: string;
-};
-
-export type RespostaLista = { lista: ItemLista[] };
-
-/** Item de GET /noticias (Backend/routes/noticias.py). Datas vêm em ISO 8601 ("2026-11-06T10:00:00+00:00"). */
-export type Noticia = {
-  titulo: string;
-  conteudo: string;
-  autor: string;
-  categoria: string;
-  tags: string[];
-  imagem_url: string | null;
-  data_publicacao: string;
-  visualizacoes: number;
-};
-
-export type RespostaNoticias = { noticias: Noticia[] };
-
-/** Item de GET /notificacoes: a entrega de uma Atualização de mídia (Backend/routes/midias.py). */
-export type Notificacao = {
-  id_usuario: string;
-  id_midia: string;
-  tipo_midia: string;
-  tipo: string;
-  titulo: string;
-  midia_nome: string;
-  mensagem: string;
-  lida: boolean;
-  data_criacao: string;
-};
-
-export type RespostaNotificacoes = { notificacoes: Notificacao[] };
-
-
-/** Valores de `ordem` de GET /midias que o app usa (ORDENS em Backend/repositories/catalogo.py). */
-export type OrdemCatalogo = 'nota_media' | 'titulo' | 'data_lancamento' | 'mais_adicionados' | 'mais_concluidos';
-
+/** Item de GET /avaliacoes/<id_midia>. */
+export type Avaliacao = Esquemas['AvaliacaoDaMidia'];
+/** Uma página de GET /avaliacoes/<id_midia>. */
+export type PaginaAvaliacoes = Esquemas['PaginaAvaliacaoDaMidia'];
+/** GET /midias/<id>/notas: as 10 faixas de nota e a Avaliação do Usuário logado (ou null). */
+export type RespostaNotas = Esquemas['RespostaNotas'];
+export type AvaliacaoCriada = Esquemas['AvaliacaoCriada'];
+export type AvaliacaoEditada = Esquemas['AvaliacaoEditada'];
 /**
- * Uma página de GET /midias. A API não manda total: uma página com menos de
- * `por_pagina` Mídias é a última.
+ * O que o formulário de Avaliação manda em POST /avaliacoes (mais `id_midia`) e em
+ * PUT /avaliacoes/<id>. A API aceita a nota como texto ("7,5"); o app já manda número.
  */
-export type PaginaMidias = {
-  midias: MidiaResumo[];
-  pagina: number;
-  por_pagina: number;
-  tipo: TipoMidia | null;
-};
-
-/** Item de GET /generos?tipo=. `aplicavel_a` é o text[] do banco, como lista. */
-export type Genero = {
-  id_genero: number;
-  nome_genero: string;
-  descricao: string | null;
-  aplicavel_a: TipoMidia[];
-};
-
-export type RespostaGeneros = { generos: Genero[] };
-
-/** Campos completos de cada item de GET /avaliacoes/<id_midia> (conferido contra o backend local). */
-export type AvaliacaoCompleta = Avaliacao & {
-  id_midia: string;
-  titulo_avaliacao: string | null;
-  texto_avaliacao: string | null;
-  /** "2026-11-06T15:07:43". */
-  data_avaliacao: string;
-  data_edicao: string | null;
-  nome_completo: string;
-  foto_perfil: string | null;
-};
-
-/** Corpo de POST /avaliacoes (com `id_midia`) e de PUT /avaliacoes/<id_avaliacao>. */
-export type DadosAvaliacao = {
+export type DadosAvaliacao = Required<Pick<Esquemas['CorpoNovaAvaliacao'], 'titulo_avaliacao' | 'texto_avaliacao'>> & {
   nota: number;
-  titulo_avaliacao: string | null;
-  texto_avaliacao: string | null;
 };
+
+// Lista pessoal
+
+/** Item de GET /lista: a Mídia (parte dos campos) mais os campos do Item de lista. */
+export type ItemLista = Esquemas['ItemLista'];
+export type RespostaLista = Esquemas['RespostaLista'];
+
+// Notícias e Notificações
+
+export type Noticia = Esquemas['Noticia'];
+/** Uma página de GET /noticias. */
+export type PaginaNoticias = Esquemas['PaginaNoticia'];
+/** Item de GET /notificacoes: a entrega de uma Atualização de mídia. */
+export type Notificacao = Esquemas['Notificacao'];
+export type RespostaNotificacoes = Esquemas['RespostaNotificacoes'];
+
+// `Pagina<T>` escrito à mão tem de continuar igual às instâncias geradas: se o envelope mudar
+// no Backend, o tsc para aqui.
+type Igual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type Confere<T extends true> = T;
+export type PaginasConferidas = [
+  Confere<Igual<PaginaMidias, Pagina<Midia>>>,
+  Confere<Igual<PaginaAvaliacoes, Pagina<Avaliacao>>>,
+  Confere<Igual<PaginaNoticias, Pagina<Noticia>>>,
+];

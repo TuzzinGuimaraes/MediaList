@@ -70,7 +70,27 @@ def test_registro_rejeita_payload_incompleto(client):
     response = client.post('/api/auth/registro', json={'email': 'faltando@example.com'})
 
     assert response.status_code == 400
-    assert response.get_json()['erro'] == 'Campos obrigatórios faltando'
+    assert response.get_json() == {
+        'erro': 'Dados inválidos',
+        'codigo': 'dados_invalidos',
+        'detalhes': {'nome_completo': 'Campo obrigatório', 'senha': 'Campo obrigatório'},
+    }
+
+
+def test_registro_com_data_de_nascimento_vazia_grava_sem_ela(client, monkeypatch):
+    fake = _banco(monkeypatch, {
+        'INSERT INTO usuarios ': {'id_usuario': 'USR-0003'},
+        'FROM grupos_usuarios': {'id_grupo': 3},
+    })
+
+    response = client.post('/api/auth/registro', json={
+        'nome_completo': 'Teste', 'email': 'vazio@example.com', 'senha': '123456', 'data_nascimento': '',
+    })
+
+    assert response.status_code == 201
+    assert response.get_json() == {'mensagem': 'Usuário criado com sucesso!', 'id_usuario': 'USR-0003'}
+    params = fake.sql('INSERT INTO usuarios ')[0][2]
+    assert params[3] is None and params[4] == ''
 
 
 def test_login_autentica_e_retorna_token(client, monkeypatch):
@@ -97,9 +117,19 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
 
     data = response.get_json()
     assert response.status_code == 200
-    assert data['token'] == data['access_token']
-    assert data['usuario']['id'] == 'USR-LOGIN-1'
-    assert data['usuario']['nivel_acesso'] == 'usuario'
+    # `token` (cópia de `access_token`) saiu: nenhum cliente lia.
+    assert set(data) == {'access_token', 'refresh_token', 'usuario'}
+    assert data['usuario'] == {
+        'id': 'USR-LOGIN-1',
+        'nome': 'Usuário Login',
+        'email': 'user@example.com',
+        # As mesmas `Permissoes` de GET /usuario/permissoes.
+        'permissoes': {
+            'nivel_acesso': 'usuario', 'grupos': 'Usuários',
+            'pode_criar': True, 'pode_editar': True, 'pode_deletar': False, 'pode_moderar': False,
+        },
+    }
+    assert all(type(data['usuario']['permissoes'][p]) is bool for p in ('pode_criar', 'pode_editar', 'pode_deletar'))
     # Último acesso é escrito pela aplicação no login (era trigger no MySQL).
     ultimo_acesso = fake.sql('SET ultimo_acesso = now()')
     assert ultimo_acesso and ultimo_acesso[0][2] == ('USR-LOGIN-1',)
@@ -120,7 +150,14 @@ def test_login_rejeita_senha_invalida(client, monkeypatch):
     })
 
     assert response.status_code == 401
-    assert response.get_json()['erro'] == 'Email ou senha incorretos'
+    assert response.get_json() == {'erro': 'Email ou senha incorretos', 'codigo': 'nao_autenticado'}
+
+
+def test_login_sem_senha_responde_400_traduzido(client):
+    response = client.post('/api/auth/login', json={'email': 'user@example.com', 'senha': ''})
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'senha': 'Deve ter no mínimo 1 caracteres'}
 
 
 def test_me_retorna_usuario_autenticado(client, auth_headers, monkeypatch):
@@ -134,7 +171,12 @@ def test_me_retorna_usuario_autenticado(client, auth_headers, monkeypatch):
     response = client.get('/api/auth/me', headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['usuario']['email'] == 'atual@example.com'
+    assert response.get_json() == {'usuario': {
+        'id_usuario': 'USR-TEST-0001',
+        'nome_completo': 'Usuário Atual',
+        'email': 'atual@example.com',
+        'foto_perfil': None,
+    }}
 
 
 def test_me_sem_token_retorna_401(client):
@@ -198,7 +240,20 @@ def test_redefinir_senha_rejeita_token_de_tipo_errado(client, auth_headers):
     )
 
     assert response.status_code == 403
-    assert response.get_json()['erro'] == 'Token inválido para esta operação'
+    assert response.get_json() == {'erro': 'Token inválido para esta operação', 'codigo': 'acesso_negado'}
+
+
+def test_redefinir_senha_curta_responde_400_traduzido(client, make_token, monkeypatch):
+    fake = _banco(monkeypatch)
+    token = make_token('USR-RESET-1', {'tipo': 'recuperacao_senha'})
+
+    response = client.post(
+        '/api/auth/redefinir-senha', headers={'Authorization': f'Bearer {token}'}, json={'nova_senha': '123'},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()['detalhes'] == {'nova_senha': 'Deve ter no mínimo 6 caracteres'}
+    assert fake.chamadas == []
 
 
 

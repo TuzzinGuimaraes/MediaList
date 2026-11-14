@@ -25,7 +25,7 @@ const FILTER_KEYS_BY_TYPE = {
     jogo: ['status', 'plataforma', 'modo_jogo', 'desenvolvedor'],
 };
 
-// A API limita por_pagina a 50; uma página com menos itens é a última.
+// A API limita por_pagina a 50 e devolve o `total` de Mídias do filtro.
 const POR_PAGINA = 48;
 
 const BrowsePage = () => {
@@ -39,7 +39,7 @@ const BrowsePage = () => {
     const [generos, setGeneros] = useState([]);
     const [erro, setErro] = useState('');
     const [pagina, setPagina] = useState(1);
-    const [temMais, setTemMais] = useState(false);
+    const [total, setTotal] = useState(0);
     const [carregandoMais, setCarregandoMais] = useState(false);
     const [erroMais, setErroMais] = useState('');
     // Descarta respostas de páginas pedidas antes da última troca de filtro.
@@ -99,7 +99,7 @@ const BrowsePage = () => {
         setErroMais('');
         setCarregandoMais(false);
         setPagina(1);
-        setTemMais(false);
+        setTotal(0);
         try {
             const [midiasData, generosData] = await Promise.all([
                 apiCall(`/midias?${montarQuery(1)}`),
@@ -107,9 +107,9 @@ const BrowsePage = () => {
             ]);
             if (atual !== geracao.current) return;
 
-            const recebidas = midiasData.midias || [];
+            const recebidas = midiasData.itens || [];
             setMidias(recebidas);
-            setTemMais(recebidas.length >= POR_PAGINA);
+            setTotal(midiasData.total || 0);
             setGeneros(generosData.generos || []);
         } catch (error) {
             if (atual !== geracao.current) return;
@@ -129,10 +129,10 @@ const BrowsePage = () => {
         try {
             const midiasData = await apiCall(`/midias?${montarQuery(proxima)}`);
             if (atual !== geracao.current) return;
-            const recebidas = midiasData.midias || [];
+            const recebidas = midiasData.itens || [];
             setMidias(anteriores => [...anteriores, ...recebidas]);
+            setTotal(midiasData.total || 0);
             setPagina(proxima);
-            setTemMais(recebidas.length >= POR_PAGINA);
         } catch (error) {
             if (atual !== geracao.current) return;
             setErroMais(error.message || 'Erro ao carregar mais mídias.');
@@ -145,6 +145,9 @@ const BrowsePage = () => {
         const timer = setTimeout(() => carregarDados(), 300);
         return () => clearTimeout(timer);
     }, [carregarDados]);
+
+    // Pelo `total`: as páginas já pedidas cobrem tudo, mesmo se alguma voltou mais curta.
+    const temMais = pagina * POR_PAGINA < total;
 
     const tabClass = (candidateTipo) =>
         `px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
@@ -273,7 +276,7 @@ const BrowsePage = () => {
             </div>
 
             {!loading && !erro && (
-                <p className="text-xs text-text-secondary">{midias.length} resultado(s)</p>
+                <p className="text-xs text-text-secondary">{total} resultado(s)</p>
             )}
 
             {loading ? (

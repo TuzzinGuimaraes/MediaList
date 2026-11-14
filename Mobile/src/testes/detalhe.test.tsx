@@ -1,36 +1,46 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
+import type { Avaliacao, ItemLista, MidiaDetalhe, RespostaDistribuicao } from '../api/tipos';
+import { AVALIACOES_POR_PAGINA } from '../api/avaliacoes';
+import { erro, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { type Resposta, simularFetch } from './fetchSimulado';
-import { anime, jogo, manga } from './midias';
+import { anime, itemDaLista as item, jogo, manga } from './midias';
 import { APP, abrirLogado } from './sessao';
 
-type Fixture = ReturnType<typeof anime>;
+/** Avaliações de Usuários diferentes, uma por nota. */
+function avaliacoesCom(idMidia: string, notas: number[], primeira = 0): Avaliacao[] {
+  return notas.map((nota, i) => ({
+    id_avaliacao: `AVL-${primeira + i}`,
+    id_usuario: `USR-${primeira + i}`,
+    id_midia: idMidia,
+    nome_completo: `Usuário ${primeira + i}`,
+    foto_perfil: null,
+    nota,
+    titulo_avaliacao: null,
+    texto_avaliacao: null,
+    data_avaliacao: '2026-11-05T10:00:00Z',
+    data_edicao: null,
+  }));
+}
 
 function detalhe(
-  midia: Fixture | ReturnType<typeof manga> | ReturnType<typeof jogo>,
+  midia: MidiaDetalhe,
   extras: {
-    lista?: unknown[];
+    lista?: ItemLista[];
+    /** Notas das Avaliações da 1ª página. */
     notas?: number[];
-    distribuicao?: { status_consumo: string; total: number }[];
+    /** Faixas de GET /midias/<id>/notas. */
+    totais?: Partial<Record<number, number>>;
+    distribuicao?: RespostaDistribuicao['distribuicao'];
   } = {},
 ): Record<string, Resposta> {
   const id = midia.id_midia;
+  const distribuicao: RespostaDistribuicao = { distribuicao: extras.distribuicao ?? [] };
   return {
     [`GET /midias/${id}`]: { status: 200, corpo: midia },
-    [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: { distribuicao: extras.distribuicao ?? [] } },
-    [`GET /avaliacoes/${id}`]: {
-      status: 200,
-      corpo: {
-        avaliacoes: (extras.notas ?? []).map((nota, i) => ({
-          id_avaliacao: `AVL-${i}`,
-          id_usuario: `USR-${i}`,
-          id_midia: id,
-          nota,
-          titulo_avaliacao: null,
-          texto_avaliacao: null,
-        })),
-      },
-    },
+    [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: distribuicao },
+    [rotaAvaliacoes(id)]: paginaAvaliacoes(avaliacoesCom(id, extras.notas ?? [])),
+    [rotaNotas(id)]: respostaNotas(extras.totais),
     'GET /lista': { status: 200, corpo: { lista: extras.lista ?? [] } },
   };
 }
@@ -46,7 +56,7 @@ describe('detalhe da Mídia', () => {
 
     expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
     expect(screen.getByText('葬送のフリーレン')).toBeOnTheScreen();
-    expect(screen.getByText(frieren.sinopse)).toBeOnTheScreen();
+    expect(screen.getByText(frieren.sinopse!)).toBeOnTheScreen();
     expect(screen.getByLabelText('Lançamento: 29/09/2023')).toBeOnTheScreen();
     expect(screen.getByLabelText('Gêneros: Aventura, Drama, Fantasia')).toBeOnTheScreen();
     expect(screen.getByLabelText('Episódios: 28')).toBeOnTheScreen();
@@ -117,13 +127,29 @@ describe('detalhe da Mídia', () => {
 
   it('mostra a distribuição das notas das Avaliações', async () => {
     const frieren = anime({ total_avaliacoes: 3 });
-    simularFetch(detalhe(frieren, { notas: [9, 9.4, 6] }));
+    simularFetch(detalhe(frieren, { totais: { 9: 2, 6: 1 } }));
 
     await abrirDetalhe(frieren.id_midia);
 
     expect(await screen.findByLabelText('Nota 9: 2 avaliações')).toBeOnTheScreen();
     expect(screen.getByLabelText('Nota 6: 1 avaliação')).toBeOnTheScreen();
     expect(screen.getByLabelText('Nota 10: 0 avaliações')).toBeOnTheScreen();
+  });
+
+  it('pede só a 1ª página de Avaliações; a distribuição de todas vem pronta de /notas', async () => {
+    const frieren = anime({ total_avaliacoes: 52 });
+    const id = frieren.id_midia;
+    const api = simularFetch({
+      ...detalhe(frieren, { totais: { 9: 51, 3: 1 } }),
+      [rotaAvaliacoes(id)]: paginaAvaliacoes(avaliacoesCom(id, Array(AVALIACOES_POR_PAGINA).fill(9)), 52),
+    });
+
+    await abrirDetalhe(id);
+
+    expect(await screen.findByLabelText('Nota 9: 51 avaliações')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota 3: 1 avaliação')).toBeOnTheScreen();
+    expect(screen.getAllByLabelText(/^Avaliação de /)).toHaveLength(AVALIACOES_POR_PAGINA);
+    expect(api.chamadas.filter((c) => c.caminho.startsWith('/avaliacoes/'))).toHaveLength(1);
   });
 
   it('mostra quantos Usuários têm a Mídia em cada Estado de consumo', async () => {
@@ -147,7 +173,7 @@ describe('detalhe da Mídia', () => {
     const hollow = jogo();
     simularFetch(
       detalhe(hollow, {
-        lista: [{ ...hollow, id_lista: 'LST-1', status_consumo: 'zerado', progresso_atual: null, progresso_total: null }],
+        lista: [item(hollow, { id_lista: 'LST-1', status_consumo: 'zerado', progresso_atual: null, progresso_total: null })],
       }),
     );
 
@@ -160,7 +186,7 @@ describe('detalhe da Mídia', () => {
     const frieren = anime();
     simularFetch(
       detalhe(frieren, {
-        lista: [{ ...jogo(), id_lista: 'LST-1', status_consumo: 'jogando', progresso_atual: null, progresso_total: null }],
+        lista: [item(jogo(), { id_lista: 'LST-1', status_consumo: 'jogando', progresso_atual: null, progresso_total: null })],
       }),
     );
 
@@ -175,7 +201,7 @@ describe('detalhe da Mídia', () => {
     const frieren = anime();
     simularFetch(
       detalhe(frieren, {
-        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'assistindo', progresso_atual: 3, progresso_total: null }],
+        lista: [item(frieren, { id_lista: 'LST-1', status_consumo: 'assistindo', progresso_atual: 3, progresso_total: null })],
       }),
     );
 
@@ -210,7 +236,7 @@ describe('detalhe da Mídia', () => {
     const frieren = anime({ status_anime: 'em_exibicao' });
     simularFetch(
       detalhe(frieren, {
-        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'pausado', progresso_atual: 3, progresso_total: null }],
+        lista: [item(frieren, { id_lista: 'LST-1', status_consumo: 'pausado', progresso_atual: 3, progresso_total: null })],
       }),
     );
 
@@ -234,7 +260,8 @@ describe('detalhe da Mídia', () => {
   });
 
   it.each([
-    ['as Avaliações', (id: string) => `GET /avaliacoes/${id}`],
+    ['as Avaliações', (id: string) => rotaAvaliacoes(id)],
+    ['as notas', (id: string) => rotaNotas(id)],
     ['a distribuição por Estado', (id: string) => `GET /midias/${id}/distribuicao`],
     ['a Lista pessoal', () => 'GET /lista'],
   ])('se falha ao carregar %s, o detalhe mostra o erro e "Tentar de novo" recarrega', async (_parte, rota) => {
@@ -244,7 +271,7 @@ describe('detalhe da Mídia', () => {
     let falhando = true;
     simularFetch({
       ...normais,
-      [chave]: () => (falhando ? { status: 500, corpo: { erro: 'Falha no servidor' } } : (normais[chave] as Resposta)),
+      [chave]: () => (falhando ? erro(500, 'erro_interno', 'Falha no servidor') : (normais[chave] as Resposta)),
     });
 
     await abrirDetalhe(frieren.id_midia);
@@ -259,7 +286,7 @@ describe('detalhe da Mídia', () => {
   });
 
   it('Mídia inexistente mostra a mensagem da API', async () => {
-    simularFetch({ 'GET /midias/MID-NADA': { status: 404, corpo: { erro: 'Mídia não encontrada' } } });
+    simularFetch({ 'GET /midias/MID-NADA': erro(404, 'nao_encontrado', 'Mídia não encontrada') });
 
     await abrirDetalhe('MID-NADA');
 

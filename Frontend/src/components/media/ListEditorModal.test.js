@@ -127,7 +127,7 @@ describe('ListEditorModal', () => {
         }));
         expect(JSON.parse(apiCall.mock.calls[0][1].body)).toEqual({
             id_midia: 'MID-1',
-            status: 'planejado',
+            status_consumo: 'planejado',
             nota_usuario: 9,
             progresso_atual: 12,
             favorito: false,
@@ -157,7 +157,7 @@ describe('ListEditorModal', () => {
         fireEvent.click(screen.getByText('Save'));
 
         await waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
-        expect(JSON.parse(apiCall.mock.calls[0][1].body).status).toBe('pausado');
+        expect(JSON.parse(apiCall.mock.calls[0][1].body).status_consumo).toBe('pausado');
     });
 
     test('trata erro da API', async () => {

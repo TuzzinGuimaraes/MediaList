@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
 import pytest
 
 import banco
@@ -7,22 +10,46 @@ from routes import utils as utils_routes
 
 from .helpers import FakeBanco, FakeCatalogo
 
+PERFIL = {
+    'id_usuario': 'USR-TEST-0001',
+    'nome_completo': 'Perfil',
+    'email': 'perfil@example.com',
+    'foto_perfil': None,
+    'biografia': None,
+    'data_cadastro': datetime(2026, 11, 13, 10, 30, tzinfo=timezone.utc),
+    'total_midias': 3,
+    'total_animes': 2,
+    'total_mangas': 0,
+    'total_jogos': 1,
+    'nota_media_usuario': Decimal('8.50'),
+    'total_favoritos': 1,
+    'grupos': 'Usuários',
+}
+
 
 def test_get_usuario_perfil_retorna_dados(client, auth_headers, monkeypatch):
-    FakeBanco({'vw_perfil_usuario': {'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}}).instalar(
-        monkeypatch, usuario_routes
-    )
+    FakeBanco({'vw_perfil_usuario': PERFIL}).instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/perfil', headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['perfil']['nome_completo'] == 'Perfil'
+    assert response.get_json() == {'perfil': {
+        **PERFIL, 'data_cadastro': '2026-11-13T10:30:00Z', 'nota_media_usuario': 8.5,
+    }}
+
+
+def _estatistica(tipo, total_midias, concluidos, em_andamento, favoritos, nota_media=None):
+    return {
+        'tipo': tipo, 'label': tipo.title(), 'total_midias': total_midias, 'concluidos': concluidos,
+        'em_andamento': em_andamento, 'progresso_total_consumido': 10, 'nota_media': nota_media,
+        'favoritos': favoritos,
+    }
 
 
 def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch):
     fake = FakeBanco({'FROM lista_usuarios': [
-        {'tipo': 'anime', 'total_midias': 2, 'concluidos': 1, 'em_andamento': 1, 'favoritos': 1},
-        {'tipo': 'jogo', 'total_midias': 3, 'concluidos': 2, 'em_andamento': 1, 'favoritos': 0},
+        _estatistica('anime', 2, 1, 1, 1, Decimal('7.50')),
+        _estatistica('jogo', 3, 2, 1, 0),
     ]}).instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/estatisticas', headers=auth_headers)
@@ -38,6 +65,12 @@ def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch
         'em_andamento': 2,
         'favoritos': 1,
     }
+    # `label` saiu: nenhum cliente lia, e o Tipo já vem em `tipo`.
+    assert data['estatisticas'][0] == {
+        'tipo': 'anime', 'total_midias': 2, 'concluidos': 1, 'em_andamento': 1,
+        'progresso_total_consumido': 10, 'nota_media': 7.5, 'favoritos': 1,
+    }
+    assert data['estatisticas'][1]['nota_media'] is None
 
 
 def test_utils_health_reporta_postgres_conectado(client, monkeypatch):
@@ -68,14 +101,24 @@ def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
     assert response.status_code == 403
 
 
-def test_moderacao_lista_usuarios_para_admin(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    FakeBanco({'FROM usuarios': [{'id_usuario': 'USR-1'}]}).instalar(monkeypatch, moderacao_routes)
+def test_moderacao_lista_usuarios_para_admin_paginados_com_o_total(client, admin_headers, monkeypatch):
+    from datetime import datetime, timezone
 
-    response = client.get('/api/moderacao/usuarios', headers=admin_headers)
+    usuario = {
+        'id_usuario': 'USR-1', 'nome_completo': 'Ana', 'email': 'ana@exemplo.test',
+        'data_cadastro': datetime(2026, 11, 1, 12, tzinfo=timezone.utc), 'ultimo_acesso': None, 'ativo': True,
+        'grupos': 'Usuários', 'total_midias': 3, 'total_avaliacoes': 1,
+    }
+    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+    fake = FakeBanco({'count(*)': {'total': 7}, 'FROM usuarios': [usuario]}).instalar(monkeypatch, moderacao_routes)
+
+    response = client.get('/api/moderacao/usuarios?pagina=2&por_pagina=3', headers=admin_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['usuarios'][0]['id_usuario'] == 'USR-1'
+    assert response.get_json() == {
+        'itens': [{**usuario, 'data_cadastro': '2026-11-01T12:00:00Z'}], 'pagina': 2, 'por_pagina': 3, 'total': 7,
+    }
+    assert fake.sql('LIMIT')[0][2] == (3, 3)
 
 
 @pytest.mark.parametrize('rota', ['/api/animes', '/api/mangas', '/api/jogos', '/api/animes/populares'])
@@ -93,5 +136,5 @@ def test_generos_devolve_aplicavel_a_como_lista_e_filtra_pelo_tipo(client, monke
     assert client.get('/api/generos').get_json()['generos'][0]['aplicavel_a'] == ['anime', 'manga', 'jogo']
     response = client.get('/api/generos?tipo=jogo')
 
-    assert (response.status_code, response.get_json()) == (200, {'generos': [acao]})
+    assert (response.status_code, response.get_json()) == (200, {'generos': [{**acao, 'id_genero': '1'}]})
     assert catalogo.chamadas == [('generos', None), ('generos', 'jogo')]

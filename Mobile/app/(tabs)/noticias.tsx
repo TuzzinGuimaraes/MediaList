@@ -62,7 +62,7 @@ function ListaNoticias() {
   return (
     <FlatList
       data={noticias.data}
-      keyExtractor={(n, i) => `${n.data_publicacao}-${i}`}
+      keyExtractor={(n) => n.id_noticia}
       renderItem={({ item }) => <CartaoNoticia noticia={item} />}
       contentContainerClassName="flex-grow gap-4 p-4"
       refreshControl={<RefreshControl {...atualizar} />}

@@ -1,3 +1,5 @@
+import type { RespostaLogin, UsuarioSessao } from '../api/tipos';
+
 // Fronteira única dos testes de tela: o `fetch` global. Cada rota ("POST /auth/login")
 // responde com um objeto fixo ou com uma função da requisição recebida.
 
@@ -49,23 +51,21 @@ export function semConexao(): never {
   throw new TypeError('Network request failed');
 }
 
-export const usuarioAna = {
+export const usuarioAna: UsuarioSessao = {
   id: 'USR-20261106-00007',
   nome: 'Ana Souza',
   email: 'ana@exemplo.com',
-  nivel_acesso: 'usuario',
-  grupos: 'Usuários',
-  permissoes: { pode_criar: 0, pode_editar: 0, pode_deletar: 0, pode_moderar: 0 },
+  permissoes: {
+    nivel_acesso: 'usuario',
+    grupos: 'Usuários',
+    pode_criar: false,
+    pode_editar: false,
+    pode_deletar: false,
+    pode_moderar: false,
+  },
 };
 
 export function loginOk(tokens: { access: string; refresh: string | null }): Resposta {
-  return {
-    status: 200,
-    corpo: {
-      token: tokens.access,
-      access_token: tokens.access,
-      refresh_token: tokens.refresh,
-      usuario: usuarioAna,
-    },
-  };
+  const corpo: RespostaLogin = { access_token: tokens.access, refresh_token: tokens.refresh, usuario: usuarioAna };
+  return { status: 200, corpo };
 }

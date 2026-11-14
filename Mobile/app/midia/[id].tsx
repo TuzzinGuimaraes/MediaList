@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAvaliacoes } from '@/api/avaliacoes';
+import { useAvaliacoes, useNotas } from '@/api/avaliacoes';
 import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import { useSessao } from '@/auth/SessaoContext';
@@ -21,7 +21,6 @@ import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
 import { temProgresso, textoDoProgresso } from '@/dominio/itemLista';
 import {
   atributosDoTipo,
-  distribuicaoDeNotas,
   notasDaMidia,
   ROTULO_NOTA_MEDIA,
   tituloAlternativo,
@@ -57,6 +56,7 @@ function DetalheMidia() {
   const router = useRouter();
   const midia = useMidia(id);
   const avaliacoes = useAvaliacoes(id);
+  const notasDasAvaliacoes = useNotas(id);
   const distribuicao = useDistribuicao(id);
   const item = useItemDaLista(id);
   const [editor, setEditor] = useState(false);
@@ -75,8 +75,9 @@ function DetalheMidia() {
   const m = midia.data;
   const notasDaObra = notasDaMidia(m);
   const lancamento = formatarData(m.data_lancamento);
-  const notas = distribuicaoDeNotas((avaliacoes.data ?? []).map((a) => a.nota));
-  const maiorNota = Math.max(...notas.map((n) => n.total));
+  // As 10 faixas, de todas as Avaliações (GET /midias/<id>/notas).
+  const notas = notasDasAvaliacoes.data?.distribuicao ?? [];
+  const maiorNota = Math.max(0, ...notas.map((n) => n.total));
   const estados = somarPorEstado(distribuicao.data ?? [], m.tipo);
   const maiorEstado = Math.max(0, ...estados.map((e) => e.total));
   const titulo = tituloDaMidia(m);
@@ -155,8 +156,8 @@ function DetalheMidia() {
           </View>
 
           <Secao titulo={textos.notas}>
-            {avaliacoes.isError && !avaliacoes.data ? (
-              <FalhaParcial erro={avaliacoes.error} tentarDeNovo={() => avaliacoes.refetch()} />
+            {notasDasAvaliacoes.isError && !notasDasAvaliacoes.data ? (
+              <FalhaParcial erro={notasDasAvaliacoes.error} tentarDeNovo={() => notasDasAvaliacoes.refetch()} />
             ) : m.total_avaliacoes ? (
               notas
                 .slice()
@@ -193,7 +194,16 @@ function DetalheMidia() {
             </Secao>
           ) : null}
 
-          <SecaoAvaliacoes idMidia={m.id_midia} avaliacoes={avaliacoes.data} />
+          <SecaoAvaliacoes
+            idMidia={m.id_midia}
+            avaliacoes={avaliacoes.data?.itens}
+            minha={notasDasAvaliacoes.data?.minha_avaliacao}
+            falha={
+              avaliacoes.isError && !avaliacoes.data ? (
+                <FalhaParcial erro={avaliacoes.error} tentarDeNovo={() => avaliacoes.refetch()} />
+              ) : null
+            }
+          />
         </View>
       </ScrollView>
       <Voltar aoVoltar={voltar} flutuante />
