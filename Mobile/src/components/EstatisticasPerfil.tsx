@@ -9,12 +9,12 @@ import {
   contarPorEstado,
   mediaNotasPessoais,
 } from '../dominio/estadoConsumo';
-import paleta from '../tema/paleta';
-import { type Barra, Barras } from './Barras';
+import { useCores } from '../tema/TemaContext';
+import { Barras, type ItemBarras } from './Barras';
 import { Falha } from './EstadoTela';
 
 const textos = {
-  porEstado: 'Por Estado de consumo',
+  porEstado: 'Por Status',
   porTipo: 'Por Tipo de mídia',
   media: 'Média das notas pessoais',
 };
@@ -27,6 +27,7 @@ function formatarNota(nota: number | null): string {
 export function EstatisticasPerfil() {
   const porTipo = useEstatisticasPorTipo();
   const itens = useItensParaEstatisticas();
+  const cores = useCores();
 
   if (!porTipo.data || !itens.data) {
     if (porTipo.isError || itens.isError) {
@@ -40,17 +41,17 @@ export function EstatisticasPerfil() {
         />
       );
     }
-    return <ActivityIndicator color={paleta.accent.blue} accessibilityLabel="Carregando estatísticas" />;
+    return <ActivityIndicator color={cores['marca-texto']} accessibilityLabel="Carregando estatísticas" />;
   }
 
   const contagem = contarPorEstado(itens.data);
-  const barrasEstado: Barra[] = ESTADOS.map((estado) => ({
+  const barrasEstado: ItemBarras[] = ESTADOS.map((estado) => ({
     rotulo: NOMES_ESTADO[estado],
     valor: contagem[estado],
     refinamento: estado === 'platinado',
   }));
 
-  const barrasTipo: Barra[] = TIPOS.map((tipo) => {
+  const barrasTipo: ItemBarras[] = TIPOS.map((tipo) => {
     const linha = porTipo.data.find((l) => l.tipo === tipo);
     return { rotulo: NOMES_TIPO[tipo], valor: Number(linha?.total_midias ?? 0) };
   });
@@ -62,10 +63,10 @@ export function EstatisticasPerfil() {
       <View
         accessible
         accessibilityLabel={`${textos.media}: ${media}`}
-        className="items-center gap-1 rounded-md bg-dark-secondary p-4"
+        className="items-center gap-1 rounded-md bg-superficie p-4"
       >
-        <Text className="text-titulo-tela font-bold text-text-bright">{media}</Text>
-        <Text className="text-center text-legenda text-text-secondary">{textos.media}</Text>
+        <Text className="text-titulo-tela font-bold text-texto-forte">{media}</Text>
+        <Text className="text-center text-legenda text-texto-suave">{textos.media}</Text>
       </View>
       <Barras titulo={textos.porEstado} barras={barrasEstado} />
       <Barras titulo={textos.porTipo} barras={barrasTipo} />

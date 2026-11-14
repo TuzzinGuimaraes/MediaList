@@ -112,10 +112,10 @@ export function BottomSheet({ rotulo, aoFechar, cabecalho, children, rodape }: P
             maxHeight: (height - teclado) * 0.85,
             transform: [{ translateY: deslocamento }],
           }}
-          className="rounded-t-xl bg-dark-secondary"
+          className="rounded-t-xl bg-superficie"
         >
           <View {...arraste.panHandlers} className="px-5 pb-2 pt-2">
-            <View className="mb-2 h-1 w-10 self-center rounded-full bg-dark-border" />
+            <View className="mb-2 h-1 w-10 self-center rounded-full bg-borda" />
             {cabecalho}
           </View>
           <ScrollView ref={rolagem} keyboardShouldPersistTaps="handled" className="shrink">
@@ -124,7 +124,7 @@ export function BottomSheet({ rotulo, aoFechar, cabecalho, children, rodape }: P
             </View>
           </ScrollView>
           <View
-            className="gap-2 border-t border-dark-border px-5 pt-3"
+            className="gap-2 border-t border-borda px-5 pt-3"
             style={{ paddingBottom: Math.max(bottom, 12) }}
           >
             {rodape}

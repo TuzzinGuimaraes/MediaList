@@ -27,10 +27,10 @@ export function Opcoes<V>({ rotulo, opcoes, valor, escolher }: Props<V>) {
             accessibilityState={{ selected: ativo }}
             onPress={() => escolher(opcao.valor)}
             className={`rounded-full border px-3 py-1.5 ${
-              ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border bg-dark-secondary'
+              ativo ? 'border-marca-texto bg-superficie-alta' : 'border-borda bg-superficie'
             }`}
           >
-            <Text className={`text-corpo font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
+            <Text className={`text-corpo font-semibold ${ativo ? 'text-marca-texto' : 'text-texto-suave'}`}>
               {opcao.titulo}
             </Text>
           </Pressable>
