@@ -21,10 +21,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas. */
+        get: operations["get__api_midias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/populares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As Mídias com mais Usuários; a nota desempata. */
+        get: operations["get__api_midias_populares"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mídias mais bem avaliadas de um tipo. */
+        get: operations["get__api_midias_trending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhes completos de qualquer mídia, com as Atualizações mais recentes. */
+        get: operations["get__api_midias_{id_midia}"];
+        /** Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela. */
+        put: operations["put__api_midias_{id_midia}"];
+        post?: never;
+        /** Deletar mídia central. */
+        delete: operations["delete__api_midias_{id_midia}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}/atualizacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publicar uma Atualização de mídia, notificando quem tem a Mídia na Lista. */
+        post: operations["post__api_midias_{id_midia}_atualizacoes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}/distribuicao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Distribuição de status dos usuários para uma mídia. */
+        get: operations["get__api_midias_{id_midia}_distribuicao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AtualizacaoDeMidia */
+        AtualizacaoDeMidia: {
+            /** Dados Adicionais */
+            dados_adicionais: {
+                [key: string]: unknown;
+            };
+            /**
+             * Data Atualizacao
+             * Format: date-time
+             */
+            data_atualizacao: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Id Midia */
+            id_midia: string;
+            /** Tipo Atualizacao */
+            tipo_atualizacao: string;
+            /**
+             * Tipo Midia
+             * @enum {string}
+             */
+            tipo_midia: "anime" | "manga" | "jogo";
+            /** Titulo */
+            titulo: string;
+        };
+        /** AtualizacaoPublicada */
+        AtualizacaoPublicada: {
+            /** Mensagem */
+            mensagem: string;
+            /** Notificacoes Enviadas */
+            notificacoes_enviadas: number;
+        };
         /**
          * CodigoErro
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
@@ -38,6 +174,302 @@ export interface components {
              * @default null
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /**
+         * ConsultaMidias
+         * @description `GET /midias`: Tipo, filtros, ordem e página.
+         */
+        ConsultaMidias: {
+            /**
+             * Artista
+             * @default null
+             */
+            artista?: string | null;
+            /**
+             * Autor
+             * @default null
+             */
+            autor?: string | null;
+            /**
+             * Busca
+             * @default null
+             */
+            busca?: string | null;
+            /**
+             * Demografia
+             * @default null
+             */
+            demografia?: string | null;
+            /**
+             * Desenvolvedor
+             * @default null
+             */
+            desenvolvedor?: string | null;
+            /**
+             * Estudio
+             * @default null
+             */
+            estudio?: string | null;
+            /**
+             * Genero
+             * @description `nome_genero`
+             * @default null
+             */
+            genero?: string | null;
+            /**
+             * Modo Jogo
+             * @default null
+             */
+            modo_jogo?: string | null;
+            /**
+             * Ordem
+             * @default nota_media
+             * @enum {string}
+             */
+            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+            /**
+             * Pagina
+             * @default 1
+             */
+            pagina?: number;
+            /**
+             * Plataforma
+             * @default null
+             */
+            plataforma?: string | null;
+            /**
+             * Por Pagina
+             * @description Acima de 50 vira 50
+             * @default 20
+             */
+            por_pagina?: number;
+            /**
+             * Status
+             * @description Status do Catálogo; sem Tipo, o de qualquer Tipo
+             * @default null
+             */
+            status?: string | null;
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaPopulares */
+        ConsultaPopulares: {
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaTrending */
+        ConsultaTrending: {
+            /**
+             * Limite
+             * @description Acima de 50 vira 50
+             * @default 10
+             */
+            limite?: number;
+            /**
+             * Tipo
+             * @default anime
+             * @enum {string}
+             */
+            tipo?: "anime" | "manga" | "jogo";
+        };
+        /** ContagemPorRotulo */
+        ContagemPorRotulo: {
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             */
+            status_consumo: string;
+            /** Total */
+            total: number;
+        };
+        /** CorpoAtualizacao */
+        CorpoAtualizacao: {
+            /** Dados Adicionais */
+            dados_adicionais?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Descricao
+             * @default null
+             */
+            descricao?: string | null;
+            /**
+             * Tipo
+             * @description Tipo da Atualização: episodio, capitulo...
+             */
+            tipo: string;
+            /** Titulo */
+            titulo: string;
+        };
+        /**
+         * CorpoMidia
+         * @description Corpo do PUT: os campos de todos os Tipos, todos opcionais. Só os do Tipo
+         *     da Mídia são gravados (`campos_do_tipo`); os de outro Tipo são ignorados.
+         */
+        CorpoMidia: {
+            /**
+             * Anilist Id
+             * @default null
+             */
+            anilist_id?: number | null;
+            /**
+             * Artista
+             * @default null
+             */
+            artista?: string | null;
+            /**
+             * Autor
+             * @default null
+             */
+            autor?: string | null;
+            /**
+             * Banner Url
+             * @default null
+             */
+            banner_url?: string | null;
+            /**
+             * Classificacao
+             * @default null
+             */
+            classificacao?: string | null;
+            /**
+             * Classificacao Etaria
+             * @default null
+             */
+            classificacao_etaria?: string | null;
+            /**
+             * Data Lancamento
+             * @default null
+             */
+            data_lancamento?: string | null;
+            /**
+             * Demografia
+             * @default null
+             */
+            demografia?: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /**
+             * Desenvolvedor
+             * @default null
+             */
+            desenvolvedor?: string | null;
+            /**
+             * Duracao Episodio
+             * @default null
+             */
+            duracao_episodio?: number | null;
+            /**
+             * Estudio
+             * @default null
+             */
+            estudio?: string | null;
+            /**
+             * Fonte Original
+             * @default null
+             */
+            fonte_original?: string | null;
+            /**
+             * Generos
+             * @description Ids dos gêneros; presente, substitui os da Mídia
+             * @default null
+             */
+            generos?: number[] | null;
+            /**
+             * Modo Jogo
+             * @default null
+             */
+            modo_jogo?: ("single" | "multi" | "ambos") | null;
+            /**
+             * Numero Capitulos
+             * @default null
+             */
+            numero_capitulos?: number | null;
+            /**
+             * Numero Episodios
+             * @default null
+             */
+            numero_episodios?: number | null;
+            /**
+             * Numero Volumes
+             * @default null
+             */
+            numero_volumes?: number | null;
+            /**
+             * Plataformas
+             * @description Separadas por vírgula: 'PC, Switch'
+             * @default null
+             */
+            plataformas?: string | null;
+            /**
+             * Poster Url
+             * @default null
+             */
+            poster_url?: string | null;
+            /**
+             * Publicadora
+             * @default null
+             */
+            publicadora?: string | null;
+            /**
+             * Publicadora Original
+             * @default null
+             */
+            publicadora_original?: string | null;
+            /**
+             * Rawg Slug
+             * @default null
+             */
+            rawg_slug?: string | null;
+            /**
+             * Revista
+             * @default null
+             */
+            revista?: string | null;
+            /**
+             * Sinopse
+             * @default null
+             */
+            sinopse?: string | null;
+            /**
+             * Status Anime
+             * @default null
+             */
+            status_anime?: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Jogo
+             * @default null
+             */
+            status_jogo?: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /**
+             * Status Manga
+             * @default null
+             */
+            status_manga?: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Titulo Ingles
+             * @default null
+             */
+            titulo_ingles?: string | null;
+            /**
+             * Titulo Original
+             * @default null
+             */
+            titulo_original?: string | null;
+            /**
+             * Titulo Portugues
+             * @default null
+             */
+            titulo_portugues?: string | null;
+            /**
+             * Trailer Url
+             * @default null
+             */
+            trailer_url?: string | null;
         };
         /**
          * Erro
@@ -68,10 +500,306 @@ export interface components {
             /** Nome Genero */
             nome_genero: string;
         };
+        /**
+         * Midia
+         * @description A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos.
+         */
+        Midia: {
+            /** Artista */
+            artista: string | null;
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Classificacao */
+            classificacao: string | null;
+            /** Classificacao Etaria */
+            classificacao_etaria: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /**
+             * Duracao Episodio
+             * @description Minutos
+             */
+            duracao_episodio: number | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; nula sem elas
+             */
+            nota_media: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description 'PC, Switch'
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Publicadora Original */
+            publicadora_original: string | null;
+            /** Revista */
+            revista: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Jogo */
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Manga */
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description Nulo quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
+            total_concluidos: number;
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
+            total_usuarios: number;
+            /** Trailer Url */
+            trailer_url: string | null;
+        };
+        /** MidiaAlterada */
+        MidiaAlterada: {
+            /** Mensagem */
+            mensagem: string;
+        };
+        /** MidiaDetalhe */
+        MidiaDetalhe: {
+            /** Artista */
+            artista: string | null;
+            /**
+             * Atualizacoes
+             * @description As 10 Atualizações de mídia mais recentes
+             */
+            atualizacoes: components["schemas"]["AtualizacaoDeMidia"][];
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Classificacao */
+            classificacao: string | null;
+            /** Classificacao Etaria */
+            classificacao_etaria: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /**
+             * Duracao Episodio
+             * @description Minutos
+             */
+            duracao_episodio: number | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; nula sem elas
+             */
+            nota_media: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description 'PC, Switch'
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Publicadora Original */
+            publicadora_original: string | null;
+            /** Revista */
+            revista: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Jogo */
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Manga */
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description Nulo quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
+            total_concluidos: number;
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
+            total_usuarios: number;
+            /** Trailer Url */
+            trailer_url: string | null;
+        };
+        /**
+         * MidiaPopular
+         * @description Linha de `vw_midias_populares`.
+         */
+        MidiaPopular: {
+            /**
+             * Generos
+             * @description 'Ação, Drama'
+             */
+            generos: string | null;
+            /** Id Midia */
+            id_midia: string;
+            /** Nota Fonte */
+            nota_fonte: number | null;
+            /** Nota Media */
+            nota_media: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /** Total Usuarios */
+            total_usuarios: number;
+        };
+        /** Pagina[Midia] */
+        PaginaMidia: {
+            /** Itens */
+            itens: components["schemas"]["Midia"][];
+            /** Pagina */
+            pagina: number;
+            /** Por Pagina */
+            por_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+        };
+        /** RespostaDistribuicao */
+        RespostaDistribuicao: {
+            /** Distribuicao */
+            distribuicao: components["schemas"]["ContagemPorRotulo"][];
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
             generos: components["schemas"]["Genero"][];
+        };
+        /** RespostaPopulares */
+        RespostaPopulares: {
+            /** Midias */
+            midias: components["schemas"]["MidiaPopular"][];
+        };
+        /** RespostaTrending */
+        RespostaTrending: {
+            /** Midias */
+            midias: components["schemas"]["Midia"][];
         };
     };
     responses: never;
@@ -100,6 +828,370 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RespostaGeneros"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                /** @description Acima de 50 vira 50 */
+                por_pagina?: number;
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                busca?: string | null;
+                /** @description `nome_genero` */
+                genero?: string | null;
+                /** @description Status do Catálogo; sem Tipo, o de qualquer Tipo */
+                status?: string | null;
+                autor?: string | null;
+                estudio?: string | null;
+                demografia?: string | null;
+                plataforma?: string | null;
+                desenvolvedor?: string | null;
+                modo_jogo?: string | null;
+                artista?: string | null;
+                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaMidia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_populares: {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaPopulares"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_trending: {
+        parameters: {
+            query?: {
+                tipo?: "anime" | "manga" | "jogo";
+                /** @description Acima de 50 vira 50 */
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaTrending"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaDetalhe"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoMidia"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaAlterada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaAlterada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "post__api_midias_{id_midia}_atualizacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoAtualizacao"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtualizacaoPublicada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}_distribuicao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDistribuicao"];
                 };
             };
             /** @description Bad Request */
