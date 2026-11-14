@@ -12,11 +12,9 @@ def _banco(monkeypatch, respostas=None):
     return FakeBanco(respostas).instalar(monkeypatch, auth_routes)
 
 
-def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
-    fake = _banco(monkeypatch, {
-        'INSERT INTO usuarios ': {'id_usuario': 'USR-0001'},
-        'FROM grupos_usuarios': {'id_grupo': 3},
-    })
+def test_registro_cria_usuario_sem_dizer_o_nivel(client, monkeypatch):
+    """O Nível vem do padrão da coluna (`usuario`): o cadastro nunca escolhe o próprio."""
+    fake = _banco(monkeypatch, {'INSERT INTO usuarios ': {'id_usuario': 'USR-0001'}})
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste',
@@ -27,30 +25,8 @@ def test_registro_cria_usuario_e_grupo_padrao(client, monkeypatch):
 
     assert response.status_code == 201
     assert response.get_json()['id_usuario'] == 'USR-0001'
-    # Usuário, busca do grupo e vínculo na mesma transação.
-    assert fake.transacoes == 1
-
-    # O grupo é localizado por nome, nunca por id fixo.
-    busca_grupo = fake.sql('FROM grupos_usuarios')
-    assert busca_grupo and busca_grupo[0][2] == (auth_routes.GRUPO_PADRAO,)
-
-    # E o vínculo é criado com o id que veio do INSERT ... RETURNING.
-    vinculo = fake.sql('INSERT INTO usuarios_grupos')
-    assert vinculo and vinculo[0][2] == ('USR-0001', 3)
-
-
-def test_registro_aborta_se_grupo_padrao_nao_existe(client, monkeypatch):
-    """Sem grupo padrão o usuário ficaria sem permissão alguma: melhor não criar."""
-    fake = _banco(monkeypatch, {'INSERT INTO usuarios ': {'id_usuario': 'USR-0002'}})
-
-    response = client.post('/api/auth/registro', json={
-        'nome_completo': 'Teste',
-        'email': 'orfao@example.com',
-        'senha': '123456',
-    })
-
-    assert response.status_code == 500
-    assert fake.sql('INSERT INTO usuarios_grupos') == []
+    [insert] = fake.sql('INSERT INTO usuarios ')
+    assert 'nivel_acesso' not in insert[1]
 
 
 def test_registro_com_email_ja_cadastrado_responde_409(client, monkeypatch):
@@ -78,10 +54,7 @@ def test_registro_rejeita_payload_incompleto(client):
 
 
 def test_registro_com_data_de_nascimento_vazia_grava_sem_ela(client, monkeypatch):
-    fake = _banco(monkeypatch, {
-        'INSERT INTO usuarios ': {'id_usuario': 'USR-0003'},
-        'FROM grupos_usuarios': {'id_grupo': 3},
-    })
+    fake = _banco(monkeypatch, {'INSERT INTO usuarios ': {'id_usuario': 'USR-0003'}})
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste', 'email': 'vazio@example.com', 'senha': '123456', 'data_nascimento': '',
@@ -100,15 +73,8 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
         'email': 'user@example.com',
         'senha_hash': generate_password_hash('senha123'),
         'ativo': True,
-    }})
-    monkeypatch.setattr(auth_routes, 'get_user_permissions', lambda _user_id: {
         'nivel_acesso': 'usuario',
-        'grupos': 'Usuários',
-        'pode_criar': 1,
-        'pode_editar': 1,
-        'pode_deletar': 0,
-        'pode_moderar': 0,
-    })
+    }})
 
     response = client.post('/api/auth/login', json={
         'email': 'user@example.com',
@@ -124,12 +90,8 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
         'nome': 'Usuário Login',
         'email': 'user@example.com',
         # As mesmas `Permissoes` de GET /usuario/permissoes.
-        'permissoes': {
-            'nivel_acesso': 'usuario', 'grupos': 'Usuários',
-            'pode_criar': True, 'pode_editar': True, 'pode_deletar': False, 'pode_moderar': False,
-        },
+        'permissoes': {'nivel_acesso': 'usuario'},
     }
-    assert all(type(data['usuario']['permissoes'][p]) is bool for p in ('pode_criar', 'pode_editar', 'pode_deletar'))
     # Último acesso é escrito pela aplicação no login (era trigger no MySQL).
     ultimo_acesso = fake.sql('SET ultimo_acesso = now()')
     assert ultimo_acesso and ultimo_acesso[0][2] == ('USR-LOGIN-1',)

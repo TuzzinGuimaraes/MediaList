@@ -23,7 +23,7 @@ PERFIL = {
     'total_jogos': 1,
     'nota_media_usuario': Decimal('8.50'),
     'total_favoritos': 1,
-    'grupos': 'Usuários',
+    'nivel_acesso': 'usuario',
 }
 
 
@@ -92,9 +92,7 @@ def test_utils_health_sem_postgres_responde_503(client, monkeypatch):
 
 
 def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(
-        'decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'usuario', 'pode_moderar': 0}
-    )
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'usuario')
 
     response = client.get('/api/moderacao/usuarios', headers=auth_headers)
 
@@ -107,9 +105,9 @@ def test_moderacao_lista_usuarios_para_admin_paginados_com_o_total(client, admin
     usuario = {
         'id_usuario': 'USR-1', 'nome_completo': 'Ana', 'email': 'ana@exemplo.test',
         'data_cadastro': datetime(2026, 11, 1, 12, tzinfo=timezone.utc), 'ultimo_acesso': None, 'ativo': True,
-        'grupos': 'Usuários', 'total_midias': 3, 'total_avaliacoes': 1,
+        'nivel_acesso': 'usuario', 'total_midias': 3, 'total_avaliacoes': 1,
     }
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'admin')
     fake = FakeBanco({'count(*)': {'total': 7}, 'FROM usuarios': [usuario]}).instalar(monkeypatch, moderacao_routes)
 
     response = client.get('/api/moderacao/usuarios?pagina=2&por_pagina=3', headers=admin_headers)

@@ -50,7 +50,7 @@ def atualizacoes(monkeypatch):
 
 @pytest.fixture
 def admin(monkeypatch, admin_headers):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'admin')
     return admin_headers
 
 
@@ -209,7 +209,7 @@ def test_delete_midia(client, admin, catalogo):
 
 def test_escrita_no_catalogo_exige_permissao(client, auth_headers, catalogo, monkeypatch):
     falso = catalogo()
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'usuario'})
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'usuario')
 
     assert client.put('/api/midias/MID-1', headers=auth_headers, json={'titulo_original': 'X'}).status_code == 403
     assert client.delete('/api/midias/MID-1', headers=auth_headers).status_code == 403

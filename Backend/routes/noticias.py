@@ -10,7 +10,7 @@ from spectree import Response
 
 from banco import consultar, consultar_um
 from contrato import AUTENTICADO, ERROS_COM_PERMISSAO, ConsultaPaginada, Pagina, contrato, deslocamento, montar_pagina
-from decorators import permission_required
+from decorators import admin_required
 from schemas.noticias import CorpoNoticia, Noticia, NoticiaCriada
 
 noticias_bp = Blueprint('noticias', __name__)
@@ -37,7 +37,7 @@ def listar_noticias(query: ConsultaPaginada):
 
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
-@permission_required('criar')
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_201=NoticiaCriada, **ERROS_COM_PERMISSAO), tags=['noticias'], security=AUTENTICADO,
 )

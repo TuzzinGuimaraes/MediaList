@@ -121,28 +121,28 @@ def test_edicao_invalida_nao_grava(avaliacoes, repositorio, payload, erro):
 def test_autor_apaga(avaliacoes, repositorio):
     _criar(avaliacoes)
 
-    assert avaliacoes.apagar('USR-1', 'AVL-1', pode_moderar=False).codigo == OK
+    assert avaliacoes.apagar('USR-1', 'AVL-1', e_admin=False).codigo == OK
     assert repositorio.avaliacoes == {}
 
 
-def test_quem_pode_moderar_apaga_a_de_outro(avaliacoes, repositorio):
+def test_admin_apaga_a_de_outro(avaliacoes, repositorio):
     _criar(avaliacoes)
 
-    assert avaliacoes.apagar('USR-MOD', 'AVL-1', pode_moderar=True).codigo == OK
+    assert avaliacoes.apagar('USR-ADMIN', 'AVL-1', e_admin=True).codigo == OK
     assert repositorio.avaliacoes == {}
 
 
 def test_usuario_comum_nao_apaga_a_de_outro(avaliacoes, repositorio):
     _criar(avaliacoes)
 
-    resultado = avaliacoes.apagar('USR-2', 'AVL-1', pode_moderar=False)
+    resultado = avaliacoes.apagar('USR-2', 'AVL-1', e_admin=False)
 
     assert (resultado.codigo, resultado.erro) == (NEGADO, 'Sem permissão para deletar esta avaliação')
     assert 'AVL-1' in repositorio.avaliacoes
 
 
 def test_apagar_inexistente(avaliacoes):
-    resultado = avaliacoes.apagar('USR-1', 'AVL-404', pode_moderar=True)
+    resultado = avaliacoes.apagar('USR-1', 'AVL-404', e_admin=True)
 
     assert (resultado.codigo, resultado.erro) == (NAO_ENCONTRADO, 'Avaliação não encontrada')
 

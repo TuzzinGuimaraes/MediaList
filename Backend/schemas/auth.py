@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 from contrato import Data, Id, Preenchido, VazioComoAusente
 
-NivelAcesso = Literal['admin', 'moderador', 'usuario']
+#: Em ordem crescente (ADR 0012). Um Nível novo é mudança aditiva.
+NivelAcesso = Literal['usuario', 'admin']
 
 
 # ============================================
@@ -55,14 +56,9 @@ class UsuarioCriado(BaseModel):
 
 
 class Permissoes(BaseModel):
-    """Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes."""
+    """Nível de acesso do Usuário (ADR 0012). No login e em GET /usuario/permissoes."""
 
     nivel_acesso: NivelAcesso
-    grupos: str | None = Field(description="Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo")
-    pode_criar: bool
-    pode_editar: bool
-    pode_deletar: bool
-    pode_moderar: bool
 
 
 class UsuarioDaSessao(BaseModel):

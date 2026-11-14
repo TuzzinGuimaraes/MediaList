@@ -26,7 +26,7 @@ from contrato import (
     montar_pagina,
     resposta_erro,
 )
-from decorators import permission_required
+from decorators import admin_required
 from repositories.atualizacoes import Atualizacoes
 from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
@@ -103,7 +103,7 @@ def detalhes_midia(id_midia):
 
 @midias_bp.route('/<string:id_midia>', methods=['PUT'])
 @jwt_required()
-@permission_required('editar')
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
@@ -120,7 +120,7 @@ def atualizar_midia(id_midia, json: CorpoMidia):
 
 @midias_bp.route('/<string:id_midia>', methods=['DELETE'])
 @jwt_required()
-@permission_required('deletar')
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=Mensagem, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )
@@ -133,7 +133,7 @@ def deletar_midia(id_midia):
 
 @midias_bp.route('/<string:id_midia>/atualizacoes', methods=['POST'])
 @jwt_required()
-@permission_required('criar')
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_201=AtualizacaoPublicada, **ERROS_DE_ESCRITA), tags=['midias'], security=AUTENTICADO,
 )

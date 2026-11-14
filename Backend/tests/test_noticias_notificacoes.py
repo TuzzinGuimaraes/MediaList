@@ -7,7 +7,7 @@ from routes import noticias as noticias_routes
 
 from .helpers import FakeAtualizacoes, FakeBanco
 
-ADMIN = {'nivel_acesso': 'admin'}
+ADMIN = 'admin'
 
 NOTICIA = {
     'id_noticia': 'NOT-1',
@@ -69,7 +69,7 @@ def test_paginacao_invalida_das_noticias_responde_400(client, monkeypatch, query
 
 
 def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _id: ADMIN)
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
 
     response = client.post('/api/noticias', headers=admin_headers, json={
@@ -84,7 +84,7 @@ def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, m
 
 
 def test_noticia_sem_campos_opcionais_usa_os_padroes(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _id: ADMIN)
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': 'Só título'})
@@ -94,7 +94,7 @@ def test_noticia_sem_campos_opcionais_usa_os_padroes(client, admin_headers, monk
 
 
 def test_noticia_sem_titulo_responde_400(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _id: ADMIN)
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco().instalar(monkeypatch, noticias_routes)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'conteudo': 'Sem título'})
@@ -105,7 +105,7 @@ def test_noticia_sem_titulo_responde_400(client, admin_headers, monkeypatch):
 
 
 def test_noticia_com_titulo_vazio_responde_400(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _id: ADMIN)
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco().instalar(monkeypatch, noticias_routes)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': '  '})
@@ -116,7 +116,7 @@ def test_noticia_com_titulo_vazio_responde_400(client, admin_headers, monkeypatc
 
 
 def test_noticia_com_tags_que_nao_sao_lista_de_texto_responde_400(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _id: ADMIN)
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco().instalar(monkeypatch, noticias_routes)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': 'X', 'tags': 'a,b'})

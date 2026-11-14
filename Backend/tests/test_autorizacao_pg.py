@@ -150,13 +150,9 @@ def test_token_com_identidade_que_nao_e_uuid_da_401(client, pg, app):
 
 @pytest.fixture
 def admin(entrar):
-    """Access token de um Usuário no Grupo Administradores."""
+    """Access token de um Usuário com Nível admin."""
     id_admin, access, _refresh = entrar()
-    banco.executar(
-        "INSERT INTO usuarios_grupos (id_usuario, id_grupo) "
-        "SELECT %s, id_grupo FROM grupos_usuarios WHERE nome_grupo = 'Administradores'",
-        (id_admin,),
-    )
+    banco.executar("UPDATE usuarios SET nivel_acesso = 'admin' WHERE id_usuario = %s", (id_admin,))
     return access
 
 

@@ -20,39 +20,38 @@ from contrato import (
     montar_pagina,
     resposta_erro,
 )
-from decorators import moderator_or_admin_required
+from decorators import admin_required
 from schemas.moderacao import (
+    CorpoNivelAcesso,
     RespostaAvaliacoesModeracao,
     UsuarioModeracao,
 )
 
 moderacao_bp = Blueprint('moderacao', __name__)
 
-# Nível de acesso (CONTEXT.md): usuario < moderador < admin.
-ORDEM_NIVEL = {'usuario': 1, 'moderador': 2, 'admin': 3}
 
+def _barrar_pela_hierarquia(target_user_id, mensagem_proprio):
+    """Erro se o alvo é o próprio ator, não existe ou é outro admin; senão None.
 
-def _nivel(user_id):
-    """Nível efetivo: o mais alto entre os Grupos do usuário."""
-    nivel = decorators.get_user_permissions(user_id).get('nivel_acesso')
-    return ORDEM_NIVEL.get(nivel, 1)
-
-
-def _alterar_status(target_user_id, ativo):
-    """Ativa/desativa respeitando a hierarquia: ninguém altera a si mesmo e só
-    se age sobre quem tem Nível estritamente menor (admin só cai por admin)."""
-    ator = get_jwt_identity()
-    if target_user_id == ator:
-        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Você não pode alterar o próprio status')
+    O ator já é admin (`admin_required`), então só se age sobre `usuario`.
+    """
+    if target_user_id == get_jwt_identity():
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, mensagem_proprio)
 
     alvo = consultar_um("SELECT id_usuario FROM usuarios WHERE id_usuario = %s", (target_user_id,))
     if not alvo:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
-    if _nivel(target_user_id) >= _nivel(ator):
-        return resposta_erro(
-            403, CodigoErro.ACESSO_NEGADO, 'Só é possível moderar usuários com nível de acesso menor que o seu',
-        )
+    if decorators.nivel_de_acesso(target_user_id) == 'admin':
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Não é possível alterar outro administrador')
+    return None
+
+
+def _alterar_status(target_user_id, ativo):
+    """Ativa/desativa respeitando a hierarquia: ninguém altera a si mesmo nem outro admin."""
+    barrado = _barrar_pela_hierarquia(target_user_id, 'Você não pode alterar o próprio status')
+    if barrado:
+        return barrado
 
     if ativo:
         alterados = executar("UPDATE usuarios SET ativo = TRUE WHERE id_usuario = %s", (target_user_id,))
@@ -75,7 +74,7 @@ def _alterar_status(target_user_id, ativo):
 
 @moderacao_bp.route('/avaliacoes', methods=['GET'])
 @jwt_required()
-@moderator_or_admin_required
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=RespostaAvaliacoesModeracao, **ERROS_COM_PERMISSAO),
     tags=['moderacao'], security=AUTENTICADO,
@@ -102,7 +101,7 @@ def listar_avaliacoes_moderacao():
 
 @moderacao_bp.route('/usuarios', methods=['GET'])
 @jwt_required()
-@moderator_or_admin_required
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=Pagina[UsuarioModeracao], **ERROS_COM_PERMISSAO), tags=['moderacao'], security=AUTENTICADO,
 )
@@ -116,12 +115,10 @@ def listar_usuarios_moderacao(query: ConsultaPaginada):
             u.data_cadastro,
             u.ultimo_acesso,
             u.ativo,
-            string_agg(DISTINCT gu.nome_grupo, ', ') AS grupos,
+            u.nivel_acesso,
             COUNT(DISTINCT lu.id_midia) AS total_midias,
             COUNT(DISTINCT av.id_avaliacao) AS total_avaliacoes
         FROM usuarios u
-        LEFT JOIN usuarios_grupos ug ON u.id_usuario = ug.id_usuario
-        LEFT JOIN grupos_usuarios gu ON ug.id_grupo = gu.id_grupo
         LEFT JOIN lista_usuarios lu ON u.id_usuario = lu.id_usuario
         LEFT JOIN avaliacoes av ON u.id_usuario = av.id_usuario
         GROUP BY u.id_usuario
@@ -135,7 +132,7 @@ def listar_usuarios_moderacao(query: ConsultaPaginada):
 
 @moderacao_bp.route('/usuarios/<string:target_user_id>/desativar', methods=['PUT'])
 @jwt_required()
-@moderator_or_admin_required
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
     tags=['moderacao'], security=AUTENTICADO,
@@ -147,7 +144,7 @@ def desativar_usuario(target_user_id):
 
 @moderacao_bp.route('/usuarios/<string:target_user_id>/ativar', methods=['PUT'])
 @jwt_required()
-@moderator_or_admin_required
+@admin_required
 @contrato.validate(
     resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
     tags=['moderacao'], security=AUTENTICADO,
@@ -155,3 +152,25 @@ def desativar_usuario(target_user_id):
 def ativar_usuario(target_user_id):
     """Ativar usuário."""
     return _alterar_status(target_user_id, ativo=True)
+
+
+
+@moderacao_bp.route('/usuarios/<string:target_user_id>/nivel', methods=['PUT'])
+@jwt_required()
+@admin_required
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
+    tags=['moderacao'], security=AUTENTICADO,
+)
+def alterar_nivel_usuario(target_user_id, json: CorpoNivelAcesso):
+    """Mudar o Nível de acesso de outro Usuário; um admin não muda o de outro admin."""
+    barrado = _barrar_pela_hierarquia(target_user_id, 'Você não pode alterar o próprio nível de acesso')
+    if barrado:
+        return barrado
+
+    alterados = executar(
+        "UPDATE usuarios SET nivel_acesso = %s WHERE id_usuario = %s", (json.nivel_acesso, target_user_id),
+    )
+    if not alterados:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
+    return {'mensagem': 'Nível de acesso alterado'}

@@ -4,7 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from contrato import Id, Instante, Nota, TipoDeMidia
-from schemas.auth import Permissoes
+from schemas.auth import NivelAcesso, Permissoes
 
 
 class Perfil(BaseModel):
@@ -22,7 +22,7 @@ class Perfil(BaseModel):
     total_jogos: int
     nota_media_usuario: Nota | None = Field(description='Média das Notas pessoais; nula sem nenhuma')
     total_favoritos: int
-    grupos: str | None
+    nivel_acesso: NivelAcesso
 
 
 class RespostaPerfil(BaseModel):

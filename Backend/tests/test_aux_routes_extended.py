@@ -1,30 +1,17 @@
+import decorators
 from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
 
 from .helpers import FakeBanco
 
 
-def test_usuario_permissoes_retorna_payload(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(usuario_routes, 'get_user_permissions', lambda _user_id: {
-        'nivel_acesso': 'admin',
-        'grupos': 'Administradores',
-        'pode_criar': 1,
-        'pode_editar': 1,
-        'pode_deletar': 1,
-        'pode_moderar': 1,
-    })
+def test_usuario_permissoes_retorna_o_nivel(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(usuario_routes, 'nivel_de_acesso', lambda _user_id: 'admin')
 
     response = client.get('/api/usuario/permissoes', headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json() == {'permissoes': {
-        'nivel_acesso': 'admin',
-        'grupos': 'Administradores',
-        'pode_criar': True,
-        'pode_editar': True,
-        'pode_deletar': True,
-        'pode_moderar': True,
-    }}
+    assert response.get_json() == {'permissoes': {'nivel_acesso': 'admin'}}
 
 
 def test_usuario_perfil_retorna_404_quando_view_nao_tem_registro(client, auth_headers, monkeypatch):
@@ -46,7 +33,7 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
         'data_edicao': None, 'nome_completo': 'Ana', 'titulo_portugues': None, 'titulo_original': 'Original',
         'tipo': 'anime',
     }
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'admin')
     FakeBanco({'FROM avaliacoes': [avaliacao]}).instalar(monkeypatch, moderacao_routes)
 
     response = client.get('/api/moderacao/avaliacoes', headers=admin_headers)
@@ -55,18 +42,12 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.get_json() == {'avaliacoes': [{**avaliacao, 'data_avaliacao': '2026-11-01T00:00:00Z'}]}
 
 
-def test_usuario_permissoes_saem_como_booleanos(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(usuario_routes, 'get_user_permissions', lambda _user_id: {
-        'nivel_acesso': 'usuario', 'grupos': None,
-        'pode_criar': 1, 'pode_editar': 0, 'pode_deletar': 0, 'pode_moderar': 0,
-    })
+def test_usuario_inexistente_tem_nivel_usuario(client, auth_headers, monkeypatch):
+    FakeBanco().instalar(monkeypatch, decorators)
 
     permissoes = client.get('/api/usuario/permissoes', headers=auth_headers).get_json()['permissoes']
 
-    assert [permissoes[p] for p in ('pode_criar', 'pode_editar', 'pode_deletar', 'pode_moderar')] == [
-        True, False, False, False,
-    ]
-    assert all(type(permissoes[p]) is bool for p in ('pode_criar', 'pode_editar', 'pode_deletar', 'pode_moderar'))
+    assert permissoes == {'nivel_acesso': 'usuario'}
 
 
 def test_rotas_de_auth_usuario_preferencias_e_utils_estao_no_openapi(client):

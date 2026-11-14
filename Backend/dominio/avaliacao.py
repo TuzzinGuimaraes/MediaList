@@ -108,13 +108,13 @@ class Avaliacoes:
 
         return Resultado(OK, dados=self._avaliacoes.atualizar(id_avaliacao, atual['id_midia'], campos))
 
-    def apagar(self, id_usuario: str, id_avaliacao: str, pode_moderar: bool) -> Resultado:
-        """Apaga a Avaliação do autor, ou de qualquer um para quem pode moderar."""
+    def apagar(self, id_usuario: str, id_avaliacao: str, e_admin: bool) -> Resultado:
+        """Apaga a Avaliação do autor, ou de qualquer um para o admin."""
         atual = self._avaliacoes.obter(id_avaliacao)
         if not atual:
             return Resultado(NAO_ENCONTRADO, 'Avaliação não encontrada')
 
-        if atual['id_usuario'] != id_usuario and not pode_moderar:
+        if atual['id_usuario'] != id_usuario and not e_admin:
             return Resultado(NEGADO, 'Sem permissão para deletar esta avaliação')
 
         self._avaliacoes.apagar(id_avaliacao)

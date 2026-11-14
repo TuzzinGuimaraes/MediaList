@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 TABELAS = {
-    'tipo_midia', 'usuarios', 'grupos_usuarios', 'usuarios_grupos', 'midias', 'animes',
+    'tipo_midia', 'usuarios', 'midias', 'animes',
     'jogos', 'mangas', 'generos', 'midias_generos', 'lista_usuarios', 'avaliacoes',
     'comentarios_avaliacoes', 'refresh_tokens', 'noticias', 'atualizacoes_midia',
     'notificacoes',
@@ -92,6 +92,8 @@ def test_tabelas_e_views_da_baseline(db):
     assert TABELAS <= tabelas
     assert 'sequences' not in tabelas
     assert 'musicas' not in tabelas
+    # Os Grupos saíram na 0005 (ADR 0012).
+    assert not {t for t in tabelas if 'grupo' in t}
 
     views = {
         row['table_name']
@@ -110,6 +112,7 @@ def test_colunas_que_mudaram_com_as_decisoes(db):
     assert 'codigo_usuario' not in _colunas(db, 'usuarios')
     assert 'codigo_avaliacao' not in _colunas(db, 'avaliacoes')
     assert _colunas(db, 'usuarios')['preferencias']['data_type'] == 'jsonb'
+    assert _colunas(db, 'usuarios')['nivel_acesso']['data_type'] == 'text'
     assert _colunas(db, 'jogos')['plataformas']['udt_name'] == '_text'
     assert _colunas(db, 'generos')['aplicavel_a']['udt_name'] == '_text'
 
@@ -120,7 +123,6 @@ def test_colunas_que_mudaram_com_as_decisoes(db):
 def test_dados_estruturais_semeados(db):
     tipos = _todos(db, 'SELECT nome_tipo FROM tipo_midia ORDER BY nome_tipo')
     assert [row['nome_tipo'] for row in tipos] == ['anime', 'jogo', 'manga']
-    assert _um(db, 'SELECT count(*) AS total FROM grupos_usuarios')['total'] == 3
     assert _um(db, 'SELECT count(*) AS total FROM generos')['total'] >= 20
     assert _um(db, "SELECT count(*) AS total FROM generos WHERE 'musica' = ANY (aplicavel_a)")['total'] == 0
 

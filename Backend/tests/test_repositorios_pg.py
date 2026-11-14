@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 
 import banco
-from decorators import get_user_permissions
+from decorators import nivel_de_acesso
 from repositories import Catalogo, ItensLista
 from routes.usuario import ESTATISTICAS_POR_TIPO
 
@@ -35,17 +35,12 @@ def pg(monkeypatch):
     banco.fechar()
 
 
-def _usuario(pg, grupo='Usuários'):
-    with banco.transacao() as t:
-        id_usuario = t.consultar_um(
-            "INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES ('PG', %s, 'x') RETURNING id_usuario",
-            (f'pg-{uuid.uuid4().hex}@exemplo.test',),
-        )['id_usuario']
-        t.executar(
-            "INSERT INTO usuarios_grupos (id_usuario, id_grupo) "
-            "SELECT %s, id_grupo FROM grupos_usuarios WHERE nome_grupo = %s",
-            (id_usuario, grupo),
-        )
+def _usuario(pg, nivel='usuario'):
+    id_usuario = banco.consultar_um(
+        "INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES ('PG', %s, 'x', %s) "
+        "RETURNING id_usuario",
+        (f'pg-{uuid.uuid4().hex}@exemplo.test', nivel),
+    )['id_usuario']
     pg['usuarios'].append(id_usuario)
     return id_usuario
 
@@ -156,15 +151,10 @@ def test_item_copia_o_total_da_midia_e_nao_duplica(pg):
     assert repo.remover_item(id_lista, usuario) is False
 
 
-def test_permissoes_compoem_grupos_e_usuario_inexistente_nao_ganha_nada(pg):
-    moderador = _usuario(pg, 'Moderadores')
-
-    permissoes = get_user_permissions(moderador)
-    assert permissoes['nivel_acesso'] == 'moderador'
-    assert permissoes['grupos'] == 'Moderadores'
-    assert permissoes['pode_moderar'] == 1 and permissoes['pode_deletar'] == 0
-
-    assert get_user_permissions(str(uuid.uuid4()))['grupos'] is None
+def test_nivel_de_acesso_vem_da_coluna_e_usuario_inexistente_e_usuario(pg):
+    assert nivel_de_acesso(_usuario(pg, 'admin')) == 'admin'
+    assert nivel_de_acesso(_usuario(pg)) == 'usuario'
+    assert nivel_de_acesso(str(uuid.uuid4())) == 'usuario'
 
 
 def test_atualizar_e_deletar_midia(pg):
