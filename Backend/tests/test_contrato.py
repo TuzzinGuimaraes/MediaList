@@ -3,13 +3,16 @@
 Envelope de erro `{erro, codigo, detalhes?}`, envelope de paginação, validação
 das respostas contra o modelo e documentação OpenAPI.
 """
+import json
 from datetime import timedelta
 
 import pytest
+from flask import Flask
 from flask_jwt_extended import create_access_token
 from pydantic import ValidationError as PydanticValidationError
 
-from contrato import ConsultaPaginada, Pagina, detalhes_de_validacao, montar_pagina
+import exportar_openapi
+from contrato import ConsultaPaginada, Pagina, detalhes_de_validacao, montar_pagina, registrar_documentacao
 from routes import utils as utils_routes
 from schemas import ValidationError
 from schemas.utils import Genero
@@ -164,3 +167,46 @@ def test_consulta_paginada_segue_as_regras_de_ler_paginacao():
         'pagina': 'Deve ser maior ou igual a 1',
         'por_pagina': 'Tipo inválido',
     }
+
+
+
+# ============================================
+# Documentação OpenAPI
+# ============================================
+
+def test_openapi_fora_de_producao_traz_a_rota_de_referencia_e_o_enum_de_erro(client):
+    response = client.get('/api/openapi.json')
+
+    assert response.status_code == 200
+    documento = response.get_json()
+    assert '/api/generos' in documento['paths']
+    assert set(documento['components']['schemas']['CodigoErro']['enum']) >= {'nao_encontrado', 'dados_invalidos'}
+
+
+def test_docs_fora_de_producao(client):
+    response = client.get('/api/docs', follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'swagger' in response.data.lower()
+    assert client.get('/api/docs/redoc/').status_code == 200
+
+
+def test_docs_e_openapi_nao_existem_em_producao():
+    app_producao = Flask(__name__)
+    registrar_documentacao(app_producao, em_producao=True)
+    cliente = app_producao.test_client()
+
+    assert cliente.get('/api/openapi.json').status_code == 404
+    assert cliente.get('/api/docs').status_code == 404
+    assert cliente.get('/api/docs/swagger/').status_code == 404
+
+
+
+def test_exportador_grava_o_openapi_sem_servidor_nem_banco(tmp_path):
+    destino = tmp_path / 'contrato' / 'openapi.json'
+
+    exportar_openapi.main(['exportar_openapi.py', str(destino)])
+
+    documento = json.loads(destino.read_text(encoding='utf-8'))
+    assert '/api/generos' in documento['paths']
+    assert destino.read_text(encoding='utf-8') == exportar_openapi.documento()

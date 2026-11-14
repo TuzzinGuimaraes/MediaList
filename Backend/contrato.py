@@ -24,9 +24,10 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from flask import current_app, jsonify, make_response, request
+from flask import current_app, jsonify, make_response, redirect, request
 from pydantic import AwareDatetime, BaseModel, BeforeValidator, Field, field_validator
 from spectree import SecurityScheme, SpecTree
+from spectree.models import SecuritySchemeData
 from spectree.page import PAGE_TEMPLATES
 from spectree.plugins.flask_plugin import FlaskPlugin
 
@@ -217,11 +218,12 @@ contrato = SpecTree(
     title='MediaList API',
     version='1.0.0',
     mode='strict',
-    path='api',
+    # Não pode ser só 'api': o SpecTree ignora no documento toda rota sob `/{path}`.
+    path='api/docs',
     filename='openapi.json',
-    page_templates={'docs': PAGE_TEMPLATES['swagger'], 'redoc': PAGE_TEMPLATES['redoc']},
+    page_templates={'swagger': PAGE_TEMPLATES['swagger'], 'redoc': PAGE_TEMPLATES['redoc']},
     security_schemes=[
-        SecurityScheme(name='bearer', data={'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}),
+        SecurityScheme(name='bearer', data=SecuritySchemeData(type='http', scheme='bearer', bearer_format='JWT')),
     ],
 )
 
@@ -230,9 +232,15 @@ AUTENTICADO = {'bearer': []}
 
 
 def registrar_documentacao(app, em_producao: bool, spec: SpecTree = contrato) -> None:
-    """`/api/openapi.json`, `/api/docs/` (Swagger) e `/api/redoc/`, só fora de produção.
+    """Documento e páginas do OpenAPI, só fora de produção.
 
-    Em produção o SpecTree segue validando; só não publica o documento.
+    `/api/openapi.json` (e `/api/docs/openapi.json`), `/api/docs` (vai para o
+    Swagger em `/api/docs/swagger/`) e `/api/docs/redoc/`. Em produção o SpecTree
+    segue validando; só não publica nada.
     """
-    if not em_producao:
-        spec.register(app)
+    if em_producao:
+        return
+    spec.register(app)
+    # Endpoints com prefixo `openapi`: o SpecTree não os põe no próprio documento.
+    app.add_url_rule('/api/openapi.json', endpoint='openapi_documento', view_func=lambda: jsonify(spec.spec))
+    app.add_url_rule('/api/docs', endpoint='openapi_inicio', view_func=lambda: redirect('/api/docs/swagger/'))
