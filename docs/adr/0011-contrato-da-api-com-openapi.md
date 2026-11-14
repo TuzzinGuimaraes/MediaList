@@ -20,13 +20,24 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   flask-jwt (o `msg` acaba). `erro` é a mensagem para a tela; `codigo` é o enum `CodigoErro`
   do OpenAPI; `detalhes` é `{campo: motivo}` nos erros de validação. As mensagens do Pydantic
   são traduzidas nos tipos comuns (obrigatório, tipo, intervalo, valor não permitido); o resto
-  vira "Valor inválido". Entrada inválida responde 400, como antes.
+  vira "Valor inválido". Valor de entrada inválido, na query ou no corpo, responde 400
+  `dados_invalidos`, inclusive os que antes eram ignorados ou caíam num padrão (Tipo ou ordem
+  desconhecidos, `refresh_token` que não é texto, `?nao_lidas=` inválido).
+- **Erros declarados:** cada rota declara os erros que devolve. As autenticadas somam
+  `ERROS_AUTENTICADA` (401 e o 422 do token malformado), e as com `permission_required` ou
+  `moderator_or_admin_required` somam `ERROS_COM_PERMISSAO` (mais o 403), os dois em
+  `contrato.py`.
 - **Paginação:** `Pagina[T]` = `{itens, pagina, por_pagina, total}` em `GET /midias`, nas
   Avaliações de uma Mídia, nas Notícias e nos Usuários da moderação. Lista pessoal, gêneros,
   trending, populares e Notificações ficam sem paginação.
+- **Notas de uma Mídia:** `GET /midias/<id>/notas` traz a distribuição das notas das Avaliações
+  (faixas de 1 a 10, a nota arredondada) e a Avaliação do Usuário logado, ou null sem login.
+  Assim os clientes buscam só a 1ª página das Avaliações, em vez de todas para montar o gráfico
+  e achar a própria.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
-  com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai, e campos
-  legados sem leitor saem da API (cada um listado no PR).
+  com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
+  leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
+  PR). O banco mantém tudo, e voltar com um campo é uma mudança aditiva.
 - **Validação das respostas:** nos testes (`CONTRATO_RESPOSTA_ESTRITA`, ligada no `conftest`)
   uma resposta fora do modelo vira 500 e o teste falha. Em produção a resposta original sai e o
   desvio vai para o log. O SpecTree sozinho sempre troca a resposta inválida por 500, então o
