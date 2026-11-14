@@ -1,6 +1,81 @@
 {
   "components": {
     "schemas": {
+      "AtualizacaoDeMidia": {
+        "properties": {
+          "dados_adicionais": {
+            "additionalProperties": true,
+            "title": "Dados Adicionais",
+            "type": "object"
+          },
+          "data_atualizacao": {
+            "format": "date-time",
+            "title": "Data Atualizacao",
+            "type": "string"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "tipo_atualizacao": {
+            "title": "Tipo Atualizacao",
+            "type": "string"
+          },
+          "tipo_midia": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo Midia",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo_midia",
+          "tipo_atualizacao",
+          "titulo",
+          "descricao",
+          "dados_adicionais",
+          "data_atualizacao"
+        ],
+        "title": "AtualizacaoDeMidia",
+        "type": "object"
+      },
+      "AtualizacaoPublicada": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "notificacoes_enviadas": {
+            "title": "Notificacoes Enviadas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mensagem",
+          "notificacoes_enviadas"
+        ],
+        "title": "AtualizacaoPublicada",
+        "type": "object"
+      },
       "CodigoErro": {
         "description": "Código estável do erro, para o cliente decidir sem ler a mensagem.",
         "enum": [
@@ -42,6 +117,702 @@
           }
         },
         "title": "ConsultaGeneros",
+        "type": "object"
+      },
+      "ConsultaMidias": {
+        "description": "`GET /midias`: Tipo, filtros, ordem e página.",
+        "properties": {
+          "artista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Artista"
+          },
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Autor"
+          },
+          "busca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Busca"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Desenvolvedor"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Estudio"
+          },
+          "genero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`nome_genero`",
+            "title": "Genero"
+          },
+          "modo_jogo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modo Jogo"
+          },
+          "ordem": {
+            "default": "nota_media",
+            "enum": [
+              "nota_media",
+              "data_lancamento",
+              "titulo",
+              "mais_adicionados",
+              "popularidade",
+              "mais_concluidos"
+            ],
+            "title": "Ordem",
+            "type": "string"
+          },
+          "pagina": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "plataforma": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plataforma"
+          },
+          "por_pagina": {
+            "default": 20,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Status do Catálogo; sem Tipo, o de qualquer Tipo",
+            "title": "Status"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tipo"
+          }
+        },
+        "title": "ConsultaMidias",
+        "type": "object"
+      },
+      "ConsultaPopulares": {
+        "properties": {
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tipo"
+          }
+        },
+        "title": "ConsultaPopulares",
+        "type": "object"
+      },
+      "ConsultaTrending": {
+        "properties": {
+          "limite": {
+            "default": 10,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Limite",
+            "type": "integer"
+          },
+          "tipo": {
+            "default": "anime",
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "title": "ConsultaTrending",
+        "type": "object"
+      },
+      "ContagemPorRotulo": {
+        "properties": {
+          "status_consumo": {
+            "description": "Rótulo de estado",
+            "title": "Status Consumo",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status_consumo",
+          "total"
+        ],
+        "title": "ContagemPorRotulo",
+        "type": "object"
+      },
+      "CorpoAtualizacao": {
+        "properties": {
+          "dados_adicionais": {
+            "additionalProperties": true,
+            "title": "Dados Adicionais",
+            "type": "object"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Descricao"
+          },
+          "tipo": {
+            "description": "Tipo da Atualização: episodio, capitulo...",
+            "minLength": 1,
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "minLength": 1,
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo"
+        ],
+        "title": "CorpoAtualizacao",
+        "type": "object"
+      },
+      "CorpoMidia": {
+        "description": "Corpo do PUT: os campos de todos os Tipos, todos opcionais. Só os do Tipo\nda Mídia são gravados (`campos_do_tipo`); os de outro Tipo são ignorados.",
+        "properties": {
+          "anilist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Anilist Id"
+          },
+          "artista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Artista"
+          },
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Autor"
+          },
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Banner Url"
+          },
+          "classificacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Classificacao"
+          },
+          "classificacao_etaria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Classificacao Etaria"
+          },
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data Lancamento"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Desenvolvedor"
+          },
+          "duracao_episodio": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "ge": 0,
+            "title": "Duracao Episodio"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Estudio"
+          },
+          "fonte_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fonte Original"
+          },
+          "generos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ids dos gêneros; presente, substitui os da Mídia",
+            "title": "Generos"
+          },
+          "modo_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modo Jogo"
+          },
+          "numero_capitulos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "ge": 0,
+            "title": "Numero Capitulos"
+          },
+          "numero_episodios": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "ge": 0,
+            "title": "Numero Episodios"
+          },
+          "numero_volumes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "ge": 0,
+            "title": "Numero Volumes"
+          },
+          "plataformas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Separadas por vírgula: 'PC, Switch'",
+            "title": "Plataformas"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Poster Url"
+          },
+          "publicadora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Publicadora"
+          },
+          "publicadora_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Publicadora Original"
+          },
+          "rawg_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rawg Slug"
+          },
+          "revista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Revista"
+          },
+          "sinopse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sinopse"
+          },
+          "status_anime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status Anime"
+          },
+          "status_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status Jogo"
+          },
+          "status_manga": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status Manga"
+          },
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Titulo Original"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Titulo Portugues"
+          },
+          "trailer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trailer Url"
+          }
+        },
+        "title": "CorpoMidia",
         "type": "object"
       },
       "Erro": {
@@ -110,6 +881,1224 @@
         "title": "Genero",
         "type": "object"
       },
+      "Midia": {
+        "description": "A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos.",
+        "properties": {
+          "artista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artista"
+          },
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor"
+          },
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Url"
+          },
+          "classificacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao"
+          },
+          "classificacao_etaria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao Etaria"
+          },
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Lancamento"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desenvolvedor"
+          },
+          "duracao_episodio": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Minutos",
+            "title": "Duracao Episodio"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estudio"
+          },
+          "fonte_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte Original"
+          },
+          "generos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'Ação, Drama'; `generos_lista` é o mesmo já separado",
+            "title": "Generos"
+          },
+          "generos_lista": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Generos Lista",
+            "type": "array"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "modo_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modo Jogo"
+          },
+          "nota_fonte": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota do AniList/RAWG, gravada pela Importação",
+            "title": "Nota Fonte"
+          },
+          "nota_media": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Média das Avaliações; nula sem elas",
+            "title": "Nota Media"
+          },
+          "numero_capitulos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Capitulos"
+          },
+          "numero_episodios": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Episodios"
+          },
+          "numero_volumes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Volumes"
+          },
+          "origem_nota": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AniList",
+                  "RAWG"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origem Nota"
+          },
+          "plataformas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'PC, Switch'",
+            "title": "Plataformas"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "publicadora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora"
+          },
+          "publicadora_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora Original"
+          },
+          "revista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revista"
+          },
+          "sinopse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sinopse"
+          },
+          "status_anime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Anime"
+          },
+          "status_catalogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O status do Tipo da Mídia",
+            "title": "Status Catalogo"
+          },
+          "status_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Jogo"
+          },
+          "status_manga": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Manga"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          },
+          "total_avaliacoes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo quando a Mídia não tem Avaliações",
+            "title": "Total Avaliacoes"
+          },
+          "total_concluidos": {
+            "description": "Itens de lista em Concluído ou Platinado",
+            "title": "Total Concluidos",
+            "type": "integer"
+          },
+          "total_usuarios": {
+            "description": "Usuários com a Mídia na Lista pessoal (Popularidade)",
+            "title": "Total Usuarios",
+            "type": "integer"
+          },
+          "trailer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailer Url"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo",
+          "titulo_original",
+          "titulo_ingles",
+          "titulo_portugues",
+          "sinopse",
+          "data_lancamento",
+          "nota_media",
+          "total_avaliacoes",
+          "nota_fonte",
+          "origem_nota",
+          "poster_url",
+          "banner_url",
+          "trailer_url",
+          "status_catalogo",
+          "generos",
+          "generos_lista",
+          "total_usuarios",
+          "total_concluidos",
+          "status_anime",
+          "numero_episodios",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "estudio",
+          "fonte_original",
+          "status_manga",
+          "numero_capitulos",
+          "numero_volumes",
+          "autor",
+          "artista",
+          "publicadora_original",
+          "revista",
+          "demografia",
+          "desenvolvedor",
+          "publicadora",
+          "plataformas",
+          "status_jogo",
+          "modo_jogo",
+          "classificacao"
+        ],
+        "title": "Midia",
+        "type": "object"
+      },
+      "MidiaAlterada": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "title": "MidiaAlterada",
+        "type": "object"
+      },
+      "MidiaDetalhe": {
+        "properties": {
+          "artista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artista"
+          },
+          "atualizacoes": {
+            "description": "As 10 Atualizações de mídia mais recentes",
+            "items": {
+              "$ref": "#/components/schemas/AtualizacaoDeMidia"
+            },
+            "title": "Atualizacoes",
+            "type": "array"
+          },
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor"
+          },
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Url"
+          },
+          "classificacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao"
+          },
+          "classificacao_etaria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao Etaria"
+          },
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Lancamento"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desenvolvedor"
+          },
+          "duracao_episodio": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Minutos",
+            "title": "Duracao Episodio"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estudio"
+          },
+          "fonte_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte Original"
+          },
+          "generos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'Ação, Drama'; `generos_lista` é o mesmo já separado",
+            "title": "Generos"
+          },
+          "generos_lista": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Generos Lista",
+            "type": "array"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "modo_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modo Jogo"
+          },
+          "nota_fonte": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota do AniList/RAWG, gravada pela Importação",
+            "title": "Nota Fonte"
+          },
+          "nota_media": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Média das Avaliações; nula sem elas",
+            "title": "Nota Media"
+          },
+          "numero_capitulos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Capitulos"
+          },
+          "numero_episodios": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Episodios"
+          },
+          "numero_volumes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Volumes"
+          },
+          "origem_nota": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AniList",
+                  "RAWG"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origem Nota"
+          },
+          "plataformas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'PC, Switch'",
+            "title": "Plataformas"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "publicadora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora"
+          },
+          "publicadora_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora Original"
+          },
+          "revista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revista"
+          },
+          "sinopse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sinopse"
+          },
+          "status_anime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Anime"
+          },
+          "status_catalogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O status do Tipo da Mídia",
+            "title": "Status Catalogo"
+          },
+          "status_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Jogo"
+          },
+          "status_manga": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Manga"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          },
+          "total_avaliacoes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo quando a Mídia não tem Avaliações",
+            "title": "Total Avaliacoes"
+          },
+          "total_concluidos": {
+            "description": "Itens de lista em Concluído ou Platinado",
+            "title": "Total Concluidos",
+            "type": "integer"
+          },
+          "total_usuarios": {
+            "description": "Usuários com a Mídia na Lista pessoal (Popularidade)",
+            "title": "Total Usuarios",
+            "type": "integer"
+          },
+          "trailer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailer Url"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo",
+          "titulo_original",
+          "titulo_ingles",
+          "titulo_portugues",
+          "sinopse",
+          "data_lancamento",
+          "nota_media",
+          "total_avaliacoes",
+          "nota_fonte",
+          "origem_nota",
+          "poster_url",
+          "banner_url",
+          "trailer_url",
+          "status_catalogo",
+          "generos",
+          "generos_lista",
+          "total_usuarios",
+          "total_concluidos",
+          "status_anime",
+          "numero_episodios",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "estudio",
+          "fonte_original",
+          "status_manga",
+          "numero_capitulos",
+          "numero_volumes",
+          "autor",
+          "artista",
+          "publicadora_original",
+          "revista",
+          "demografia",
+          "desenvolvedor",
+          "publicadora",
+          "plataformas",
+          "status_jogo",
+          "modo_jogo",
+          "classificacao",
+          "atualizacoes"
+        ],
+        "title": "MidiaDetalhe",
+        "type": "object"
+      },
+      "MidiaPopular": {
+        "description": "Linha de `vw_midias_populares`.",
+        "properties": {
+          "generos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'Ação, Drama'",
+            "title": "Generos"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "nota_fonte": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Fonte"
+          },
+          "nota_media": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Media"
+          },
+          "origem_nota": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AniList",
+                  "RAWG"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origem Nota"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          },
+          "total_usuarios": {
+            "title": "Total Usuarios",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo",
+          "titulo_original",
+          "titulo_portugues",
+          "poster_url",
+          "nota_media",
+          "nota_fonte",
+          "origem_nota",
+          "total_usuarios",
+          "generos"
+        ],
+        "title": "MidiaPopular",
+        "type": "object"
+      },
+      "PaginaMidia": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/Midia"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
+        ],
+        "title": "Pagina[Midia]",
+        "type": "object"
+      },
+      "RespostaDistribuicao": {
+        "properties": {
+          "distribuicao": {
+            "items": {
+              "$ref": "#/components/schemas/ContagemPorRotulo"
+            },
+            "title": "Distribuicao",
+            "type": "array"
+          }
+        },
+        "required": [
+          "distribuicao"
+        ],
+        "title": "RespostaDistribuicao",
+        "type": "object"
+      },
       "RespostaGeneros": {
         "properties": {
           "generos": {
@@ -124,6 +2113,38 @@
           "generos"
         ],
         "title": "RespostaGeneros",
+        "type": "object"
+      },
+      "RespostaPopulares": {
+        "properties": {
+          "midias": {
+            "items": {
+              "$ref": "#/components/schemas/MidiaPopular"
+            },
+            "title": "Midias",
+            "type": "array"
+          }
+        },
+        "required": [
+          "midias"
+        ],
+        "title": "RespostaPopulares",
+        "type": "object"
+      },
+      "RespostaTrending": {
+        "properties": {
+          "midias": {
+            "items": {
+              "$ref": "#/components/schemas/Midia"
+            },
+            "title": "Midias",
+            "type": "array"
+          }
+        },
+        "required": [
+          "midias"
+        ],
+        "title": "RespostaTrending",
         "type": "object"
       }
     },
@@ -197,10 +2218,762 @@
           "utils"
         ]
       }
+    },
+    "/api/midias": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "por_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tipo"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Busca"
+            }
+          },
+          {
+            "description": "`nome_genero`",
+            "in": "query",
+            "name": "genero",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "`nome_genero`",
+              "title": "Genero"
+            }
+          },
+          {
+            "description": "Status do Catálogo; sem Tipo, o de qualquer Tipo",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Status do Catálogo; sem Tipo, o de qualquer Tipo",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "autor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Autor"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "estudio",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Estudio"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "demografia",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Demografia"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "plataforma",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Plataforma"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "desenvolvedor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Desenvolvedor"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "modo_jogo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Modo Jogo"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "artista",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Artista"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "ordem",
+            "required": false,
+            "schema": {
+              "default": "nota_media",
+              "enum": [
+                "nota_media",
+                "data_lancamento",
+                "titulo",
+                "mais_adicionados",
+                "popularidade",
+                "mais_concluidos"
+              ],
+              "title": "Ordem",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaMidia"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/populares": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_populares",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaPopulares"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "As Mídias com mais Usuários; a nota desempata.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/trending": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_trending",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "default": "anime",
+              "enum": [
+                "anime",
+                "manga",
+                "jogo"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaTrending"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Mídias mais bem avaliadas de um tipo.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_midias_{id_midia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MidiaAlterada"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletar mídia central.",
+        "tags": [
+          "midias"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MidiaDetalhe"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Detalhes completos de qualquer mídia, com as Atualizações mais recentes.",
+        "tags": [
+          "midias"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_midias_{id_midia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoMidia"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MidiaAlterada"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/atualizacoes": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_midias_{id_midia}_atualizacoes",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoAtualizacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtualizacaoPublicada"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publicar uma Atualização de mídia, notificando quem tem a Mídia na Lista.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/distribuicao": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_distribuicao",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDistribuicao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Distribuição de status dos usuários para uma mídia.",
+        "tags": [
+          "midias"
+        ]
+      }
     }
   },
   "security": [],
   "tags": [
+    {
+      "name": "midias"
+    },
     {
       "name": "utils"
     }

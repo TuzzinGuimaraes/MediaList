@@ -88,6 +88,10 @@ class FakeCatalogo:
         midias = [dict(m, id_midia=i) for i, m in self.midias.items() if not tipo or m.get('tipo') == tipo]
         return midias[(pagina - 1) * limite:pagina * limite]
 
+    def contar(self, tipo=None, filtros=None):
+        self.chamadas.append(('contar', tipo, filtros))
+        return sum(1 for m in self.midias.values() if not tipo or m.get('tipo') == tipo)
+
     def populares(self, tipo=None):
         self.chamadas.append(('populares', tipo))
         return [m for m in self._populares if not tipo or m.get('tipo') == tipo]

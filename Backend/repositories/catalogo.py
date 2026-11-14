@@ -227,6 +227,11 @@ class Catalogo:
         )
         return [com_generos_lista(linha) for linha in linhas]
 
+    def contar(self, tipo: str | None = None, filtros: dict[str, Any] | None = None) -> int:
+        """Quantas Mídias `buscar` acharia com o Tipo e os filtros, em todas as páginas."""
+        where, params = _filtros(tipo, filtros or {})
+        return consultar_um(f'SELECT count(*) AS total {FROM_MIDIA} {where}', params)['total']
+
     def obter(self, id_midia: str) -> dict[str, Any] | None:
         """A Mídia completa, ou None se não existe. Id que não é uuid levanta Integridade (400)."""
         linha = consultar_um(f'{SELECT_MIDIA} {FROM_MIDIA} WHERE m.id_midia = %s', (id_midia,))

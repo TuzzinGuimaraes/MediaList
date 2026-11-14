@@ -67,21 +67,3 @@ class BaseSchema:
 
         return cleaned
 
-
-class BaseMediaSchema(BaseSchema):
-    """Campos comuns a todas as mídias."""
-
-    field_types = {
-        'titulo_original': str,
-        'titulo_ingles': str,
-        'titulo_portugues': str,
-        'sinopse': str,
-        'data_lancamento': str,
-        'poster_url': str,
-        'banner_url': str,
-        'generos': list,
-    }
-    cast_fields: dict[str, Any] = {}
-    #: A Nota média é calculada das Avaliações e a Nota da fonte é gravada só
-    #: pela Importação: nenhuma das duas é gravável pela API (ticket 13).
-    ignored_fields = frozenset({'nota_media', 'total_avaliacoes', 'nota_fonte', 'origem_nota'})

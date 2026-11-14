@@ -87,7 +87,7 @@ def test_rotas_de_ranking_ordenam_com_fallback_e_trazem_a_origem(pg, prefixo, cl
             (usuario, id_midia),
         )
 
-    midias = client.get(f'/api/midias?tipo=jogo&busca={prefixo}&ordem=nota_media').get_json()['midias']
+    midias = client.get(f'/api/midias?tipo=jogo&busca={prefixo}&ordem=nota_media').get_json()['itens']
     assert [m['id_midia'] for m in midias] == [so_fonte, avaliada]
     assert (midias[0]['nota_fonte'], midias[0]['origem_nota'], midias[0]['nota_media']) == (9.9, 'RAWG', None)
 

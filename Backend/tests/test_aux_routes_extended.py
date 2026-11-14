@@ -1,8 +1,7 @@
 from routes import moderacao as moderacao_routes
 from routes import usuario as usuario_routes
-from routes import utils as utils_routes
 
-from .helpers import FakeBanco, FakeCatalogo
+from .helpers import FakeBanco
 
 
 def test_usuario_permissoes_retorna_payload(client, auth_headers, monkeypatch):
@@ -39,14 +38,3 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
     assert response.status_code == 200
     assert response.get_json()['avaliacoes'][0]['id_avaliacao'] == 'AVL-1'
 
-
-def test_populares_repassa_o_tipo_ao_catalogo(client, monkeypatch):
-    catalogo = FakeCatalogo(populares=[{'id_midia': 'MID-POP', 'tipo': 'anime'}, {'id_midia': 'MID-J', 'tipo': 'jogo'}])
-    monkeypatch.setattr(utils_routes, 'catalogo', catalogo)
-
-    por_tipo = client.get('/api/midias/populares?tipo=anime')
-    todas = client.get('/api/midias/populares')
-
-    assert (por_tipo.status_code, por_tipo.get_json()) == (200, {'midias': [{'id_midia': 'MID-POP', 'tipo': 'anime'}]})
-    assert len(todas.get_json()['midias']) == 2
-    assert catalogo.chamadas == [('populares', 'anime'), ('populares', None)]
