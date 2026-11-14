@@ -19,6 +19,9 @@ PIP ?= $(PYTHON) -m pip
 NPM ?= npm
 
 DOCKER_COMPOSE ?= docker compose
+# Versão fixa: a saída entra no git e o CI compara (contrato/api.d.ts).
+# --default-non-nullable false: campo com default (query, `detalhes` do erro) fica opcional no TS.
+OPENAPI_TYPESCRIPT ?= npx --yes openapi-typescript@7.13.0
 IMPORT_WORKERS ?= 8
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
@@ -26,7 +29,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 .PHONY: help install install-backend install-frontend install-mobile mobile-dev compose-build services-up \
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
-	lint-mobile build-frontend build \
+	lint-mobile build-frontend build api-tipos \
 	import-animes import-mangas import-jogos import-all seed-dev clean-frontend db-dump db-restore
 
 help:
@@ -56,6 +59,7 @@ help:
 	@printf "  make test-frontend     Executa os testes do frontend no host\n"
 	@printf "  make test-mobile       Executa os testes do mobile no host\n"
 	@printf "  make lint              Roda ruff (backend), eslint (frontend) e o lint do mobile\n"
+	@printf "  make api-tipos         Regera contrato/openapi.json e contrato/api.d.ts a partir do Backend\n"
 	@printf "  make build-frontend    Gera a build do frontend no host\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
@@ -165,6 +169,12 @@ lint-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) run lint
 
 lint: lint-backend lint-frontend lint-mobile
+
+# Contrato da API (ADR 0011): OpenAPI exportado sem subir o servidor, e os tipos
+# TS gerados dele. Os dois arquivos entram no git; o CI falha se ficarem velhos.
+api-tipos:
+	cd "$(BACKEND_DIR)" && $(PYTHON) exportar_openapi.py
+	$(OPENAPI_TYPESCRIPT) contrato/openapi.json --output contrato/api.d.ts --default-non-nullable false
 
 build-frontend:
 	cd "$(FRONTEND_DIR)" && $(NPM) run build
