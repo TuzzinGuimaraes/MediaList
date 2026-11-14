@@ -23,7 +23,7 @@ type Props = {
 };
 
 /** Destaque de lançamento sobre o pôster, quando a listagem traz o campo. */
-function lancamentoDe(midia: MidiaDoCard): string | null {
+export function lancamentoDe(midia: MidiaDoCard): string | null {
   if (midia.status_anime === 'em_exibicao') return 'Em exibição';
   if (midia.status_manga === 'em_publicacao') return 'Em publicação';
   return null;
