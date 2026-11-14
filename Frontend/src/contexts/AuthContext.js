@@ -52,7 +52,7 @@ export const AuthProvider = ({ children, sessionExpiredRef }) => {
                 body: JSON.stringify({ email, senha })
             });
 
-            // `permissoes` traz nivel_acesso, grupos e pode_*: o mesmo de GET /usuario/permissoes.
+            // `permissoes` é só o Nível de acesso (`usuario` ou `admin`): o mesmo de GET /usuario/permissoes.
             const { permissoes } = data.usuario;
 
             localStorage.setItem('token', data.access_token);

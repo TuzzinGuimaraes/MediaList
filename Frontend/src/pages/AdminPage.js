@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Shield, Star, Trash2, Users } from 'lucide-react';
 import { useApi } from '../contexts/ApiContext';
-import { useAuth } from '../contexts/AuthContext';
 import { buscarTodasAsPaginas } from '../paginacao';
+
+const ROTULO_NIVEL = { usuario: 'Usuário', admin: 'Administrador' };
 
 const AdminPage = () => {
     const { apiCall } = useApi();
-    const { permissions } = useAuth();
     const [activeTab, setActiveTab] = useState('usuarios');
     const [usuarios, setUsuarios] = useState([]);
     const [avaliacoes, setAvaliacoes] = useState([]);
@@ -64,7 +64,7 @@ const AdminPage = () => {
         <div className="max-w-4xl mx-auto space-y-6">
             <h2 className="text-lg font-bold text-text-bright flex items-center gap-2">
                 <Shield size={20} className="text-accent-blue" />
-                {permissions?.nivel_acesso === 'admin' ? 'Administração' : 'Moderação'}
+                Administração
             </h2>
 
             <div className="flex gap-2">
@@ -94,7 +94,7 @@ const AdminPage = () => {
                                 <h4 className="text-sm font-bold text-text-bright">{usuario.nome_completo}</h4>
                                 <p className="text-xs text-text-secondary">{usuario.email}</p>
                                 <p className="text-xs text-text-secondary mt-0.5">
-                                    Grupos: {usuario.grupos || 'Nenhum'} | Mídias: {usuario.total_midias || 0} | Avaliações: {usuario.total_avaliacoes}
+                                    Nível: {ROTULO_NIVEL[usuario.nivel_acesso] ?? usuario.nivel_acesso} | Mídias: {usuario.total_midias || 0} | Avaliações: {usuario.total_avaliacoes}
                                 </p>
                             </div>
                             <button

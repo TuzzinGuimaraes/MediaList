@@ -55,7 +55,7 @@ const NewsPage = () => {
                     <FileText size={20} className="text-accent-blue" />
                     Notícias
                 </h2>
-                {(permissions?.pode_moderar || permissions?.nivel_acesso === 'admin') && (
+                {permissions?.nivel_acesso === 'admin' && (
                     <button
                         onClick={() => setCreateModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-accent-blue hover:bg-accent-blue-hover text-white text-sm font-semibold rounded transition-colors"

@@ -170,7 +170,7 @@ const Header = () => {
                     </div>
 
                     {/* Admin */}
-                    {(permissions?.pode_moderar || permissions?.nivel_acesso === 'admin') && (
+                    {permissions?.nivel_acesso === 'admin' && (
                         <NavLink
                             to="/admin"
                             aria-label="Admin"
@@ -239,7 +239,7 @@ const Header = () => {
                             {link.label}
                         </NavLink>
                     ))}
-                    {(permissions?.pode_moderar || permissions?.nivel_acesso === 'admin') && (
+                    {permissions?.nivel_acesso === 'admin' && (
                         <NavLink
                             to="/admin"
                             onClick={() => setShowMobileMenu(false)}
