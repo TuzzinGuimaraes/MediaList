@@ -19,7 +19,7 @@ import {
   validarItem,
 } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import { usePaleta, useVibrar } from '../prototipo/PrototipoContext';
+import { usePaleta, vibrarConfirmacao } from '../prototipo/PrototipoContext';
 import { corDoEstado } from '../prototipo/PrototipoSelos';
 import { BottomSheet } from './BottomSheet';
 import { Botao } from './Botao';
@@ -133,17 +133,13 @@ type PropsPasso = { icone: 'remove' | 'add'; rotulo: string; desativado?: boolea
 
 function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) {
   const paleta = usePaleta();
-  const vibrar = useVibrar();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={rotulo}
       accessibilityState={{ disabled: desativado }}
       disabled={desativado}
-      onPress={() => {
-        vibrar();
-        aoTocar();
-      }}
+      onPress={aoTocar}
       hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       className="h-10 w-10 items-center justify-center active:opacity-60"
     >
@@ -210,7 +206,6 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
   const salvar = useSalvarItem();
   const remover = useRemoverItem();
   const paleta = usePaleta();
-  const vibrar = useVibrar();
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
@@ -222,7 +217,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await salvar.mutateAsync({ idMidia: midia.id_midia, idLista: item?.id_lista, dados: resultado.dados });
-      vibrar('sucesso');
+      vibrarConfirmacao();
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -234,7 +229,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await remover.mutateAsync({ idMidia: midia.id_midia, idLista: item.id_lista });
-      vibrar('sucesso');
+      vibrarConfirmacao();
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -305,10 +300,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
                 accessibilityRole="radio"
                 accessibilityLabel={nome}
                 accessibilityState={{ checked: ativo }}
-                onPress={() => {
-                  vibrar();
-                  mudar('status_consumo')(rotulo);
-                }}
+                onPress={() => mudar('status_consumo')(rotulo)}
                 className="min-h-[40px] justify-center rounded-full border border-dark-border px-3 py-1.5"
                 style={ativo ? { borderColor: cor, backgroundColor: `${cor}26` } : undefined}
               >

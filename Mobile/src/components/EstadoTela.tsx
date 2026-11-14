@@ -2,12 +2,15 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import { ErroRede, mensagemDeErro } from '../api/erros';
 import { usePaleta } from '../prototipo/PrototipoContext';
+import { Monograma } from '../prototipo/PrototipoMonograma';
 import { Botao } from './Botao';
 
 export function Carregando() {
   const paleta = usePaleta();
   return (
-    <View className="flex-1 items-center justify-center bg-dark-primary">
+    <View className="flex-1 items-center justify-center gap-4 bg-dark-primary">
+      {/* PROTÓTIPO (ticket 29): monograma no carregamento e nos estados vazios. */}
+      <Monograma tamanho={44} rotulo={null} />
       <ActivityIndicator color={paleta.accent.blue} accessibilityLabel="Carregando" />
     </View>
   );
@@ -15,7 +18,8 @@ export function Carregando() {
 
 export function Vazio({ mensagem }: { mensagem: string }) {
   return (
-    <View className="flex-1 items-center justify-center bg-dark-primary p-6">
+    <View className="flex-1 items-center justify-center gap-3 bg-dark-primary p-6">
+      <Monograma tamanho={44} rotulo={null} />
       <Text className="text-center text-corpo text-text-secondary">{mensagem}</Text>
     </View>
   );

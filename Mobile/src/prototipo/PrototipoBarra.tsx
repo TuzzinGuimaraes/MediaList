@@ -22,7 +22,7 @@ function Seta({ icone, rotulo, aoTocar }: { icone: 'chevron-back' | 'chevron-for
 export function PrototipoBarra() {
   const { valores, mudar } = usePrototipo();
   const insets = useSafeAreaInsets();
-  const [eixo, setEixo] = useState<Eixo>('paleta');
+  const [eixo, setEixo] = useState<Eixo>('assinatura');
   const [aberta, setAberta] = useState(true);
   const [{ deslocamento, arraste }] = useState(() => {
     const d = new Animated.Value(0);

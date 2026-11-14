@@ -172,7 +172,7 @@ describe('detalhe da Mídia', () => {
 
     await abrirDetalhe(frieren.id_midia);
 
-    expect(await screen.findByText('Fora da sua Lista.')).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Adicionar à Lista' })).toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Na sua Lista/)).not.toBeOnTheScreen();
   });
 

@@ -8,9 +8,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { criarQueryClient, ligarFocoAoAppState } from '@/api/consulta';
 import { SessaoProvider } from '@/auth/SessaoContext';
 import { PrototipoBarra } from '@/prototipo/PrototipoBarra';
-import { PrototipoProvider, useEixo, usePrototipo } from '@/prototipo/PrototipoContext';
+import { PrototipoProvider, usePrototipo } from '@/prototipo/PrototipoContext';
 import { useAnimar } from '@/prototipo/PrototipoMovimento';
-import { PrototipoTransicaoProvider } from '@/prototipo/PrototipoTransicaoPoster';
 import { RecorteProvider } from '@/recorte/RecorteContext';
 
 export default function RootLayout() {
@@ -26,11 +25,10 @@ export default function RootLayout() {
   );
 }
 
-/** PROTÓTIPO (ticket 29): tema de navegação, StatusBar e transição de tela seguem os eixos. */
+/** PROTÓTIPO (ticket 29): tema de navegação e StatusBar seguem o eixo `tema`. */
 function Interior() {
   const { paleta, escuro } = usePrototipo();
   const animar = useAnimar();
-  const compartilhada = useEixo('animacao') === 'compartilhada';
   const tema = useMemo(() => {
     const base = escuro ? DarkTheme : DefaultTheme;
     return {
@@ -50,18 +48,16 @@ function Interior() {
     <ThemeProvider value={tema}>
       <SessaoProvider>
         <RecorteProvider>
-          <PrototipoTransicaoProvider>
-            <StatusBar style={escuro ? 'light' : 'dark'} />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: paleta.fundo },
-                // Com o pôster compartilhado a tela entra com fade, sem deslocar o destino medido.
-                animation: !animar ? 'none' : compartilhada ? 'fade' : 'slide_from_right',
-                animationDuration: 280,
-              }}
-            />
-          </PrototipoTransicaoProvider>
+          <StatusBar style={escuro ? 'light' : 'dark'} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: paleta.fundo },
+              // Animação micro (2ª rodada): as telas entram com fade curto.
+              animation: animar ? 'fade' : 'none',
+              animationDuration: 280,
+            }}
+          />
           <PrototipoBarra />
         </RecorteProvider>
       </SessaoProvider>

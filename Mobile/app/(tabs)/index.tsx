@@ -1,70 +1,51 @@
-// PROTÓTIPO (ticket 29): três layouts do Início pelo eixo `inicio`.
-// A: Netflix (destaque grande + carrosséis Continuar / Em alta / Top 10).
-// B: destaques paginados em tela cheia + grade de Populares.
-// C: o layout atual com a pele nova (controle). Os dados são os mesmos nos três.
+// PROTÓTIPO (ticket 29), 2ª rodada: só o layout A do Início (Netflix), com os destaques
+// paginados (até 5 Mídias de Em alta, troca a cada 6 s, pausa ao tocar/arrastar) e os
+// carrosséis Continuar / Em alta / Top 10. O estilo dos cards sai do eixo `card`.
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
 import { useLista } from '@/api/lista';
 import { useEmAlta, usePopulares } from '@/api/midias';
-import type { CartaoMidia, ItemLista, Midia, MidiaPopular } from '@/api/tipos';
-import { CardMidia } from '@/components/CardMidia';
+import type { ItemLista, Midia, MidiaPopular } from '@/api/tipos';
+import { CardMidia, useLarguraCard } from '@/components/CardMidia';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { estadoDe, type TipoMidia } from '@/dominio/estadoConsumo';
 import { totalDoItem } from '@/dominio/itemLista';
 import { notasDaMidia, tituloDaMidia } from '@/dominio/midia';
-import { useEixo, usePaleta } from '@/prototipo/PrototipoContext';
-import { Entrada, ToqueAnimado } from '@/prototipo/PrototipoMovimento';
-import { SeloStatus, SelosSobrePoster, useSelos } from '@/prototipo/PrototipoSelos';
+import { alturaDoCorte, BannerAssinado, FioProgresso } from '@/prototipo/PrototipoAssinatura';
+import { EM_TESTE, useAssinatura, usePaleta } from '@/prototipo/PrototipoContext';
+import { Entrada, ToqueAnimado, useAnimar } from '@/prototipo/PrototipoMovimento';
+import { SeloStatus, SeloTop, useSelos } from '@/prototipo/PrototipoSelos';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 
 const textos = {
   emAlta: 'Em alta',
   emAltaVazio: 'Nenhuma Mídia neste catálogo ainda.',
-  populares: 'Populares',
   popularesVazio: 'Nenhuma Mídia popular neste catálogo ainda.',
   top10: 'Top 10 de hoje',
   continuar: 'Continuar',
+  destaques: 'Destaques',
   adicionar: 'Adicionar à Lista',
   naLista: 'Na Lista',
   detalhes: 'Detalhes',
 };
+
+const MAX_DESTAQUES = 5;
+const INTERVALO_MS = 6000;
 
 /** Título de seção no estilo da pele nova: forte, sem caixa alta. */
 function TituloSecao({ children }: { children: string }) {
   return <Text className="px-4 text-titulo-secao font-bold text-texto-forte">{children}</Text>;
 }
 
-function Secao({ titulo, midias, vazio }: { titulo: string; midias: CartaoMidia[]; vazio: string }) {
-  return (
-    <View accessibilityLabel={titulo} className="gap-3">
-      <Text className="px-4 text-legenda font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
-      {midias.length === 0 ? (
-        <Text className="px-4 text-corpo text-text-secondary">{vazio}</Text>
-      ) : (
-        <FlatList
-          horizontal
-          data={midias}
-          keyExtractor={(m) => m.id_midia}
-          renderItem={({ item, index }) => (
-            <Entrada indice={index} direcao="direita">
-              <CardMidia midia={item} largura={115} />
-            </Entrada>
-          )}
-          contentContainerClassName="gap-3 px-4"
-          showsHorizontalScrollIndicator={false}
-        />
-      )}
-    </View>
-  );
-}
-
-/** Banner do destaque (A) e cada página do carrossel (B): imagem, gradiente, título e ações. */
+/**
+ * Uma página dos destaques, no espírito do card C: banner (ou pôster desfocado) ao fundo,
+ * pôster pequeno, título, nota, Status e as ações.
+ */
 function Destaque({
   midia,
   item,
@@ -80,62 +61,136 @@ function Destaque({
 }) {
   const paleta = usePaleta();
   const router = useRouter();
-  const { estado } = useSelos(midia);
+  const { estado, top } = useSelos(midia);
+  const corte = useAssinatura('diagonal') ? alturaDoCorte(largura) : 0;
   const nota = notasDaMidia(midia)[0];
-  const imagem = midia.poster_url ?? midia.banner_url;
+  const titulo = tituloDaMidia(midia);
   return (
-    <View style={{ width: largura, height: altura }} className="overflow-hidden bg-superficie">
-      {imagem ? (
-        <Image source={imagem} style={{ position: 'absolute', width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" transition={200} />
-      ) : null}
-      <LinearGradient
-        colors={['transparent', `${paleta.fundo}99`, paleta.fundo]}
-        locations={[0.35, 0.72, 1]}
-        style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
-      />
-      <View className="absolute right-0 top-0">
-        <SelosSobrePoster midia={midia} tipo={false} status={false} />
-      </View>
-      <View className="absolute bottom-0 left-0 right-0 items-center gap-2 px-6 pb-5">
-        <Text className="text-legenda font-semibold uppercase tracking-widest text-marca-texto">
-          {midia.tipo_label}
-          {midia.generos_lista?.length ? ` · ${midia.generos_lista.slice(0, 2).join(' · ')}` : ''}
-        </Text>
-        <Text numberOfLines={2} accessibilityRole="header" className="text-center text-titulo-tela font-bold text-texto-forte">
-          {tituloDaMidia(midia)}
-        </Text>
-        <View className="flex-row items-center gap-3">
-          {nota ? (
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="star" size={14} color={paleta.nota} />
-              <Text className="text-legenda font-bold text-nota">{nota.valor}</Text>
-            </View>
-          ) : null}
-          {estado ? <SeloStatus estado={estado} /> : null}
+    <BannerAssinado
+      midia={midia}
+      largura={largura}
+      altura={altura}
+      imagem={midia.banner_url ?? midia.poster_url}
+      desfocar={!midia.banner_url}
+      estilo="destaque"
+    >
+      {top ? (
+        <View className="absolute right-0 top-0">
+          <SeloTop posicao={top} />
         </View>
-        <View className="mt-1 flex-row gap-3">
-          {item !== undefined ? (
+      ) : null}
+      <View className="absolute left-0 right-0 flex-row items-end gap-4 px-4" style={{ bottom: 18 + corte }}>
+        <View className="w-24 overflow-hidden rounded-md bg-superficie-alta" style={{ aspectRatio: 2 / 3, elevation: 6 }}>
+          {midia.poster_url ? (
+            <Image source={midia.poster_url} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" />
+          ) : null}
+          <FioProgresso idMidia={midia.id_midia} />
+        </View>
+        <View className="flex-1 gap-1.5">
+          <Text numberOfLines={1} className="text-legenda font-semibold uppercase tracking-widest text-marca-texto">
+            {midia.tipo_label}
+            {midia.generos_lista?.length ? ` · ${midia.generos_lista.slice(0, 2).join(' · ')}` : ''}
+          </Text>
+          <Text numberOfLines={2} className="text-titulo-secao font-bold text-texto-forte">
+            {titulo}
+          </Text>
+          <View className="flex-row items-center gap-3">
+            {nota ? (
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="star" size={14} color={paleta.nota} />
+                <Text className="text-legenda font-bold text-nota">{nota.valor}</Text>
+              </View>
+            ) : null}
+            {estado ? <SeloStatus estado={estado} /> : null}
+          </View>
+          <View className="mt-1 flex-row gap-2">
+            {item !== undefined ? (
+              <ToqueAnimado
+                accessibilityRole="button"
+                accessibilityLabel={item ? textos.naLista : textos.adicionar}
+                onPress={aoAdicionar}
+                className="flex-row items-center gap-1.5 rounded-md bg-marca px-4 py-2 active:bg-marca-forte"
+              >
+                <Ionicons name={item ? 'checkmark' : 'add'} size={18} color={paleta['sobre-marca']} />
+                <Text className="text-corpo font-bold text-sobre-marca">{item ? textos.naLista : textos.adicionar}</Text>
+              </ToqueAnimado>
+            ) : null}
             <ToqueAnimado
               accessibilityRole="button"
-              accessibilityLabel={item ? textos.naLista : textos.adicionar}
-              onPress={aoAdicionar}
-              className="flex-row items-center gap-1.5 rounded-md bg-marca px-5 py-2.5 active:bg-marca-forte"
+              accessibilityLabel={`${textos.detalhes} de ${titulo}`}
+              onPress={() => router.push({ pathname: '/midia/[id]', params: { id: midia.id_midia } })}
+              className="flex-row items-center gap-1.5 rounded-md bg-texto-forte/15 px-4 py-2"
             >
-              <Ionicons name={item ? 'checkmark' : 'add'} size={20} color={paleta['sobre-marca']} />
-              <Text className="text-corpo font-bold text-sobre-marca">{item ? textos.naLista : textos.adicionar}</Text>
+              <Ionicons name="information-circle-outline" size={18} color={paleta['texto-forte']} />
+              <Text className="text-corpo font-bold text-texto-forte">{textos.detalhes}</Text>
             </ToqueAnimado>
-          ) : null}
-          <ToqueAnimado
-            accessibilityRole="button"
-            accessibilityLabel={`${textos.detalhes} de ${tituloDaMidia(midia)}`}
-            onPress={() => router.push({ pathname: '/midia/[id]', params: { id: midia.id_midia } })}
-            className="flex-row items-center gap-1.5 rounded-md bg-texto-forte/15 px-5 py-2.5"
-          >
-            <Ionicons name="information-circle-outline" size={20} color={paleta['texto-forte']} />
-            <Text className="text-corpo font-bold text-texto-forte">{textos.detalhes}</Text>
-          </ToqueAnimado>
+          </View>
         </View>
       </View>
+    </BannerAssinado>
+  );
+}
+
+/**
+ * Destaques paginados: troca sozinho a cada 6 s, pausa enquanto o dedo está na tela ou o
+ * carrossel desliza, e retoma depois. Com "reduzir movimento", só troca à mão.
+ */
+function Destaques({
+  midias,
+  itemDe,
+  aoAdicionar,
+}: {
+  midias: Midia[];
+  itemDe(m: Midia): ItemLista | null | undefined;
+  aoAdicionar(m: Midia): void;
+}) {
+  const { width, height } = useWindowDimensions();
+  const animar = useAnimar();
+  const ref = useRef<FlatList<Midia>>(null);
+  const [pagina, setPagina] = useState(0);
+  const [pausado, setPausado] = useState(false);
+  const n = midias.length;
+  const altura = Math.round(height * 0.46);
+
+  useEffect(() => {
+    if (!animar || pausado || n < 2 || EM_TESTE) return;
+    const t = setTimeout(() => {
+      const proxima = (pagina + 1) % n;
+      ref.current?.scrollToIndex({ index: proxima, animated: true });
+      setPagina(proxima);
+    }, INTERVALO_MS);
+    return () => clearTimeout(t);
+  }, [animar, pausado, pagina, n]);
+
+  return (
+    <View accessibilityLabel={textos.destaques} className="gap-2">
+      <FlatList
+        ref={ref}
+        horizontal
+        pagingEnabled
+        data={midias}
+        keyExtractor={(m) => m.id_midia}
+        showsHorizontalScrollIndicator={false}
+        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+        onTouchStart={() => setPausado(true)}
+        onTouchEnd={() => setPausado(false)}
+        onTouchCancel={() => setPausado(false)}
+        onScrollBeginDrag={() => setPausado(true)}
+        onMomentumScrollEnd={(e) => {
+          setPagina(Math.round(e.nativeEvent.contentOffset.x / width));
+          setPausado(false);
+        }}
+        renderItem={({ item: m }) => (
+          <Destaque midia={m} item={itemDe(m)} largura={width} altura={altura} aoAdicionar={() => aoAdicionar(m)} />
+        )}
+      />
+      {n > 1 ? (
+        <View className="flex-row justify-center gap-1.5" importantForAccessibility="no-hide-descendants">
+          {midias.map((m, i) => (
+            <View key={m.id_midia} className={`h-1.5 rounded-full ${i === pagina ? 'w-5 bg-marca' : 'w-1.5 bg-texto-suave/40'}`} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -145,30 +200,36 @@ function CarrosselTop({ midias }: { midias: MidiaPopular[] }) {
   return (
     <View accessibilityLabel={textos.top10} className="gap-3">
       <TituloSecao>{textos.top10}</TituloSecao>
-      <FlatList
-        horizontal
-        data={midias.slice(0, 10)}
-        keyExtractor={(m) => m.id_midia}
-        showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-1 px-4"
-        renderItem={({ item, index }) => (
-          <Entrada indice={index} direcao="direita" style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-            <Text
-              className="font-bold text-texto-suave/40"
-              style={{ fontSize: 112, lineHeight: 112, marginRight: -18, letterSpacing: -8 }}
-            >
-              {index + 1}
-            </Text>
-            <CardMidia midia={item} largura={104} />
-          </Entrada>
-        )}
-      />
+      {midias.length === 0 ? (
+        <Text className="px-4 text-corpo text-texto-suave">{textos.popularesVazio}</Text>
+      ) : (
+        <FlatList
+          horizontal
+          data={midias.slice(0, 10)}
+          keyExtractor={(m) => m.id_midia}
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-1 px-4"
+          renderItem={({ item, index }) => (
+            <Entrada indice={index} direcao="direita" style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <Text
+                className="font-bold text-texto-suave/40"
+                style={{ fontSize: 112, lineHeight: 112, marginRight: -18, letterSpacing: -8 }}
+              >
+                {index + 1}
+              </Text>
+              <CardMidia midia={item} largura={104} papel="carrossel" />
+            </Entrada>
+          )}
+        />
+      )}
     </View>
   );
 }
 
-/** Itens Em progresso da Lista, com a barra de Progresso sob o pôster. */
+/** Itens Em progresso da Lista; sem o fio de progresso, a barra fica sob o card. */
 function CarrosselContinuar({ itens }: { itens: ItemLista[] }) {
+  const largura = useLarguraCard('continuar', 150);
+  const fio = useAssinatura('fio');
   if (!itens.length) return null;
   return (
     <View accessibilityLabel={textos.continuar} className="gap-3">
@@ -183,11 +244,13 @@ function CarrosselContinuar({ itens }: { itens: ItemLista[] }) {
           const total = totalDoItem(item);
           const fracao = total ? Math.min(1, (item.progresso_atual ?? 0) / total) : 0;
           return (
-            <Entrada indice={index} direcao="direita" style={{ width: 150, gap: 6 }}>
-              <CardMidia midia={item} largura={150} />
-              <View className="h-1 overflow-hidden rounded-full bg-superficie-alta">
-                <View className="h-full bg-marca" style={{ width: `${fracao * 100}%` }} />
-              </View>
+            <Entrada indice={index} direcao="direita" style={{ width: largura, gap: 6 }}>
+              <CardMidia midia={item} largura={150} papel="continuar" />
+              {fio ? null : (
+                <View className="h-1 overflow-hidden rounded-full bg-superficie-alta">
+                  <View className="h-full bg-marca" style={{ width: `${fracao * 100}%` }} />
+                </View>
+              )}
               <Text className="text-legenda text-texto-suave">
                 {total ? `${item.progresso_atual ?? 0} de ${total}` : `${item.progresso_atual ?? 0}`}
               </Text>
@@ -199,7 +262,7 @@ function CarrosselContinuar({ itens }: { itens: ItemLista[] }) {
   );
 }
 
-/** Itens da Lista no Recorte atual; só A e B pedem a Lista (o controle C não). */
+/** Itens da Lista no Recorte atual. */
 function useListaDoRecorte(): ItemLista[] | undefined {
   const { recorte } = useRecorte();
   const lista = useLista();
@@ -207,33 +270,33 @@ function useListaDoRecorte(): ItemLista[] | undefined {
   return lista.data?.filter((i) => tipos.includes(i.tipo));
 }
 
-function InicioA({ emAlta, populares }: { emAlta: Midia[]; populares: MidiaPopular[] }) {
+function Conteudo({ emAlta, populares }: { emAlta: Midia[]; populares: MidiaPopular[] }) {
   const lista = useListaDoRecorte();
-  const { width, height } = useWindowDimensions();
-  const [editor, setEditor] = useState(false);
-  const destaque = emAlta[0];
-  const item = destaque && lista ? lista.find((i) => i.id_midia === destaque.id_midia) ?? null : undefined;
+  const [editor, setEditor] = useState<Midia | null>(null);
+  const destaques = emAlta.slice(0, MAX_DESTAQUES);
+  const itemDe = (m: Midia) => (lista ? (lista.find((i) => i.id_midia === m.id_midia) ?? null) : undefined);
   const continuar = (lista ?? []).filter((i) => estadoDe(i.status_consumo, i.tipo as TipoMidia) === 'em_progresso');
+  const itemEditor = editor ? itemDe(editor) : undefined;
   return (
     <View className="gap-7 pb-28">
-      {destaque ? (
+      {destaques.length ? (
         <Entrada direcao="fade">
-          <Destaque midia={destaque} item={item} largura={width} altura={Math.round(height * 0.62)} aoAdicionar={() => setEditor(true)} />
+          <Destaques midias={destaques} itemDe={itemDe} aoAdicionar={setEditor} />
         </Entrada>
       ) : null}
       <CarrosselContinuar itens={continuar} />
-      <View className="gap-3">
+      <View accessibilityLabel={textos.emAlta} className="gap-3">
         <TituloSecao>{textos.emAlta}</TituloSecao>
-        {emAlta.length > 1 ? (
+        {emAlta.length ? (
           <FlatList
             horizontal
-            data={emAlta.slice(1)}
+            data={emAlta}
             keyExtractor={(m) => m.id_midia}
             showsHorizontalScrollIndicator={false}
             contentContainerClassName="gap-3 px-4"
             renderItem={({ item: m, index }) => (
               <Entrada indice={index} direcao="direita">
-                <CardMidia midia={m} largura={120} />
+                <CardMidia midia={m} largura={120} papel="carrossel" />
               </Entrada>
             )}
           />
@@ -241,58 +304,13 @@ function InicioA({ emAlta, populares }: { emAlta: Midia[]; populares: MidiaPopul
           <Text className="px-4 text-corpo text-texto-suave">{textos.emAltaVazio}</Text>
         )}
       </View>
-      {populares.length ? <CarrosselTop midias={populares} /> : null}
-      {editor && destaque && item !== undefined ? <EditorItem midia={destaque} item={item} aoFechar={() => setEditor(false)} /> : null}
-    </View>
-  );
-}
-
-function InicioB({ emAlta, populares }: { emAlta: Midia[]; populares: MidiaPopular[] }) {
-  const lista = useListaDoRecorte();
-  const { width, height } = useWindowDimensions();
-  const [pagina, setPagina] = useState(0);
-  const [editor, setEditor] = useState<Midia | null>(null);
-  const destaques = emAlta.slice(0, 6);
-  const itemDe = (m: Midia) => (lista ? lista.find((i) => i.id_midia === m.id_midia) ?? null : undefined);
-  const colunas = 3;
-  const larguraCard = (width - 32 - 12 * (colunas - 1)) / colunas;
-  return (
-    <View className="gap-6 pb-28">
-      <View>
-        <FlatList
-          horizontal
-          pagingEnabled
-          data={destaques}
-          keyExtractor={(m) => m.id_midia}
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => setPagina(Math.round(e.nativeEvent.contentOffset.x / width))}
-          renderItem={({ item: m }) => (
-            <Destaque midia={m} item={itemDe(m)} largura={width} altura={Math.round(height * 0.7)} aoAdicionar={() => setEditor(m)} />
-          )}
-        />
-        <View className="absolute bottom-1.5 left-0 right-0 flex-row justify-center gap-1.5">
-          {destaques.map((m, i) => (
-            <View key={m.id_midia} className={`h-1.5 rounded-full ${i === pagina ? 'w-5 bg-marca' : 'w-1.5 bg-texto-suave/50'}`} />
-          ))}
-        </View>
-      </View>
-      <View className="gap-3">
-        <TituloSecao>{textos.populares}</TituloSecao>
-        <View className="flex-row flex-wrap gap-3 px-4">
-          {populares.slice(0, 12).map((m, i) => (
-            <Entrada key={m.id_midia} indice={i}>
-              <CardMidia midia={m} largura={larguraCard} />
-            </Entrada>
-          ))}
-        </View>
-      </View>
-      {editor ? <EditorItem midia={editor} item={itemDe(editor) ?? null} aoFechar={() => setEditor(null)} /> : null}
+      <CarrosselTop midias={populares} />
+      {editor && itemEditor !== undefined ? <EditorItem midia={editor} item={itemEditor} aoFechar={() => setEditor(null)} /> : null}
     </View>
   );
 }
 
 export default function Inicio() {
-  const variante = useEixo('inicio');
   const paleta = usePaleta();
   const { recorte } = useRecorte();
   const emAlta = useEmAlta(recorte);
@@ -307,17 +325,7 @@ export default function Inicio() {
 
   let conteudo: React.ReactNode;
   if (emAlta.data && populares.data) {
-    conteudo =
-      variante === 'a' ? (
-        <InicioA emAlta={emAlta.data} populares={populares.data} />
-      ) : variante === 'b' ? (
-        <InicioB emAlta={emAlta.data} populares={populares.data} />
-      ) : (
-        <>
-          <Secao titulo={textos.emAlta} midias={emAlta.data} vazio={textos.emAltaVazio} />
-          <Secao titulo={textos.populares} midias={populares.data} vazio={textos.popularesVazio} />
-        </>
-      );
+    conteudo = <Conteudo emAlta={emAlta.data} populares={populares.data} />;
   } else if (emAlta.isError || populares.isError) {
     conteudo = <Falha erro={emAlta.error ?? populares.error} tentarDeNovo={atualizar} />;
   } else {
@@ -329,7 +337,7 @@ export default function Inicio() {
       <ScrollView
         testID="inicio"
         className="flex-1 bg-fundo"
-        contentContainerClassName={variante === 'c' ? 'flex-grow gap-6 py-4' : 'flex-grow'}
+        contentContainerClassName="flex-grow"
         refreshControl={
           <RefreshControl
             refreshing={atualizando}

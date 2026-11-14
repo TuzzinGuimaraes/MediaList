@@ -120,7 +120,7 @@ describe('Início', () => {
 
     await abrirLogado();
 
-    const populares = await screen.findByLabelText('Populares');
+    const populares = await screen.findByLabelText('Top 10 de hoje');
     expect(await within(populares).findAllByRole('link')).toHaveLength(2);
     expect(within(populares).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
       'JoJo no Kimyou na Bouken, Mangá',

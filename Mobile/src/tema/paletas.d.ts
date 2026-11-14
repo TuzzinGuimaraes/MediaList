@@ -21,9 +21,8 @@ export type NomeCor =
   | 'status-platinado';
 
 export type Cores = Record<NomeCor, string>;
-export type ChavePaleta = 'carmesim' | 'bordo' | 'rubi';
 
 export declare const NOMES: NomeCor[];
-export declare const PALETAS: Record<ChavePaleta, { nome: string; escuro: Cores; claro: Cores }>;
+export declare const TEMAS: Record<'escuro' | 'claro', Cores>;
 export declare function canais(hex: string): string;
 export declare function variaveis(cores: Cores): Record<string, string>;

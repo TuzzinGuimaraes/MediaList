@@ -7,6 +7,7 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Carregando } from '@/components/EstadoTela';
 import { SeletorRecorte } from '@/components/SeletorRecorte';
 import { useFontes, usePaleta } from '@/prototipo/PrototipoContext';
+import { Monograma } from '@/prototipo/PrototipoMonograma';
 import { useAnimar } from '@/prototipo/PrototipoMovimento';
 import tipografia from '@/tema/tipografia';
 
@@ -54,6 +55,8 @@ export default function AbasLayout() {
           name={aba.nome}
           options={{
             title: aba.titulo,
+            // PROTÓTIPO (ticket 29): no Início, o monograma "M" no lugar do título de texto.
+            headerTitle: aba.nome === 'index' ? () => <Monograma tamanho={30} /> : undefined,
             headerRight: aba.recorte ? () => <SeletorRecorte /> : undefined,
             tabBarBadge: aba.nome === 'noticias' && naoLidas > 0 ? naoLidas : undefined,
             tabBarIcon: ({ color, size }) => <Ionicons name={aba.icone} color={color as string} size={size} />,

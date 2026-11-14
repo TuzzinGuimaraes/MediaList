@@ -35,7 +35,7 @@ export type Selos = {
  * Lê o cache sem criar observador: um observador (mesmo desligado) passaria a dona da
  * queryFn da consulta e as invalidações chamariam a dele.
  */
-function useCache<T>(chave: QueryKey): T | undefined {
+export function useCache<T>(chave: QueryKey): T | undefined {
   const cliente = useQueryClient();
   const hash = JSON.stringify(chave);
   const assinar = useCallback((avisar: () => void) => cliente.getQueryCache().subscribe(avisar), [cliente]);

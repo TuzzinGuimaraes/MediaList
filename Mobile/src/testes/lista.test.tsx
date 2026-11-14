@@ -454,8 +454,7 @@ describe('adicionar pelo detalhe', () => {
     });
 
     await abrir(`/midia/${frieren.id_midia}`);
-    expect(await screen.findByText('Fora da sua Lista.')).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar à Lista' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Adicionar à Lista' }));
 
     expect(screen.getByRole('radio', { name: 'Planejado' })).toBeChecked();
     expect(screen.queryByRole('radio', { name: 'Platinado' })).not.toBeOnTheScreen();

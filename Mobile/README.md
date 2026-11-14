@@ -57,20 +57,28 @@ Escala única em `src/tema/tipografia.js`, exposta como classes do Tailwind (tam
 
 Esta branch (`artur/identidade-prototipo`) não vai para a master. `npm start` e abra no Expo Go: a
 barra amarela flutuante (só em `__DEV__`) troca os eixos em memória. Linha de cima `‹ eixo ›`, linha
-de baixo `‹ valor ›`; arraste pela alça ≡ e recolha no ×. Eixos: `paleta` (Carmesim, Bordô, Rubi),
-`tema` (escuro, claro, sistema; também no Perfil), `fonte` (Overpass, Inter, Manrope, Outfit),
-`card` (A, B, C), `inicio` (A, B, C), `detalhe` (A, B, C), `animacao` (micro, compartilhada) e
-`haptics`.
+de baixo `‹ valor ›`; arraste pela alça ≡ e recolha no ×.
+
+2ª rodada. Fixos: Carmesim no tema escuro e Rubi no claro, fonte Outfit, animação micro (o detalhe
+abre com fade), haptics leve só ao salvar ou remover um Item, Início A com destaques paginados
+(até 5 de Em alta, troca a cada 6 s, pausa ao tocar), detalhe único (banner + pôster sobreposto,
+botão grande de Lista, título alternativo) e o monograma "M". Eixos que sobraram:
+
+- `tema`: escuro, claro, sistema (também no Perfil).
+- `card`: por contexto (padrão; C no Continuar, A em Em alta e Top 10), C compacto (~70% da tela em
+  todos os carrosséis), C (controle). Os destaques seguem o espírito do C em todos.
+- `assinatura`: nenhuma, cor ambiente, fio de progresso (padrão), corte diagonal, todas
+  (`src/prototipo/PrototipoAssinatura.tsx`). A cor ambiente busca `coverImage.color` direto no
+  AniList (só no protótipo; o banco não guarda a cor) e, sem id do AniList, deriva a cor do título.
 
 - Cores: tokens semânticos em `src/tema/paletas.js`, classes `rgb(var(--cor-x) / <alpha-value>)` no
   `tailwind.config.js` e valores aplicados com `vars()` num View raiz (`src/prototipo/PrototipoContext.tsx`).
   Os nomes antigos (`dark-*`, `accent-*`, `text-*`) apontam para os tokens. Em JS: `usePaleta()`.
 - Fonte: `text-<nivel>` e `font-semibold`/`font-bold` põem `fontFamily: var(--fonte-<peso>)`, porque
   no Android uma família customizada não ganha negrito por `fontWeight`.
-- Pôster compartilhado: feito à mão em `src/prototipo/PrototipoTransicaoPoster.tsx` (o
-  `sharedTransitionTag` do Reanimated exige flag nativa, que o Expo Go não liga).
 - Jest: o Reanimated real não roda no Jest; `react-native-reanimated/mock` é redirecionado para
-  `src/testes/reanimadoSimulado.js`. Os testes abrem nas variantes de controle e sem a barra.
+  `src/testes/reanimadoSimulado.js`. Os testes abrem nos valores padrão, sem a barra, sem troca
+  automática dos destaques e sem chamar o AniList.
 
 ## Verificação
 

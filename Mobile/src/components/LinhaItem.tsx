@@ -6,7 +6,7 @@ import type { ItemLista } from '../api/tipos';
 import { nomeDoRotulo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import { usePaleta, useVibrar } from '../prototipo/PrototipoContext';
+import { usePaleta } from '../prototipo/PrototipoContext';
 import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
@@ -19,18 +19,13 @@ type PropsPasso = { novo: number | null; icone: 'remove' | 'add'; rotulo: string
 
 function BotaoPasso({ novo, icone, rotulo, mudar }: PropsPasso) {
   const paleta = usePaleta();
-  const vibrar = useVibrar();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={rotulo}
       accessibilityState={{ disabled: novo === null }}
       disabled={novo === null}
-      onPress={() => {
-        if (novo === null) return;
-        vibrar();
-        mudar(novo);
-      }}
+      onPress={() => novo !== null && mudar(novo)}
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       className="h-8 w-9 items-center justify-center active:opacity-60"
     >
