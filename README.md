@@ -19,7 +19,7 @@ O MediaList começou como um sistema de animes e foi expandido para um modelo mu
 Além disso, o sistema oferece:
 
 - autenticação com JWT
-- controle de permissões por grupos
+- Nível de acesso por usuário (`usuario` ou `admin`)
 - lista pessoal por usuário
 - avaliações e nota média agregada
 - notícias e notificações de Atualização de mídia
@@ -158,7 +158,7 @@ O schema é versionado com Alembic em [Backend/migrations](Backend/migrations), 
 - tabelas centrais e especializadas, com FKs, CHECKs e UNIQUE
 - triggers só de `data_atualizacao`
 - views de leitura (inclusive `vw_notas_midia`, com Nota média e Total de avaliações)
-- dados estruturais iniciais, como tipos, grupos de usuarios e generos
+- dados estruturais iniciais, como tipos e generos
 
 Usuários: o dono (`DB_OWNER_USER`) roda as migrações; o da aplicação (`DB_USER`) só tem
 SELECT/INSERT/UPDATE/DELETE, criado por [docker/postgres-init](docker/postgres-init). O PostgreSQL só roda
@@ -221,7 +221,7 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make db-dump` | Gera um dump (`pg_dump -Fc`) em `./dumps` |
 | `make db-restore DUMP_FILE=...` | Restaura um dump com `pg_restore` |
 | `make smoke-postgres` | Executa o smoke test de PostgreSQL no container backend |
-| `make smoke-permissions` | Executa o smoke test de permissões no container backend |
+| `make smoke-permissions` | Executa o smoke test do Nível de acesso no container backend |
 | `make smoke` | Executa os dois smoke tests no container backend |
 | `make import-animes` | Importa animes no container backend |
 | `make import-mangas` | Importa mangás no container backend |
@@ -244,14 +244,13 @@ sem precisar de RAWG nem AniList: animes, mangás e jogos reais, os Usuários de
 pessoal do Usuário comum com todos os Estados de consumo de cada Tipo, Avaliações (há Nota
 média), Notícias e Notificações (uma lida, outra não).
 
-| Usuário | Senha | Grupo |
+| Usuário | Senha | Nível de acesso |
 |---|---|---|
-| `teste@medialist.dev` | `teste123` | Usuários |
-| `admin@medialist.dev` | `admin123` | Administradores |
-| `moderador@medialist.dev` | `moderador123` | Moderadores |
+| `teste@medialist.dev` | `teste123` | `usuario` |
+| `admin@medialist.dev` | `admin123` | `admin` |
 
 - Rodar de novo não duplica nada: o que já existe fica como está.
-- `make seed-dev SEED_ARGS=--recriar` apaga e recria os três Usuários do seed e o que é deles;
+- `make seed-dev SEED_ARGS=--recriar` apaga e recria os dois Usuários do seed e o que é deles;
   as Mídias e os dados de outros Usuários ficam.
 - Combina com `make import-*` em qualquer ordem: as Mídias do seed usam os `anilist_id` e
   `rawg_slug` reais, e a Importação as atualiza no lugar.

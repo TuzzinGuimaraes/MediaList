@@ -24,9 +24,8 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   `dados_invalidos`, inclusive os que antes eram ignorados ou caíam num padrão (Tipo ou ordem
   desconhecidos, `refresh_token` que não é texto, `?nao_lidas=` inválido).
 - **Erros declarados:** cada rota declara os erros que devolve. As autenticadas somam
-  `ERROS_AUTENTICADA` (401 e o 422 do token malformado), e as com `permission_required` ou
-  `moderator_or_admin_required` somam `ERROS_COM_PERMISSAO` (mais o 403), os dois em
-  `contrato.py`.
+  `ERROS_AUTENTICADA` (401 e o 422 do token malformado), e as com `admin_required` (ADR 0012) somam
+  `ERROS_COM_PERMISSAO` (mais o 403), os dois em `contrato.py`.
 - **Paginação:** `Pagina[T]` = `{itens, pagina, por_pagina, total}` em `GET /midias`, nas
   Avaliações de uma Mídia, nas Notícias e nos Usuários da moderação. Lista pessoal, gêneros,
   trending, populares e Notificações ficam sem paginação.
