@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Shield, Star, Trash2, Users } from 'lucide-react';
 import { useApi } from '../contexts/ApiContext';
 import { useAuth } from '../contexts/AuthContext';
+import { buscarTodasAsPaginas } from '../paginacao';
 
 const AdminPage = () => {
     const { apiCall } = useApi();
@@ -13,8 +14,8 @@ const AdminPage = () => {
 
     const carregarUsuarios = useCallback(async () => {
         try {
-            const data = await apiCall('/moderacao/usuarios');
-            setUsuarios(data.usuarios || []);
+            const { itens } = await buscarTodasAsPaginas(apiCall, '/moderacao/usuarios');
+            setUsuarios(itens);
         } catch (error) {
             alert(`Erro: ${error.message}`);
         }
