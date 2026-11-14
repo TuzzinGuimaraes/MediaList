@@ -4,7 +4,6 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Pressable, RefreshControl, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 
-import { useAtualizar } from '@/api/consulta';
 import { mensagemDeErro } from '@/api/erros';
 import { useLista, useMudarProgresso } from '@/api/lista';
 import { useEmAlta } from '@/api/midias';
@@ -14,6 +13,7 @@ import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { LinhaItem } from '@/components/LinhaItem';
 import { TituloSecao } from '@/components/Secao';
+import { useAtualizar } from '@/components/useAtualizar';
 import { SeletorRecorte } from '@/components/SeletorRecorte';
 import { corDoEstado } from '@/components/Selo';
 import { BotaoFiltros, GrupoFiltro, SheetFiltros } from '@/components/SheetFiltros';

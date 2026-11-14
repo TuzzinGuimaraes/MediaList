@@ -1,6 +1,5 @@
 import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { useAtualizar } from '@/api/consulta';
 import { useCarrosseisPorGenero, useCarrossel } from '@/api/inicio';
 import { useLista } from '@/api/lista';
 import { useEmAlta, usePopulares } from '@/api/midias';
@@ -9,6 +8,7 @@ import { CardInfo, CardMidia } from '@/components/CardMidia';
 import { Destaques } from '@/components/Destaques';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { TituloSecao } from '@/components/Secao';
+import { useAtualizar } from '@/components/useAtualizar';
 import { estadoDe } from '@/dominio/estadoConsumo';
 import { generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@/dominio/inicio';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';

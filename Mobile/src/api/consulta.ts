@@ -1,8 +1,6 @@
 import { QueryClient, type QueryKey, focusManager, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { AppState, Platform } from 'react-native';
-
-import { useCores } from '../tema/TemaContext';
 
 import { ErroApi } from './erros';
 
@@ -40,27 +38,4 @@ export function useCache<T>(chave: QueryKey): T | undefined {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const ler = useCallback(() => cliente.getQueryData<T>(chave), [cliente, hash]);
   return useSyncExternalStore(assinar, ler, ler);
-}
-
-type Consulta = { refetch: () => Promise<unknown> };
-
-/**
- * Props do RefreshControl (puxar para atualizar) para uma ou mais consultas, na cor da marca.
- * O indicador só aparece durante o refetch pedido pelo gesto: refetches de mutação ou de
- * foco não mostram o spinner.
- */
-export function useAtualizar(consulta: Consulta | Consulta[]) {
-  const cores = useCores();
-  const [atualizando, setAtualizando] = useState(false);
-  const consultas = Array.isArray(consulta) ? consulta : [consulta];
-  return {
-    refreshing: atualizando,
-    onRefresh: () => {
-      setAtualizando(true);
-      Promise.all(consultas.map((c) => c.refetch())).finally(() => setAtualizando(false));
-    },
-    tintColor: cores['marca-texto'],
-    colors: [cores.marca],
-    progressBackgroundColor: cores.superficie,
-  };
 }
