@@ -4,6 +4,17 @@ export function tituloDaMidia(midia: Pick<MidiaResumo, 'titulo_portugues' | 'tit
   return midia.titulo_portugues || midia.titulo_original;
 }
 
+/**
+ * O título que o detalhe mostra em texto suave abaixo do principal: o primeiro entre o
+ * original e o inglês que for diferente do principal; null se nenhum for.
+ */
+export function tituloAlternativo(
+  midia: Pick<Midia, 'titulo_portugues' | 'titulo_original' | 'titulo_ingles'>,
+): string | null {
+  const principal = tituloDaMidia(midia);
+  return [midia.titulo_original, midia.titulo_ingles].find((t) => t && t !== principal) ?? null;
+}
+
 /** Uma nota pronta para a tela: rótulo inteiro (detalhe, leitor de tela) e curto (card). */
 export type NotaExibida = { rotulo: string; curto: string; valor: string };
 

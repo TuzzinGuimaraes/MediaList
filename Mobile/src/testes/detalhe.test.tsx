@@ -166,8 +166,60 @@ describe('detalhe da Mídia', () => {
 
     await abrirDetalhe(frieren.id_midia);
 
-    expect(await screen.findByText('Fora da sua Lista.')).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Adicionar à Lista' })).toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Na sua Lista/)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Fora da sua Lista.')).not.toBeOnTheScreen();
+  });
+
+  it('na Lista, o botão grande vira "Editar na Lista" e abre o editor do Item', async () => {
+    const frieren = anime();
+    simularFetch(
+      detalhe(frieren, {
+        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'assistindo', progresso_atual: 3, progresso_total: null }],
+      }),
+    );
+
+    await abrirDetalhe(frieren.id_midia);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Editar na Lista' }));
+    expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Adicionar à Lista' })).not.toBeOnTheScreen();
+  });
+
+  it('sem título em português, o alternativo é o inglês', async () => {
+    const frieren = anime({ titulo_portugues: null, titulo_ingles: "Frieren: Beyond Journey's End" });
+    simularFetch(detalhe(frieren));
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: '葬送のフリーレン' })).toBeOnTheScreen();
+    expect(screen.getByText("Frieren: Beyond Journey's End")).toBeOnTheScreen();
+  });
+
+  it('título igual em todas as línguas não se repete', async () => {
+    const hollow = jogo({ titulo_portugues: 'Hollow Knight', titulo_ingles: 'Hollow Knight' });
+    simularFetch(detalhe(hollow));
+
+    await abrirDetalhe(hollow.id_midia);
+
+    expect(await screen.findByRole('header', { name: 'Hollow Knight' })).toBeOnTheScreen();
+    expect(screen.getAllByText('Hollow Knight')).toHaveLength(1);
+  });
+
+  it('selos: Tipo, Status do Item e "Em exibição"', async () => {
+    const frieren = anime({ status_anime: 'em_exibicao' });
+    simularFetch(
+      detalhe(frieren, {
+        lista: [{ ...frieren, id_lista: 'LST-1', status_consumo: 'pausado', progresso_atual: 3, progresso_total: null }],
+      }),
+    );
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByText('Em exibição')).toBeOnTheScreen();
+    expect(screen.getByText('Anime')).toBeOnTheScreen();
+    // O selo de Status e o valor de "Na sua Lista".
+    expect(screen.getAllByText('Pausado')).toHaveLength(2);
   });
 
   it('deep link sem sessão vai ao login sem chamar a API', async () => {
