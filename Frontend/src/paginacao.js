@@ -6,8 +6,8 @@ const comPagina = (endpoint, pagina, porPagina) => {
     return `${endpoint}${separador}pagina=${pagina}&por_pagina=${porPagina}`;
 };
 
-// Pede página por página até juntar o `total`. Para telas que precisam do conjunto inteiro
-// (distribuição de notas, usuários da moderação).
+// Pede página por página até a última: para quando `pagina * por_pagina >= total` (a regra do
+// app) ou quando uma página vem vazia. Hoje só a moderação precisa do conjunto inteiro.
 export const buscarTodasAsPaginas = async (apiCall, endpoint) => {
     const itens = [];
     let total = 0;
@@ -16,7 +16,8 @@ export const buscarTodasAsPaginas = async (apiCall, endpoint) => {
         const recebidos = data.itens || [];
         itens.push(...recebidos);
         total = data.total ?? itens.length;
-        if (recebidos.length === 0 || itens.length >= total) break;
+        const porPagina = data.por_pagina ?? POR_PAGINA_MAXIMO;
+        if (recebidos.length === 0 || (data.pagina ?? pagina) * porPagina >= total) break;
     }
     return { itens, total };
 };

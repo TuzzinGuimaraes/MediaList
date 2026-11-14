@@ -9,10 +9,10 @@ describe('buscarTodasAsPaginas', () => {
             .mockResolvedValueOnce(pagina(primeira, 1, 52))
             .mockResolvedValueOnce(pagina([{ id: 50 }, { id: 51 }], 2, 52));
 
-        const { itens, total } = await buscarTodasAsPaginas(apiCall, '/avaliacoes/MID-1');
+        const { itens, total } = await buscarTodasAsPaginas(apiCall, '/moderacao/usuarios');
 
-        expect(apiCall).toHaveBeenNthCalledWith(1, '/avaliacoes/MID-1?pagina=1&por_pagina=50');
-        expect(apiCall).toHaveBeenNthCalledWith(2, '/avaliacoes/MID-1?pagina=2&por_pagina=50');
+        expect(apiCall).toHaveBeenNthCalledWith(1, '/moderacao/usuarios?pagina=1&por_pagina=50');
+        expect(apiCall).toHaveBeenNthCalledWith(2, '/moderacao/usuarios?pagina=2&por_pagina=50');
         expect(itens).toHaveLength(52);
         expect(total).toBe(52);
     });
@@ -24,6 +24,18 @@ describe('buscarTodasAsPaginas', () => {
 
         expect(apiCall).toHaveBeenCalledTimes(1);
         expect(apiCall).toHaveBeenCalledWith('/moderacao/usuarios?x=1&pagina=1&por_pagina=50');
+    });
+
+    test('para quando pagina * por_pagina cobre o total, como o app', async () => {
+        // Um Usuário saiu entre as páginas: a 1ª veio com 49, mas a 2ª já é a última.
+        const apiCall = jest.fn()
+            .mockResolvedValueOnce(pagina(Array.from({ length: 49 }, (_, i) => ({ id: i })), 1, 52))
+            .mockResolvedValueOnce(pagina([{ id: 50 }, { id: 51 }], 2, 52));
+
+        const { itens } = await buscarTodasAsPaginas(apiCall, '/moderacao/usuarios');
+
+        expect(apiCall).toHaveBeenCalledTimes(2);
+        expect(itens).toHaveLength(51);
     });
 
     test('para se uma página vier vazia antes do total', async () => {
