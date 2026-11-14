@@ -8,17 +8,26 @@ ficam com o JSONProvider do app.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from banco import consultar, consultar_um, executar, transacao
 from schemas.estado_consumo import ESTADOS_TERMINAIS, ROTULOS_POR_TIPO
 from tipos_midia import COLUNAS_BASE, TIPOS, joins_das_filhas, origem_nota, por_tipo, valor_de_coluna
 
-#: Rótulos de estado de Concluído e Platinado, em todos os Tipos, já como literais SQL.
-_ROTULOS_TERMINAIS = ', '.join(
-    sorted({f"'{rotulo}'" for rotulos in ROTULOS_POR_TIPO.values()
-            for estado, rotulo in rotulos.items() if estado in ESTADOS_TERMINAIS})
-)
+_ROTULOS_TERMINAIS = sorted({
+    rotulo for rotulos in ROTULOS_POR_TIPO.values()
+    for estado, rotulo in rotulos.items() if estado in ESTADOS_TERMINAIS
+})
+if not all(re.fullmatch(r'[a-z_]+', rotulo) for rotulo in _ROTULOS_TERMINAIS):
+    raise ValueError(f'Rótulo de estado fora de [a-z_]: {_ROTULOS_TERMINAIS}')
+
+#: Rótulos de Concluído e Platinado de todos os Tipos, como lista SQL ('completo', 'lido', ...).
+#: Constante do código (schemas/estado_consumo.py), nunca entrada do cliente: entra no
+#: SELECT_MIDIA como literal, igual aos outros pedaços gerados aqui, para que quem usa o
+#: SELECT (aqui e em itens_lista.py) não precise repassar um parâmetro. O ValueError acima
+#: barra um rótulo que quebraria o literal.
+SQL_ROTULOS_TERMINAIS = ', '.join(f"'{rotulo}'" for rotulo in _ROTULOS_TERMINAIS)
 
 #: Colunas de uma Mídia nas respostas da API. Os nomes duplicados (`id_anime`,
 #: `codigo_anime`) e prefixados (`anime_trailer_url`) são contrato com os clientes.
@@ -85,7 +94,7 @@ SELECT_MIDIA = f"""
         (
             SELECT COUNT(*)
             FROM lista_usuarios lu
-            WHERE lu.id_midia = m.id_midia AND lu.status_consumo IN ({_ROTULOS_TERMINAIS})
+            WHERE lu.id_midia = m.id_midia AND lu.status_consumo IN ({SQL_ROTULOS_TERMINAIS})
         ) AS total_concluidos
 """
 
