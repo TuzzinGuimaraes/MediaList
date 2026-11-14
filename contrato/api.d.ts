@@ -406,6 +406,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/{id_midia}/notas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário. */
+        get: operations["get__api_midias_{id_midia}_notas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/moderacao/avaliacoes": {
         parameters: {
             query?: never;
@@ -879,6 +896,16 @@ export interface components {
              * @enum {string}
              */
             tipo?: "anime" | "manga" | "jogo";
+        };
+        /** ContagemPorNota */
+        ContagemPorNota: {
+            /**
+             * Nota
+             * @description A faixa: a nota arredondada, meio para cima (7,5 cai no 8)
+             */
+            nota: number;
+            /** Total */
+            total: number;
         };
         /** ContagemPorRotulo */
         ContagemPorRotulo: {
@@ -2063,6 +2090,16 @@ export interface components {
         /** RespostaMe */
         RespostaMe: {
             usuario: components["schemas"]["UsuarioAtual"];
+        };
+        /** RespostaNotas */
+        RespostaNotas: {
+            /**
+             * Distribuicao
+             * @description As 10 faixas, de 1 a 10, inclusive as vazias
+             */
+            distribuicao: components["schemas"]["ContagemPorNota"][];
+            /** @description A do Usuário logado; null sem login ou sem Avaliação */
+            minha_avaliacao: components["schemas"]["AvaliacaoDaMidia"] | null;
         };
         /** RespostaNotificacoes */
         RespostaNotificacoes: {
@@ -3666,6 +3703,64 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}_notas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaNotas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

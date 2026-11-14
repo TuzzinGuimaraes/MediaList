@@ -260,6 +260,8 @@ contrato = SpecTree(
 
 #: `security=` das rotas com `@jwt_required()`.
 AUTENTICADO = {'bearer': []}
+#: `security=` das rotas com `@jwt_required(optional=True)`: sem token também vale.
+AUTENTICACAO_OPCIONAL = [{}, AUTENTICADO]
 
 #: Erros de toda rota com `@jwt_required()`, vindos dos loaders do flask-jwt (app.py): 401 sem
 #: token, expirado, revogado ou de Usuário desativado; 422 com o token malformado.

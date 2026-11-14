@@ -308,3 +308,34 @@ def test_avaliacoes_da_midia_paginadas_com_o_total(client, catalogo, pg, entrar)
     # Mais recentes primeiro, sem repetir nem pular entre as páginas.
     assert [a['nota'] for a in primeira['itens'] + segunda['itens']] == [7.0, 6.0, 5.0]
     assert client.get(f'/api/avaliacoes/{anime}?pagina=0').status_code == 400
+
+
+def test_notas_da_midia_por_faixa_e_a_avaliacao_de_quem_esta_logado(client, catalogo, pg, entrar):  # noqa: F811
+    anime = catalogo['anime']
+    faixas_vazias = [{'nota': n, 'total': 0} for n in range(1, 11)]
+    assert client.get(f'/api/midias/{anime}/notas').get_json() == {
+        'distribuicao': faixas_vazias, 'minha_avaliacao': None,
+    }
+    inexistente = client.get(f'/api/midias/{INEXISTENTE}/notas')
+    assert (inexistente.status_code, inexistente.get_json()) == (
+        404, {'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado'})
+
+    # A faixa é a nota arredondada (meio para cima), como o web e o app desenhavam: 7,5 cai no 8,
+    # 1,4 no 1; abaixo de 0,5 não entra em faixa nenhuma.
+    autoras = {nota: _usuario(pg) for nota in (7.5, 8, 10, 1.4, 0.4)}
+    for nota, autora in autoras.items():
+        criada = client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': anime, 'nota': nota})
+        assert criada.status_code == 201
+
+    sem_login = client.get(f'/api/midias/{anime}/notas').get_json()
+    totais = {faixa['nota']: faixa['total'] for faixa in sem_login['distribuicao']}
+    assert [f['nota'] for f in sem_login['distribuicao']] == list(range(1, 11))
+    assert {n: t for n, t in totais.items() if t} == {1: 1, 8: 2, 10: 1}
+    assert sem_login['minha_avaliacao'] is None
+
+    minha = client.get(f'/api/midias/{anime}/notas', headers=entrar(autoras[10])).get_json()['minha_avaliacao']
+    assert set(minha) == CHAVES_AVALIACAO
+    assert (minha['nota'], minha['id_usuario']) == (10.0, str(autoras[10]))
+    sem_avaliacao = client.get(f'/api/midias/{anime}/notas', headers=entrar(_usuario(pg))).get_json()
+    assert sem_avaliacao['minha_avaliacao'] is None
+    assert sem_avaliacao['distribuicao'] == sem_login['distribuicao']

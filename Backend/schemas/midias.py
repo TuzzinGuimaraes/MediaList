@@ -26,6 +26,7 @@ from contrato import (
     TipoDeMidia,
     VazioComoAusente,
 )
+from schemas.avaliacoes import AvaliacaoDaMidia
 from schemas.estado_consumo import RotuloDeEstado
 
 StatusAnime = Literal['em_exibicao', 'finalizado', 'aguardando', 'cancelado']
@@ -243,6 +244,16 @@ class ContagemPorRotulo(BaseModel):
 
 class RespostaDistribuicao(BaseModel):
     distribuicao: list[ContagemPorRotulo]
+
+
+class ContagemPorNota(BaseModel):
+    nota: int = Field(ge=1, le=10, description='A faixa: a nota arredondada, meio para cima (7,5 cai no 8)')
+    total: int
+
+
+class RespostaNotas(BaseModel):
+    distribuicao: list[ContagemPorNota] = Field(description='As 10 faixas, de 1 a 10, inclusive as vazias')
+    minha_avaliacao: AvaliacaoDaMidia | None = Field(description='A do Usuário logado; null sem login ou sem Avaliação')
 
 
 class AtualizacaoPublicada(BaseModel):

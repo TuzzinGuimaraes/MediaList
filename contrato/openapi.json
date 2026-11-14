@@ -669,6 +669,27 @@
         "title": "ConsultaTrending",
         "type": "object"
       },
+      "ContagemPorNota": {
+        "properties": {
+          "nota": {
+            "description": "A faixa: a nota arredondada, meio para cima (7,5 cai no 8)",
+            "maximum": 10,
+            "minimum": 1,
+            "title": "Nota",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nota",
+          "total"
+        ],
+        "title": "ContagemPorNota",
+        "type": "object"
+      },
       "ContagemPorRotulo": {
         "properties": {
           "status_consumo": {
@@ -4222,6 +4243,35 @@
         "title": "RespostaMe",
         "type": "object"
       },
+      "RespostaNotas": {
+        "properties": {
+          "distribuicao": {
+            "description": "As 10 faixas, de 1 a 10, inclusive as vazias",
+            "items": {
+              "$ref": "#/components/schemas/ContagemPorNota"
+            },
+            "title": "Distribuicao",
+            "type": "array"
+          },
+          "minha_avaliacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AvaliacaoDaMidia"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A do Usuário logado; null sem login ou sem Avaliação"
+          }
+        },
+        "required": [
+          "distribuicao",
+          "minha_avaliacao"
+        ],
+        "title": "RespostaNotas",
+        "type": "object"
+      },
       "RespostaNotificacoes": {
         "properties": {
           "notificacoes": {
@@ -6843,6 +6893,85 @@
           }
         },
         "summary": "Distribuição de status dos usuários para uma mídia.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/notas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_notas",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaNotas"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário.",
         "tags": [
           "midias"
         ]
