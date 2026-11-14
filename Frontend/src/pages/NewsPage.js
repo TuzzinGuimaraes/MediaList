@@ -14,8 +14,8 @@ const NewsPage = () => {
     const carregarNoticias = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await apiCall('/noticias?limite=20');
-            setNoticias(data.noticias || []);
+            const data = await apiCall('/noticias?por_pagina=20');
+            setNoticias(data.itens || []);
         } catch (error) {
             console.error('Erro ao carregar notícias:', error);
         } finally {
@@ -72,8 +72,8 @@ const NewsPage = () => {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {noticias.map((noticia, index) => (
-                        <article key={index} className="bg-dark-secondary rounded-md overflow-hidden">
+                    {noticias.map(noticia => (
+                        <article key={noticia.id_noticia} className="bg-dark-secondary rounded-md overflow-hidden">
                             {noticia.imagem_url && (
                                 <img
                                     src={noticia.imagem_url}

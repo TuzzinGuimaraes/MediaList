@@ -26,7 +26,10 @@ describe('NewsPage', () => {
 
     test('lista noticias e abre modal para usuario autorizado', async () => {
         const apiCall = jest.fn().mockResolvedValue({
-            noticias: [{ titulo: 'Noticia 1', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01', tags: [] }],
+            itens: [{ id_noticia: 'NOT-1', titulo: 'Noticia 1', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01T12:00:00Z', tags: [] }],
+            pagina: 1,
+            por_pagina: 20,
+            total: 1,
         });
         useApi.mockReturnValue({ apiCall });
         useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
@@ -34,15 +37,16 @@ describe('NewsPage', () => {
         render(<NewsPage />);
 
         expect(await screen.findByText('Noticia 1')).toBeInTheDocument();
+        expect(apiCall).toHaveBeenCalledWith('/noticias?por_pagina=20');
         fireEvent.click(screen.getByText('Criar Notícia'));
         expect(screen.getByText('modal-create')).toBeInTheDocument();
     });
 
     test('cria noticia com sucesso', async () => {
         const apiCall = jest.fn()
-            .mockResolvedValueOnce({ noticias: [] })
+            .mockResolvedValueOnce({ itens: [], pagina: 1, por_pagina: 20, total: 0 })
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ noticias: [{ titulo: 'Nova noticia', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01', tags: [] }] });
+            .mockResolvedValueOnce({ itens: [{ id_noticia: 'NOT-2', titulo: 'Nova noticia', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01T12:00:00Z', tags: [] }], pagina: 1, por_pagina: 20, total: 1 });
         useApi.mockReturnValue({ apiCall });
         useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
 
@@ -57,7 +61,7 @@ describe('NewsPage', () => {
     });
 
     test('exibe estado vazio', async () => {
-        useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ noticias: [] }) });
+        useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ itens: [], pagina: 1, por_pagina: 20, total: 0 }) });
         useAuth.mockReturnValue({ user: { nome: 'User' }, permissions: { nivel_acesso: 'usuario', pode_moderar: false } });
 
         render(<NewsPage />);
