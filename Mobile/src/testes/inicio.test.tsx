@@ -114,12 +114,12 @@ describe('Início', () => {
     ]);
   });
 
-  it('Top 10 de hoje ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
+  it('Top 10 ordena pelo número de Usuários que têm a Mídia na Lista', async () => {
     simularFetch(catalogo());
 
     await abrirLogado();
 
-    const populares = await screen.findByLabelText('Top 10 de hoje');
+    const populares = await screen.findByLabelText('Top 10');
     expect(await within(populares).findAllByRole('link')).toHaveLength(2);
     expect(within(populares).getAllByRole('link').map((c) => c.props.accessibilityLabel)).toEqual([
       'JoJo no Kimyou na Bouken, Mangá',
@@ -140,7 +140,7 @@ describe('Início', () => {
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
     expect(api.para('GET /midias/populares?tipo=jogo')).toHaveLength(1);
     // Sem populares no catálogo, o Top 10 some em vez de mostrar um carrossel vazio.
-    expect(screen.queryByLabelText('Top 10 de hoje')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Top 10')).not.toBeOnTheScreen();
   });
 
   it('a pílula abre o menu com as duas opções e a atual marcada', async () => {
@@ -320,7 +320,7 @@ describe('Início: destaques e carrosséis', () => {
     expect(secoes).toEqual([
       'Continuar',
       'Em alta',
-      'Top 10 de hoje',
+      'Top 10',
       'Maiores notas',
       'Lançamentos recentes',
       'Porque você curte Aventura',
@@ -362,7 +362,7 @@ describe('Início: destaques e carrosséis', () => {
 
     await screen.findByLabelText('Em alta');
     const secoes = screen.getAllByRole('header').map((h) => h.props.children);
-    expect(secoes).toEqual(['Em alta', 'Top 10 de hoje']);
+    expect(secoes).toEqual(['Em alta', 'Top 10']);
   });
 
   it('sem Em alta, só o carrossel dele some: os outros continuam', async () => {

@@ -17,7 +17,8 @@ const textos = {
   vazio: 'Nenhuma Mídia neste catálogo ainda.',
   continuar: 'Continuar',
   emAlta: 'Em alta',
-  top10: 'Top 10 de hoje',
+  // Populares é acumulado (Usuários com a Mídia na Lista), não do dia.
+  top10: 'Top 10',
   maioresNotas: 'Maiores notas',
   lancamentos: 'Lançamentos recentes',
   porGenero: (genero: string) => `Porque você curte ${genero}`,
