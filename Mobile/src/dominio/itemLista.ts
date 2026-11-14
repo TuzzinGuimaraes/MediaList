@@ -8,6 +8,7 @@ import {
   APRESENTACAO_DO_TIPO,
   type EstadoConsumo,
   estadoDe,
+  eTerminal,
   ROTULOS_POR_TIPO,
   rotuloPara,
   type TipoMidia,
@@ -132,7 +133,7 @@ export function itensDoEstado<T extends { tipo: TipoMidia; status_consumo: strin
 ): T[] {
   return itens.filter((item) => {
     const doItem = estadoDe(item.status_consumo, item.tipo);
-    return doItem === estado || (estado === 'concluido' && doItem === 'platinado');
+    return doItem === estado || (estado === 'concluido' && eTerminal(doItem));
   });
 }
 
@@ -329,8 +330,7 @@ export function nomeDoProgresso(tipo: string): string {
 
 /** Quanto do fio de progresso fica preenchido (0 a 1); null: sem total, só um traço curto. */
 export function proporcaoDoFio(item: ComTotal & { status_consumo: string; progresso_atual: number | null }): number | null {
-  const estado = estadoDe(item.status_consumo, item.tipo);
-  if (estado === 'concluido' || estado === 'platinado') return 1;
+  if (eTerminal(estadoDe(item.status_consumo, item.tipo))) return 1;
   const total = totalDoItem(item);
   if (!total) return null;
   return Math.min(1, (item.progresso_atual ?? 0) / total);

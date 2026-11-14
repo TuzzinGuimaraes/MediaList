@@ -59,6 +59,13 @@ export const NOMES_ESTADO: Record<EstadoConsumo, string> = {
   platinado: 'Platinado',
 };
 
+/** Estados em que o Item terminou: Concluído e o seu refinamento, Platinado (ESTADOS_TERMINAIS no backend). */
+const ESTADOS_TERMINAIS: ReadonlySet<EstadoConsumo> = new Set(['concluido', 'platinado']);
+
+export function eTerminal(estado: EstadoConsumo | null): boolean {
+  return estado !== null && ESTADOS_TERMINAIS.has(estado);
+}
+
 /** Rótulo de cada estado, por Tipo. Estado ausente não se aplica ao Tipo (só jogo tem Platinado). */
 export const ROTULOS_POR_TIPO: Record<TipoMidia, Partial<Record<EstadoConsumo, string>>> = {
   anime: {
