@@ -1,11 +1,8 @@
-import path from 'node:path';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
-import { guardarSessao } from '../auth/armazenamento';
-import { type Resposta, simularFetch, usuarioAna } from './fetchSimulado';
+import { type Resposta, simularFetch } from './fetchSimulado';
 import { anime, jogo, manga } from './midias';
-
-const APP = path.resolve(__dirname, '../../app');
+import { APP, abrirLogado } from './sessao';
 
 type Fixture = ReturnType<typeof anime>;
 
@@ -38,10 +35,7 @@ function detalhe(
   };
 }
 
-async function abrirDetalhe(id: string) {
-  await guardarSessao({ tokens: { access: 'A1', refresh: 'R1' }, usuario: usuarioAna as never });
-  return renderRouter(APP, { initialUrl: `/midia/${id}` });
-}
+const abrirDetalhe = (id: string) => abrirLogado(`/midia/${id}`);
 
 describe('detalhe da Mídia', () => {
   it('anime: título, sinopse, lançamento, Gêneros, episódios, Nota média e Total de avaliações', async () => {
