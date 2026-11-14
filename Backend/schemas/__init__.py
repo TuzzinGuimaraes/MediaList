@@ -1,7 +1,6 @@
 """
 Exports dos schemas.
 """
-from .base import ValidationError
 from .estado_consumo import (
     ESTADOS,
     ESTADOS_TERMINAIS,
@@ -16,7 +15,6 @@ from .estado_consumo import (
 )
 
 __all__ = [
-    'ValidationError',
     'ESTADOS',
     'ESTADOS_TERMINAIS',
     'ROTULOS_POR_TIPO',

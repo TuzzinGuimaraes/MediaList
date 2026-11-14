@@ -35,7 +35,6 @@ from routes import (
     usuario_bp,
     utils_bp,
 )
-from schemas import ValidationError as SchemaValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -201,12 +200,6 @@ def entrada_fora_do_modelo(erro):
     return resposta_erro(
         400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos', detalhes_de_validacao(erro.errors(include_url=False)),
     )
-
-
-@app.errorhandler(SchemaValidationError)
-def payload_invalido(erro):
-    """`BaseSchema` legado, enquanto existir; as mensagens já vêm em português."""
-    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos', erro.errors)
 
 
 @app.errorhandler(Conflito)

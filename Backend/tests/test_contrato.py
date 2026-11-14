@@ -14,7 +14,6 @@ from pydantic import ValidationError as PydanticValidationError
 import exportar_openapi
 from contrato import ConsultaPaginada, Erro, Pagina, detalhes_de_validacao, montar_pagina, registrar_documentacao
 from routes import utils as utils_routes
-from schemas import ValidationError
 from schemas.utils import Genero
 
 from .helpers import FakeCatalogo
@@ -116,28 +115,12 @@ def test_resposta_fora_do_modelo_em_producao_sai_como_veio_e_vai_para_o_log(app,
     assert 'nome_genero' in caplog.text
 
 
-
 def test_generos_com_tipo_vazio_e_como_sem_tipo(client, generos):
     """Parâmetro de query vazio vale como ausente, como em `parametros.ler_int`."""
     catalogo = generos()
 
     assert client.get('/api/generos?tipo=').status_code == 200
     assert catalogo.chamadas == [('generos', None)]
-
-
-
-# ============================================
-# Validação legada (BaseSchema) no mesmo envelope
-# ============================================
-
-def test_validation_error_do_base_schema_vira_envelope(app):
-    with app.test_request_context('/api/midias/X', method='PUT'):
-        response = app.make_response(app.handle_user_exception(ValidationError({'generos': 'Tipo inválido'})))
-
-    assert response.status_code == 400
-    assert response.get_json() == {
-        'erro': 'Dados inválidos', 'codigo': 'dados_invalidos', 'detalhes': {'generos': 'Tipo inválido'},
-    }
 
 
 # ============================================
