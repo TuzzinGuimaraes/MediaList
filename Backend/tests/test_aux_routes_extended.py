@@ -71,3 +71,16 @@ def test_usuario_permissoes_saem_como_booleanos(client, auth_headers, monkeypatc
         True, False, False, False,
     ]
     assert all(type(permissoes[p]) is bool for p in ('pode_criar', 'pode_editar', 'pode_deletar', 'pode_moderar'))
+
+
+def test_rotas_de_auth_usuario_preferencias_e_utils_estao_no_openapi(client):
+    caminhos = client.get('/api/openapi.json').get_json()['paths']
+
+    esperadas = {
+        '/api/auth/registro': 'post', '/api/auth/login': 'post', '/api/auth/refresh': 'post',
+        '/api/auth/me': 'get', '/api/auth/logout': 'post', '/api/auth/esqueci-senha': 'post',
+        '/api/auth/redefinir-senha': 'post', '/api/usuario/perfil': 'get', '/api/usuario/permissoes': 'get',
+        '/api/usuario/estatisticas': 'get', '/api/preferencias': 'put', '/api/notificacoes': 'get',
+        '/api/notificacoes/marcar-todas-lidas': 'put', '/api/health': 'get',
+    }
+    assert {caminho: metodo for caminho, metodo in esperadas.items() if metodo not in caminhos.get(caminho, {})} == {}
