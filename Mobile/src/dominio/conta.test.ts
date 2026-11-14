@@ -28,7 +28,6 @@ describe('validarRegistro', () => {
 describe('rotuloNivelAcesso', () => {
   it('traduz o Nível de acesso para a interface', () => {
     expect(rotuloNivelAcesso('usuario')).toBe('Usuário');
-    expect(rotuloNivelAcesso('moderador')).toBe('Moderador');
     expect(rotuloNivelAcesso('admin')).toBe('Administrador');
   });
 });

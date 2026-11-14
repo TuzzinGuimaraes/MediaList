@@ -29,7 +29,6 @@ export function validarRegistro(f: FormularioRegistro): string | null {
 
 const ROTULOS_NIVEL: Record<NivelAcesso, string> = {
   usuario: 'Usuário',
-  moderador: 'Moderador',
   admin: 'Administrador',
 };
 
