@@ -40,7 +40,7 @@ describe('sessão expirada', () => {
     test('401 numa chamada autenticada desloga e leva ao login', async () => {
         global.fetch = jest.fn((url) => {
             if (url.endsWith('/auth/me')) return Promise.resolve(resposta(200, { usuario: {} }));
-            return Promise.resolve(resposta(401, { msg: 'Token has expired' }));
+            return Promise.resolve(resposta(401, { erro: 'Sessão expirada', codigo: 'token_expirado' }));
         });
 
         render(<App />);

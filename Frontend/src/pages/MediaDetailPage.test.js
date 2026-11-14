@@ -43,7 +43,7 @@ describe('MediaDetailPage', () => {
         jest.clearAllMocks();
     });
 
-    test('busca dados em paralelo, normaliza generos e usa STATUS_COLORS', async () => {
+    test('busca dados em paralelo, usa generos_lista e STATUS_COLORS', async () => {
         const apiCall = jest.fn().mockImplementation((endpoint) => {
             if (endpoint === '/midias/MID-1') {
                 return Promise.resolve({
@@ -52,13 +52,14 @@ describe('MediaDetailPage', () => {
                     titulo_portugues: 'Anime X',
                     titulo_original: 'Anime X',
                     generos: 'Ação, Drama',
+                    generos_lista: ['Ação', 'Drama'],
                     numero_episodios: 24,
                     status_anime: 'em_exibicao',
                     total_usuarios: 4,
                 });
             }
-            if (endpoint === '/avaliacoes/MID-1') {
-                return Promise.resolve({ avaliacoes: [{ id_avaliacao: 'AVL-1', nome_completo: 'User', data_avaliacao: '2026-04-01', nota: 9 }] });
+            if (endpoint.startsWith('/avaliacoes/MID-1?')) {
+                return Promise.resolve({ itens: [{ id_avaliacao: 'AVL-1', nome_completo: 'User', data_avaliacao: '2026-04-01T12:00:00Z', nota: 9 }], pagina: 1, por_pagina: 50, total: 1 });
             }
             if (endpoint === '/lista') {
                 return Promise.resolve({ lista: [{ id_lista: 'LST-1', id_midia: 'MID-1', status_consumo: 'assistindo' }] });
@@ -80,6 +81,29 @@ describe('MediaDetailPage', () => {
         expect(screen.getByText('Editar na Lista')).toBeInTheDocument();
     });
 
+    test('conta as Avaliações pelo total e pede todas as páginas', async () => {
+        const avaliacao = (i) => ({ id_avaliacao: `AVL-${i}`, nome_completo: 'User', data_avaliacao: '2026-04-01T12:00:00Z', nota: 8 });
+        const apiCall = jest.fn().mockImplementation((endpoint) => {
+            if (endpoint === '/midias/MID-1') return Promise.resolve({ id_midia: 'MID-1', tipo: 'anime', titulo_portugues: 'Anime X', generos_lista: [] });
+            if (endpoint === '/avaliacoes/MID-1?pagina=1&por_pagina=50') {
+                return Promise.resolve({ itens: Array.from({ length: 50 }, (_, i) => avaliacao(i)), pagina: 1, por_pagina: 50, total: 52 });
+            }
+            if (endpoint === '/avaliacoes/MID-1?pagina=2&por_pagina=50') {
+                return Promise.resolve({ itens: [avaliacao(50), avaliacao(51)], pagina: 2, por_pagina: 50, total: 52 });
+            }
+            if (endpoint === '/lista') return Promise.resolve({ lista: [] });
+            if (endpoint === '/midias/MID-1/distribuicao') return Promise.resolve({ distribuicao: [] });
+            return Promise.resolve({});
+        });
+        useApi.mockReturnValue({ apiCall });
+
+        renderPage();
+
+        expect(await screen.findByText('Avaliações (52)')).toBeInTheDocument();
+        expect(apiCall).toHaveBeenCalledWith('/avaliacoes/MID-1?pagina=2&por_pagina=50');
+        expect(screen.getByText('Score Distribution')).toBeInTheDocument();
+    });
+
     test('abre modal e recarrega apos salvar', async () => {
         const apiCall = jest.fn().mockImplementation((endpoint) => {
             if (endpoint === '/midias/MID-1') {
@@ -91,7 +115,7 @@ describe('MediaDetailPage', () => {
                     total_usuarios: 0,
                 });
             }
-            if (endpoint === '/avaliacoes/MID-1') return Promise.resolve({ avaliacoes: [] });
+            if (endpoint.startsWith('/avaliacoes/MID-1?')) return Promise.resolve({ itens: [], pagina: 1, por_pagina: 50, total: 0 });
             if (endpoint === '/lista') return Promise.resolve({ lista: [] });
             if (endpoint === '/midias/MID-1/distribuicao') return Promise.resolve({ distribuicao: [] });
             return Promise.resolve({});
@@ -140,7 +164,7 @@ describe('MediaDetailPage', () => {
     function apiComMidia(midia) {
         return jest.fn().mockImplementation((endpoint) => {
             if (endpoint === '/midias/MID-1') return Promise.resolve({ id_midia: 'MID-1', tipo: 'anime', titulo_portugues: 'Anime X', ...midia });
-            if (endpoint === '/avaliacoes/MID-1') return Promise.resolve({ avaliacoes: [] });
+            if (endpoint.startsWith('/avaliacoes/MID-1?')) return Promise.resolve({ itens: [], pagina: 1, por_pagina: 50, total: 0 });
             if (endpoint === '/lista') return Promise.resolve({ lista: [] });
             if (endpoint === '/midias/MID-1/distribuicao') return Promise.resolve({ distribuicao: [] });
             return Promise.resolve({});

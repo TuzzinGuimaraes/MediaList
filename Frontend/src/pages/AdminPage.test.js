@@ -22,7 +22,7 @@ describe('AdminPage', () => {
 
     test('carrega usuarios e avaliacoes quando autorizado', async () => {
         const apiCall = jest.fn()
-            .mockResolvedValueOnce({ usuarios: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, ativo: true }] })
+            .mockResolvedValueOnce({ itens: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, data_cadastro: '2026-01-01T12:00:00Z', ultimo_acesso: null, ativo: true }], pagina: 1, por_pagina: 50, total: 1 })
             .mockResolvedValueOnce({ avaliacoes: [{ id_avaliacao: 'AVL-1', titulo_avaliacao: 'Boa', nome_completo: 'User 1', tipo: 'anime', titulo_portugues: 'Anime X', nota: 8 }] });
         useApi.mockReturnValue({ apiCall });
         useAuth.mockReturnValue({ permissions: { nivel_acesso: 'admin' } });
@@ -30,15 +30,16 @@ describe('AdminPage', () => {
         render(<AdminPage />);
 
         expect(await screen.findByText('User 1')).toBeInTheDocument();
+        expect(apiCall).toHaveBeenCalledWith('/moderacao/usuarios?pagina=1&por_pagina=50');
         fireEvent.click(screen.getByRole('button', { name: /Avaliações/ }));
         expect(await screen.findByText('Boa')).toBeInTheDocument();
     });
 
     test('permite ativar e desativar usuario', async () => {
         const apiCall = jest.fn()
-            .mockResolvedValueOnce({ usuarios: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, ativo: true }] })
+            .mockResolvedValueOnce({ itens: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, data_cadastro: '2026-01-01T12:00:00Z', ultimo_acesso: null, ativo: true }], pagina: 1, por_pagina: 50, total: 1 })
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ usuarios: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, ativo: false }] });
+            .mockResolvedValueOnce({ itens: [{ id_usuario: 'USR-1', nome_completo: 'User 1', email: 'u1@example.com', grupos: 'Usuários', total_midias: 2, total_avaliacoes: 1, data_cadastro: '2026-01-01T12:00:00Z', ultimo_acesso: null, ativo: false }], pagina: 1, por_pagina: 50, total: 1 });
         useApi.mockReturnValue({ apiCall });
         useAuth.mockReturnValue({ permissions: { nivel_acesso: 'admin' } });
 

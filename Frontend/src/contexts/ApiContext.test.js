@@ -69,7 +69,7 @@ describe('ApiContext', () => {
             ok: false,
             status: 401,
             headers: { get: () => 'application/json' },
-            json: async () => ({ erro: 'nao autorizado' }),
+            json: async () => ({ erro: 'Sessão expirada', codigo: 'token_expirado' }),
         });
 
         render(
@@ -90,7 +90,7 @@ describe('ApiContext', () => {
             ok: false,
             status: 401,
             headers: { get: () => 'application/json' },
-            json: async () => ({ erro: 'Email ou senha incorretos' }),
+            json: async () => ({ erro: 'Email ou senha incorretos', codigo: 'nao_autenticado' }),
         });
 
         render(
@@ -110,7 +110,7 @@ describe('ApiContext', () => {
             ok: false,
             status: 404,
             headers: { get: () => 'application/json' },
-            json: async () => ({ erro: 'Mídia não encontrada' }),
+            json: async () => ({ erro: 'Mídia não encontrada', codigo: 'nao_encontrado' }),
         });
         let capturado;
 
@@ -130,6 +130,36 @@ describe('ApiContext', () => {
         await waitFor(() => expect(capturado).toBeDefined());
         expect(capturado.message).toBe('Mídia não encontrada');
         expect(capturado.status).toBe(404);
+        expect(capturado.codigo).toBe('nao_encontrado');
+    });
+
+    test('erro de validação carrega codigo e detalhes do envelope', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ erro: 'Dados inválidos', codigo: 'dados_invalidos', detalhes: { titulo: 'Campo obrigatório' } }),
+        });
+        let capturado;
+
+        function Consumidor() {
+            const { apiCall } = useApi();
+            return <button onClick={() => apiCall('/noticias').catch((e) => { capturado = e; })}>400</button>;
+        }
+
+        render(
+            <ApiProvider>
+                <Consumidor />
+            </ApiProvider>
+        );
+
+        fireEvent.click(screen.getByText('400'));
+
+        await waitFor(() => expect(capturado).toBeDefined());
+        expect(capturado.message).toBe('Dados inválidos');
+        expect(capturado.status).toBe(400);
+        expect(capturado.codigo).toBe('dados_invalidos');
+        expect(capturado.detalhes).toEqual({ titulo: 'Campo obrigatório' });
     });
 
     test('normaliza erro de rede', async () => {

@@ -58,7 +58,7 @@ describe('AuthContext', () => {
                 usuario: {
                     id: 'USR-1',
                     email: 'user@example.com',
-                    permissoes: { pode_criar: 1 },
+                    permissoes: { pode_criar: true, pode_editar: false, pode_deletar: false, pode_moderar: true },
                     nivel_acesso: 'admin',
                     grupos: 'Administradores',
                 },

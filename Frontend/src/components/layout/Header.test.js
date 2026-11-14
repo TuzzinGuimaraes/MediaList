@@ -42,11 +42,11 @@ describe('Header', () => {
         jest.clearAllMocks();
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'usuario', pode_moderar: 0 },
+            permissions: { nivel_acesso: 'usuario', pode_moderar: false },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({
-            apiCall: jest.fn().mockResolvedValue({ notificacoes: [{ titulo: 'Nova notificação', mensagem: 'Teste' }] }),
+            apiCall: jest.fn().mockResolvedValue({ notificacoes: [{ id_midia: 'MID-1', tipo_midia: 'anime', tipo: 'episodio', titulo: 'Nova notificação', midia_nome: 'Anime X', mensagem: 'Teste', lida: false, data_criacao: '2026-11-13T09:30:00Z' }] }),
         });
     });
 
@@ -81,10 +81,10 @@ describe('Header', () => {
     });
 
     test('carrega notificacoes e mostra admin para usuario autorizado', async () => {
-        const apiCall = jest.fn().mockResolvedValue({ notificacoes: [{ titulo: 'Nova notificação', mensagem: 'Teste' }] });
+        const apiCall = jest.fn().mockResolvedValue({ notificacoes: [{ id_midia: 'MID-1', tipo_midia: 'anime', tipo: 'episodio', titulo: 'Nova notificação', midia_nome: 'Anime X', mensagem: 'Teste', lida: false, data_criacao: '2026-11-13T09:30:00Z' }] });
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'admin', pode_moderar: 1 },
+            permissions: { nivel_acesso: 'admin', pode_moderar: true },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({ apiCall });

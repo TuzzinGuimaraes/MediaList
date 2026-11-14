@@ -32,8 +32,11 @@ export const ApiProvider = ({ children, onUnauthorized }) => {
             }
 
             if (!response.ok) {
-                const httpError = new Error(data.erro || data.msg || 'Erro na requisição');
+                // Envelope de erro da API: { erro, codigo, detalhes? }.
+                const httpError = new Error(data.erro || 'Erro na requisição');
                 httpError.status = response.status;
+                httpError.codigo = data.codigo;
+                httpError.detalhes = data.detalhes;
                 throw httpError;
             }
 
