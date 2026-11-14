@@ -46,13 +46,42 @@ export const EIXOS = {
       { chave: 'todas', nome: 'Todas' },
     ],
   },
+  // 3ª rodada (ticket 34): Lista e Explorar.
+  'lista-status': {
+    nome: 'lista-status',
+    valores: [
+      { chave: 'pilula', nome: 'Pílula com menu' },
+      { chave: 'secoes', nome: 'Seções recolhíveis' },
+      { chave: 'paginas', nome: 'Páginas deslizáveis' },
+    ],
+  },
+  'lista-tipo': {
+    nome: 'lista-tipo',
+    valores: [
+      { chave: 'misturado', nome: 'Misturado (controle)' },
+      { chave: 'subsecoes', nome: 'Subseções por Tipo' },
+      { chave: 'carrosseis', nome: 'Carrosséis por Tipo (card C)' },
+    ],
+  },
+  explorar: {
+    nome: 'explorar',
+    valores: [
+      { chave: 'esconde', nome: 'Esconde ao rolar' },
+      { chave: 'compacto', nome: 'Compacto, filtros num sheet' },
+      { chave: 'ambos', nome: 'Compacto + esconde' },
+    ],
+  },
 } as const;
 
 export type Eixo = keyof typeof EIXOS;
 export type ValorDo<E extends Eixo> = (typeof EIXOS)[E]['valores'][number]['chave'];
 export type Valores = { [E in Eixo]: ValorDo<E> };
 
-const INICIAIS: Valores = { tema: 'escuro', card: 'contexto', assinatura: 'fio' };
+// Nos testes a Lista e o Explorar abrem nas variantes de controle (pílula, misturado, esconde),
+// as mais próximas das asserções antigas.
+const INICIAIS: Valores = EM_TESTE
+  ? { tema: 'escuro', card: 'contexto', assinatura: 'fio', 'lista-status': 'pilula', 'lista-tipo': 'misturado', explorar: 'esconde' }
+  : { tema: 'escuro', card: 'contexto', assinatura: 'fio', 'lista-status': 'secoes', 'lista-tipo': 'subsecoes', explorar: 'ambos' };
 
 const OUTFIT = ['Outfit_400Regular', 'Outfit_500Medium', 'Outfit_600SemiBold', 'Outfit_700Bold'] as const;
 

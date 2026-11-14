@@ -72,7 +72,24 @@ function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Res
   return { api, rotas, adicionar: (novo: ReturnType<typeof item>) => (lista = [novo, ...lista]) };
 }
 
-const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${nome} (${n})` });
+// PROTÓTIPO (ticket 34): nos testes a Lista abre na variante "pílula", com os Status num menu.
+async function abrirMenuStatus() {
+  if (!screen.queryByRole('menu', { name: 'Status' })) {
+    await fireEvent.press(await screen.findByRole('button', { name: /^Status: / }));
+  }
+}
+async function opcaoStatus(nome: string, n: number) {
+  await abrirMenuStatus();
+  return screen.findByRole('menuitem', { name: `${nome} (${n})` });
+}
+/** Confere a contagem do Status no menu e fecha o menu. */
+async function conferirStatus(nome: string, n: number) {
+  expect(await opcaoStatus(nome, n)).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'Fechar menu' }));
+}
+async function escolherStatus(nome: string, n: number) {
+  await fireEvent.press(await opcaoStatus(nome, n));
+}
 const linha = (titulo: string) => screen.findByLabelText(`Item ${titulo}`);
 
 describe('aba Lista', () => {
@@ -90,19 +107,21 @@ describe('aba Lista', () => {
 
     await abrir('/lista');
 
-    expect(await aba('Em progresso', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Concluído (1)' })).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /^Platinado/ })).not.toBeOnTheScreen();
+    await conferirStatus('Em progresso', 2);
+    await conferirStatus('Concluído', 1);
+    await abrirMenuStatus();
+    expect(screen.queryByRole('menuitem', { name: /^Platinado/ })).not.toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Fechar menu' }));
     expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item JoJo no Kimyou na Bouken')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
+    await escolherStatus('Concluído', 1);
     expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
 
     await trocarRecorte('Jogos');
-    expect(await aba('Concluído', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Platinado (1)' })).toBeOnTheScreen();
+    await conferirStatus('Concluído', 2);
+    await conferirStatus('Platinado', 1);
     expect(screen.getByLabelText('Item Hollow Knight')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Celeste')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
@@ -185,9 +204,9 @@ describe('aba Lista', () => {
     await fireEvent.press(within(l).getByRole('button', { name: 'Mais um em Sousou no Frieren' }));
 
     // Concluído na hora (otimista) e confirmado pela Lista refeita.
-    expect(await aba('Concluído', 1)).toBeOnTheScreen();
-    expect(await aba('Em progresso', 1)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
+    await conferirStatus('Concluído', 1);
+    await conferirStatus('Em progresso', 1);
+    await escolherStatus('Concluído', 1);
     const concluido = await linha('Sousou no Frieren');
     expect(within(concluido).getByLabelText('Progresso: 28 de 28')).toBeOnTheScreen();
     expect(within(concluido).getByRole('button', { name: 'Mais um em Sousou no Frieren' })).toBeDisabled();
@@ -202,11 +221,11 @@ describe('aba Lista', () => {
     });
 
     await abrir('/lista');
-    await fireEvent.press(await aba('Concluído', 1));
+    await escolherStatus('Concluído', 1);
     const l = await linha('Ataque dos Titãs');
     await fireEvent.press(within(l).getByRole('button', { name: 'Menos um em Ataque dos Titãs' }));
 
-    await fireEvent.press(await aba('Em progresso', 1));
+    await escolherStatus('Em progresso', 1);
     const rebaixado = await linha('Ataque dos Titãs');
     expect(within(rebaixado).getByLabelText('Progresso: 9 de 10')).toBeOnTheScreen();
     expect(api.para('PUT /lista/LST-MID-ANM-2026-20099/progresso')[0].corpo).toEqual({ progresso_atual: 9 });
@@ -254,7 +273,7 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Episódios (de 28)')).toHaveDisplayValue('3');
     await fireEvent.press(screen.getByRole('button', { name: 'Fechar' }));
 
-    await fireEvent.press(await aba('Concluído', 1));
+    await escolherStatus('Concluído', 1);
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Ataque dos Titãs, Anime' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Em progresso' }));
     expect(screen.getByRole('radio', { name: 'Em progresso' })).toBeChecked();
@@ -364,7 +383,7 @@ describe('aba Lista', () => {
     await fireEvent.press(screen.getByRole('switch', { name: 'Favorito' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
 
-    expect(await aba('Platinado', 1)).toBeOnTheScreen();
+    await conferirStatus('Platinado', 1);
     expect(api.para('PUT /lista/LST-MID-JOG-2026-40001')[0].corpo).toEqual({
       status_consumo: 'platinado',
       progresso_atual: 42,
@@ -428,7 +447,7 @@ describe('aba Lista', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Remover' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Remover da Lista' }));
 
-    expect(await aba('Em progresso', 0)).toBeOnTheScreen();
+    await conferirStatus('Em progresso', 0);
     expect(api.para('DELETE /lista/LST-MID-ANM-2026-20053')).toHaveLength(1);
     expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
   });

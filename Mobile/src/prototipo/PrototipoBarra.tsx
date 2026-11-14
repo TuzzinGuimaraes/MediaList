@@ -1,4 +1,4 @@
-// PROTÓTIPO (ticket 29), descartável. Barra flutuante de variantes, só em __DEV__.
+// PROTÓTIPO (tickets 29 e 34), descartável. Barra flutuante de variantes, só em __DEV__.
 // Linha de cima: ‹ eixo ›. Linha de baixo: ‹ valor ›. Arraste pela alça (≡) para
 // subir/descer; o botão × recolhe a barra numa bolinha no canto.
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -22,7 +22,7 @@ function Seta({ icone, rotulo, aoTocar }: { icone: 'chevron-back' | 'chevron-for
 export function PrototipoBarra() {
   const { valores, mudar } = usePrototipo();
   const insets = useSafeAreaInsets();
-  const [eixo, setEixo] = useState<Eixo>('assinatura');
+  const [eixo, setEixo] = useState<Eixo>('lista-status');
   const [aberta, setAberta] = useState(true);
   const [{ deslocamento, arraste }] = useState(() => {
     const d = new Animated.Value(0);

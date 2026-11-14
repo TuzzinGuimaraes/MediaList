@@ -53,7 +53,7 @@ Escala única em `src/tema/tipografia.js`, exposta como classes do Tailwind (tam
 `allowFontScaling={false}`); só pílulas, selos e o stepper limitam o crescimento com
 `maxFontSizeMultiplier={1.3}`.
 
-## PROTÓTIPO da identidade visual (ticket 29, branch descartável)
+## PROTÓTIPO da identidade visual e do layout da Lista/Explorar (tickets 29 e 34, branch descartável)
 
 Esta branch (`artur/identidade-prototipo`) não vai para a master. `npm start` e abra no Expo Go: a
 barra amarela flutuante (só em `__DEV__`) troca os eixos em memória. Linha de cima `‹ eixo ›`, linha
@@ -71,13 +71,27 @@ botão grande de Lista, título alternativo) e o monograma "M". Eixos que sobrar
   (`src/prototipo/PrototipoAssinatura.tsx`). A cor ambiente busca `coverImage.color` direto no
   AniList (só no protótipo; o banco não guarda a cor) e, sem id do AniList, deriva a cor do título.
 
+3ª rodada (ticket 34, Lista e Explorar; a barra abre no eixo `lista-status`). Fixos: linhas da Lista
+maiores no estilo do card C, com o fio de progresso, e "Sugestões para você" no fim da Lista (Em alta
+do catálogo fora da Lista, card A). Layouts em `src/prototipo/PrototipoLista.tsx` e `app/(tabs)/explorar.tsx`:
+
+- `lista-status`: pílula com menu "Em progresso (4) ▾", seções recolhíveis numa rolagem só (padrão;
+  Concluído e Abandonado com mais de 5 Itens começam recolhidas; Platinado não se repete em
+  Concluído), páginas deslizáveis (`react-native-pager-view`, incluído no Expo Go) com rótulos
+  curtos e sublinhado que acompanha o dedo.
+- `lista-tipo`: misturado (controle), subseções "Anime · 3"/"Mangá · 2" (padrão), um carrossel por
+  Tipo com o card C (tocar abre o editor, o stepper fica no card). No catálogo Jogos não muda nada.
+- `explorar`: esconde ao rolar (o cabeçalho de hoje), compacto (busca + botão de filtros com
+  contador, filtros num bottom sheet), ambos (padrão). Com "reduzir movimento" o cabeçalho fica fixo.
+
 - Cores: tokens semânticos em `src/tema/paletas.js`, classes `rgb(var(--cor-x) / <alpha-value>)` no
   `tailwind.config.js` e valores aplicados com `vars()` num View raiz (`src/prototipo/PrototipoContext.tsx`).
   Os nomes antigos (`dark-*`, `accent-*`, `text-*`) apontam para os tokens. Em JS: `usePaleta()`.
 - Fonte: `text-<nivel>` e `font-semibold`/`font-bold` põem `fontFamily: var(--fonte-<peso>)`, porque
   no Android uma família customizada não ganha negrito por `fontWeight`.
 - Jest: o Reanimated real não roda no Jest; `react-native-reanimated/mock` é redirecionado para
-  `src/testes/reanimadoSimulado.js`. Os testes abrem nos valores padrão, sem a barra, sem troca
+  `src/testes/reanimadoSimulado.js`. Os testes abrem nos valores padrão (na Lista e no Explorar, nos
+  de controle: pílula, misturado, esconde), sem a barra, sem as sugestões da Lista, sem troca
   automática dos destaques e sem chamar o AniList.
 
 ## Verificação

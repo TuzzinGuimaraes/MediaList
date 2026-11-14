@@ -1,18 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, Text, View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { nomeDoRotulo } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoRotulo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
+import { FioProgresso } from '../prototipo/PrototipoAssinatura';
 import { usePaleta } from '../prototipo/PrototipoContext';
+import { SeloStatus } from '../prototipo/PrototipoSelos';
 import { nomeDoTipo, SeloTipo } from './SeloTipo';
 
 type Props = {
   item: ItemLista;
   editar(): void;
   mudarProgresso(progresso: number): void;
+  /** Largura fixa: card C de carrossel (PROTÓTIPO, ticket 34). */
+  largura?: number;
 };
 
 type PropsPasso = { novo: number | null; icone: 'remove' | 'add'; rotulo: string; mudar(n: number): void };
@@ -56,20 +61,47 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
   );
 }
 
-/** Linha do Item na aba Lista. Tocar abre o editor; o stepper muda o Progresso direto. */
-export function LinhaItem({ item, editar, mudarProgresso }: Props) {
+/**
+ * Linha do Item na aba Lista. Tocar abre o editor; o stepper muda o Progresso direto.
+ * PROTÓTIPO (ticket 34): linha maior no estilo do card C (banner esmaecido ao fundo, pôster
+ * pequeno, Tipo, título, Status, nota, stepper) com o fio de progresso na base. Com `largura`,
+ * vira o card C dos carrosséis por Tipo (mesmo conteúdo, largura fixa).
+ */
+export function LinhaItem({ item, editar, mudarProgresso, largura }: Props) {
   const paleta = usePaleta();
   const titulo = tituloDaMidia(item);
   const nota = item.nota_usuario != null ? String(item.nota_usuario) : null;
+  const estado = estadoDe(item.status_consumo, item.tipo);
+  const banner = item.banner_url ?? item.poster_url;
   return (
-    <View accessibilityLabel={`Item ${titulo}`} className="flex-row items-center gap-3 px-4 py-2">
+    <View
+      accessibilityLabel={`Item ${titulo}`}
+      className={`h-[124px] flex-row overflow-hidden rounded-lg bg-superficie ${largura ? '' : 'mx-4'}`}
+      style={largura ? { width: largura } : undefined}
+    >
+      {banner ? (
+        <Image
+          source={banner}
+          style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.32 }}
+          contentFit="cover"
+          blurRadius={item.banner_url ? 0 : 12}
+          cachePolicy="disk"
+          recyclingKey={`${item.id_midia}-banner`}
+        />
+      ) : null}
+      <LinearGradient
+        colors={[`${paleta.superficie}F7`, `${paleta.superficie}B3`, `${paleta.superficie}66`]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Editar ${titulo}, ${nomeDoTipo(item.tipo)}`}
         onPress={editar}
-        className="flex-1 flex-row items-center gap-3 active:opacity-80"
+        className="flex-1 flex-row gap-3 p-2.5 active:opacity-80"
       >
-        <View className="h-[60px] w-10 overflow-hidden rounded bg-dark-tertiary">
+        <View className="h-full w-[68px] overflow-hidden rounded-md bg-superficie-alta">
           {item.poster_url ? (
             <Image
               source={item.poster_url}
@@ -81,17 +113,21 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
             />
           ) : null}
         </View>
-        <View className="flex-1 gap-0.5">
-          <Text numberOfLines={2} className="text-corpo text-text-bright">
+        <View className="flex-1 gap-1">
+          <SeloTipo tipo={item.tipo} />
+          <Text numberOfLines={2} className="text-corpo font-bold text-texto-forte">
             {titulo}
           </Text>
           <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
-            <SeloTipo tipo={item.tipo} />
-            <Text className="text-legenda text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
+            {estado ? (
+              <SeloStatus estado={estado} />
+            ) : (
+              <Text className="text-legenda text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
+            )}
             {nota ? (
               <View className="flex-row items-center gap-0.5">
                 <Ionicons name="star" size={14} color={paleta.accent.yellow} />
-                <Text className="text-legenda text-accent-yellow">{nota}</Text>
+                <Text className="text-legenda font-bold text-accent-yellow">{nota}</Text>
               </View>
             ) : null}
             {item.favorito ? <Ionicons name="heart" size={14} color={paleta.accent.red} /> : null}
@@ -99,14 +135,17 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
           </View>
         </View>
       </Pressable>
-      {temProgresso(item.tipo) ? (
-        <Stepper item={item} titulo={titulo} mudar={mudarProgresso} />
-      ) : (
-        // Horas jogadas não medem Progresso (CONTEXT.md): só exibidas, editadas no editor.
-        <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-legenda text-text-secondary">
-          {`${item.progresso_atual ?? 0} h`}
-        </Text>
-      )}
+      <View className="justify-end pb-3 pr-2.5">
+        {temProgresso(item.tipo) ? (
+          <Stepper item={item} titulo={titulo} mudar={mudarProgresso} />
+        ) : (
+          // Horas jogadas não medem Progresso (CONTEXT.md): só exibidas, editadas no editor.
+          <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-legenda text-text-secondary">
+            {`${item.progresso_atual ?? 0} h`}
+          </Text>
+        )}
+      </View>
+      <FioProgresso idMidia={item.id_midia} />
     </View>
   );
 }
