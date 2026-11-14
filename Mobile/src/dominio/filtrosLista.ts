@@ -121,3 +121,17 @@ export function porTipo<T extends { tipo: TipoMidia }>(
   if (tipos.length < 2) return [{ tipo: null, itens: [...itens] }];
   return tipos.map((tipo) => ({ tipo, itens: itens.filter((i) => i.tipo === tipo) })).filter((s) => s.itens.length);
 }
+
+/** Gênero ou Situação que não existe no catálogo atual (ex.: depois de trocá-lo) volta a "todos". */
+export function filtrosEfetivos(filtros: FiltrosLista, opcoes: OpcoesDosFiltros): FiltrosLista {
+  return {
+    ...filtros,
+    genero: filtros.genero !== null && opcoes.generos.includes(filtros.genero) ? filtros.genero : null,
+    situacao: opcoes.situacoes.some((s) => s.valor === filtros.situacao) ? filtros.situacao : null,
+  };
+}
+
+/** Se os filtros tiram Itens (Gênero ou Situação escolhidos); a Ordem só reordena. */
+export function filtrosRestringem(filtros: FiltrosLista): boolean {
+  return filtros.genero !== null || filtros.situacao !== null;
+}

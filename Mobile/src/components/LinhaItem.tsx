@@ -135,3 +135,16 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
     </View>
   );
 }
+
+/** O que a Lista faz com um Item: abrir o editor e mudar o Progresso pelo stepper. */
+export type AcoesDoItem = {
+  editar(idLista: string): void;
+  mudarProgresso(item: ItemLista, progresso: number): void;
+};
+
+/** A linha de um Item ligada às ações da Lista (páginas por Status e resultados da busca). */
+export function LinhaDaLista({ item, acoes }: { item: ItemLista; acoes: AcoesDoItem }) {
+  return (
+    <LinhaItem item={item} editar={() => acoes.editar(item.id_lista)} mudarProgresso={(p) => acoes.mudarProgresso(item, p)} />
+  );
+}

@@ -46,6 +46,18 @@ export function rotuloMaisConcluidos(tipos: readonly TipoMidia[]): string {
   return tipos.length === 1 ? APRESENTACAO_DO_TIPO[tipos[0]].maisConcluidos : 'Mais concluídos';
 }
 
+/**
+ * As Mídias de `midias` que não estão em `ja` (outro carrossel com a mesma ordem no backend,
+ * ou a Lista). Sem `midias` (ainda carregando), lista vazia.
+ */
+export function foraDe<M extends { id_midia: string }>(
+  midias: readonly M[] | undefined,
+  ja: readonly { id_midia: string }[] | undefined,
+): M[] {
+  const ids = new Set(ja?.map((m) => m.id_midia));
+  return (midias ?? []).filter((m) => !ids.has(m.id_midia));
+}
+
 /** As Mídias já lançadas até `hoje` (dia do aparelho); data futura ou ausente fica de fora. */
 export function jaLancadas<M extends { data_lancamento: string | null }>(midias: M[], hoje = new Date()): M[] {
   const limite = diaIso(hoje);
