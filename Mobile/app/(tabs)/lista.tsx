@@ -68,6 +68,15 @@ const ORDENS: { valor: OrdemLista; titulo: string }[] = [
   { valor: 'atualizacao', titulo: 'Atualizado recentemente' },
 ];
 
+/** O botão de filtros e o aviso de página vazia: valem nas páginas e nos resultados da busca. */
+type ControleDosFiltros = {
+  /** Gênero ou Situação fora de "todos". */
+  filtrado: boolean;
+  /** Filtros fora do padrão, para o contador do botão. */
+  ativos: number;
+  abrir(): void;
+};
+
 type Acoes = {
   editar(idLista: string): void;
   mudarProgresso(item: ItemLista, progresso: number): void;
@@ -102,6 +111,11 @@ export default function Lista() {
     const filtrados = organizarLista(doRecorte, efetivos);
     const emEdicao = lista.data.find((i) => i.id_lista === editando);
     const termo = busca?.trim() ?? '';
+    const controle: ControleDosFiltros = {
+      filtrado: efetivos.genero !== null || efetivos.situacao !== null,
+      ativos: filtrosAtivos(efetivos),
+      abrir: () => setSheetAberto(true),
+    };
 
     conteudo = (
       <>
@@ -111,7 +125,7 @@ export default function Lista() {
           </Text>
         ) : null}
         {termo ? (
-          <Resultados itens={buscarNaLista(filtrados, termo)} termo={termo} acoes={acoes} />
+          <Resultados itens={buscarNaLista(filtrados, termo)} termo={termo} filtros={controle} acoes={acoes} />
         ) : (
           <PaginasStatus
             // Trocar de catálogo muda o número de páginas: recomeça o pager.
@@ -120,9 +134,7 @@ export default function Lista() {
             tipos={tipos}
             estado={estado}
             escolher={setEstado}
-            filtrado={efetivos.genero !== null || efetivos.situacao !== null}
-            ativos={filtrosAtivos(efetivos)}
-            abrirFiltros={() => setSheetAberto(true)}
+            filtros={controle}
             naLista={new Set(lista.data.map((i) => i.id_midia))}
             acoes={acoes}
           />
@@ -205,14 +217,12 @@ type PropsPaginas = {
   tipos: TipoMidia[];
   estado: EstadoConsumo;
   escolher(estado: EstadoConsumo): void;
-  filtrado: boolean;
-  ativos: number;
-  abrirFiltros(): void;
+  filtros: ControleDosFiltros;
   naLista: Set<string>;
   acoes: Acoes;
 };
 
-function PaginasStatus({ itens, tipos, estado, escolher, filtrado, ativos, abrirFiltros, naLista, acoes }: PropsPaginas) {
+function PaginasStatus({ itens, tipos, estado, escolher, filtros, naLista, acoes }: PropsPaginas) {
   const estados = estadosDaLista(tipos);
   const indice = Math.max(0, estados.indexOf(estado));
   const aba = estados[indice];
@@ -234,7 +244,7 @@ function PaginasStatus({ itens, tipos, estado, escolher, filtrado, ativos, abrir
       <AbasStatus estados={estados} contagem={contagem} ativa={indice} posicao={posicao} ir={ir} />
       <View className="flex-row items-center justify-between gap-3 px-4 pb-1 pt-3">
         <TituloDaAba estado={aba} n={contagem[aba]} />
-        <BotaoFiltros ativos={ativos} onPress={abrirFiltros} />
+        <BotaoFiltros ativos={filtros.ativos} onPress={filtros.abrir} />
       </View>
       <PagerView
         ref={pager}
@@ -260,7 +270,7 @@ function PaginasStatus({ itens, tipos, estado, escolher, filtrado, ativos, abrir
                 <PaginaStatus
                   itens={itensDoEstado(itens, e)}
                   tipos={tipos}
-                  vazio={filtrado ? textos.vazioFiltrado(NOMES_ESTADO[e]) : textos.vazio(NOMES_ESTADO[e])}
+                  vazio={filtros.filtrado ? textos.vazioFiltrado(NOMES_ESTADO[e]) : textos.vazio(NOMES_ESTADO[e])}
                   naLista={naLista}
                   acoes={acoes}
                 />
@@ -425,17 +435,22 @@ function Sugestoes({ naLista }: { naLista: Set<string> }) {
 // ---------------------------------------------------------------- busca e filtros
 
 /** Com texto na busca, as páginas dão lugar a uma lista única, de todos os Status. */
-function Resultados({ itens, termo, acoes }: { itens: ItemLista[]; termo: string; acoes: Acoes }) {
+function Resultados({ itens, termo, filtros, acoes }: { itens: ItemLista[]; termo: string; filtros: ControleDosFiltros; acoes: Acoes }) {
   return (
-    <FlatList<ItemLista>
-      accessibilityLabel={textos.resultados}
-      data={itens}
-      keyExtractor={(i) => i.id_lista}
-      renderItem={({ item }) => <Linha item={item} acoes={acoes} />}
-      ListEmptyComponent={<Text className="p-6 text-center text-corpo text-texto-suave">{textos.semResultado(termo)}</Text>}
-      keyboardShouldPersistTaps="handled"
-      contentContainerClassName="gap-3 pb-6 pt-3"
-    />
+    <>
+      <View className="flex-row justify-end px-4 pt-3">
+        <BotaoFiltros ativos={filtros.ativos} onPress={filtros.abrir} />
+      </View>
+      <FlatList<ItemLista>
+        accessibilityLabel={textos.resultados}
+        data={itens}
+        keyExtractor={(i) => i.id_lista}
+        renderItem={({ item }) => <Linha item={item} acoes={acoes} />}
+        ListEmptyComponent={<Text className="p-6 text-center text-corpo text-texto-suave">{textos.semResultado(termo)}</Text>}
+        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="gap-3 pb-6 pt-3"
+      />
+    </>
   );
 }
 

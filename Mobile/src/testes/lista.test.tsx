@@ -583,6 +583,29 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
     expect(screen.getByRole('button', { name: 'Buscar na Lista' })).toBeOnTheScreen();
   });
 
+  it('com a busca aberta, o botão de filtros continua visível e os filtros seguem valendo', async () => {
+    servidor([
+      item(frieren, { status_consumo: 'assistindo' }),
+      item(fma, { status_consumo: 'completo', generos_lista: ['Ação'] }),
+    ]);
+
+    await abrir('/lista');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Ação' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Buscar na Lista' }));
+    await fireEvent.changeText(screen.getByLabelText('Buscar na Lista'), 'e');
+    expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Item Sousou no Frieren')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros, 1 ativo' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Limpar' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeOnTheScreen();
+  });
+
   it('"Sugestões para você" traz Em alta do catálogo que não está na Lista', async () => {
     const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Naruto' });
     servidor([item(frieren, { status_consumo: 'assistindo' })], trending([frieren, naruto]));
