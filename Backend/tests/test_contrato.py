@@ -12,7 +12,7 @@ from flask_jwt_extended import create_access_token
 from pydantic import ValidationError as PydanticValidationError
 
 import exportar_openapi
-from contrato import ConsultaPaginada, Pagina, detalhes_de_validacao, montar_pagina, registrar_documentacao
+from contrato import ConsultaPaginada, Erro, Pagina, detalhes_de_validacao, montar_pagina, registrar_documentacao
 from routes import utils as utils_routes
 from schemas import ValidationError
 from schemas.utils import Genero
@@ -210,3 +210,11 @@ def test_exportador_grava_o_openapi_sem_servidor_nem_banco(tmp_path):
     documento = json.loads(destino.read_text(encoding='utf-8'))
     assert '/api/generos' in documento['paths']
     assert destino.read_text(encoding='utf-8') == exportar_openapi.documento()
+
+
+
+def test_erro_serializado_pelo_modelo_omite_detalhes_vazios():
+    """Rota que declara `HTTP_404=Erro` sai igual ao `resposta_erro`: sem `detalhes: null`."""
+    assert Erro(erro='Mídia não encontrada', codigo='nao_encontrado').model_dump(mode='json') == {
+        'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado',
+    }

@@ -25,7 +25,7 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from flask import current_app, jsonify, make_response, redirect, request
-from pydantic import AwareDatetime, BaseModel, BeforeValidator, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, Field, field_validator, model_serializer
 from spectree import SecurityScheme, SpecTree
 from spectree.models import SecuritySchemeData
 from spectree.page import PAGE_TEMPLATES
@@ -64,6 +64,14 @@ class Erro(BaseModel):
     erro: str = Field(description='Mensagem para a tela, em português')
     codigo: CodigoErro
     detalhes: dict[str, str] | None = Field(default=None, description='Motivo por campo, nos erros de validação')
+
+    @model_serializer(mode='wrap')
+    def _sem_detalhes_vazios(self, serializar):
+        """Sem `detalhes`, a chave não sai (igual a `resposta_erro`)."""
+        dados = serializar(self)
+        if dados.get('detalhes') is None:
+            dados.pop('detalhes', None)
+        return dados
 
 
 def resposta_erro(status: int, codigo: CodigoErro, erro: str, detalhes: dict[str, str] | None = None):
