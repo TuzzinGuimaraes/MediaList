@@ -55,9 +55,10 @@ CHAVES_POPULAR = {
     'generos', 'id_midia', 'nota_fonte', 'nota_media', 'origem_nota', 'poster_url', 'tipo', 'titulo_original',
     'titulo_portugues', 'total_usuarios',
 }
+# Sem `likes`, `dislikes` e `generos_lista`: campos sem leitor (contrato da API, ticket 05).
 CHAVES_AVALIACAO = {
-    'data_avaliacao', 'data_edicao', 'dislikes', 'foto_perfil', 'generos_lista', 'id_avaliacao', 'id_midia',
-    'id_usuario', 'likes', 'nome_completo', 'nota', 'texto_avaliacao', 'titulo_avaliacao',
+    'data_avaliacao', 'data_edicao', 'foto_perfil', 'id_avaliacao', 'id_midia', 'id_usuario', 'nome_completo',
+    'nota', 'texto_avaliacao', 'titulo_avaliacao',
 }
 CHAVES_ATUALIZACAO = {
     'id_midia', 'tipo_midia', 'tipo_atualizacao', 'titulo', 'descricao', 'dados_adicionais', 'data_atualizacao',
@@ -234,46 +235,52 @@ def test_avaliacao_do_criar_ao_apagar(client, catalogo, pg, entrar):  # noqa: F8
     ela, intrusa = entrar(autora), entrar(outra)
     jogo = catalogo['jogo']
 
-    assert client.get(f'/api/avaliacoes/{jogo}').get_json() == {'avaliacoes': []}
+    assert client.get(f'/api/avaliacoes/{jogo}').get_json() == {'itens': [], 'pagina': 1, 'por_pagina': 20, 'total': 0}
     assert client.get(f'/api/avaliacoes/{INEXISTENTE}').status_code == 404
     sem_nota = client.post('/api/avaliacoes', headers=ela, json={'id_midia': jogo})
-    assert (sem_nota.status_code, sem_nota.get_json()) == (400, {'erro': 'ID da mídia e nota são obrigatórios'})
+    assert (sem_nota.status_code, sem_nota.get_json()) == (400, {
+        'erro': 'Dados inválidos', 'codigo': 'dados_invalidos', 'detalhes': {'nota': 'Campo obrigatório'}})
     fora = client.post('/api/avaliacoes', headers=ela, json={'id_midia': jogo, 'nota': 8.55})
-    assert (fora.status_code, fora.get_json()) == (400, {'erro': ESCALA, 'detalhes': {'nota': ESCALA}})
+    assert (fora.status_code, fora.get_json()) == (
+        400, {'erro': ESCALA, 'codigo': 'dados_invalidos', 'detalhes': {'nota': ESCALA}})
     sem_midia = client.post('/api/avaliacoes', headers=ela, json={'id_midia': INEXISTENTE, 'nota': 7})
-    assert (sem_midia.status_code, sem_midia.get_json()) == (404, {'erro': 'Mídia não encontrada'})
+    assert (sem_midia.status_code, sem_midia.get_json()) == (
+        404, {'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado'})
 
-    criada = client.post('/api/avaliacoes', headers=ela, json={'id_anime': jogo, 'nota': 8, 'titulo_avaliacao': 'T'})
+    criada = client.post('/api/avaliacoes', headers=ela, json={'id_midia': jogo, 'nota': 8, 'titulo_avaliacao': 'T'})
     assert criada.status_code == 201
     assert set(criada.get_json()) == {'mensagem', 'id_avaliacao', 'nota_media_atualizada', 'total_avaliacoes'}
     assert (criada.get_json()['nota_media_atualizada'], criada.get_json()['total_avaliacoes']) == (8.0, 1)
     id_avaliacao = criada.get_json()['id_avaliacao']
     repetida = client.post('/api/avaliacoes', headers=ela, json={'id_midia': jogo, 'nota': 3})
-    assert (repetida.status_code, repetida.get_json()) == (409, {'erro': 'Você já avaliou esta mídia'})
+    assert (repetida.status_code, repetida.get_json()) == (
+        409, {'erro': 'Você já avaliou esta mídia', 'codigo': 'conflito'})
 
-    avaliacoes = client.get(f'/api/avaliacoes/{jogo}').get_json()['avaliacoes']
+    avaliacoes = client.get(f'/api/avaliacoes/{jogo}').get_json()['itens']
     assert [set(a) for a in avaliacoes] == [CHAVES_AVALIACAO]
 
-    assert client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={}).get_json() == {
-        'erro': 'Dados não fornecidos'}
-    assert client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'x': 1}).get_json() == {
-        'erro': 'Nenhum campo para atualizar'}
+    # Campo fora do modelo não chega ao módulo: `{'x': 1}` é um corpo vazio.
+    for corpo in ({}, {'x': 1}):
+        assert client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json=corpo).get_json() == {
+            'erro': 'Dados não fornecidos', 'codigo': 'dados_invalidos'}
     assert client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': 11}).status_code == 400
+    negada_na_edicao = {'erro': 'Avaliação não encontrada ou sem permissão', 'codigo': 'acesso_negado'}
     alheia = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=intrusa, json={'nota': 1})
-    assert (alheia.status_code, alheia.get_json()) == (403, {'erro': 'Avaliação não encontrada ou sem permissão'})
+    assert (alheia.status_code, alheia.get_json()) == (403, negada_na_edicao)
     inexistente = client.put(f'/api/avaliacoes/{INEXISTENTE}', headers=ela, json={'nota': 1})
-    assert (inexistente.status_code, inexistente.get_json()) == (
-        403, {'erro': 'Avaliação não encontrada ou sem permissão'})
+    assert (inexistente.status_code, inexistente.get_json()) == (403, negada_na_edicao)
     editada = client.put(f'/api/avaliacoes/{id_avaliacao}', headers=ela, json={'nota': '9,5'})
     assert (editada.status_code, editada.get_json()) == (
         200, {'mensagem': 'Avaliação atualizada com sucesso!', 'nota_media_atualizada': 9.5})
 
     negada = client.delete(f'/api/avaliacoes/{id_avaliacao}', headers=intrusa)
-    assert (negada.status_code, negada.get_json()) == (403, {'erro': 'Sem permissão para deletar esta avaliação'})
+    assert (negada.status_code, negada.get_json()) == (
+        403, {'erro': 'Sem permissão para deletar esta avaliação', 'codigo': 'acesso_negado'})
     apagada = client.delete(f'/api/avaliacoes/{id_avaliacao}', headers=ela)
     assert (apagada.status_code, apagada.get_json()) == (200, {'mensagem': 'Avaliação removida com sucesso'})
     de_novo = client.delete(f'/api/avaliacoes/{id_avaliacao}', headers=ela)
-    assert (de_novo.status_code, de_novo.get_json()) == (404, {'erro': 'Avaliação não encontrada'})
+    assert (de_novo.status_code, de_novo.get_json()) == (
+        404, {'erro': 'Avaliação não encontrada', 'codigo': 'nao_encontrado'})
 
 
 def test_moderador_apaga_avaliacao_de_outro(client, catalogo, pg, entrar):  # noqa: F811
@@ -284,3 +291,20 @@ def test_moderador_apaga_avaliacao_de_outro(client, catalogo, pg, entrar):  # no
 
     assert apagada.status_code == 200
     assert banco.consultar_um('SELECT count(*) AS n FROM avaliacoes WHERE id_usuario = %s', (autora,))['n'] == 0
+
+
+def test_avaliacoes_da_midia_paginadas_com_o_total(client, catalogo, pg, entrar):  # noqa: F811
+    anime = catalogo['anime']
+    autoras = [_usuario(pg) for _ in range(3)]
+    for nota, autora in enumerate(autoras, start=5):
+        criada = client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': anime, 'nota': nota})
+        assert criada.status_code == 201
+
+    primeira = client.get(f'/api/avaliacoes/{anime}?por_pagina=2').get_json()
+    segunda = client.get(f'/api/avaliacoes/{anime}?por_pagina=2&pagina=2').get_json()
+
+    assert (primeira['total'], segunda['total']) == (3, 3)
+    assert (len(primeira['itens']), len(segunda['itens'])) == (2, 1)
+    # Mais recentes primeiro, sem repetir nem pular entre as páginas.
+    assert [a['nota'] for a in primeira['itens'] + segunda['itens']] == [7.0, 6.0, 5.0]
+    assert client.get(f'/api/avaliacoes/{anime}?pagina=0').status_code == 400

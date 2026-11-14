@@ -48,7 +48,7 @@ def test_ninguem_altera_a_si_mesmo(client, make_token, banco, acao):
     resposta = client.put(
         f'/api/moderacao/usuarios/USR-ADMIN-0001/{acao}', headers=_headers(make_token, 'USR-ADMIN-0001'),
     )
-    assert resposta.status_code == 403
+    assert (resposta.status_code, resposta.get_json()['codigo']) == (403, 'acesso_negado')
     assert banco['updates'] == []
 
 
@@ -58,7 +58,8 @@ def test_ninguem_altera_a_si_mesmo(client, make_token, banco, acao):
 ])
 def test_nivel_igual_nao_pode(client, make_token, banco, ator, alvo):
     resposta = client.put(f'/api/moderacao/usuarios/{alvo}/desativar', headers=_headers(make_token, ator))
-    assert resposta.status_code == 403
+    assert resposta.get_json() == {
+        'erro': 'Só é possível moderar usuários com nível de acesso menor que o seu', 'codigo': 'acesso_negado'}
     assert banco['updates'] == []
 
 
@@ -81,8 +82,8 @@ def test_nivel_menor_pode_ser_desativado_e_ativado(client, make_token, banco, at
     desativar = client.put(f'/api/moderacao/usuarios/{alvo}/desativar', headers=headers)
     ativar = client.put(f'/api/moderacao/usuarios/{alvo}/ativar', headers=headers)
 
-    assert desativar.status_code == 200
-    assert ativar.status_code == 200
+    assert (desativar.status_code, desativar.get_json()) == (200, {'mensagem': 'Usuário desativado com sucesso'})
+    assert (ativar.status_code, ativar.get_json()) == (200, {'mensagem': 'Usuário ativado com sucesso'})
     assert banco['updates'][0][0].startswith('UPDATE usuarios SET ativo = FALSE')
     assert banco['updates'][1][0].startswith('UPDATE usuarios SET ativo = TRUE')
     assert banco['updates'][0][1] == (alvo,)
@@ -93,7 +94,7 @@ def test_alvo_inexistente_responde_404(client, make_token, banco, acao):
     resposta = client.put(
         f'/api/moderacao/usuarios/USR-NAO-EXISTE/{acao}', headers=_headers(make_token, 'USR-ADMIN-0001'),
     )
-    assert resposta.status_code == 404
+    assert resposta.get_json() == {'erro': 'Usuário não encontrado', 'codigo': 'nao_encontrado'}
     assert banco['updates'] == []
 
 

@@ -75,19 +75,36 @@ def test_noticia_publicada_sai_na_lista_com_o_nome_do_autor(pg, client, entrar):
     admin = _usuario(pg, 'Administradores', nome='Ana Admin')
     titulo = f'Notícia PG {uuid.uuid4().hex}'
 
+    antes = client.get('/api/noticias').get_json()['total']
     criada = client.post('/api/noticias', headers=entrar(admin), json={
         'titulo': titulo, 'conteudo': 'Texto', 'tags': ['anime', 'estreia'],
     })
     pg['noticias'].append(criada.get_json()['id'])
-    lista = client.get('/api/noticias?limite=50').get_json()['noticias']
+    pagina = client.get('/api/noticias?por_pagina=1').get_json()
 
     assert criada.status_code == 201
-    [noticia] = [n for n in lista if n['titulo'] == titulo]
+    assert pagina['total'] == antes + 1
+    [noticia] = pagina['itens']
+    assert noticia['id_noticia'] == criada.get_json()['id']
+    assert noticia['titulo'] == titulo
     assert noticia['autor'] == 'Ana Admin'
     assert noticia['tags'] == ['anime', 'estreia']
     assert noticia['categoria'] == 'geral'
-    assert noticia['visualizacoes'] == 0
     assert 'T' in noticia['data_publicacao']
+
+
+def test_noticias_paginadas_sem_repetir_nem_pular(pg, client, entrar):
+    admin = _usuario(pg, 'Administradores')
+    for i in range(3):
+        criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': f'Página {i}'})
+        pg['noticias'].append(criada.get_json()['id'])
+
+    primeira = client.get('/api/noticias?por_pagina=2').get_json()
+    segunda = client.get('/api/noticias?por_pagina=2&pagina=2').get_json()
+
+    ids = [n['id_noticia'] for n in primeira['itens'] + segunda['itens']]
+    assert ids[:3] == list(reversed(pg['noticias']))
+    assert len(set(ids)) == len(ids)
 
 
 def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):

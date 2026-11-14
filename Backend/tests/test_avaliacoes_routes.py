@@ -3,6 +3,8 @@
 As regras estão em `test_avaliacao.py`; aqui o módulo é trocado por um falso
 que devolve o `Resultado` combinado, e o que se prova é o que a rota faz com ele.
 """
+from datetime import datetime, timezone
+
 import pytest
 
 from dominio.avaliacao import CONFLITO, Resultado
@@ -67,25 +69,52 @@ def test_apagar_passa_o_poder_de_moderar(client, auth_headers, modulo, monkeypat
     assert falso.chamadas == [('apagar', 'USR-TEST-0001', 'AVL-1', bool(pode_moderar))]
 
 
-def test_listar(client, modulo):
-    falso = modulo(Resultado(OK, dados={'avaliacoes': [{'id_avaliacao': 'AVL-1'}]}))
+AVALIACAO = {
+    'id_avaliacao': 'AVL-1', 'id_usuario': 'USR-1', 'id_midia': 'MID-1', 'nota': 8.5,
+    'titulo_avaliacao': 'Bom', 'texto_avaliacao': None,
+    'data_avaliacao': datetime(2026, 11, 13, 10, tzinfo=timezone.utc),
+    'data_edicao': None, 'nome_completo': 'Ana', 'foto_perfil': None,
+}
+
+
+def test_listar_responde_a_pagina_com_o_total(client, modulo):
+    falso = modulo(Resultado(OK, dados={'avaliacoes': [AVALIACAO], 'total': 6}))
+
+    resposta = client.get('/api/avaliacoes/MID-1?pagina=2&por_pagina=5')
+
+    assert (resposta.status_code, resposta.get_json()) == (200, {
+        'itens': [{**AVALIACAO, 'data_avaliacao': '2026-11-13T10:00:00Z'}],
+        'pagina': 2, 'por_pagina': 5, 'total': 6,
+    })
+    assert falso.chamadas == [('listar', 'MID-1', 2, 5)]
+
+
+def test_listar_sem_paginacao_usa_a_primeira_pagina_de_20(client, modulo):
+    falso = modulo(Resultado(OK, dados={'avaliacoes': [], 'total': 0}))
 
     resposta = client.get('/api/avaliacoes/MID-1')
 
-    assert (resposta.status_code, resposta.get_json()) == (200, {'avaliacoes': [{'id_avaliacao': 'AVL-1'}]})
-    assert falso.chamadas == [('listar', 'MID-1')]
+    assert resposta.get_json() == {'itens': [], 'pagina': 1, 'por_pagina': 20, 'total': 0}
+    assert falso.chamadas == [('listar', 'MID-1', 1, 20)]
+
+
+CODIGO_DO_ERRO = {INVALIDO: 'dados_invalidos', NEGADO: 'acesso_negado', NAO_ENCONTRADO: 'nao_encontrado',
+                  CONFLITO: 'conflito'}
 
 
 @pytest.mark.parametrize('codigo, status', [(INVALIDO, 400), (NEGADO, 403), (NAO_ENCONTRADO, 404), (CONFLITO, 409)])
-def test_erro_do_modulo_vira_o_codigo_http_com_a_mensagem(client, auth_headers, modulo, codigo, status):
+def test_erro_do_modulo_vira_o_codigo_http_com_a_mensagem(client, auth_headers, modulo, monkeypatch, codigo, status):
     modulo(Resultado(codigo, 'Mensagem do módulo'))
+    monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _id: {'pode_moderar': 0})
 
     for resposta in (
         client.get('/api/avaliacoes/MID-1'),
-        client.post('/api/avaliacoes', headers=auth_headers, json={}),
+        client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': 8}),
         client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': 1}),
+        client.delete('/api/avaliacoes/AVL-1', headers=auth_headers),
     ):
-        assert (resposta.status_code, resposta.get_json()) == (status, {'erro': 'Mensagem do módulo'})
+        assert (resposta.status_code, resposta.get_json()) == (
+            status, {'erro': 'Mensagem do módulo', 'codigo': CODIGO_DO_ERRO[codigo]})
 
 
 def test_invalido_com_detalhes_traz_os_detalhes(client, auth_headers, modulo):
@@ -93,9 +122,33 @@ def test_invalido_com_detalhes_traz_os_detalhes(client, auth_headers, modulo):
 
     resposta = client.post('/api/avaliacoes', headers=auth_headers, json={'id_midia': 'MID-1', 'nota': 11})
 
-    assert resposta.get_json() == {'erro': 'Nota inválida', 'detalhes': {'nota': 'Nota inválida'}}
+    assert resposta.get_json() == {
+        'erro': 'Nota inválida', 'codigo': 'dados_invalidos', 'detalhes': {'nota': 'Nota inválida'}}
 
 
+@pytest.mark.parametrize('corpo, campo, motivo', [
+    ({'id_midia': 'MID-1'}, 'nota', 'Campo obrigatório'),
+    ({'nota': 8}, 'id_midia', 'Campo obrigatório'),
+    ({'id_anime': 'MID-1', 'nota': 8}, 'id_midia', 'Campo obrigatório'),
+    ({'id_midia': 'MID-1', 'nota': True}, 'nota', 'Tipo inválido'),
+])
+def test_corpo_fora_do_modelo_responde_400_sem_chamar_o_modulo(client, auth_headers, modulo, corpo, campo, motivo):
+    falso = modulo(Resultado(OK))
+
+    resposta = client.post('/api/avaliacoes', headers=auth_headers, json=corpo)
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()['codigo'] == 'dados_invalidos'
+    assert resposta.get_json()['detalhes'][campo] == motivo
+    assert falso.chamadas == []
+
+
+def test_edicao_passa_so_os_campos_enviados(client, auth_headers, modulo):
+    falso = modulo(Resultado(OK, dados={'nota_media': None, 'total_avaliacoes': None}))
+
+    client.put('/api/avaliacoes/AVL-1', headers=auth_headers, json={'nota': '7,5', 'texto_avaliacao': None, 'x': 1})
+
+    assert falso.chamadas == [('editar', 'USR-TEST-0001', 'AVL-1', {'nota': '7,5', 'texto_avaliacao': None})]
 def test_escrita_exige_login(client, modulo):
     falso = modulo(Resultado(OK))
 

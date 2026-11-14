@@ -1,6 +1,283 @@
 {
   "components": {
     "schemas": {
+      "AvaliacaoCriada": {
+        "properties": {
+          "id_avaliacao": {
+            "title": "Id Avaliacao",
+            "type": "string"
+          },
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "nota_media_atualizada": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota média da Mídia depois da gravação",
+            "title": "Nota Media Atualizada"
+          },
+          "total_avaliacoes": {
+            "title": "Total Avaliacoes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mensagem",
+          "id_avaliacao",
+          "nota_media_atualizada",
+          "total_avaliacoes"
+        ],
+        "title": "AvaliacaoCriada",
+        "type": "object"
+      },
+      "AvaliacaoDaMidia": {
+        "properties": {
+          "data_avaliacao": {
+            "format": "date-time",
+            "title": "Data Avaliacao",
+            "type": "string"
+          },
+          "data_edicao": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Edicao"
+          },
+          "foto_perfil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Foto do autor",
+            "title": "Foto Perfil"
+          },
+          "id_avaliacao": {
+            "title": "Id Avaliacao",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "id_usuario": {
+            "title": "Id Usuario",
+            "type": "string"
+          },
+          "nome_completo": {
+            "description": "Nome do autor",
+            "title": "Nome Completo",
+            "type": "string"
+          },
+          "nota": {
+            "maximum": 10,
+            "minimum": 0,
+            "title": "Nota",
+            "type": "number"
+          },
+          "texto_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Avaliacao"
+          },
+          "titulo_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Avaliacao"
+          }
+        },
+        "required": [
+          "id_avaliacao",
+          "id_usuario",
+          "id_midia",
+          "nota",
+          "titulo_avaliacao",
+          "texto_avaliacao",
+          "data_avaliacao",
+          "data_edicao",
+          "nome_completo",
+          "foto_perfil"
+        ],
+        "title": "AvaliacaoDaMidia",
+        "type": "object"
+      },
+      "AvaliacaoEditada": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "nota_media_atualizada": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota média da Mídia depois da gravação",
+            "title": "Nota Media Atualizada"
+          }
+        },
+        "required": [
+          "mensagem",
+          "nota_media_atualizada"
+        ],
+        "title": "AvaliacaoEditada",
+        "type": "object"
+      },
+      "AvaliacaoModeracao": {
+        "properties": {
+          "data_avaliacao": {
+            "format": "date-time",
+            "title": "Data Avaliacao",
+            "type": "string"
+          },
+          "data_edicao": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Edicao"
+          },
+          "id_avaliacao": {
+            "title": "Id Avaliacao",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "id_usuario": {
+            "title": "Id Usuario",
+            "type": "string"
+          },
+          "nome_completo": {
+            "description": "Nome do autor",
+            "title": "Nome Completo",
+            "type": "string"
+          },
+          "nota": {
+            "maximum": 10,
+            "minimum": 0,
+            "title": "Nota",
+            "type": "number"
+          },
+          "texto_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Avaliacao"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Avaliacao"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          }
+        },
+        "required": [
+          "id_avaliacao",
+          "id_usuario",
+          "id_midia",
+          "nota",
+          "titulo_avaliacao",
+          "texto_avaliacao",
+          "data_avaliacao",
+          "data_edicao",
+          "nome_completo",
+          "titulo_portugues",
+          "titulo_original",
+          "tipo"
+        ],
+        "title": "AvaliacaoModeracao",
+        "type": "object"
+      },
+      "AvaliacaoRemovida": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "title": "AvaliacaoRemovida",
+        "type": "object"
+      },
       "CodigoErro": {
         "description": "Código estável do erro, para o cliente decidir sem ler a mensagem.",
         "enum": [
@@ -21,17 +298,23 @@
         "title": "CodigoErro",
         "type": "string"
       },
-      "ConfirmacaoLista": {
+      "ConsultaAvaliacoes": {
         "properties": {
-          "mensagem": {
-            "title": "Mensagem",
-            "type": "string"
+          "pagina": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "default": 20,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Por Pagina",
+            "type": "integer"
           }
         },
-        "required": [
-          "mensagem"
-        ],
-        "title": "ConfirmacaoLista",
+        "title": "ConsultaAvaliacoes",
         "type": "object"
       },
       "ConsultaGeneros": {
@@ -57,133 +340,79 @@
         "title": "ConsultaGeneros",
         "type": "object"
       },
-      "ConsultaLista": {
+      "ConsultaNoticias": {
         "properties": {
-          "status_consumo": {
+          "limite": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Rótulo de estado",
-            "title": "Status Consumo"
+            "deprecated": true,
+            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
+            "ge": 1,
+            "title": "Limite"
           },
-          "tipo": {
-            "anyOf": [
-              {
-                "enum": [
-                  "anime",
-                  "manga",
-                  "jogo"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Tipo"
+          "pagina": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "default": 20,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Por Pagina",
+            "type": "integer"
           }
         },
-        "title": "ConsultaLista",
+        "title": "ConsultaNoticias",
         "type": "object"
       },
-      "EdicaoItemLista": {
-        "description": "Corpo de PUT /lista/<id_lista>.",
+      "ConsultaUsuariosModeracao": {
         "properties": {
-          "comentario": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Comentario"
+          "pagina": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Pagina",
+            "type": "integer"
           },
-          "data_conclusao": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Data Conclusao"
-          },
-          "data_inicio": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Data Inicio"
-          },
-          "favorito": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Favorito"
-          },
-          "nota_usuario": {
+          "por_pagina": {
+            "default": 20,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Por Pagina",
+            "type": "integer"
+          }
+        },
+        "title": "ConsultaUsuariosModeracao",
+        "type": "object"
+      },
+      "CorpoEdicaoAvaliacao": {
+        "description": "Só os campos enviados são gravados.",
+        "properties": {
+          "nota": {
             "anyOf": [
               {
                 "type": "number"
               },
               {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga",
-            "title": "Nota Usuario"
-          },
-          "privado": {
-            "anyOf": [
-              {
-                "type": "boolean"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "title": "Privado"
+            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
+            "title": "Nota"
           },
-          "progresso_atual": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Progresso Atual"
-          },
-          "status_consumo": {
+          "texto_avaliacao": {
             "anyOf": [
               {
                 "type": "string"
@@ -193,24 +422,139 @@
               }
             ],
             "default": null,
-            "description": "Rótulo de estado",
-            "title": "Status Consumo"
+            "title": "Texto Avaliacao"
           },
-          "total_rewatches": {
+          "titulo_avaliacao": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Recontagem",
-            "title": "Total Rewatches"
+            "title": "Titulo Avaliacao"
           }
         },
-        "title": "EdicaoItemLista",
+        "title": "CorpoEdicaoAvaliacao",
+        "type": "object"
+      },
+      "CorpoNoticia": {
+        "description": "O autor é o Usuário logado; `autor` no corpo é ignorado.",
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sem ela, \"geral\"",
+            "title": "Categoria"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conteudo"
+          },
+          "imagem_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Imagem Url"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tags"
+          },
+          "titulo": {
+            "minLength": 1,
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo"
+        ],
+        "title": "CorpoNoticia",
+        "type": "object"
+      },
+      "CorpoNovaAvaliacao": {
+        "properties": {
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "De 0 a 10, com no máximo uma casa decimal; aceita texto com vírgula (\"7,5\")",
+            "title": "Nota"
+          },
+          "texto_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Texto Avaliacao"
+          },
+          "titulo_avaliacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Titulo Avaliacao"
+          }
+        },
+        "required": [
+          "id_midia",
+          "nota"
+        ],
+        "title": "CorpoNovaAvaliacao",
         "type": "object"
       },
       "Erro": {
@@ -279,10 +623,71 @@
         "title": "Genero",
         "type": "object"
       },
-      "ItemCriado": {
+      "Noticia": {
         "properties": {
-          "id_lista": {
-            "title": "Id Lista",
+          "autor": {
+            "description": "Nome de quem publicou; \"Admin\" se o Usuário foi apagado",
+            "title": "Autor",
+            "type": "string"
+          },
+          "categoria": {
+            "title": "Categoria",
+            "type": "string"
+          },
+          "conteudo": {
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "data_publicacao": {
+            "format": "date-time",
+            "title": "Data Publicacao",
+            "type": "string"
+          },
+          "id_noticia": {
+            "title": "Id Noticia",
+            "type": "string"
+          },
+          "imagem_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagem Url"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id_noticia",
+          "titulo",
+          "conteudo",
+          "autor",
+          "categoria",
+          "tags",
+          "imagem_url",
+          "data_publicacao"
+        ],
+        "title": "Noticia",
+        "type": "object"
+      },
+      "NoticiaCriada": {
+        "properties": {
+          "id": {
+            "description": "id_noticia da Notícia criada",
+            "title": "Id",
             "type": "string"
           },
           "mensagem": {
@@ -292,650 +697,122 @@
         },
         "required": [
           "mensagem",
-          "id_lista"
+          "id"
         ],
-        "title": "ItemCriado",
+        "title": "NoticiaCriada",
         "type": "object"
       },
-      "ItemLista": {
-        "description": "Um Item de GET /lista: a Mídia mais os campos do Item.",
+      "PaginaAvaliacaoDaMidia": {
         "properties": {
-          "autor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Autor"
-          },
-          "banner_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Banner Url"
-          },
-          "comentario": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comentario"
-          },
-          "data_adicao": {
-            "format": "date-time",
-            "title": "Data Adicao",
-            "type": "string"
-          },
-          "data_atualizacao": {
-            "format": "date-time",
-            "title": "Data Atualizacao",
-            "type": "string"
-          },
-          "data_conclusao": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Conclusao"
-          },
-          "data_inicio": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Inicio"
-          },
-          "data_lancamento": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Lancamento"
-          },
-          "demografia": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Demografia"
-          },
-          "desenvolvedor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Desenvolvedor"
-          },
-          "estudio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estudio"
-          },
-          "favorito": {
-            "title": "Favorito",
-            "type": "boolean"
-          },
-          "fonte_original": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fonte Original"
-          },
-          "generos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "\"Aventura, Drama\"; `generos_lista` é o mesmo, separado",
-            "title": "Generos"
-          },
-          "generos_lista": {
+          "itens": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AvaliacaoDaMidia"
             },
-            "title": "Generos Lista",
+            "title": "Itens",
             "type": "array"
           },
-          "id_lista": {
-            "title": "Id Lista",
-            "type": "string"
-          },
-          "id_midia": {
-            "title": "Id Midia",
-            "type": "string"
-          },
-          "modo_jogo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modo Jogo"
-          },
-          "nota_fonte": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nota Fonte"
-          },
-          "nota_media": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Média das Avaliações; null sem elas",
-            "title": "Nota Media"
-          },
-          "nota_usuario": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nota pessoal",
-            "title": "Nota Usuario"
-          },
-          "numero_capitulos": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Numero Capitulos"
-          },
-          "numero_episodios": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Numero Episodios"
-          },
-          "numero_volumes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Numero Volumes"
-          },
-          "origem_nota": {
-            "anyOf": [
-              {
-                "enum": [
-                  "AniList",
-                  "RAWG"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Origem Nota"
-          },
-          "plataformas": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "\"PC, Switch, PS4\"",
-            "title": "Plataformas"
-          },
-          "poster_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Poster Url"
-          },
-          "privado": {
-            "title": "Privado",
-            "type": "boolean"
-          },
-          "progresso_atual": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Progresso Atual"
-          },
-          "progresso_total": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Total copiado da Mídia na criação do Item",
-            "title": "Progresso Total"
-          },
-          "progresso_total_padrao": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Total da Mídia; null no jogo",
-            "title": "Progresso Total Padrao"
-          },
-          "publicadora": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Publicadora"
-          },
-          "sinopse": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sinopse"
-          },
-          "status_anime": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Anime"
-          },
-          "status_catalogo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Catalogo"
-          },
-          "status_consumo": {
-            "description": "Rótulo de estado",
-            "title": "Status Consumo",
-            "type": "string"
-          },
-          "status_jogo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Jogo"
-          },
-          "status_manga": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Manga"
-          },
-          "tipo": {
-            "enum": [
-              "anime",
-              "manga",
-              "jogo"
-            ],
-            "title": "Tipo",
-            "type": "string"
-          },
-          "tipo_label": {
-            "title": "Tipo Label",
-            "type": "string"
-          },
-          "titulo_ingles": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Titulo Ingles"
-          },
-          "titulo_original": {
-            "title": "Titulo Original",
-            "type": "string"
-          },
-          "titulo_portugues": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Titulo Portugues"
-          },
-          "total_avaliacoes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null quando a Mídia não tem Avaliações",
-            "title": "Total Avaliacoes"
-          },
-          "total_concluidos": {
-            "title": "Total Concluidos",
+          "pagina": {
+            "title": "Pagina",
             "type": "integer"
           },
-          "total_rewatches": {
-            "description": "Recontagem",
-            "title": "Total Rewatches",
+          "por_pagina": {
+            "title": "Por Pagina",
             "type": "integer"
           },
-          "total_usuarios": {
-            "title": "Total Usuarios",
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "id_midia",
-          "tipo",
-          "tipo_label",
-          "titulo_original",
-          "titulo_ingles",
-          "titulo_portugues",
-          "sinopse",
-          "data_lancamento",
-          "nota_media",
-          "total_avaliacoes",
-          "nota_fonte",
-          "origem_nota",
-          "poster_url",
-          "banner_url",
-          "status_catalogo",
-          "progresso_total_padrao",
-          "generos",
-          "generos_lista",
-          "total_usuarios",
-          "total_concluidos",
-          "status_anime",
-          "numero_episodios",
-          "estudio",
-          "fonte_original",
-          "status_manga",
-          "numero_capitulos",
-          "numero_volumes",
-          "autor",
-          "demografia",
-          "status_jogo",
-          "desenvolvedor",
-          "publicadora",
-          "plataformas",
-          "modo_jogo",
-          "id_lista",
-          "status_consumo",
-          "progresso_atual",
-          "progresso_total",
-          "nota_usuario",
-          "favorito",
-          "privado",
-          "data_inicio",
-          "data_conclusao",
-          "total_rewatches",
-          "comentario",
-          "data_adicao",
-          "data_atualizacao"
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
         ],
-        "title": "ItemLista",
+        "title": "Pagina[AvaliacaoDaMidia]",
         "type": "object"
       },
-      "NovoItemLista": {
-        "description": "Corpo de POST /lista e /lista/adicionar.",
+      "PaginaNoticia": {
         "properties": {
-          "comentario": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Comentario"
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/Noticia"
+            },
+            "title": "Itens",
+            "type": "array"
           },
-          "data_conclusao": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Data Conclusao"
+          "pagina": {
+            "title": "Pagina",
+            "type": "integer"
           },
-          "data_inicio": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Data Inicio"
+          "por_pagina": {
+            "title": "Por Pagina",
+            "type": "integer"
           },
-          "favorito": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Favorito"
-          },
-          "id_midia": {
-            "title": "Id Midia",
-            "type": "string"
-          },
-          "nota_usuario": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga",
-            "title": "Nota Usuario"
-          },
-          "privado": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Privado"
-          },
-          "progresso_atual": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Progresso Atual"
-          },
-          "status_consumo": {
-            "description": "Rótulo de estado do Tipo da Mídia",
-            "title": "Status Consumo",
-            "type": "string"
-          },
-          "total_rewatches": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Recontagem",
-            "title": "Total Rewatches"
-          }
-        },
-        "required": [
-          "id_midia",
-          "status_consumo"
-        ],
-        "title": "NovoItemLista",
-        "type": "object"
-      },
-      "ProgressoItemLista": {
-        "description": "Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.",
-        "properties": {
-          "progresso_atual": {
-            "title": "Progresso Atual",
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "progresso_atual"
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
         ],
-        "title": "ProgressoItemLista",
+        "title": "Pagina[Noticia]",
+        "type": "object"
+      },
+      "PaginaUsuarioModeracao": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UsuarioModeracao"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
+        ],
+        "title": "Pagina[UsuarioModeracao]",
+        "type": "object"
+      },
+      "RespostaAvaliacoesModeracao": {
+        "properties": {
+          "avaliacoes": {
+            "description": "As 50 mais recentes",
+            "items": {
+              "$ref": "#/components/schemas/AvaliacaoModeracao"
+            },
+            "title": "Avaliacoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "avaliacoes"
+        ],
+        "title": "RespostaAvaliacoesModeracao",
         "type": "object"
       },
       "RespostaGeneros": {
@@ -954,20 +831,88 @@
         "title": "RespostaGeneros",
         "type": "object"
       },
-      "RespostaLista": {
+      "StatusUsuarioAlterado": {
         "properties": {
-          "lista": {
-            "items": {
-              "$ref": "#/components/schemas/ItemLista"
-            },
-            "title": "Lista",
-            "type": "array"
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
           }
         },
         "required": [
-          "lista"
+          "mensagem"
         ],
-        "title": "RespostaLista",
+        "title": "StatusUsuarioAlterado",
+        "type": "object"
+      },
+      "UsuarioModeracao": {
+        "properties": {
+          "ativo": {
+            "title": "Ativo",
+            "type": "boolean"
+          },
+          "data_cadastro": {
+            "format": "date-time",
+            "title": "Data Cadastro",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "grupos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nomes dos Grupos separados por vírgula; null sem Grupo",
+            "title": "Grupos"
+          },
+          "id_usuario": {
+            "title": "Id Usuario",
+            "type": "string"
+          },
+          "nome_completo": {
+            "title": "Nome Completo",
+            "type": "string"
+          },
+          "total_avaliacoes": {
+            "title": "Total Avaliacoes",
+            "type": "integer"
+          },
+          "total_midias": {
+            "description": "Itens na Lista pessoal",
+            "title": "Total Midias",
+            "type": "integer"
+          },
+          "ultimo_acesso": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Acesso"
+          }
+        },
+        "required": [
+          "id_usuario",
+          "nome_completo",
+          "email",
+          "data_cadastro",
+          "ultimo_acesso",
+          "ativo",
+          "grupos",
+          "total_midias",
+          "total_avaliacoes"
+        ],
+        "title": "UsuarioModeracao",
         "type": "object"
       }
     },
@@ -985,6 +930,286 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/avaliacoes": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_avaliacoes",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoNovaAvaliacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvaliacaoCriada"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Criar a Avaliação do Usuário logado; uma por Mídia.",
+        "tags": [
+          "avaliacoes"
+        ]
+      }
+    },
+    "/api/avaliacoes/{avaliacao_id}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_avaliacoes_{avaliacao_id}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "avaliacao_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvaliacaoRemovida"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletar avaliação: o autor, ou quem pode moderar.",
+        "tags": [
+          "avaliacoes"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_avaliacoes_{avaliacao_id}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "avaliacao_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoEdicaoAvaliacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvaliacaoEditada"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar a própria Avaliação; só os campos enviados.",
+        "tags": [
+          "avaliacoes"
+        ]
+      }
+    },
+    "/api/avaliacoes/{id_midia}": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_avaliacoes_{id_midia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "por_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaAvaliacaoDaMidia"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Uma página das Avaliações de uma Mídia, mais recentes primeiro.",
+        "tags": [
+          "avaliacoes"
+        ]
+      }
+    },
     "/api/generos": {
       "get": {
         "description": "",
@@ -1042,51 +1267,72 @@
         ]
       }
     },
-    "/api/lista": {
+    "/api/moderacao/avaliacoes": {
       "get": {
         "description": "",
-        "operationId": "get__api_lista",
+        "operationId": "get__api_moderacao_avaliacoes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaAvaliacoesModeracao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "As 50 Avaliações mais recentes, para moderação.",
+        "tags": [
+          "moderacao"
+        ]
+      }
+    },
+    "/api/moderacao/usuarios": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_moderacao_usuarios",
         "parameters": [
           {
             "description": "",
             "in": "query",
-            "name": "tipo",
+            "name": "pagina",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "anime",
-                    "manga",
-                    "jogo"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Tipo"
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
             }
           },
           {
-            "description": "Rótulo de estado",
+            "description": "Acima de 50 vira 50",
             "in": "query",
-            "name": "status_consumo",
+            "name": "por_pagina",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Rótulo de estado",
-              "title": "Status Consumo"
+              "default": 20,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
             }
           }
         ],
@@ -1095,7 +1341,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaLista"
+                  "$ref": "#/components/schemas/PaginaUsuarioModeracao"
                 }
               }
             },
@@ -1117,322 +1363,16 @@
             "bearer": []
           }
         ],
-        "summary": "Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado.",
+        "summary": "Uma página dos Usuários, mais recentes primeiro, para moderação.",
         "tags": [
-          "lista"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "post__api_lista",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NovoItemLista"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemCriado"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar).",
-        "tags": [
-          "lista"
+          "moderacao"
         ]
       }
     },
-    "/api/lista/adicionar": {
-      "post": {
-        "description": "",
-        "operationId": "post__api_lista_adicionar",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NovoItemLista"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemCriado"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Pôr uma Mídia na Lista pessoal.",
-        "tags": [
-          "lista"
-        ]
-      }
-    },
-    "/api/lista/{lista_id}": {
-      "delete": {
-        "description": "",
-        "operationId": "delete__api_lista_{lista_id}",
-        "parameters": [
-          {
-            "description": "",
-            "in": "path",
-            "name": "lista_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Tirar um Item da Lista pessoal.",
-        "tags": [
-          "lista"
-        ]
-      },
+    "/api/moderacao/usuarios/{target_user_id}/ativar": {
       "put": {
         "description": "",
-        "operationId": "put__api_lista_{lista_id}",
-        "parameters": [
-          {
-            "description": "",
-            "in": "path",
-            "name": "lista_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EdicaoItemLista"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Gravar os campos enviados num Item.",
-        "tags": [
-          "lista"
-        ]
-      }
-    },
-    "/api/lista/{lista_id}/progresso": {
-      "put": {
-        "description": "Teto, promoção a Concluído e dono do Item são decisão do módulo.",
-        "operationId": "put__api_lista_{lista_id}_progresso",
-        "parameters": [
-          {
-            "description": "",
-            "in": "path",
-            "name": "lista_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProgressoItemLista"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmacaoLista"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Atualizar o Progresso de um Item.",
-        "tags": [
-          "lista"
-        ]
-      }
-    },
-    "/api/lista/{target_user_id}": {
-      "get": {
-        "description": "",
-        "operationId": "get__api_lista_{target_user_id}",
+        "operationId": "put__api_moderacao_usuarios_{target_user_id}_ativar",
         "parameters": [
           {
             "description": "",
@@ -1442,48 +1382,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "description": "",
-            "in": "query",
-            "name": "tipo",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "anime",
-                    "manga",
-                    "jogo"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Tipo"
-            }
-          },
-          {
-            "description": "Rótulo de estado",
-            "in": "query",
-            "name": "status_consumo",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Rótulo de estado",
-              "title": "Status Consumo"
-            }
           }
         ],
         "responses": {
@@ -1491,7 +1389,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaLista"
+                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
                 }
               }
             },
@@ -1516,6 +1414,16 @@
               }
             },
             "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
           }
         },
         "security": [
@@ -1523,9 +1431,203 @@
             "bearer": []
           }
         ],
-        "summary": "Lista pessoal de um Usuário: só o próprio.",
+        "summary": "Ativar usuário.",
         "tags": [
-          "lista"
+          "moderacao"
+        ]
+      }
+    },
+    "/api/moderacao/usuarios/{target_user_id}/desativar": {
+      "put": {
+        "description": "",
+        "operationId": "put__api_moderacao_usuarios_{target_user_id}_desativar",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "target_user_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusUsuarioAlterado"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Desativar usuário.",
+        "tags": [
+          "moderacao"
+        ]
+      }
+    },
+    "/api/noticias": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_noticias",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "por_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "deprecated": true,
+              "description": "Sinônimo antigo de `por_pagina`, até o web e o app migrarem; `por_pagina` vence",
+              "ge": 1,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaNoticia"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Uma página das Notícias, mais recentes primeiro.",
+        "tags": [
+          "noticias"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "post__api_noticias",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoNoticia"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticiaCriada"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Criar Notícia; o autor é o Usuário logado.",
+        "tags": [
+          "noticias"
         ]
       }
     }
@@ -1533,7 +1635,13 @@
   "security": [],
   "tags": [
     {
-      "name": "lista"
+      "name": "avaliacoes"
+    },
+    {
+      "name": "noticias"
+    },
+    {
+      "name": "moderacao"
     },
     {
       "name": "utils"

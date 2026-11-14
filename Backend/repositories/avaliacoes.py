@@ -18,20 +18,27 @@ CAMPOS_EDITAVEIS = ('nota', 'titulo_avaliacao', 'texto_avaliacao')
 
 
 class AvaliacaoRepository:
-    def listar(self, id_midia: str) -> list[dict[str, Any]]:
-        """As Avaliações da Mídia, com nome e foto do autor, mais recentes primeiro."""
-        linhas = consultar(
+    def listar(self, id_midia: str, limite: int, deslocamento: int) -> list[dict[str, Any]]:
+        """Uma página das Avaliações da Mídia, com nome e foto do autor, mais recentes primeiro.
+
+        O id desempata o instante, para a página não repetir nem pular Avaliação.
+        """
+        return consultar(
             """
-            SELECT av.*, u.nome_completo, u.foto_perfil
+            SELECT av.id_avaliacao, av.id_usuario, av.id_midia, av.nota, av.titulo_avaliacao,
+                   av.texto_avaliacao, av.data_avaliacao, av.data_edicao, u.nome_completo, u.foto_perfil
             FROM avaliacoes av
             JOIN usuarios u ON u.id_usuario = av.id_usuario
             WHERE av.id_midia = %s
-            ORDER BY av.data_avaliacao DESC
+            ORDER BY av.data_avaliacao DESC, av.id_avaliacao DESC
+            LIMIT %s OFFSET %s
             """,
-            (id_midia,),
+            (id_midia, limite, deslocamento),
         )
-        # `generos_lista` vazio: a resposta sempre o trouxe (herança do serializador das Mídias).
-        return [{**linha, 'generos_lista': []} for linha in linhas]
+
+    def contar(self, id_midia: str) -> int:
+        """Quantas Avaliações a Mídia tem, em todas as páginas."""
+        return consultar_um('SELECT count(*) AS total FROM avaliacoes WHERE id_midia = %s', (id_midia,))['total']
 
     def criar(
         self, id_usuario: str, id_midia: str, nota: float, titulo: str | None, texto: str | None,

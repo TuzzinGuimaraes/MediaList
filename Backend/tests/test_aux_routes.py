@@ -101,14 +101,24 @@ def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
     assert response.status_code == 403
 
 
-def test_moderacao_lista_usuarios_para_admin(client, admin_headers, monkeypatch):
-    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
-    FakeBanco({'FROM usuarios': [{'id_usuario': 'USR-1'}]}).instalar(monkeypatch, moderacao_routes)
+def test_moderacao_lista_usuarios_para_admin_paginados_com_o_total(client, admin_headers, monkeypatch):
+    from datetime import datetime, timezone
 
-    response = client.get('/api/moderacao/usuarios', headers=admin_headers)
+    usuario = {
+        'id_usuario': 'USR-1', 'nome_completo': 'Ana', 'email': 'ana@exemplo.test',
+        'data_cadastro': datetime(2026, 11, 1, 12, tzinfo=timezone.utc), 'ultimo_acesso': None, 'ativo': True,
+        'grupos': 'Usuários', 'total_midias': 3, 'total_avaliacoes': 1,
+    }
+    monkeypatch.setattr('decorators.get_user_permissions', lambda _user_id: {'nivel_acesso': 'admin'})
+    fake = FakeBanco({'count(*)': {'total': 7}, 'FROM usuarios': [usuario]}).instalar(monkeypatch, moderacao_routes)
+
+    response = client.get('/api/moderacao/usuarios?pagina=2&por_pagina=3', headers=admin_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['usuarios'][0]['id_usuario'] == 'USR-1'
+    assert response.get_json() == {
+        'itens': [{**usuario, 'data_cadastro': '2026-11-01T12:00:00Z'}], 'pagina': 2, 'por_pagina': 3, 'total': 7,
+    }
+    assert fake.sql('LIMIT')[0][2] == (3, 3)
 
 
 @pytest.mark.parametrize('rota', ['/api/animes', '/api/mangas', '/api/jogos', '/api/animes/populares'])
