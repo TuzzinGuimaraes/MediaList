@@ -32,12 +32,13 @@ describe('CreateNoticiaModal', () => {
         fireEvent.click(screen.getByText('Publicar'));
 
         await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        expect(onSave).toHaveBeenCalledWith({
             titulo: 'Nova notícia',
             conteudo: 'Conteúdo importante',
-            autor: 'Moderador',
+            categoria: 'geral',
             tags: ['anime', 'acao'],
-        }));
+            imagem_url: '',
+        });
         expect(onClose).toHaveBeenCalled();
     });
 
