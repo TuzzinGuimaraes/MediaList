@@ -5,6 +5,7 @@ import { useApi } from '../contexts/ApiContext';
 import { useSession } from '../contexts/SessionContext';
 import MediaCard from '../components/cards/MediaCard';
 import ListEditorModal from '../components/media/ListEditorModal';
+import { totalDoItem } from '../constants/itemLista';
 
 const TIPO_CONFIG = {
     anime: { label: 'Anime in Progress', icon: Film, statusKey: 'assistindo' },
@@ -102,7 +103,7 @@ const HomePage = () => {
                         </h2>
                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
                             {items.map(item => {
-                                const progressTotal = item.progresso_total || item.progresso_total_padrao;
+                                const progressTotal = totalDoItem(item);
                                 const progressCurrent = item.progresso_atual || 0;
                                 const progressPct = progressTotal ? Math.min((progressCurrent / progressTotal) * 100, 100) : 0;
 
