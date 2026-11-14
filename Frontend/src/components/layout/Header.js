@@ -153,11 +153,11 @@ const Header = () => {
                                                         {notif.titulo || 'Nova notificação'}
                                                     </p>
                                                     <p className="text-xs text-text-secondary mt-1">
-                                                        {notif.mensagem || `Novidade: ${notif.midia_nome || notif.anime_nome || 'Mídia'}`}
+                                                        {notif.mensagem || `Novidade: ${notif.midia_nome}`}
                                                     </p>
-                                                    {(notif.data_criacao || notif.data) && (
+                                                    {notif.data_criacao && (
                                                         <p className="text-xs text-text-secondary mt-1 opacity-60">
-                                                            {new Date(notif.data_criacao || notif.data).toLocaleDateString('pt-BR')}
+                                                            {new Date(notif.data_criacao).toLocaleDateString('pt-BR')}
                                                         </p>
                                                     )}
                                                 </div>
