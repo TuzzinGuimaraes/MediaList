@@ -73,11 +73,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: docker compose logs migrate
 
-      # Usuário da aplicação (só DML), com os defaults do compose.
+      # Usuário da aplicação (só DML), com os defaults do compose. O dono só
+      # entra no teste de migração, que cria e apaga um banco descartável.
       - name: Run backend pytest suite
         working-directory: Backend
         env:
           TEST_DATABASE_URL: postgresql://media_app_user:MediaList%402025%21Secure@127.0.0.1:5433/medialist_db
+          TEST_OWNER_DATABASE_URL: postgresql://medialist_owner:medialist-owner-dev@127.0.0.1:5433/medialist_db
         run: pytest -q --cov --cov-report=term
 
       # Cobertura é só relatório: não há limite mínimo que bloqueie o merge.
