@@ -52,9 +52,9 @@ describe('BrowsePage', () => {
         useApi.mockReturnValue({
             apiCall: jest.fn().mockImplementation((endpoint) => {
                 if (endpoint.startsWith('/generos')) {
-                    return Promise.resolve({ generos: [{ id_genero: 1, nome_genero: 'Ação' }] });
+                    return Promise.resolve({ generos: [{ id_genero: '1', nome_genero: 'Ação' }] });
                 }
-                return Promise.resolve({ midias: [{ id_midia: 'MID-1', titulo_portugues: 'Anime X' }] });
+                return Promise.resolve({ itens: [{ id_midia: 'MID-1', titulo_portugues: 'Anime X' }], pagina: 1, por_pagina: 48, total: 1 });
             }),
         });
     });
@@ -136,12 +136,22 @@ describe('BrowsePage', () => {
             titulo_portugues: `Pagina ${n} item ${i}`,
         }));
 
-        function mockPaginas(paginas) {
+        // Envelope Pagina[Midia]; o `total` padrão soma as páginas que não são erro.
+        function mockPaginas(paginas, total) {
+            const totalDoFiltro = total ?? Object.values(paginas)
+                .filter(Array.isArray)
+                .reduce((soma, itens) => soma + itens.length, 0);
             const apiCall = jest.fn().mockImplementation((endpoint) => {
                 if (endpoint.startsWith('/generos')) return Promise.resolve({ generos: [] });
-                const numero = Number(new URLSearchParams(endpoint.split('?')[1]).get('pagina'));
+                const query = new URLSearchParams(endpoint.split('?')[1]);
+                const numero = Number(query.get('pagina'));
                 const resposta = paginas[numero];
-                return resposta instanceof Error ? Promise.reject(resposta) : Promise.resolve({ midias: resposta || [] });
+                return resposta instanceof Error ? Promise.reject(resposta) : Promise.resolve({
+                    itens: resposta || [],
+                    pagina: numero,
+                    por_pagina: Number(query.get('por_pagina')),
+                    total: totalDoFiltro,
+                });
             });
             useApi.mockReturnValue({ apiCall });
             return apiCall;
@@ -161,7 +171,16 @@ describe('BrowsePage', () => {
             expect(apiCall).toHaveBeenCalledWith('/midias?tipo=anime&pagina=2&por_pagina=48&ordem=nota_media');
         });
 
-        test('botao some quando a pagina vem com menos de por_pagina itens', async () => {
+        test('mostra o total do filtro, nao so os itens carregados', async () => {
+            mockPaginas({ 1: pagina(1, 48), 2: pagina(2, 47) });
+            renderPage('/browse?tipo=anime');
+            await flushBrowseEffects();
+            await screen.findByText('Pagina 1 item 0');
+
+            expect(screen.getByText('95 resultado(s)')).toBeInTheDocument();
+        });
+
+        test('botao some quando os itens carregados chegam ao total', async () => {
             mockPaginas({ 1: pagina(1, 48), 2: pagina(2, 47) });
             renderPage('/browse?tipo=anime');
             await flushBrowseEffects();
@@ -208,7 +227,7 @@ describe('BrowsePage', () => {
 
         test('erro na proxima pagina mantem os itens e permite tentar de novo', async () => {
             const paginas = { 1: pagina(1, 48), 2: new Error('Falhou a página 2.') };
-            mockPaginas(paginas);
+            mockPaginas(paginas, 53);
             renderPage('/browse?tipo=anime');
             await flushBrowseEffects();
             await screen.findByText('Pagina 1 item 0');
