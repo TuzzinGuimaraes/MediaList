@@ -4,6 +4,128 @@
  */
 
 export interface paths {
+    "/api/auth/esqueci-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Solicitar redefinição de senha */
+        post: operations["post__api_auth_esqueci-senha"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login de usuário */
+        post: operations["post__api_auth_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fazer logout e revogar o token */
+        post: operations["post__api_auth_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter informações do usuário autenticado */
+        get: operations["get__api_auth_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/redefinir-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redefinir senha com token de recuperação */
+        post: operations["post__api_auth_redefinir-senha"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trocar um refresh token por um par novo de access + refresh (rotação).
+         * @description Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
+         */
+        post: operations["post__api_auth_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/registro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar novo usuário */
+        post: operations["post__api_auth_registro"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/avaliacoes": {
         parameters: {
             query?: never;
@@ -65,6 +187,217 @@ export interface paths {
         };
         /** Listar gêneros; `?tipo=` só os que se aplicam ao Tipo de mídia. */
         get: operations["get__api_generos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Saúde do sistema: 200 com o PostgreSQL de pé, 503 sem ele. */
+        get: operations["get__api_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista pessoal do Usuário autenticado, em ordem alfabética, com filtro por Tipo e Rótulo de estado. */
+        get: operations["get__api_lista"];
+        put?: never;
+        /** Pôr uma Mídia na Lista pessoal (o mesmo que /adicionar). */
+        post: operations["post__api_lista"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/adicionar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pôr uma Mídia na Lista pessoal. */
+        post: operations["post__api_lista_adicionar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Gravar os campos enviados num Item. */
+        put: operations["put__api_lista_{lista_id}"];
+        post?: never;
+        /** Tirar um Item da Lista pessoal. */
+        delete: operations["delete__api_lista_{lista_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{lista_id}/progresso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Atualizar o Progresso de um Item.
+         * @description Teto, promoção a Concluído e dono do Item são decisão do módulo.
+         */
+        put: operations["put__api_lista_{lista_id}_progresso"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lista/{target_user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista pessoal de um Usuário: só o próprio. */
+        get: operations["get__api_lista_{target_user_id}"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas. */
+        get: operations["get__api_midias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/populares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As Mídias com mais Usuários; a nota desempata. */
+        get: operations["get__api_midias_populares"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mídias mais bem avaliadas de um tipo. */
+        get: operations["get__api_midias_trending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhes completos de qualquer mídia, com as Atualizações mais recentes. */
+        get: operations["get__api_midias_{id_midia}"];
+        /** Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela. */
+        put: operations["put__api_midias_{id_midia}"];
+        post?: never;
+        /** Deletar mídia central. */
+        delete: operations["delete__api_midias_{id_midia}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}/atualizacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publicar uma Atualização de mídia, notificando quem tem a Mídia na Lista. */
+        post: operations["post__api_midias_{id_midia}_atualizacoes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}/distribuicao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Distribuição de status dos usuários para uma mídia. */
+        get: operations["get__api_midias_{id_midia}_distribuicao"];
         put?: never;
         post?: never;
         delete?: never;
@@ -159,10 +492,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notificacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As 50 Notificações mais recentes do Usuário; `?nao_lidas=true` só as não lidas. */
+        get: operations["get__api_notificacoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notificacoes/marcar-todas-lidas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Marcar como lidas todas as Notificações do Usuário. */
+        put: operations["put__api_notificacoes_marcar-todas-lidas"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/preferencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preferências do Usuário, com os padrões no que ele não mudou. */
+        get: operations["get__api_preferencias"];
+        /** Grava os campos enviados; os outros ficam como estão. */
+        put: operations["put__api_preferencias"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/estatisticas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter estatísticas do usuário por tipo de mídia. */
+        get: operations["get__api_usuario_estatisticas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/perfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter perfil completo do usuário. */
+        get: operations["get__api_usuario_perfil"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/permissoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter permissões do usuário. */
+        get: operations["get__api_usuario_permissoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AtualizacaoDeMidia */
+        AtualizacaoDeMidia: {
+            /** Dados Adicionais */
+            dados_adicionais: {
+                [key: string]: unknown;
+            };
+            /**
+             * Data Atualizacao
+             * Format: date-time
+             */
+            data_atualizacao: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Id Midia */
+            id_midia: string;
+            /** Tipo Atualizacao */
+            tipo_atualizacao: string;
+            /**
+             * Tipo Midia
+             * @enum {string}
+             */
+            tipo_midia: "anime" | "manga" | "jogo";
+            /** Titulo */
+            titulo: string;
+        };
+        /** AtualizacaoPublicada */
+        AtualizacaoPublicada: {
+            /** Mensagem */
+            mensagem: string;
+            /** Notificacoes Enviadas */
+            notificacoes_enviadas: number;
+        };
         /** AvaliacaoCriada */
         AvaliacaoCriada: {
             /** Id Avaliacao */
@@ -266,6 +734,11 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConfirmacaoLista */
+        ConfirmacaoLista: {
+            /** Mensagem */
+            mensagem: string;
+        };
         /** ConsultaAvaliacoes */
         ConsultaAvaliacoes: {
             /**
@@ -282,6 +755,100 @@ export interface components {
         };
         /** ConsultaGeneros */
         ConsultaGeneros: {
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaLista */
+        ConsultaLista: {
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             * @default null
+             */
+            status_consumo?: string | null;
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /**
+         * ConsultaMidias
+         * @description `GET /midias`: Tipo, filtros, ordem e página.
+         */
+        ConsultaMidias: {
+            /**
+             * Artista
+             * @default null
+             */
+            artista?: string | null;
+            /**
+             * Autor
+             * @default null
+             */
+            autor?: string | null;
+            /**
+             * Busca
+             * @default null
+             */
+            busca?: string | null;
+            /**
+             * Demografia
+             * @default null
+             */
+            demografia?: string | null;
+            /**
+             * Desenvolvedor
+             * @default null
+             */
+            desenvolvedor?: string | null;
+            /**
+             * Estudio
+             * @default null
+             */
+            estudio?: string | null;
+            /**
+             * Genero
+             * @description `nome_genero`
+             * @default null
+             */
+            genero?: string | null;
+            /**
+             * Modo Jogo
+             * @default null
+             */
+            modo_jogo?: string | null;
+            /**
+             * Ordem
+             * @default nota_media
+             * @enum {string}
+             */
+            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+            /**
+             * Pagina
+             * @default 1
+             */
+            pagina?: number;
+            /**
+             * Plataforma
+             * @default null
+             */
+            plataforma?: string | null;
+            /**
+             * Por Pagina
+             * @description Acima de 50 vira 50
+             * @default 20
+             */
+            por_pagina?: number;
+            /**
+             * Status
+             * @description Status do Catálogo; sem Tipo, o de qualquer Tipo
+             * @default null
+             */
+            status?: string | null;
             /**
              * Tipo
              * @default null
@@ -309,6 +876,38 @@ export interface components {
              */
             por_pagina?: number;
         };
+        /** ConsultaNotificacoes */
+        ConsultaNotificacoes: {
+            /**
+             * Nao Lidas
+             * @description Só as não lidas
+             * @default false
+             */
+            nao_lidas?: boolean;
+        };
+        /** ConsultaPopulares */
+        ConsultaPopulares: {
+            /**
+             * Tipo
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaTrending */
+        ConsultaTrending: {
+            /**
+             * Limite
+             * @description Acima de 50 vira 50
+             * @default 10
+             */
+            limite?: number;
+            /**
+             * Tipo
+             * @default anime
+             * @enum {string}
+             */
+            tipo?: "anime" | "manga" | "jogo";
+        };
         /** ConsultaUsuariosModeracao */
         ConsultaUsuariosModeracao: {
             /**
@@ -322,6 +921,35 @@ export interface components {
              * @default 20
              */
             por_pagina?: number;
+        };
+        /** ContagemPorRotulo */
+        ContagemPorRotulo: {
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             */
+            status_consumo: string;
+            /** Total */
+            total: number;
+        };
+        /** CorpoAtualizacao */
+        CorpoAtualizacao: {
+            /** Dados Adicionais */
+            dados_adicionais?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Descricao
+             * @default null
+             */
+            descricao?: string | null;
+            /**
+             * Tipo
+             * @description Tipo da Atualização: episodio, capitulo...
+             */
+            tipo: string;
+            /** Titulo */
+            titulo: string;
         };
         /**
          * CorpoEdicaoAvaliacao
@@ -344,6 +972,191 @@ export interface components {
              * @default null
              */
             titulo_avaliacao?: string | null;
+        };
+        /** CorpoEsqueciSenha */
+        CorpoEsqueciSenha: {
+            /** Email */
+            email: string;
+        };
+        /** CorpoLogin */
+        CorpoLogin: {
+            /** Email */
+            email: string;
+            /** Senha */
+            senha: string;
+        };
+        /** CorpoLogout */
+        CorpoLogout: {
+            /**
+             * Refresh Token
+             * @description Refresh do aparelho, para encerrar a sessão nele
+             * @default null
+             */
+            refresh_token?: string | null;
+        };
+        /**
+         * CorpoMidia
+         * @description Corpo do PUT: os campos de todos os Tipos, todos opcionais. Só os do Tipo
+         *     da Mídia são gravados (`campos_do_tipo`); os de outro Tipo são ignorados.
+         */
+        CorpoMidia: {
+            /**
+             * Anilist Id
+             * @default null
+             */
+            anilist_id?: number | null;
+            /**
+             * Artista
+             * @default null
+             */
+            artista?: string | null;
+            /**
+             * Autor
+             * @default null
+             */
+            autor?: string | null;
+            /**
+             * Banner Url
+             * @default null
+             */
+            banner_url?: string | null;
+            /**
+             * Classificacao
+             * @default null
+             */
+            classificacao?: string | null;
+            /**
+             * Classificacao Etaria
+             * @default null
+             */
+            classificacao_etaria?: string | null;
+            /**
+             * Data Lancamento
+             * @default null
+             */
+            data_lancamento?: string | null;
+            /**
+             * Demografia
+             * @default null
+             */
+            demografia?: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /**
+             * Desenvolvedor
+             * @default null
+             */
+            desenvolvedor?: string | null;
+            /**
+             * Duracao Episodio
+             * @default null
+             */
+            duracao_episodio?: number | null;
+            /**
+             * Estudio
+             * @default null
+             */
+            estudio?: string | null;
+            /**
+             * Fonte Original
+             * @default null
+             */
+            fonte_original?: string | null;
+            /**
+             * Generos
+             * @description Ids dos gêneros; presente, substitui os da Mídia
+             * @default null
+             */
+            generos?: number[] | null;
+            /**
+             * Modo Jogo
+             * @default null
+             */
+            modo_jogo?: ("single" | "multi" | "ambos") | null;
+            /**
+             * Numero Capitulos
+             * @default null
+             */
+            numero_capitulos?: number | null;
+            /**
+             * Numero Episodios
+             * @default null
+             */
+            numero_episodios?: number | null;
+            /**
+             * Numero Volumes
+             * @default null
+             */
+            numero_volumes?: number | null;
+            /**
+             * Plataformas
+             * @description Separadas por vírgula: 'PC, Switch'
+             * @default null
+             */
+            plataformas?: string | null;
+            /**
+             * Poster Url
+             * @default null
+             */
+            poster_url?: string | null;
+            /**
+             * Publicadora
+             * @default null
+             */
+            publicadora?: string | null;
+            /**
+             * Publicadora Original
+             * @default null
+             */
+            publicadora_original?: string | null;
+            /**
+             * Rawg Slug
+             * @default null
+             */
+            rawg_slug?: string | null;
+            /**
+             * Revista
+             * @default null
+             */
+            revista?: string | null;
+            /**
+             * Sinopse
+             * @default null
+             */
+            sinopse?: string | null;
+            /**
+             * Status Anime
+             * @default null
+             */
+            status_anime?: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Jogo
+             * @default null
+             */
+            status_jogo?: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /**
+             * Status Manga
+             * @default null
+             */
+            status_manga?: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Titulo Ingles
+             * @default null
+             */
+            titulo_ingles?: string | null;
+            /**
+             * Titulo Original
+             * @default null
+             */
+            titulo_original?: string | null;
+            /**
+             * Titulo Portugues
+             * @default null
+             */
+            titulo_portugues?: string | null;
+            /**
+             * Trailer Url
+             * @default null
+             */
+            trailer_url?: string | null;
         };
         /**
          * CorpoNoticia
@@ -395,6 +1208,116 @@ export interface components {
             titulo_avaliacao?: string | null;
         };
         /**
+         * CorpoPreferencias
+         * @description Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `"true"` não é booleano.
+         */
+        CorpoPreferencias: {
+            /**
+             * Idioma
+             * @default null
+             */
+            idioma?: string | null;
+            /**
+             * Notificacoes Ativas
+             * @default null
+             */
+            notificacoes_ativas?: boolean | null;
+            /**
+             * Tema
+             * @default null
+             */
+            tema?: string | null;
+        };
+        /** CorpoRedefinirSenha */
+        CorpoRedefinirSenha: {
+            /** Nova Senha */
+            nova_senha: string;
+        };
+        /**
+         * CorpoRefresh
+         * @description Ausente ou vazio responde 401, como um token desconhecido.
+         */
+        CorpoRefresh: {
+            /**
+             * Refresh Token
+             * @default null
+             */
+            refresh_token?: string | null;
+        };
+        /** CorpoRegistro */
+        CorpoRegistro: {
+            /**
+             * Biografia
+             * @default
+             */
+            biografia?: string | null;
+            /**
+             * Data Nascimento
+             * @default null
+             */
+            data_nascimento?: string | null;
+            /** Email */
+            email: string;
+            /** Nome Completo */
+            nome_completo: string;
+            /** Senha */
+            senha: string;
+        };
+        /**
+         * EdicaoItemLista
+         * @description Corpo de PUT /lista/<id_lista>.
+         */
+        EdicaoItemLista: {
+            /**
+             * Comentario
+             * @default null
+             */
+            comentario?: string | null;
+            /**
+             * Data Conclusao
+             * @default null
+             */
+            data_conclusao?: string | null;
+            /**
+             * Data Inicio
+             * @default null
+             */
+            data_inicio?: string | null;
+            /**
+             * Favorito
+             * @default null
+             */
+            favorito?: boolean | null;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
+             * @default null
+             */
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             * @default null
+             */
+            status_consumo?: string | null;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
+        };
+        /**
          * Erro
          * @description Envelope de todo erro da API.
          */
@@ -414,6 +1337,35 @@ export interface components {
              */
             erro: string;
         };
+        /** EstatisticaPorTipo */
+        EstatisticaPorTipo: {
+            /**
+             * Concluidos
+             * @description Concluídos e Platinados
+             */
+            concluidos: number;
+            /**
+             * Em Andamento
+             * @description Em progresso
+             */
+            em_andamento: number;
+            /** Favoritos */
+            favoritos: number;
+            /**
+             * Nota Media
+             * @description Média das Notas pessoais do Tipo; nula sem nenhuma
+             */
+            nota_media: number | null;
+            /** Progresso Total Consumido */
+            progresso_total_consumido: number;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Total Midias */
+            total_midias: number;
+        };
         /** Genero */
         Genero: {
             /** Aplicavel A */
@@ -422,6 +1374,424 @@ export interface components {
             id_genero: string;
             /** Nome Genero */
             nome_genero: string;
+        };
+        /** ItemCriado */
+        ItemCriado: {
+            /** Id Lista */
+            id_lista: string;
+            /** Mensagem */
+            mensagem: string;
+        };
+        /**
+         * ItemLista
+         * @description Um Item de GET /lista: a Mídia mais os campos do Item.
+         */
+        ItemLista: {
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Comentario */
+            comentario: string | null;
+            /**
+             * Data Adicao
+             * Format: date-time
+             */
+            data_adicao: string;
+            /**
+             * Data Atualizacao
+             * Format: date-time
+             */
+            data_atualizacao: string;
+            /** Data Conclusao */
+            data_conclusao: string | null;
+            /** Data Inicio */
+            data_inicio: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: string | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Favorito */
+            favorito: boolean;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description "Aventura, Drama"; `generos_lista` é o mesmo, separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Lista */
+            id_lista: string;
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: string | null;
+            /** Nota Fonte */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; null sem elas
+             */
+            nota_media: number | null;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal
+             */
+            nota_usuario: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description "PC, Switch, PS4"
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Privado */
+            privado: boolean;
+            /** Progresso Atual */
+            progresso_atual: number | null;
+            /**
+             * Progresso Total
+             * @description Total copiado da Mídia na criação do Item
+             */
+            progresso_total: number | null;
+            /**
+             * Progresso Total Padrao
+             * @description Total da Mídia; null no jogo
+             */
+            progresso_total_padrao: number | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: string | null;
+            /** Status Catalogo */
+            status_catalogo: string | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado
+             */
+            status_consumo: string;
+            /** Status Jogo */
+            status_jogo: string | null;
+            /** Status Manga */
+            status_manga: string | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Tipo Label */
+            tipo_label: string;
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description null quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /** Total Concluidos */
+            total_concluidos: number;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             */
+            total_rewatches: number;
+            /** Total Usuarios */
+            total_usuarios: number;
+        };
+        /**
+         * Mensagem
+         * @description Resposta que só confirma a operação.
+         */
+        Mensagem: {
+            /** Mensagem */
+            mensagem: string;
+        };
+        /**
+         * Midia
+         * @description A Mídia com os campos de todos os Tipos; os de outro Tipo vêm nulos.
+         */
+        Midia: {
+            /** Artista */
+            artista: string | null;
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Classificacao */
+            classificacao: string | null;
+            /** Classificacao Etaria */
+            classificacao_etaria: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /**
+             * Duracao Episodio
+             * @description Minutos
+             */
+            duracao_episodio: number | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; nula sem elas
+             */
+            nota_media: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description 'PC, Switch'
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Publicadora Original */
+            publicadora_original: string | null;
+            /** Revista */
+            revista: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Jogo */
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Manga */
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description Nulo quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
+            total_concluidos: number;
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
+            total_usuarios: number;
+            /** Trailer Url */
+            trailer_url: string | null;
+        };
+        /** MidiaAlterada */
+        MidiaAlterada: {
+            /** Mensagem */
+            mensagem: string;
+        };
+        /** MidiaDetalhe */
+        MidiaDetalhe: {
+            /** Artista */
+            artista: string | null;
+            /**
+             * Atualizacoes
+             * @description As 10 Atualizações de mídia mais recentes
+             */
+            atualizacoes: components["schemas"]["AtualizacaoDeMidia"][];
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Classificacao */
+            classificacao: string | null;
+            /** Classificacao Etaria */
+            classificacao_etaria: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /**
+             * Duracao Episodio
+             * @description Minutos
+             */
+            duracao_episodio: number | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Generos
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; nula sem elas
+             */
+            nota_media: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description 'PC, Switch'
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Publicadora Original */
+            publicadora_original: string | null;
+            /** Revista */
+            revista: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Jogo */
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Manga */
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /**
+             * Total Avaliacoes
+             * @description Nulo quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
+            total_concluidos: number;
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
+            total_usuarios: number;
+            /** Trailer Url */
+            trailer_url: string | null;
+        };
+        /**
+         * MidiaPopular
+         * @description Linha de `vw_midias_populares`.
+         */
+        MidiaPopular: {
+            /**
+             * Generos
+             * @description 'Ação, Drama'
+             */
+            generos: string | null;
+            /** Id Midia */
+            id_midia: string;
+            /** Nota Fonte */
+            nota_fonte: number | null;
+            /** Nota Media */
+            nota_media: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+            /** Total Usuarios */
+            total_usuarios: number;
         };
         /** Noticia */
         Noticia: {
@@ -458,10 +1828,118 @@ export interface components {
             /** Mensagem */
             mensagem: string;
         };
+        /**
+         * Notificacao
+         * @description A entrega de uma Atualização de mídia a um Usuário.
+         */
+        Notificacao: {
+            /**
+             * Data Criacao
+             * Format: date-time
+             */
+            data_criacao: string;
+            /** Id Midia */
+            id_midia: string;
+            /** Lida */
+            lida: boolean;
+            /** Mensagem */
+            mensagem: string;
+            /**
+             * Midia Nome
+             * @description Título em português, ou o original
+             */
+            midia_nome: string;
+            /**
+             * Tipo
+             * @description Tipo da Atualização: episodio, capitulo, dlc...
+             */
+            tipo: string;
+            /**
+             * Tipo Midia
+             * @enum {string}
+             */
+            tipo_midia: "anime" | "manga" | "jogo";
+            /** Titulo */
+            titulo: string;
+        };
+        /** NotificacoesMarcadas */
+        NotificacoesMarcadas: {
+            /** Mensagem */
+            mensagem: string;
+        };
+        /**
+         * NovoItemLista
+         * @description Corpo de POST /lista e /lista/adicionar.
+         */
+        NovoItemLista: {
+            /**
+             * Comentario
+             * @default null
+             */
+            comentario?: string | null;
+            /**
+             * Data Conclusao
+             * @default null
+             */
+            data_conclusao?: string | null;
+            /**
+             * Data Inicio
+             * @default null
+             */
+            data_inicio?: string | null;
+            /**
+             * Favorito
+             * @default null
+             */
+            favorito?: boolean | null;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Nota Usuario
+             * @description Nota pessoal, de 0 a 10 com no máximo uma casa; null apaga
+             * @default null
+             */
+            nota_usuario?: number | null;
+            /**
+             * Privado
+             * @default null
+             */
+            privado?: boolean | null;
+            /**
+             * Progresso Atual
+             * @default null
+             */
+            progresso_atual?: number | null;
+            /**
+             * Status Consumo
+             * @description Rótulo de estado do Tipo da Mídia
+             */
+            status_consumo: string;
+            /**
+             * Total Rewatches
+             * @description Recontagem
+             * @default null
+             */
+            total_rewatches?: number | null;
+        };
         /** Pagina[AvaliacaoDaMidia] */
         PaginaAvaliacaoDaMidia: {
             /** Itens */
             itens: components["schemas"]["AvaliacaoDaMidia"][];
+            /** Pagina */
+            pagina: number;
+            /** Por Pagina */
+            por_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+        };
+        /** Pagina[Midia] */
+        PaginaMidia: {
+            /** Itens */
+            itens: components["schemas"]["Midia"][];
             /** Pagina */
             pagina: number;
             /** Por Pagina */
@@ -500,6 +1978,103 @@ export interface components {
              */
             total: number;
         };
+        /**
+         * Perfil
+         * @description Linha de `vw_perfil_usuario`.
+         */
+        Perfil: {
+            /** Biografia */
+            biografia: string | null;
+            /**
+             * Data Cadastro
+             * Format: date-time
+             */
+            data_cadastro: string;
+            /** Email */
+            email: string;
+            /** Foto Perfil */
+            foto_perfil: string | null;
+            /** Grupos */
+            grupos: string | null;
+            /** Id Usuario */
+            id_usuario: string;
+            /** Nome Completo */
+            nome_completo: string;
+            /**
+             * Nota Media Usuario
+             * @description Média das Notas pessoais; nula sem nenhuma
+             */
+            nota_media_usuario: number | null;
+            /** Total Animes */
+            total_animes: number;
+            /** Total Favoritos */
+            total_favoritos: number;
+            /** Total Jogos */
+            total_jogos: number;
+            /** Total Mangas */
+            total_mangas: number;
+            /** Total Midias */
+            total_midias: number;
+        };
+        /**
+         * Permissoes
+         * @description Permissões efetivas: vence o Grupo mais privilegiado.
+         */
+        Permissoes: {
+            /** Grupos */
+            grupos: string | null;
+            /**
+             * Nivel Acesso
+             * @enum {string}
+             */
+            nivel_acesso: "admin" | "moderador" | "usuario";
+            /** Pode Criar */
+            pode_criar: boolean;
+            /** Pode Deletar */
+            pode_deletar: boolean;
+            /** Pode Editar */
+            pode_editar: boolean;
+            /** Pode Moderar */
+            pode_moderar: boolean;
+        };
+        /** PermissoesDaSessao */
+        PermissoesDaSessao: {
+            /** Pode Criar */
+            pode_criar: boolean;
+            /** Pode Deletar */
+            pode_deletar: boolean;
+            /** Pode Editar */
+            pode_editar: boolean;
+            /** Pode Moderar */
+            pode_moderar: boolean;
+        };
+        /**
+         * Preferencias
+         * @description As preferências completas: o que o Usuário mudou, e os padrões no resto.
+         */
+        Preferencias: {
+            /** Idioma */
+            idioma: string;
+            /** Notificacoes Ativas */
+            notificacoes_ativas: boolean;
+            /** Tema */
+            tema: string;
+        };
+        /** PreferenciasAtualizadas */
+        PreferenciasAtualizadas: {
+            /** Mensagem */
+            mensagem: string;
+            /** Modificado */
+            modificado: boolean;
+        };
+        /**
+         * ProgressoItemLista
+         * @description Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.
+         */
+        ProgressoItemLista: {
+            /** Progresso Atual */
+            progresso_atual: number;
+        };
         /** RespostaAvaliacoesModeracao */
         RespostaAvaliacoesModeracao: {
             /**
@@ -508,15 +2083,148 @@ export interface components {
              */
             avaliacoes: components["schemas"]["AvaliacaoModeracao"][];
         };
+        /** RespostaDistribuicao */
+        RespostaDistribuicao: {
+            /** Distribuicao */
+            distribuicao: components["schemas"]["ContagemPorRotulo"][];
+        };
+        /** RespostaEstatisticas */
+        RespostaEstatisticas: {
+            /**
+             * Estatisticas
+             * @description Uma linha por Tipo presente na Lista pessoal
+             */
+            estatisticas: components["schemas"]["EstatisticaPorTipo"][];
+            resumo: components["schemas"]["ResumoEstatisticas"];
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
             generos: components["schemas"]["Genero"][];
         };
+        /** RespostaLista */
+        RespostaLista: {
+            /** Lista */
+            lista: components["schemas"]["ItemLista"][];
+        };
+        /** RespostaLogin */
+        RespostaLogin: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Refresh Token
+             * @description Nulo se o banco não gravou o refresh; o login vale mesmo assim
+             */
+            refresh_token: string | null;
+            usuario: components["schemas"]["UsuarioDaSessao"];
+        };
+        /** RespostaMe */
+        RespostaMe: {
+            usuario: components["schemas"]["UsuarioAtual"];
+        };
+        /** RespostaNotificacoes */
+        RespostaNotificacoes: {
+            /**
+             * Notificacoes
+             * @description As 50 mais recentes
+             */
+            notificacoes: components["schemas"]["Notificacao"][];
+        };
+        /** RespostaPerfil */
+        RespostaPerfil: {
+            perfil: components["schemas"]["Perfil"];
+        };
+        /** RespostaPermissoes */
+        RespostaPermissoes: {
+            permissoes: components["schemas"]["Permissoes"];
+        };
+        /** RespostaPopulares */
+        RespostaPopulares: {
+            /** Midias */
+            midias: components["schemas"]["MidiaPopular"][];
+        };
+        /** RespostaPreferencias */
+        RespostaPreferencias: {
+            preferencias: components["schemas"]["Preferencias"];
+        };
+        /** RespostaRefresh */
+        RespostaRefresh: {
+            /** Access Token */
+            access_token: string;
+            /** Refresh Token */
+            refresh_token: string;
+        };
+        /** RespostaTrending */
+        RespostaTrending: {
+            /** Midias */
+            midias: components["schemas"]["Midia"][];
+        };
+        /** ResumoEstatisticas */
+        ResumoEstatisticas: {
+            /** Concluidos */
+            concluidos: number;
+            /** Em Andamento */
+            em_andamento: number;
+            /** Favoritos */
+            favoritos: number;
+            /** Total Midias */
+            total_midias: number;
+        };
+        /** Saude */
+        Saude: {
+            /**
+             * Postgres
+             * @enum {string}
+             */
+            postgres: "connected" | "disconnected";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "unhealthy";
+        };
         /** StatusUsuarioAlterado */
         StatusUsuarioAlterado: {
             /** Mensagem */
             mensagem: string;
+        };
+        /** UsuarioAtual */
+        UsuarioAtual: {
+            /** Email */
+            email: string;
+            /** Foto Perfil */
+            foto_perfil: string | null;
+            /** Id Usuario */
+            id_usuario: string;
+            /** Nome Completo */
+            nome_completo: string;
+        };
+        /** UsuarioCriado */
+        UsuarioCriado: {
+            /** Id Usuario */
+            id_usuario: string;
+            /** Mensagem */
+            mensagem: string;
+        };
+        /** UsuarioDaSessao */
+        UsuarioDaSessao: {
+            /** Email */
+            email: string;
+            /**
+             * Grupos
+             * @description Nomes dos Grupos: 'Usuários, Moderadores'
+             */
+            grupos: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Nivel Acesso
+             * @enum {string}
+             */
+            nivel_acesso: "admin" | "moderador" | "usuario";
+            /** Nome */
+            nome: string;
+            permissoes: components["schemas"]["PermissoesDaSessao"];
         };
         /** UsuarioModeracao */
         UsuarioModeracao: {
@@ -557,6 +2265,314 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "post__api_auth_esqueci-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoEsqueciSenha"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_auth_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoLogin"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaLogin"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_auth_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoLogout"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_auth_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaMe"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "post__api_auth_redefinir-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoRedefinirSenha"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_auth_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoRefresh"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaRefresh"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_auth_registro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoRegistro"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     post__api_avaliacoes: {
         parameters: {
             query?: never;
@@ -763,6 +2779,697 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RespostaGeneros"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Saude"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Saude"];
+                };
+            };
+        };
+    };
+    get__api_lista: {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_lista: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoItemLista"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_lista_adicionar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoItemLista"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EdicaoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_lista_{lista_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_lista_{lista_id}_progresso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressoItemLista"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmacaoLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_lista_{target_user_id}": {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                /** @description Rótulo de estado */
+                status_consumo?: string | null;
+            };
+            header?: never;
+            path: {
+                target_user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaLista"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                /** @description Acima de 50 vira 50 */
+                por_pagina?: number;
+                tipo?: ("anime" | "manga" | "jogo") | null;
+                busca?: string | null;
+                /** @description `nome_genero` */
+                genero?: string | null;
+                /** @description Status do Catálogo; sem Tipo, o de qualquer Tipo */
+                status?: string | null;
+                autor?: string | null;
+                estudio?: string | null;
+                demografia?: string | null;
+                plataforma?: string | null;
+                desenvolvedor?: string | null;
+                modo_jogo?: string | null;
+                artista?: string | null;
+                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaMidia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_populares: {
+        parameters: {
+            query?: {
+                tipo?: ("anime" | "manga" | "jogo") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaPopulares"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_trending: {
+        parameters: {
+            query?: {
+                tipo?: "anime" | "manga" | "jogo";
+                /** @description Acima de 50 vira 50 */
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaTrending"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaDetalhe"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoMidia"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaAlterada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_midias_{id_midia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiaAlterada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "post__api_midias_{id_midia}_atualizacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoAtualizacao"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtualizacaoPublicada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}_distribuicao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDistribuicao"];
                 };
             };
             /** @description Bad Request */
@@ -991,6 +3698,234 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoticiaCriada"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_notificacoes: {
+        parameters: {
+            query?: {
+                /** @description Só as não lidas */
+                nao_lidas?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaNotificacoes"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_notificacoes_marcar-todas-lidas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacoesMarcadas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_preferencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaPreferencias"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    put__api_preferencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoPreferencias"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenciasAtualizadas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_estatisticas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaEstatisticas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_perfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaPerfil"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_permissoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaPermissoes"];
                 };
             };
             /** @description Bad Request */

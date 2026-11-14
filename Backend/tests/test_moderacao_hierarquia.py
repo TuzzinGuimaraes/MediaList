@@ -104,3 +104,14 @@ def test_falha_no_banco_nao_responde_sucesso(client, make_token, banco):
         '/api/moderacao/usuarios/USR-COMUM-0001/desativar', headers=_headers(make_token, 'USR-ADMIN-0001'),
     )
     assert resposta.status_code == 503
+
+
+
+def test_usuario_comum_barrado_pelo_decorador_recebe_o_envelope_de_erro(client, make_token, banco):
+    resposta = client.put(
+        '/api/moderacao/usuarios/USR-MOD-0001/desativar', headers=_headers(make_token, 'USR-COMUM-0001'),
+    )
+    assert resposta.status_code == 403
+    assert resposta.get_json() == {
+        'erro': 'Acesso restrito a moderadores e administradores', 'codigo': 'acesso_negado'}
+    assert banco['updates'] == []

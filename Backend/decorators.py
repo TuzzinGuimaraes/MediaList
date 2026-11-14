@@ -3,10 +3,10 @@ Decoradores para verificação de permissões
 """
 from functools import wraps
 
-from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 
 from banco import consultar_um
+from contrato import CodigoErro, resposta_erro
 
 # Permissões de quem não tem grupo nenhum. A ausência de grupo nunca concede
 # mais do que a presença de um: sem grupo, sem poder.
@@ -68,7 +68,7 @@ def permission_required(permission_name):
             permissions = get_user_permissions(user_id)
 
             if not permissions:
-                return jsonify({'erro': 'Usuário não encontrado'}), 404
+                return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
             # Admin tem todas as permissões
             if permissions.get('nivel_acesso') == 'admin':
@@ -84,7 +84,7 @@ def permission_required(permission_name):
 
             if permission_name in permission_map:
                 if not permissions.get(permission_map[permission_name]):
-                    return jsonify({'erro': f'Sem permissão para {permission_name}'}), 403
+                    return resposta_erro(403, CodigoErro.ACESSO_NEGADO, f'Sem permissão para {permission_name}')
 
             return f(*args, **kwargs)
         return decorated_function
@@ -99,12 +99,12 @@ def moderator_or_admin_required(f):
         permissions = get_user_permissions(user_id)
 
         if not permissions:
-            return jsonify({'erro': 'Usuário não encontrado'}), 404
+            return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
         if permissions.get('nivel_acesso') == 'admin' or permissions.get('pode_moderar'):
             return f(*args, **kwargs)
 
-        return jsonify({'erro': 'Acesso restrito a moderadores e administradores'}), 403
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Acesso restrito a moderadores e administradores')
 
     return decorated_function
 

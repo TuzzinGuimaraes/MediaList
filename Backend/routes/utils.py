@@ -7,7 +7,7 @@ módulo `banco`, que é o que ela mede.
 """
 import logging
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
