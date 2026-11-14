@@ -10,3 +10,6 @@ Werkzeug==3.1.9
 requests==2.34.2
 # Só para o Alembic (migrações em SQL puro); o app usa psycopg direto (ADR-0007).
 SQLAlchemy==2.1.8
+# Contrato da API: OpenAPI e validação de entrada/saída (ADR 0011).
+pydantic==2.14.3
+spectree[pydantic]==3.0.0

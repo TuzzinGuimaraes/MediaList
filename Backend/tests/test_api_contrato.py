@@ -96,7 +96,7 @@ def test_erro_inesperado_responde_500_sem_detalhe(client, auth_headers, avaliaca
     response = client.post('/api/avaliacoes', headers=auth_headers, json=AVALIACAO)
 
     assert response.status_code == 500
-    assert response.get_json() == {'erro': 'Erro interno do servidor'}
+    assert response.get_json() == {'erro': 'Erro interno do servidor', 'codigo': 'erro_interno'}
     assert 'segredo interno' in caplog.text
 
 
@@ -105,7 +105,10 @@ def test_rota_inexistente_continua_404(client):
 
 
 def test_metodo_nao_permitido_continua_405(client):
-    assert client.delete('/api/health').status_code == 405
+    response = client.delete('/api/health')
+
+    assert response.status_code == 405
+    assert response.get_json() == {'erro': 'Método não permitido', 'codigo': 'metodo_nao_permitido'}
 
 
 # ============================================

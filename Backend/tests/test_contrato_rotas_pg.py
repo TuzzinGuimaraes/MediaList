@@ -127,7 +127,10 @@ def test_listagem_detalhe_trending_e_populares(client, catalogo, prefixo):
 
     generos = client.get('/api/generos?tipo=jogo')
     assert generos.status_code == 200
-    assert {'id_genero', 'nome_genero', 'descricao', 'aplicavel_a'} == set(generos.get_json()['generos'][0])
+    # `descricao` saiu (campo sem leitor, contrato-api 01); o id sai como texto.
+    primeiro = generos.get_json()['generos'][0]
+    assert {'id_genero', 'nome_genero', 'aplicavel_a'} == set(primeiro)
+    assert isinstance(primeiro['id_genero'], str)
 
 
 def test_atualizacao_aparece_no_detalhe(client, catalogo, pg, entrar):  # noqa: F811
