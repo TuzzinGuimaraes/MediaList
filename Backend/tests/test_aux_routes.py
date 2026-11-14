@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
 import pytest
 
 import banco
@@ -7,22 +10,46 @@ from routes import utils as utils_routes
 
 from .helpers import FakeBanco, FakeCatalogo
 
+PERFIL = {
+    'id_usuario': 'USR-TEST-0001',
+    'nome_completo': 'Perfil',
+    'email': 'perfil@example.com',
+    'foto_perfil': None,
+    'biografia': None,
+    'data_cadastro': datetime(2026, 11, 13, 10, 30, tzinfo=timezone.utc),
+    'total_midias': 3,
+    'total_animes': 2,
+    'total_mangas': 0,
+    'total_jogos': 1,
+    'nota_media_usuario': Decimal('8.50'),
+    'total_favoritos': 1,
+    'grupos': 'Usuários',
+}
+
 
 def test_get_usuario_perfil_retorna_dados(client, auth_headers, monkeypatch):
-    FakeBanco({'vw_perfil_usuario': {'id_usuario': 'USR-TEST-0001', 'nome_completo': 'Perfil'}}).instalar(
-        monkeypatch, usuario_routes
-    )
+    FakeBanco({'vw_perfil_usuario': PERFIL}).instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/perfil', headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json()['perfil']['nome_completo'] == 'Perfil'
+    assert response.get_json() == {'perfil': {
+        **PERFIL, 'data_cadastro': '2026-11-13T10:30:00Z', 'nota_media_usuario': 8.5,
+    }}
+
+
+def _estatistica(tipo, total_midias, concluidos, em_andamento, favoritos, nota_media=None):
+    return {
+        'tipo': tipo, 'label': tipo.title(), 'total_midias': total_midias, 'concluidos': concluidos,
+        'em_andamento': em_andamento, 'progresso_total_consumido': 10, 'nota_media': nota_media,
+        'favoritos': favoritos,
+    }
 
 
 def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch):
     fake = FakeBanco({'FROM lista_usuarios': [
-        {'tipo': 'anime', 'total_midias': 2, 'concluidos': 1, 'em_andamento': 1, 'favoritos': 1},
-        {'tipo': 'jogo', 'total_midias': 3, 'concluidos': 2, 'em_andamento': 1, 'favoritos': 0},
+        _estatistica('anime', 2, 1, 1, 1, Decimal('7.50')),
+        _estatistica('jogo', 3, 2, 1, 0),
     ]}).instalar(monkeypatch, usuario_routes)
 
     response = client.get('/api/usuario/estatisticas', headers=auth_headers)
@@ -38,6 +65,12 @@ def test_get_usuario_estatisticas_monta_resumo(client, auth_headers, monkeypatch
         'em_andamento': 2,
         'favoritos': 1,
     }
+    # `label` saiu: nenhum cliente lia, e o Tipo já vem em `tipo`.
+    assert data['estatisticas'][0] == {
+        'tipo': 'anime', 'total_midias': 2, 'concluidos': 1, 'em_andamento': 1,
+        'progresso_total_consumido': 10, 'nota_media': 7.5, 'favoritos': 1,
+    }
+    assert data['estatisticas'][1]['nota_media'] is None
 
 
 def test_utils_health_reporta_postgres_conectado(client, monkeypatch):

@@ -48,7 +48,7 @@ CHAVES_ATUALIZACAO = {
     'id_midia', 'tipo_midia', 'tipo_atualizacao', 'titulo', 'descricao', 'dados_adicionais', 'data_atualizacao',
 }
 CHAVES_ESTATISTICA = {
-    'tipo', 'label', 'total_midias', 'concluidos', 'em_andamento', 'progresso_total_consumido', 'nota_media',
+    'tipo', 'total_midias', 'concluidos', 'em_andamento', 'progresso_total_consumido', 'nota_media',
     'favoritos',
 }
 INEXISTENTE = '00000000-0000-7000-8000-000000000000'
