@@ -42,7 +42,8 @@ function consultaCarrossel(
           return cliente.requisitar<PaginaMidias>(`/midias?${params}`);
         }),
       );
-      return (respostas.flatMap((r) => r.midias) as Midia[])
+      return respostas
+        .flatMap((r) => r.itens)
         .sort(decrescente(CHAVE_DA_ORDEM[ordem]))
         .slice(0, POR_CARROSSEL);
     },
