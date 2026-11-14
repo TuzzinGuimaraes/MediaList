@@ -22,11 +22,10 @@ describe('notasDaMidia', () => {
 
   it('sem nenhuma nota, nada', () => {
     expect(notasDaMidia({ nota_media: null, nota_fonte: null, origem_nota: null })).toEqual([]);
-    expect(notasDaMidia({ nota_media: null })).toEqual([]);
   });
 
   it('Nota média 0 é nota', () => {
-    expect(notasDaMidia({ nota_media: 0 })).toEqual([{ rotulo: 'Nota dos Usuários', curto: 'Usuários', valor: '0.0' }]);
+    expect(notasDaMidia({ nota_media: 0, nota_fonte: null, origem_nota: null })).toEqual([{ rotulo: 'Nota dos Usuários', curto: 'Usuários', valor: '0.0' }]);
   });
 
   it('Nota da fonte sem origem conhecida usa o rótulo genérico', () => {

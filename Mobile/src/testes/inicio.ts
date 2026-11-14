@@ -1,6 +1,7 @@
 // Rotas que o Início pede. Os testes de outras telas que passam pelo Início espalham
 // `rotasDoInicio()` no `simularFetch` e sobrescrevem só o que interessa.
 import { type OrdemCarrossel, POR_CARROSSEL } from '../api/inicio';
+import { pagina } from './contrato';
 import type { Resposta } from './fetchSimulado';
 
 const TIPOS = ['anime', 'manga', 'jogo'] as const;
@@ -17,7 +18,9 @@ export function rotaCarrossel(tipo: Tipo, ordem: OrdemCarrossel, genero?: string
   return `GET /midias?${params}`;
 }
 
+/** Trending e populares respondem `{midias}`; GET /midias, o envelope `Pagina`. */
 const vazia: Resposta = { status: 200, corpo: { midias: [] } };
+const paginaVazia: Resposta = pagina([], { por_pagina: POR_CARROSSEL });
 
 /** Tudo vazio: trending, populares, Lista e os carrosséis de catálogo de todos os Tipos. */
 export function rotasDoInicio(): Record<string, Resposta> {
@@ -25,8 +28,8 @@ export function rotasDoInicio(): Record<string, Resposta> {
   for (const tipo of TIPOS) {
     rotas[`GET /midias/trending?tipo=${tipo}&limite=10`] = vazia;
     rotas[`GET /midias/populares?tipo=${tipo}`] = vazia;
-    for (const ordem of ORDENS) rotas[rotaCarrossel(tipo, ordem)] = vazia;
-    for (const genero of GENEROS) rotas[rotaCarrossel(tipo, 'nota_media', genero)] = vazia;
+    for (const ordem of ORDENS) rotas[rotaCarrossel(tipo, ordem)] = paginaVazia;
+    for (const genero of GENEROS) rotas[rotaCarrossel(tipo, 'nota_media', genero)] = paginaVazia;
   }
   return rotas;
 }

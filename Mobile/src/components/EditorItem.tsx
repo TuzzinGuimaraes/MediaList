@@ -49,7 +49,8 @@ const textos = {
 };
 
 type Props = {
-  midia: Midia;
+  /** A Mídia do detalhe ou o próprio Item (que traz a parte da Mídia que o editor lê). */
+  midia: Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'numero_episodios' | 'numero_capitulos'>;
   /** Ausente ao adicionar. */
   item: ItemLista | null;
   aoFechar: () => void;

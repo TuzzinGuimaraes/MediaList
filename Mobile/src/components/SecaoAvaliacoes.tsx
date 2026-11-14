@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 
 import { useApagarAvaliacao } from '../api/avaliacoes';
 import { mensagemDeErro } from '../api/erros';
-import type { AvaliacaoCompleta } from '../api/tipos';
+import type { Avaliacao } from '../api/tipos';
 import { useSessao } from '../auth/SessaoContext';
 import { formatarData } from '../dominio/datas';
 import { useCores } from '../tema/TemaContext';
@@ -51,7 +51,7 @@ function ApagarAvaliacao({ idMidia, idAvaliacao }: { idMidia: string; idAvaliaca
   );
 }
 
-function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
+function ItemAvaliacao({ a }: { a: Avaliacao }) {
   const cores = useCores();
   return (
     <View accessibilityLabel={`Avaliação de ${a.nome_completo}`} className="gap-1 rounded-md bg-superficie-alta p-3">
@@ -71,7 +71,7 @@ function ItemAvaliacao({ a }: { a: AvaliacaoCompleta }) {
   );
 }
 
-export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; avaliacoes?: AvaliacaoCompleta[] }) {
+export function SecaoAvaliacoes({ idMidia, avaliacoes }: { idMidia: string; avaliacoes?: Avaliacao[] }) {
   const { sessao } = useSessao();
   const [formulario, setFormulario] = useState<'novo' | 'edicao' | null>(null);
   const idUsuario = sessao.estado === 'autenticada' ? sessao.usuario.id : null;

@@ -1,6 +1,7 @@
 import { DeviceEventEmitter, Platform, ScrollView, TextInput } from 'react-native';
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
+import { erro, paginaAvaliacoes, rotaAvaliacoes } from './contrato';
 import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
 import { anime, fullmetal, itemDaLista as item, jogo, manga } from './midias';
 import { trocarRecorte } from './recorte';
@@ -109,7 +110,7 @@ describe('aba Lista', () => {
     expect(await within(l).findByLabelText('Progresso: 13 de 28')).toBeOnTheScreen();
     expect(api.para('PUT /lista/LST-MID-ANM-2026-20053/progresso')[0].corpo).toEqual({ progresso_atual: 13 });
 
-    responder({ status: 400, corpo: { erro: 'Progresso não pode ser maior que o total da mídia (28)' } });
+    responder(erro(400, 'dados_invalidos', 'Progresso não pode ser maior que o total da mídia (28)'));
 
     expect(await within(l).findByLabelText('Progresso: 12 de 28')).toBeOnTheScreen();
     expect(await screen.findByRole('alert')).toHaveTextContent('Progresso não pode ser maior que o total da mídia (28)');
@@ -122,7 +123,7 @@ describe('aba Lista', () => {
     const s = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 12 })], {
       [PUT]: (req: Requisicao) =>
         chamadas++ === 0
-          ? new Promise<Resposta>((r) => (falhar = () => r({ status: 500, corpo: { erro: 'Erro ao atualizar progresso' } })))
+          ? new Promise<Resposta>((r) => (falhar = () => r(erro(500, 'erro_interno', 'Erro ao atualizar progresso'))))
           : s.rotas[PUT](req),
     });
 
@@ -412,7 +413,7 @@ describe('adicionar pelo detalhe', () => {
     return {
       [`GET /midias/${id}`]: { status: 200, corpo: midia },
       [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
-      [`GET /avaliacoes/${id}`]: { status: 200, corpo: { avaliacoes: [] } },
+      [rotaAvaliacoes(id)]: paginaAvaliacoes([]),
     };
   }
 
@@ -451,7 +452,7 @@ describe('adicionar pelo detalhe', () => {
   it('erro da API fica no editor, sem fechá-lo', async () => {
     servidor([], {
       ...detalhe(frieren),
-      'POST /lista/adicionar': { status: 400, corpo: { erro: 'Mídia já está na lista do usuário' } },
+      'POST /lista/adicionar': erro(400, 'dados_invalidos', 'Mídia já está na lista do usuário'),
     });
 
     await abrir(`/midia/${frieren.id_midia}`);
@@ -463,11 +464,11 @@ describe('adicionar pelo detalhe', () => {
   });
 
   it('se o Usuário deixou de existir, o 401 e o refresh recusado levam ao login', async () => {
-    const sessaoInvalida = { status: 401, corpo: { erro: 'Sessão inválida: Usuário inexistente ou desativado' } };
+    const sessaoInvalida = erro(401, 'sessao_invalida', 'Sessão inválida: Usuário inexistente ou desativado');
     const { api } = servidor([], {
       ...detalhe(frieren),
       'POST /lista/adicionar': sessaoInvalida,
-      'POST /auth/refresh': { status: 401, corpo: { erro: 'Refresh token inválido' } },
+      'POST /auth/refresh': erro(401, 'token_invalido', 'Refresh token inválido'),
     });
 
     await abrir(`/midia/${frieren.id_midia}`);
