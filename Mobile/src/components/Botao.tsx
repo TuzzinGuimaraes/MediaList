@@ -1,6 +1,7 @@
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
 
-import paleta from '../tema/paleta';
+import { useCores } from '../tema/TemaContext';
+import { Toque } from './Toque';
 
 type Props = {
   titulo: string;
@@ -9,26 +10,26 @@ type Props = {
   variante?: 'primario' | 'secundario';
 };
 
+/** O primário é o carmesim da marca; o secundário, neutro na superfície. */
 export function Botao({ titulo, onPress, carregando = false, variante = 'primario' }: Props) {
+  const cores = useCores();
   const primario = variante === 'primario';
   return (
-    <Pressable
+    <Toque
       accessibilityRole="button"
       accessibilityLabel={titulo}
       accessibilityState={{ disabled: carregando, busy: carregando }}
       disabled={carregando}
       onPress={onPress}
       className={`items-center rounded-md px-4 py-3 ${
-        primario ? 'bg-accent-blue active:bg-accent-blue-hover' : 'border border-dark-border bg-dark-tertiary'
+        primario ? 'bg-marca active:bg-marca-forte' : 'border border-borda bg-superficie-alta'
       } ${carregando ? 'opacity-60' : ''}`}
     >
       {carregando ? (
-        <ActivityIndicator color={primario ? paleta.dark.primary : paleta.text.primary} />
+        <ActivityIndicator color={primario ? cores['sobre-marca'] : cores.texto} />
       ) : (
-        <Text className={`text-corpo font-semibold ${primario ? 'text-dark-primary' : 'text-text-primary'}`}>
-          {titulo}
-        </Text>
+        <Text className={`text-corpo font-semibold ${primario ? 'text-sobre-marca' : 'text-texto'}`}>{titulo}</Text>
       )}
-    </Pressable>
+    </Toque>
   );
 }

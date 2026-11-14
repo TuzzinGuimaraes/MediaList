@@ -53,13 +53,13 @@ export function FormularioAvaliacao({ idMidia, edicao, aoFechar }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end bg-black/60">
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          className="max-h-[90%] rounded-t-xl bg-dark-secondary"
+          className="max-h-[90%] rounded-t-xl bg-superficie"
           contentContainerClassName="gap-4 p-5 pb-10"
         >
-          <Text accessibilityRole="header" className="text-titulo-secao font-bold text-text-bright">
+          <Text accessibilityRole="header" className="text-titulo-secao font-bold text-texto-forte">
             {edicao ? textos.edicao : textos.nova}
           </Text>
-          <Text className="text-corpo text-text-secondary">{textos.aviso}</Text>
+          <Text className="text-corpo text-texto-suave">{textos.aviso}</Text>
           <Campo rotulo={textos.nota} value={campos.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" />
           <Campo rotulo={textos.titulo} value={campos.titulo} onChangeText={mudar('titulo')} maxLength={200} />
           <Campo
@@ -71,7 +71,7 @@ export function FormularioAvaliacao({ idMidia, edicao, aoFechar }: Props) {
             style={{ minHeight: 120 }}
           />
           {erro ? (
-            <Text accessibilityRole="alert" className="text-corpo text-accent-red">
+            <Text accessibilityRole="alert" className="text-corpo text-erro">
               {erro}
             </Text>
           ) : null}

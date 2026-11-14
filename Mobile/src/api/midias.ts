@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
 import { notaDeRanking } from '../dominio/midia';
-import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
+import { type Recorte, TIPOS_DO_RECORTE, useRecorte } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
+import { useCache } from './consulta';
 import type {
   Midia,
   MidiaPopular,
@@ -54,6 +55,15 @@ export function usePopulares(recorte: Recorte) {
         decrescente((m) => m.total_usuarios),
       ),
   });
+}
+
+/** Posição (1 a 10) da Mídia em Populares do Recorte, se já em cache; null fora do Top 10. */
+export function usePosicaoTop10(idMidia: string): number | null {
+  const { recorte } = useRecorte();
+  const posicao = useCache<MidiaPopular[]>(['midias', 'populares', recorte])
+    ?.slice(0, 10)
+    .findIndex((m) => m.id_midia === idMidia);
+  return posicao !== undefined && posicao >= 0 ? posicao + 1 : null;
 }
 
 export function useMidia(id: string) {

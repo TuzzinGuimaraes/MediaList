@@ -1,67 +1,160 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Text, View } from 'react-native';
 
-import type { CartaoMidia } from '../api/tipos';
+import { useItemEmCache } from '../api/lista';
+import { usePosicaoTop10 } from '../api/midias';
+import type { CartaoMidia, Midia } from '../api/tipos';
+import { estadoDe } from '../dominio/estadoConsumo';
 import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '../dominio/midia';
-import paleta from '../tema/paleta';
-import { nomeDoTipo, SeloTipo } from './SeloTipo';
+import { useCores } from '../tema/TemaContext';
+import { FioProgresso } from './FioProgresso';
+import { nomeDoTipo, Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
+import { Toque } from './Toque';
+
+/** A listagem pode trazer os campos completos (Em alta traz; Populares não). */
+type MidiaDoCard = CartaoMidia & Partial<Pick<Midia, 'banner_url' | 'status_anime' | 'status_manga'>>;
 
 type Props = {
-  midia: CartaoMidia;
+  midia: MidiaDoCard;
   /** Largura fixa (carrossel) ou ocupando a coluna (grade). */
   largura?: number;
 };
 
-/**
- * Pôster, título, selo do Tipo de mídia e as notas (Nota dos Usuários, Nota da fonte),
- * cada uma com seu rótulo; tocar abre o detalhe da Mídia. As notas vão no valor de
- * acessibilidade, para o leitor de tela anunciá-las depois do título.
- */
-export function CardMidia({ midia, largura }: Props) {
+/** Destaque de lançamento sobre o pôster, quando a listagem traz o campo. */
+function lancamentoDe(midia: MidiaDoCard): string | null {
+  if (midia.status_anime === 'em_exibicao') return 'Em exibição';
+  if (midia.status_manga === 'em_publicacao') return 'Em publicação';
+  return null;
+}
+
+function Poster({ midia }: { midia: CartaoMidia }) {
+  return midia.poster_url ? (
+    <Image
+      source={midia.poster_url}
+      style={{ width: '100%', height: '100%' }}
+      contentFit="cover"
+      cachePolicy="disk"
+      transition={150}
+      recyclingKey={midia.id_midia}
+      accessibilityIgnoresInvertColors
+    />
+  ) : null;
+}
+
+/** Notas da obra, cada uma com estrela e rótulo curto. */
+function Notas({ midia, limite }: { midia: CartaoMidia; limite?: number }) {
+  const cores = useCores();
+  return notasDaMidia(midia)
+    .slice(0, limite)
+    .map((n) => (
+      <View key={n.rotulo} className="flex-row items-center gap-1">
+        <Ionicons name={n.rotulo === ROTULO_NOTA_MEDIA ? 'star' : 'star-outline'} size={12} color={cores.nota} />
+        <Text className="text-legenda font-bold text-nota">{n.valor}</Text>
+        <Text numberOfLines={1} className="text-legenda text-texto-suave">
+          {n.curto}
+        </Text>
+      </View>
+    ));
+}
+
+/** Toque que abre o detalhe, com o título e as notas para o leitor de tela. */
+function useAbrir(midia: CartaoMidia) {
+  const router = useRouter();
   const titulo = tituloDaMidia(midia);
   const notas = notasDaMidia(midia);
+  return {
+    titulo,
+    a11y: {
+      accessibilityRole: 'link' as const,
+      accessibilityLabel: `${titulo}, ${nomeDoTipo(midia.tipo)}`,
+      // As notas vão no valor, para o leitor de tela anunciá-las depois do título.
+      accessibilityValue: notas.length ? { text: notas.map((n) => `${n.rotulo} ${n.valor}`).join(', ') } : undefined,
+    },
+    abrir: () => router.push({ pathname: '/midia/[id]', params: { id: midia.id_midia } }),
+  };
+}
+
+/**
+ * Card A (denso): pôster vertical com os selos sobre a imagem (Top 10, lançamento, Status do
+ * Item) e o fio de progresso; título, Tipo e notas abaixo. Tocar abre o detalhe.
+ */
+export function CardMidia({ midia, largura }: Props) {
+  const { titulo, a11y, abrir } = useAbrir(midia);
+  const item = useItemEmCache(midia.id_midia);
+  const top = usePosicaoTop10(midia.id_midia);
+  const estado = item ? estadoDe(item.status_consumo, item.tipo) : null;
+  const lancamento = lancamentoDe(midia);
   return (
-    <Link href={{ pathname: '/midia/[id]', params: { id: midia.id_midia } }} asChild>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`${titulo}, ${nomeDoTipo(midia.tipo)}`}
-        accessibilityValue={notas.length ? { text: notas.map((n) => `${n.rotulo} ${n.valor}`).join(', ') } : undefined}
-        className="gap-1.5 active:opacity-80"
-        style={largura ? { width: largura } : { flex: 1 }}
-      >
-        <View className="aspect-[2/3] w-full overflow-hidden rounded bg-dark-tertiary">
-          {midia.poster_url ? (
-            <Image
-              source={midia.poster_url}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              cachePolicy="disk"
-              transition={150}
-              recyclingKey={midia.id_midia}
-              accessibilityIgnoresInvertColors
-            />
+    <Toque {...a11y} onPress={abrir} className="gap-1.5" caixa={largura ? { width: largura } : { flex: 1 }}>
+      <View className="aspect-[2/3] w-full overflow-hidden rounded-md bg-superficie-alta">
+        <Poster midia={midia} />
+        {top ? (
+          <View className="absolute right-0 top-0">
+            <SeloTop posicao={top} />
+          </View>
+        ) : null}
+        {lancamento || estado ? (
+          <View className="absolute bottom-1.5 left-1 right-1 gap-1">
+            {lancamento ? <Selo texto={lancamento} tom="marca" /> : null}
+            {estado ? <SeloStatus estado={estado} sobreImagem /> : null}
+          </View>
+        ) : null}
+        {item ? <FioProgresso item={item} /> : null}
+      </View>
+      <Text numberOfLines={2} className="text-legenda text-texto">
+        {titulo}
+      </Text>
+      <SeloTipo tipo={midia.tipo} />
+      <Notas midia={midia} />
+    </Toque>
+  );
+}
+
+/**
+ * Card C (informativo): horizontal, com o banner (ou o pôster desfocado) esmaecido ao fundo,
+ * o pôster pequeno, Tipo, título, notas e o Status do Item, e o fio de progresso na base.
+ * Vai no Continuar e nos destaques.
+ */
+export function CardInfo({ midia, largura }: Props) {
+  const { titulo, a11y, abrir } = useAbrir(midia);
+  const item = useItemEmCache(midia.id_midia);
+  const top = usePosicaoTop10(midia.id_midia);
+  const estado = item ? estadoDe(item.status_consumo, item.tipo) : null;
+  const fundo = midia.banner_url ?? midia.poster_url;
+  return (
+    <Toque {...a11y} onPress={abrir} caixa={largura ? { width: largura } : { flex: 1 }}>
+      <View className="h-[150px] flex-row overflow-hidden rounded-lg bg-superficie">
+        {fundo ? (
+          <Image
+            source={fundo}
+            style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.4 }}
+            contentFit="cover"
+            blurRadius={midia.banner_url ? 0 : 12}
+            cachePolicy="disk"
+            recyclingKey={`${midia.id_midia}-fundo`}
+          />
+        ) : null}
+        <View className="absolute inset-0 bg-superficie/70" />
+        <View className="m-2.5 w-[86px] overflow-hidden rounded-md bg-superficie-alta">
+          <Poster midia={midia} />
+          {top ? (
+            <View className="absolute right-0 top-0">
+              <SeloTop posicao={top} />
+            </View>
           ) : null}
         </View>
-        <Text numberOfLines={2} className="text-legenda text-text-primary">
-          {titulo}
-        </Text>
-        <SeloTipo tipo={midia.tipo} />
-        {notas.map((n) => (
-          <View key={n.rotulo} className="flex-row items-center gap-1">
-            <Ionicons
-              name={n.rotulo === ROTULO_NOTA_MEDIA ? 'star' : 'star-outline'}
-              size={12}
-              color={paleta.accent.yellow}
-            />
-            <Text className="text-legenda font-bold text-accent-yellow">{n.valor}</Text>
-            <Text numberOfLines={1} className="text-legenda text-text-secondary">
-              {n.curto}
-            </Text>
-          </View>
-        ))}
-      </Pressable>
-    </Link>
+        <View className="flex-1 justify-center gap-1 py-2 pr-3">
+          <SeloTipo tipo={midia.tipo} />
+          <Text numberOfLines={2} className="text-corpo font-bold text-texto-forte">
+            {titulo}
+          </Text>
+          <Notas midia={midia} />
+          {estado ? <SeloStatus estado={estado} /> : null}
+        </View>
+        {item ? <FioProgresso item={item} /> : null}
+      </View>
+    </Toque>
   );
 }

@@ -3,11 +3,12 @@ import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { nomeDoRotulo } from '../dominio/estadoConsumo';
+import { estadoDe, nomeDoRotulo } from '../dominio/estadoConsumo';
 import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import paleta from '../tema/paleta';
-import { nomeDoTipo, SeloTipo } from './SeloTipo';
+import { useCores } from '../tema/TemaContext';
+import { FioProgresso } from './FioProgresso';
+import { nomeDoTipo, SeloStatus, SeloTipo } from './Selo';
 
 type Props = {
   item: ItemLista;
@@ -18,6 +19,7 @@ type Props = {
 type PropsPasso = { novo: number | null; icone: 'remove' | 'add'; rotulo: string; mudar(n: number): void };
 
 function BotaoPasso({ novo, icone, rotulo, mudar }: PropsPasso) {
+  const cores = useCores();
   return (
     <Pressable
       accessibilityRole="button"
@@ -28,7 +30,7 @@ function BotaoPasso({ novo, icone, rotulo, mudar }: PropsPasso) {
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       className="h-8 w-9 items-center justify-center active:opacity-60"
     >
-      <Ionicons name={icone} size={18} color={novo === null ? paleta.dark.border : paleta.text.bright} />
+      <Ionicons name={icone} size={18} color={novo === null ? cores.borda : cores['texto-forte']} />
     </Pressable>
   );
 }
@@ -40,12 +42,12 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
   const atual = item.progresso_atual ?? 0;
 
   return (
-    <View className="flex-row items-center rounded-full border border-dark-border bg-dark-tertiary">
+    <View className="flex-row items-center rounded-full border border-borda bg-superficie-alta">
       <BotaoPasso novo={passoDeProgresso(item, -1)} icone="remove" rotulo={`Menos um em ${titulo}`} mudar={mudar} />
       <Text
         accessibilityLabel={total !== null ? `Progresso: ${atual} de ${total}` : `Progresso: ${atual}`}
         maxFontSizeMultiplier={1.3}
-        className="min-w-[48px] text-center text-legenda font-semibold text-text-bright"
+        className="min-w-[48px] text-center text-legenda font-semibold text-texto-forte"
         style={{ fontVariant: ['tabular-nums'] }}
       >
         {total !== null ? `${atual}/${total}` : atual}
@@ -57,8 +59,10 @@ function Stepper({ item, titulo, mudar }: { item: ItemLista; titulo: string; mud
 
 /** Linha do Item na aba Lista. Tocar abre o editor; o stepper muda o Progresso direto. */
 export function LinhaItem({ item, editar, mudarProgresso }: Props) {
+  const cores = useCores();
   const titulo = tituloDaMidia(item);
   const nota = item.nota_usuario != null ? String(item.nota_usuario) : null;
+  const estado = estadoDe(item.status_consumo, item.tipo);
   return (
     <View accessibilityLabel={`Item ${titulo}`} className="flex-row items-center gap-3 px-4 py-2">
       <Pressable
@@ -67,7 +71,7 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
         onPress={editar}
         className="flex-1 flex-row items-center gap-3 active:opacity-80"
       >
-        <View className="h-[60px] w-10 overflow-hidden rounded bg-dark-tertiary">
+        <View className="h-[60px] w-10 overflow-hidden rounded bg-superficie-alta">
           {item.poster_url ? (
             <Image
               source={item.poster_url}
@@ -78,22 +82,27 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
               accessibilityIgnoresInvertColors
             />
           ) : null}
+          <FioProgresso item={item} />
         </View>
         <View className="flex-1 gap-0.5">
-          <Text numberOfLines={2} className="text-corpo text-text-bright">
+          <Text numberOfLines={2} className="text-corpo text-texto-forte">
             {titulo}
           </Text>
           <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
             <SeloTipo tipo={item.tipo} />
-            <Text className="text-legenda text-text-secondary">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
+            {estado ? (
+              <SeloStatus estado={estado} />
+            ) : (
+              <Text className="text-legenda text-texto-suave">{nomeDoRotulo(item.status_consumo, item.tipo)}</Text>
+            )}
             {nota ? (
               <View className="flex-row items-center gap-0.5">
-                <Ionicons name="star" size={14} color={paleta.accent.yellow} />
-                <Text className="text-legenda text-accent-yellow">{nota}</Text>
+                <Ionicons name="star" size={14} color={cores.nota} />
+                <Text className="text-legenda font-bold text-nota">{nota}</Text>
               </View>
             ) : null}
-            {item.favorito ? <Ionicons name="heart" size={14} color={paleta.accent.red} /> : null}
-            {item.privado ? <Ionicons name="lock-closed" size={14} color={paleta.text.secondary} /> : null}
+            {item.favorito ? <Ionicons name="heart" size={14} color={cores['marca-texto']} /> : null}
+            {item.privado ? <Ionicons name="lock-closed" size={14} color={cores['texto-suave']} /> : null}
           </View>
         </View>
       </Pressable>
@@ -101,7 +110,7 @@ export function LinhaItem({ item, editar, mudarProgresso }: Props) {
         <Stepper item={item} titulo={titulo} mudar={mudarProgresso} />
       ) : (
         // Horas jogadas não medem Progresso (CONTEXT.md): só exibidas, editadas no editor.
-        <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-legenda text-text-secondary">
+        <Text accessibilityLabel={`Horas jogadas: ${item.progresso_atual ?? 0}`} className="text-legenda text-texto-suave">
           {`${item.progresso_atual ?? 0} h`}
         </Text>
       )}

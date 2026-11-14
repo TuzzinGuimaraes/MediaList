@@ -9,7 +9,7 @@ import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela'
 import { Opcoes } from '@/components/Opcoes';
 import { NOMES_TIPO } from '@/dominio/estadoConsumo';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
-import paleta from '@/tema/paleta';
+import { useCores } from '@/tema/TemaContext';
 
 const textos = {
   busca: 'Buscar por título',
@@ -44,6 +44,7 @@ function useValorAtrasado<T>(valor: T, ms: number): T {
 }
 
 export default function Explorar() {
+  const cores = useCores();
   const { recorte } = useRecorte();
   const tipos = TIPOS_DO_RECORTE[recorte];
   const [tipoEscolhido, setTipoEscolhido] = useState<TipoMidia>(tipos[0]);
@@ -82,7 +83,7 @@ export default function Explorar() {
         }}
         ListFooterComponent={
           resultados.isFetchingNextPage ? (
-            <ActivityIndicator color={paleta.accent.blue} />
+            <ActivityIndicator color={cores['marca-texto']} />
           ) : resultados.isFetchNextPageError ? (
             <View className="items-center">
               <Botao titulo="Tentar de novo" variante="secundario" onPress={() => resultados.fetchNextPage()} />
@@ -104,12 +105,12 @@ export default function Explorar() {
           <TextInput
             accessibilityLabel={textos.busca}
             placeholder={textos.busca}
-            placeholderTextColor={paleta.text.secondary}
+            placeholderTextColor={cores['texto-suave']}
             value={texto}
             onChangeText={setTexto}
             autoCorrect={false}
             returnKeyType="search"
-            className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2.5 text-campo text-text-bright"
+            className="rounded-md border border-borda bg-superficie-alta px-3 py-2.5 text-campo text-texto-forte"
           />
         </View>
         {tipos.length > 1 ? (

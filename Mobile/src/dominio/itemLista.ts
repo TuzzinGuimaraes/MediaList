@@ -276,7 +276,7 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   const falha = (erro: string): ResultadoItem => ({ ok: false, erro });
 
   if (!estadoDe(f.status_consumo, midia.tipo)) {
-    return falha('Escolha um Estado de consumo válido para o Tipo.');
+    return falha('Escolha um Status válido para o Tipo.');
   }
 
   const textoProgresso = f.progresso.trim() || '0';
@@ -294,7 +294,7 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   }
 
   const textoRecontagem = f.recontagem.trim() || '0';
-  if (!INTEIRO.test(textoRecontagem)) return falha('A Recontagem é um número inteiro a partir de 0.');
+  if (!INTEIRO.test(textoRecontagem)) return falha(`${nomeDaRecontagem(midia.tipo)}: use um número inteiro a partir de 0.`);
 
   const inicio = dataIso(f.inicio);
   const conclusao = dataIso(f.conclusao);
@@ -316,9 +316,23 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   };
 }
 
+/** Recontagem como aparece na tela, pelo Tipo ("Reassistido 2×"). */
+export function nomeDaRecontagem(tipo: TipoMidia): string {
+  return { anime: 'Reassistido', manga: 'Relido', jogo: 'Rejogado' }[tipo];
+}
+
 /** Unidade do Progresso, para rótulos ("Episódios", "Capítulos", "Horas jogadas"). */
 export function nomeDoProgresso(tipo: string): string {
   if (tipo === 'anime') return 'Episódios';
   if (tipo === 'manga') return 'Capítulos';
   return 'Horas jogadas';
+}
+
+/** Quanto do fio de progresso fica preenchido (0 a 1); null: sem total, só um traço curto. */
+export function proporcaoDoFio(item: ComTotal & { status_consumo: string; progresso_atual: number | null }): number | null {
+  const estado = estadoDe(item.status_consumo, item.tipo);
+  if (estado === 'concluido' || estado === 'platinado') return 1;
+  const total = totalDoItem(item);
+  if (!total) return null;
+  return Math.min(1, (item.progresso_atual ?? 0) / total);
 }

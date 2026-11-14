@@ -1,26 +1,28 @@
-import { useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
+
+import { useAtualizar } from '@/api/consulta';
 
 import { useEmAlta, usePopulares } from '@/api/midias';
 import type { CartaoMidia } from '@/api/tipos';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha } from '@/components/EstadoTela';
+import { TituloSecao } from '@/components/Secao';
 import { ConteudoRecorte, useRecorte } from '@/recorte/RecorteContext';
-import paleta from '@/tema/paleta';
 
 const textos = {
   emAlta: 'Em alta',
-  emAltaVazio: 'Nenhuma Mídia neste Recorte ainda.',
+  emAltaVazio: 'Nenhuma Mídia neste catálogo ainda.',
   populares: 'Populares',
-  popularesVazio: 'Nenhuma Mídia popular neste Recorte ainda.',
+  popularesVazio: 'Nenhuma Mídia popular neste catálogo ainda.',
 };
 
-function Secao({ titulo, midias, vazio }: { titulo: string; midias: CartaoMidia[]; vazio: string }) {
+/** Carrossel de cards com o cabeçalho de seção. */
+function Carrossel({ titulo, midias, vazio }: { titulo: string; midias: CartaoMidia[]; vazio: string }) {
   return (
     <View accessibilityLabel={titulo} className="gap-3">
-      <Text className="px-4 text-legenda font-bold uppercase tracking-wider text-text-secondary">{titulo}</Text>
+      <TituloSecao className="px-4">{titulo}</TituloSecao>
       {midias.length === 0 ? (
-        <Text className="px-4 text-corpo text-text-secondary">{vazio}</Text>
+        <Text className="px-4 text-corpo text-texto-suave">{vazio}</Text>
       ) : (
         <FlatList
           horizontal
@@ -39,24 +41,18 @@ export default function Inicio() {
   const { recorte } = useRecorte();
   const emAlta = useEmAlta(recorte);
   const populares = usePopulares(recorte);
-  const [atualizando, setAtualizando] = useState(false);
-
-  async function atualizar() {
-    setAtualizando(true);
-    await Promise.all([emAlta.refetch(), populares.refetch()]);
-    setAtualizando(false);
-  }
+  const atualizar = useAtualizar([emAlta, populares]);
 
   let conteudo: React.ReactNode;
   if (emAlta.data && populares.data) {
     conteudo = (
       <>
-        <Secao titulo={textos.emAlta} midias={emAlta.data} vazio={textos.emAltaVazio} />
-        <Secao titulo={textos.populares} midias={populares.data} vazio={textos.popularesVazio} />
+        <Carrossel titulo={textos.emAlta} midias={emAlta.data} vazio={textos.emAltaVazio} />
+        <Carrossel titulo={textos.populares} midias={populares.data} vazio={textos.popularesVazio} />
       </>
     );
   } else if (emAlta.isError || populares.isError) {
-    conteudo = <Falha erro={emAlta.error ?? populares.error} tentarDeNovo={atualizar} />;
+    conteudo = <Falha erro={emAlta.error ?? populares.error} tentarDeNovo={atualizar.onRefresh} />;
   } else {
     conteudo = <Carregando />;
   }
@@ -65,17 +61,9 @@ export default function Inicio() {
     <ConteudoRecorte>
       <ScrollView
         testID="inicio"
-        className="flex-1 bg-dark-primary"
+        className="flex-1 bg-fundo"
         contentContainerClassName="flex-grow gap-6 py-4"
-        refreshControl={
-          <RefreshControl
-            refreshing={atualizando}
-            onRefresh={atualizar}
-            tintColor={paleta.accent.blue}
-            colors={[paleta.accent.blue]}
-            progressBackgroundColor={paleta.dark.secondary}
-          />
-        }
+        refreshControl={<RefreshControl {...atualizar} />}
       >
         {conteudo}
       </ScrollView>

@@ -41,24 +41,25 @@ export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fon
 
 type Atributo = [rotulo: string, valor: string | number | null];
 
-/** Atributos específicos do Tipo de mídia; os vazios ficam de fora. */
+/** Atributos específicos do Tipo de mídia; os vazios ficam de fora. O status de lançamento aparece como
+ * "Situação", porque "Status" na tela é o Estado de consumo. */
 export function atributosDoTipo(midia: Midia): [string, string][] {
   const porTipo: Record<Midia['tipo'], Atributo[]> = {
     anime: [
       ['Episódios', midia.numero_episodios],
-      ['Status', midia.status_anime],
+      ['Situação', midia.status_anime],
       ['Estúdio', midia.estudio],
     ],
     manga: [
       ['Capítulos', midia.numero_capitulos],
       ['Volumes', midia.numero_volumes],
-      ['Status', midia.status_manga],
+      ['Situação', midia.status_manga],
       ['Autor', midia.autor],
       ['Demografia', midia.demografia],
     ],
     jogo: [
       ['Plataformas', midia.plataformas],
-      ['Status', midia.status_jogo],
+      ['Situação', midia.status_jogo],
       ['Desenvolvedor', midia.desenvolvedor],
       ['Publicadora', midia.publicadora],
     ],

@@ -3,7 +3,8 @@ import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
 import { aplicarProgresso, type DadosItem, totalDoItem } from '../dominio/itemLista';
-import type { RespostaLista } from './tipos';
+import { useCache } from './consulta';
+import type { ItemLista, RespostaLista } from './tipos';
 
 // As rotas de escrita (Backend/routes/lista.py) só respondem `{mensagem}` (e `id_lista`
 // no POST): o Item gravado, inclusive a promoção a Concluído, vem do GET /lista refeito.
@@ -31,6 +32,11 @@ export function useItemDaLista(id: string) {
     ...useConsultaLista(),
     select: (r: RespostaLista) => r.lista.find((item) => item.id_midia === id) ?? null,
   });
+}
+
+/** O Item desta Mídia se a Lista já está em cache; não busca a Lista (selos e fio dos cards). */
+export function useItemEmCache(idMidia: string): ItemLista | undefined {
+  return useCache<RespostaLista>(CHAVE)?.lista.find((item) => item.id_midia === idMidia);
 }
 
 /**

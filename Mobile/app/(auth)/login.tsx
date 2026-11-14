@@ -40,8 +40,8 @@ export default function Login() {
 
   return (
     <TelaFormulario>
-      <Text className="text-titulo-tela font-bold text-text-bright">{textos.titulo}</Text>
-      <Text className="text-corpo text-text-secondary">{textos.subtitulo}</Text>
+      <Text className="text-titulo-tela font-bold text-texto-forte">{textos.titulo}</Text>
+      <Text className="text-corpo text-texto-suave">{textos.subtitulo}</Text>
       <Campo
         rotulo={textos.email}
         value={email}
@@ -58,12 +58,12 @@ export default function Login() {
         autoComplete="password"
       />
       {erro ? (
-        <Text accessibilityRole="alert" className="text-corpo text-accent-red">
+        <Text accessibilityRole="alert" className="text-corpo text-erro">
           {erro}
         </Text>
       ) : null}
       <Botao titulo={textos.entrar} onPress={enviar} carregando={enviando} />
-      <Link href="/registro" className="text-center text-corpo text-accent-blue">
+      <Link href="/registro" className="text-center text-corpo text-marca-texto">
         {textos.semConta}
       </Link>
     </TelaFormulario>

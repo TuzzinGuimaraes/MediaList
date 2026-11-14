@@ -34,8 +34,10 @@ lojas na v1. Isso deixa de fora notificações push, que ficam para depois.
   porta 5000 com `/api`; `EXPO_PUBLIC_API_URL` sobrescreve e é obrigatória em build de
   produção.
 - **Interface** toda em português, com strings agrupadas por tela, sem framework de i18n.
-  Tema só escuro, com a paleta do web (`dark.*`, `accent.*`, `text.*`) copiada para
-  `src/tema/paleta.js`, a fonte única do Tailwind e das cores usadas em JS.
+  Temas Escuro (padrão) e Claro, com a opção Sistema no Perfil; as cores vêm de
+  `design/tokens.js` na raiz (ticket 29 da revisão), a fonte única do Tailwind e das cores
+  usadas em JS. *(Atualizado: antes era só o tema escuro, com a paleta do web copiada para
+  `src/tema/paleta.js`.)*
 - **Testes**: uma fronteira só, o `fetch` global. Os testes de tela renderizam o app
   inteiro (`renderRouter` do Expo Router, `jest-expo`, React Native Testing Library) com o
   `expo-secure-store` em memória. Sem E2E na v1. O CI roda typecheck, `expo lint` e testes
@@ -58,6 +60,13 @@ completa e os testes passam; o único ajuste é `declare module '*.css'` em
 A alternativa era começar direto com `StyleSheet`. Rejeitada por ora porque as classes do
 Tailwind mantêm o app visualmente alinhado ao web com pouco código. **Plano B**, se o
 NativeWind quebrar num patch do SDK 58 ou travar a atualização para o SDK 59: migrar as
-telas para `StyleSheet`, com a paleta já em tokens tipados (`src/tema/paleta.js` +
-`paleta.d.ts`). A versão fixada impede que uma atualização automática traga a quebra sem
+telas para `StyleSheet`, com as cores já em tokens tipados (`design/tokens.js` +
+`tokens.d.ts`). A versão fixada impede que uma atualização automática traga a quebra sem
 que alguém decida.
+
+**Plano (2026-11, ticket 20 da revisão):** o app fica na 4.2.7 até a **v5 ficar estável com
+o SDK do momento**; em 2026-11 a v5 está em RC, testada no SDK 57. A migração para a v5 (que
+usa Tailwind 4) é preferida ao Plano B. Para ela custar pouco, os tokens já ficam num formato
+fácil de converter para o `@theme` do Tailwind 4: cores com nomes semânticos, um mapa por
+tema, sem lógica (`design/tokens.js`). As cores trocam de tema por variáveis CSS com `vars()`
+do NativeWind, o mesmo mecanismo que o `@theme` usa.

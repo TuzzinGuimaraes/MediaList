@@ -7,29 +7,31 @@ import { mensagemDeErro } from '../api/erros';
 import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
 import { dataDoTexto, textoDaData } from '../dominio/datas';
-import { estadoDe, NOMES_ESTADO, rotulosDoTipo } from '../dominio/estadoConsumo';
+import { estadoDe, NOMES_ESTADO, rotulosDoTipo, type TipoMidia } from '../dominio/estadoConsumo';
 import {
   type EdicaoItem,
   type FormularioItem,
   iniciarEdicao,
   mudarEdicao,
+  nomeDaRecontagem,
   nomeDoProgresso,
   temProgresso,
   totalDoItem,
   validarItem,
 } from '../dominio/itemLista';
 import { tituloDaMidia } from '../dominio/midia';
-import paleta from '../tema/paleta';
+import { vibrarConfirmacao } from '../tema/haptics';
+import { useCores } from '../tema/TemaContext';
 import { BottomSheet } from './BottomSheet';
 import { Botao } from './Botao';
+import { corDoEstado } from './Selo';
 
 const textos = {
   editor: 'Editor do Item de lista',
   adicionar: 'Adicionar à Lista',
   editar: 'Editar Item da Lista',
-  estado: 'Estado de consumo',
+  estado: 'Status',
   nota: 'Nota pessoal',
-  recontagem: 'Recontagem',
   inicio: 'Início',
   conclusao: 'Conclusão',
   data: 'dd/mm/aaaa',
@@ -54,16 +56,17 @@ type Props = {
 };
 
 function CampoCurto({ rotulo, ...props }: Omit<TextInputProps, 'className'> & { rotulo: string }) {
+  const cores = useCores();
   return (
     // Rótulo em até duas linhas, alinhado por baixo: os campos lado a lado ficam na mesma altura.
     <View className="flex-1 justify-end gap-1">
-      <Text numberOfLines={2} className="text-legenda text-text-secondary">
+      <Text numberOfLines={2} className="text-legenda text-texto-suave">
         {rotulo}
       </Text>
       <TextInput
         accessibilityLabel={rotulo}
-        placeholderTextColor={paleta.text.secondary}
-        className="rounded-md border border-dark-border bg-dark-tertiary px-3 py-2 text-campo text-text-bright"
+        placeholderTextColor={cores['texto-suave']}
+        className="rounded-md border border-borda bg-superficie-alta px-3 py-2 text-campo text-texto-forte"
         {...props}
       />
     </View>
@@ -82,10 +85,10 @@ function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
   };
   return (
     <View className="flex-1 justify-end gap-1">
-      <Text numberOfLines={2} className="text-legenda text-text-secondary">
+      <Text numberOfLines={2} className="text-legenda text-texto-suave">
         {rotulo}
       </Text>
-      <View className="flex-row items-center rounded-md border border-dark-border bg-dark-tertiary">
+      <View className="flex-row items-center rounded-md border border-borda bg-superficie-alta">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${rotulo}: ${valor || textos.semData}`}
@@ -96,7 +99,7 @@ function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
           }}
           className="flex-1 px-3 py-2 active:opacity-60"
         >
-          <Text className={`text-campo ${valor ? 'text-text-bright' : 'text-text-secondary'}`}>{valor || textos.data}</Text>
+          <Text className={`text-campo ${valor ? 'text-texto-forte' : 'text-texto-suave'}`}>{valor || textos.data}</Text>
         </Pressable>
         {valor ? (
           <Pressable
@@ -106,7 +109,7 @@ function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
             hitSlop={8}
             className="px-2 py-2 active:opacity-60"
           >
-            <Text className="text-legenda font-semibold text-accent-blue">{textos.limpar}</Text>
+            <Text className="text-legenda font-semibold text-marca-texto">{textos.limpar}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -127,6 +130,7 @@ function CampoData({ rotulo, valor, minimo, mudar }: PropsData) {
 type PropsPasso = { icone: 'remove' | 'add'; rotulo: string; desativado?: boolean; aoTocar(): void };
 
 function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) {
+  const cores = useCores();
   return (
     <Pressable
       accessibilityRole="button"
@@ -137,35 +141,37 @@ function BotaoPasso({ icone, rotulo, desativado = false, aoTocar }: PropsPasso) 
       hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       className="h-10 w-10 items-center justify-center active:opacity-60"
     >
-      <Ionicons name={icone} size={18} color={desativado ? paleta.dark.border : paleta.text.bright} />
+      <Ionicons name={icone} size={18} color={desativado ? cores.borda : cores['texto-forte']} />
     </Pressable>
   );
 }
 
-/** Recontagem com − e + (mínimo 0), no visual do stepper do Progresso da Lista. */
-function ContadorRecontagem({ valor, mudar }: { valor: number; mudar(n: number): void }) {
+/** Recontagem com − e + (mínimo 0), no visual do stepper do Progresso da Lista; na tela, "Reassistido 2×". */
+function ContadorRecontagem({ tipo, valor, mudar }: { tipo: TipoMidia; valor: number; mudar(n: number): void }) {
+  const nome = nomeDaRecontagem(tipo);
   return (
     <View className="flex-1 justify-end gap-1">
-      <Text numberOfLines={2} className="text-legenda text-text-secondary">
-        {textos.recontagem}
+      <Text numberOfLines={2} className="text-legenda text-texto-suave">
+        {nome}
       </Text>
-      <View className="flex-row items-center justify-between rounded-full border border-dark-border bg-dark-tertiary">
-        <BotaoPasso icone="remove" rotulo={`Diminuir ${textos.recontagem}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
+      <View className="flex-row items-center justify-between rounded-full border border-borda bg-superficie-alta">
+        <BotaoPasso icone="remove" rotulo={`Diminuir ${nome}`} desativado={valor <= 0} aoTocar={() => mudar(valor - 1)} />
         <Text
-          accessibilityLabel={`${textos.recontagem}: ${valor}`}
+          accessibilityLabel={`${nome}: ${valor}`}
           accessibilityLiveRegion="polite"
-          className="text-campo font-semibold text-text-bright"
+          className="text-campo font-semibold text-texto-forte"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {valor}
+          {`${valor}×`}
         </Text>
-        <BotaoPasso icone="add" rotulo={`Aumentar ${textos.recontagem}`} aoTocar={() => mudar(valor + 1)} />
+        <BotaoPasso icone="add" rotulo={`Aumentar ${nome}`} aoTocar={() => mudar(valor + 1)} />
       </View>
     </View>
   );
 }
 
 function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'heart' | 'lock-closed'; ativo: boolean; mudar(): void }) {
+  const cores = useCores();
   return (
     <Pressable
       accessibilityRole="switch"
@@ -174,15 +180,15 @@ function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'hea
       onPress={mudar}
       hitSlop={6}
       className={`flex-row items-center gap-1 rounded-full border px-3 py-1.5 ${
-        ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border'
+        ativo ? 'border-marca-texto bg-superficie-alta' : 'border-borda'
       }`}
     >
       <Ionicons
         name={ativo ? icone : (`${icone}-outline` as const)}
         size={16}
-        color={ativo ? (icone === 'heart' ? paleta.accent.red : paleta.accent.blue) : paleta.text.secondary}
+        color={ativo ? cores['marca-texto'] : cores['texto-suave']}
       />
-      <Text className={`text-corpo font-semibold ${ativo ? 'text-text-bright' : 'text-text-secondary'}`}>{rotulo}</Text>
+      <Text className={`text-corpo font-semibold ${ativo ? 'text-texto-forte' : 'text-texto-suave'}`}>{rotulo}</Text>
     </Pressable>
   );
 }
@@ -197,6 +203,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
   const remover = useRemoverItem();
+  const cores = useCores();
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
@@ -208,6 +215,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await salvar.mutateAsync({ idMidia: midia.id_midia, idLista: item?.id_lista, dados: resultado.dados });
+      vibrarConfirmacao();
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -219,6 +227,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
     setErro(null);
     try {
       await remover.mutateAsync({ idMidia: midia.id_midia, idLista: item.id_lista });
+      vibrarConfirmacao();
       aoFechar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -233,8 +242,8 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       aoFechar={aoFechar}
       cabecalho={
         <View className="gap-0.5">
-          <Text className="text-legenda text-text-secondary">{item ? textos.editar : textos.adicionar}</Text>
-          <Text accessibilityRole="header" numberOfLines={2} className="text-titulo-secao font-bold text-text-bright">
+          <Text className="text-legenda text-texto-suave">{item ? textos.editar : textos.adicionar}</Text>
+          <Text accessibilityRole="header" numberOfLines={2} className="text-titulo-secao font-bold text-texto-forte">
             {tituloDaMidia(midia)}
           </Text>
         </View>
@@ -242,13 +251,13 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       rodape={
         <>
           {erro ? (
-            <Text accessibilityRole="alert" className="text-corpo text-accent-red">
+            <Text accessibilityRole="alert" className="text-corpo text-erro">
               {erro}
             </Text>
           ) : null}
           {confirmando ? (
             <>
-              <Text className="text-corpo text-text-bright">{textos.confirmacao}</Text>
+              <Text className="text-corpo text-texto-forte">{textos.confirmacao}</Text>
               <View className="flex-row gap-2">
                 <View className="flex-1">
                   <Botao titulo={textos.manter} variante="secundario" onPress={() => setConfirmando(false)} />
@@ -274,13 +283,15 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
       }
     >
       <View className="gap-1.5">
-        <Text className="text-legenda text-text-secondary">{textos.estado}</Text>
+        <Text className="text-legenda text-texto-suave">{textos.estado}</Text>
         {/* Só os Rótulos válidos para o Tipo: o backend recusa os outros (ADR 0002). */}
-        <View accessibilityLabel={textos.estado} className="flex-row flex-wrap gap-2">
+        <View accessibilityRole="radiogroup" accessibilityLabel={textos.estado} className="flex-row flex-wrap gap-2">
           {rotulosDoTipo(tipo).map((rotulo) => {
             const estado = estadoDe(rotulo, tipo);
             const ativo = form.status_consumo === rotulo;
             const nome = estado ? NOMES_ESTADO[estado] : rotulo;
+            // O Status escolhido ganha a cor dele.
+            const cor = estado ? corDoEstado(estado, cores) : cores['marca-texto'];
             return (
               <Pressable
                 key={rotulo}
@@ -288,11 +299,13 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
                 accessibilityLabel={nome}
                 accessibilityState={{ checked: ativo }}
                 onPress={() => mudar('status_consumo')(rotulo)}
-                className={`min-h-[40px] justify-center rounded-full border px-3 py-1.5 ${
-                  ativo ? 'border-accent-blue bg-dark-tertiary' : 'border-dark-border'
-                }`}
+                className="min-h-[40px] justify-center rounded-full border border-borda px-3 py-1.5"
+                style={ativo ? { borderColor: cor, backgroundColor: `${cor}26` } : undefined}
               >
-                <Text className={`text-corpo font-semibold ${ativo ? 'text-accent-blue' : 'text-text-secondary'}`}>
+                <Text
+                  className={`text-corpo font-semibold ${ativo ? '' : 'text-texto-suave'}`}
+                  style={ativo ? { color: cor } : undefined}
+                >
                   {nome}
                 </Text>
               </Pressable>
@@ -309,7 +322,7 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
           keyboardType="number-pad"
         />
         <CampoCurto rotulo={textos.nota} value={form.nota} onChangeText={mudar('nota')} keyboardType="decimal-pad" placeholder="0 a 10" />
-        <ContadorRecontagem valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
+        <ContadorRecontagem tipo={tipo} valor={Number(form.recontagem) || 0} mudar={(n) => mudar('recontagem')(String(Math.max(0, n)))} />
       </View>
 
       <View className="flex-row gap-2">

@@ -132,7 +132,7 @@ describe('Início', () => {
     expect(within(emAlta).queryByRole('link', { name: 'Sousou no Frieren, Anime' })).not.toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(1);
     expect(api.para('GET /midias/populares?tipo=jogo')).toHaveLength(1);
-    expect(await screen.findByText('Nenhuma Mídia popular neste Recorte ainda.')).toBeOnTheScreen();
+    expect(await screen.findByText('Nenhuma Mídia popular neste catálogo ainda.')).toBeOnTheScreen();
   });
 
   it('a pílula abre o menu com as duas opções e a atual marcada', async () => {
@@ -141,7 +141,7 @@ describe('Início', () => {
 
     await fireEvent.press(await pilulaRecorte('Anime & Mangá'));
 
-    const menu = await screen.findByLabelText('Recorte de catálogo');
+    const menu = await screen.findByLabelText('Catálogo');
     expect(within(menu).getAllByRole('menuitem').map((o) => o.props.accessibilityLabel)).toEqual([
       'Anime & Mangá',
       'Jogos',
@@ -158,7 +158,7 @@ describe('Início', () => {
     await fireEvent.press(await pilulaRecorte());
     await fireEvent.press(await screen.findByRole('button', { name: 'Fechar menu' }));
 
-    expect(screen.queryByLabelText('Recorte de catálogo')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Catálogo')).not.toBeOnTheScreen();
     expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
     expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
     expect(api.para('GET /midias/trending?tipo=jogo&limite=10')).toHaveLength(0);
@@ -172,7 +172,7 @@ describe('Início', () => {
 
     await trocarRecorte('Anime & Mangá');
 
-    expect(screen.queryByLabelText('Recorte de catálogo')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Catálogo')).not.toBeOnTheScreen();
     expect(await pilulaRecorte('Anime & Mangá')).toBeOnTheScreen();
     expect(screen.getByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
     expect(api.chamadas).toHaveLength(pedidos);

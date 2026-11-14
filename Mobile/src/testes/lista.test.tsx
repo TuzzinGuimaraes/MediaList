@@ -253,24 +253,24 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Episódios (de 10)')).toHaveDisplayValue('0');
   });
 
-  it('editor: Recontagem com − e +, mínimo 0, sem campo digitável', async () => {
+  it('editor: Recontagem (Reassistido) com − e +, mínimo 0, sem campo digitável', async () => {
     const { api } = servidor([item(frieren, { status_consumo: 'assistindo', progresso_atual: 3, total_rewatches: 1 })]);
 
     await abrir('/lista');
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
     expect(screen.queryByDisplayValue('1')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Recontagem: 1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 1')).toBeOnTheScreen();
 
-    const menos = screen.getByRole('button', { name: 'Diminuir Recontagem' });
+    const menos = screen.getByRole('button', { name: 'Diminuir Reassistido' });
     await fireEvent.press(menos);
-    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 0')).toBeOnTheScreen();
     expect(menos).toBeDisabled();
     await fireEvent.press(menos);
-    expect(screen.getByLabelText('Recontagem: 0')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Reassistido: 0')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
-    expect(screen.getByLabelText('Recontagem: 2')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Reassistido' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Reassistido' }));
+    expect(screen.getByLabelText('Reassistido: 2')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => expect(api.para('PUT /lista/LST-MID-ANM-2026-20053')).toHaveLength(1));
@@ -334,7 +334,7 @@ describe('aba Lista', () => {
 
     await abrir('/lista');
     await fireEvent.press(await screen.findByRole('button', { name: 'Editar Sousou no Frieren, Anime' }));
-    const estados = within(screen.getByLabelText('Estado de consumo'));
+    const estados = within(screen.getByLabelText('Status'));
     expect(estados.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
       'Planejado',
       'Em progresso',
@@ -349,7 +349,7 @@ describe('aba Lista', () => {
     expect(screen.getByLabelText('Horas jogadas')).toHaveDisplayValue('42');
     await fireEvent.press(screen.getByRole('radio', { name: 'Platinado' }));
     await fireEvent.changeText(screen.getByLabelText('Nota pessoal'), '9,5');
-    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Recontagem' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar Rejogado' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Início: sem data' }));
     await act(async () => screen.getByTestId('calendario').props.onChange({ type: 'set' }, new Date(2026, 9, 1)));
     await fireEvent.changeText(screen.getByLabelText('Comentário'), 'Panteão feito');

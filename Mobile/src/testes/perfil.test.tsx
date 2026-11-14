@@ -92,7 +92,7 @@ describe('estatísticas no Perfil', () => {
     await abrirPerfil();
 
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
-    expect(await screen.findByText('Por Estado de consumo')).toBeOnTheScreen();
+    expect(await screen.findByText('Por Status')).toBeOnTheScreen();
   });
 });
 
