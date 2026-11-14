@@ -8,6 +8,7 @@ pelos módulos que o teste protege. Usa TEST_DATABASE_URL; sem ela, pula.
 """
 import random
 import uuid
+from datetime import date
 
 import pytest
 
@@ -30,10 +31,17 @@ CHAVES_MIDIA = {
     'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues',
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
 }
-CHAVES_ITEM = CHAVES_MIDIA | {
-    'codigo_lista', 'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio',
-    'episodios_assistidos', 'favorito', 'id_lista', 'nota_usuario', 'privado', 'progresso_atual',
-    'progresso_total', 'status_consumo', 'status_visualizacao', 'total_rewatches',
+#: Chaves de cada Item de GET /lista (modelo `ItemLista`). Explícitas, e não
+#: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é o modelo `MidiaDoItem`.
+CHAVES_ITEM = {
+    'autor', 'banner_url', 'data_lancamento', 'demografia', 'desenvolvedor', 'estudio', 'fonte_original',
+    'generos', 'generos_lista', 'id_midia', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
+    'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
+    'publicadora', 'sinopse', 'status_anime', 'status_catalogo', 'status_jogo', 'status_manga', 'tipo',
+    'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
+    'total_usuarios',
+    'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio', 'favorito', 'id_lista',
+    'nota_usuario', 'privado', 'progresso_atual', 'progresso_total', 'status_consumo', 'total_rewatches',
 }
 CHAVES_POPULAR = {
     'codigo_midia', 'generos', 'id_midia', 'nota_fonte', 'nota_media', 'origem_nota', 'poster_url', 'tipo',
@@ -153,7 +161,7 @@ def test_lista_pessoal_do_adicionar_ao_remover(client, catalogo, pg, entrar):  #
 
     assert client.get('/api/lista', headers=eu).get_json() == {'lista': []}
     recusado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'platinado'})
-    assert recusado.status_code == 400 and set(recusado.get_json()) == {'erro', 'detalhes'}
+    assert recusado.status_code == 400 and set(recusado.get_json()) == {'erro', 'codigo', 'detalhes'}
 
     criado = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status': 'assistindo'})
     assert criado.status_code == 201
@@ -162,21 +170,25 @@ def test_lista_pessoal_do_adicionar_ao_remover(client, catalogo, pg, entrar):  #
     repetido = client.post('/api/lista/adicionar', headers=eu, json={'id_midia': anime, 'status_consumo': 'planejado'})
     assert repetido.status_code == 400
     assert repetido.get_json() == {
-        'erro': 'Mídia já está na lista do usuário', 'detalhes': {'id_midia': 'Mídia já está na lista do usuário'},
+        'erro': 'Mídia já está na lista do usuário', 'codigo': 'dados_invalidos',
+        'detalhes': {'id_midia': 'Mídia já está na lista do usuário'},
     }
 
     editado = client.put(f'/api/lista/{id_lista}', headers=eu, json={'nota_usuario': 8.5, 'favorito': 1})
     assert (editado.status_code, editado.get_json()) == (200, {'mensagem': 'Lista atualizada com sucesso!'})
-    progresso = client.put(f'/api/lista/{id_lista}/progresso', headers=eu, json={'episodios_assistidos': 12})
+    progresso = client.put(f'/api/lista/{id_lista}/progresso', headers=eu, json={'progresso_atual': 12})
     assert (progresso.status_code, progresso.get_json()) == (200, {'mensagem': 'Progresso atualizado com sucesso!'})
     alheio = client.put(f'/api/lista/{id_lista}', headers=ele, json={'favorito': True})
-    assert (alheio.status_code, alheio.get_json()) == (403, {'erro': 'Item não encontrado ou sem permissão'})
+    assert (alheio.status_code, alheio.get_json()) == (
+        403, {'erro': 'Item não encontrado ou sem permissão', 'codigo': 'acesso_negado'},
+    )
 
     lista = client.get('/api/lista?tipo=anime', headers=eu).get_json()['lista']
     assert [set(i) for i in lista] == [CHAVES_ITEM]
     assert (lista[0]['status_consumo'], lista[0]['progresso_atual'], lista[0]['nota_usuario'], lista[0]['favorito']) \
         == ('completo', 12, 8.5, True)
-    assert client.get('/api/lista?status=assistindo', headers=eu).get_json() == {'lista': []}
+    assert lista[0]['data_conclusao'] == date.today().isoformat()
+    assert client.get('/api/lista?status_consumo=assistindo', headers=eu).get_json() == {'lista': []}
 
     estatisticas = client.get('/api/usuario/estatisticas', headers=eu).get_json()
     assert set(estatisticas) == {'estatisticas', 'resumo'}
