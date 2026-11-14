@@ -15,9 +15,10 @@ lojas na v1. Isso deixa de fora notificações push, que ficam para depois.
   componentes. O guarda de sessão é um `Redirect` no layout de cada grupo; o
   `Stack.Protected` redireciona para `/(auth)`, que não é rota quando o grupo não tem
   `index`.
-- **API** em `src/api/`: um cliente HTTP único, tipos escritos à mão só para os endpoints
-  usados (sem OpenAPI) e hooks do Query por recurso. Cache só em memória; as consultas se
-  refazem quando o app volta ao primeiro plano.
+- **API** em `src/api/`: um cliente HTTP único, tipos gerados do OpenAPI do Backend
+  (`contrato/api.d.ts`, ADR 0011) e hooks do Query por recurso. Cache só em memória; as
+  consultas se refazem quando o app volta ao primeiro plano. *(Atualizado pelo ADR 0011:
+  antes eram tipos escritos à mão só para os endpoints usados, sem OpenAPI.)*
 - **Sessão autenticada** em `src/auth/`: um Context com o Usuário e os tokens guardados no
   `expo-secure-store`. Um 401 dispara **um único** refresh compartilhado entre as
   requisições simultâneas (ADR 0006: dois refreshes com o mesmo token contam como reuso e
