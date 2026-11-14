@@ -93,5 +93,5 @@ def test_generos_devolve_aplicavel_a_como_lista_e_filtra_pelo_tipo(client, monke
     assert client.get('/api/generos').get_json()['generos'][0]['aplicavel_a'] == ['anime', 'manga', 'jogo']
     response = client.get('/api/generos?tipo=jogo')
 
-    assert (response.status_code, response.get_json()) == (200, {'generos': [acao]})
+    assert (response.status_code, response.get_json()) == (200, {'generos': [{**acao, 'id_genero': '1'}]})
     assert catalogo.chamadas == [('generos', None), ('generos', 'jogo')]

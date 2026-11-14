@@ -9,10 +9,13 @@ import logging
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from spectree import Response
 
 from banco import consultar_um
+from contrato import contrato
 from repositories.atualizacoes import Atualizacoes
 from repositories.catalogo import Catalogo
+from schemas.utils import ConsultaGeneros, RespostaGeneros
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +26,10 @@ atualizacoes = Atualizacoes()
 
 
 @utils_bp.route('/generos', methods=['GET'])
-def listar_generos():
-    """Listar gêneros; `?tipo=` só os que se aplicam ao Tipo ('nim' não casa com 'anime')."""
-    return jsonify({'generos': catalogo.generos(request.args.get('tipo'))}), 200
+@contrato.validate(resp=Response(HTTP_200=RespostaGeneros), tags=['utils'])
+def listar_generos(query: ConsultaGeneros):
+    """Listar gêneros; `?tipo=` só os que se aplicam ao Tipo de mídia."""
+    return {'generos': catalogo.generos(query.tipo)}
 
 
 @utils_bp.route('/notificacoes', methods=['GET'])
