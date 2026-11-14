@@ -1,7 +1,7 @@
-import type { Midia, MidiaResumo, NotasDaMidia } from '../api/tipos';
+import type { Midia, NotasDaMidia } from '../api/tipos';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
-export function tituloDaMidia(midia: Pick<MidiaResumo, 'titulo_portugues' | 'titulo_original'>): string {
+export function tituloDaMidia(midia: Pick<Midia, 'titulo_portugues' | 'titulo_original'>): string {
   return midia.titulo_portugues || midia.titulo_original;
 }
 
@@ -53,6 +53,15 @@ export function notaDeRanking(midia: Pick<NotasDaMidia, 'nota_media' | 'nota_fon
 
 type Atributo = [rotulo: string, valor: string | number | null];
 
+/** Nomes na tela das Demografias (o enum da API vem em minúsculas). */
+const NOMES_DEMOGRAFIA: Record<NonNullable<Midia['demografia']>, string> = {
+  shounen: 'Shounen',
+  shoujo: 'Shoujo',
+  seinen: 'Seinen',
+  josei: 'Josei',
+  kodomomuke: 'Kodomomuke',
+};
+
 /** Atributos específicos do Tipo de mídia; os vazios ficam de fora. O status de lançamento aparece como
  * "Situação", com o nome legível, porque "Status" na tela é o Estado de consumo. */
 export function atributosDoTipo(midia: Midia): [string, string][] {
@@ -69,7 +78,7 @@ export function atributosDoTipo(midia: Midia): [string, string][] {
       ['Volumes', midia.numero_volumes],
       ['Situação', nomeSituacao],
       ['Autor', midia.autor],
-      ['Demografia', midia.demografia],
+      ['Demografia', midia.demografia && NOMES_DEMOGRAFIA[midia.demografia]],
     ],
     jogo: [
       ['Plataformas', midia.plataformas],

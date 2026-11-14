@@ -1,4 +1,4 @@
-import { ErroApi, ErroRede } from './erros';
+import { ErroRede, erroDaResposta } from './erros';
 import type { RespostaRefresh } from './tipos';
 
 export type Tokens = { access: string; refresh: string | null };
@@ -46,9 +46,7 @@ export function criarCliente(baseUrl: string, fonte: FonteTokens): Cliente {
 
   async function ler<T>(resposta: Response): Promise<T> {
     const corpo = await resposta.json().catch(() => null);
-    if (!resposta.ok) {
-      throw new ErroApi(resposta.status, corpo?.erro ?? corpo?.msg ?? `Erro ${resposta.status}`);
-    }
+    if (!resposta.ok) throw erroDaResposta(resposta.status, corpo);
     return corpo as T;
   }
 
