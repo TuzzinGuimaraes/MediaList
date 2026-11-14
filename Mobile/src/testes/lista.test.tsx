@@ -64,7 +64,7 @@ function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Res
   return { api, rotas, adicionar: (novo: ReturnType<typeof item>) => (lista = [novo, ...lista]) };
 }
 
-const aba = (nome: string, n: number) => screen.findByRole('button', { name: `${nome} (${n})` });
+const aba = (nome: string, n: number) => screen.findByRole('tab', { name: `${nome} (${n})` });
 const linha = (titulo: string) => screen.findByLabelText(`Item ${titulo}`);
 
 describe('aba Lista', () => {
@@ -83,18 +83,18 @@ describe('aba Lista', () => {
     await abrir('/lista');
 
     expect(await aba('Em progresso', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Concluído (1)' })).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /^Platinado/ })).not.toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Concluído (1)' })).toBeOnTheScreen();
+    expect(screen.queryByRole('tab', { name: /^Platinado/ })).not.toBeOnTheScreen();
     expect(await linha('Sousou no Frieren')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item JoJo no Kimyou na Bouken')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Concluído (1)' }));
     expect(await linha('Fullmetal Alchemist')).toBeOnTheScreen();
 
     await trocarRecorte('Jogos');
     expect(await aba('Concluído', 2)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Platinado (1)' })).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Platinado (1)' })).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Hollow Knight')).toBeOnTheScreen();
     expect(screen.getByLabelText('Item Celeste')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Item Fullmetal Alchemist')).not.toBeOnTheScreen();
@@ -179,7 +179,7 @@ describe('aba Lista', () => {
     // Concluído na hora (otimista) e confirmado pela Lista refeita.
     expect(await aba('Concluído', 1)).toBeOnTheScreen();
     expect(await aba('Em progresso', 1)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: 'Concluído (1)' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Concluído (1)' }));
     const concluido = await linha('Sousou no Frieren');
     expect(within(concluido).getByLabelText('Progresso: 28 de 28')).toBeOnTheScreen();
     expect(within(concluido).getByRole('button', { name: 'Mais um em Sousou no Frieren' })).toBeDisabled();

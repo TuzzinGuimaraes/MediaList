@@ -187,6 +187,9 @@ export type ItemLista = Midia & {
   /** Recontagem. */
   total_rewatches?: number | null;
   comentario?: string | null;
+  /** ISO 8601 ("2026-11-06T10:00:00+00:00"): Ordem "adicionado/atualizado recentemente". */
+  data_adicao?: string;
+  data_atualizacao?: string;
 };
 
 export type RespostaLista = { lista: ItemLista[] };
