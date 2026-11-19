@@ -17,12 +17,12 @@ import { CardA, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Icone } from '../../componentes/Icone';
+import { Paginacao } from '../../componentes/Paginacao';
 import { Selo } from '../../componentes/Selo';
 import { useApi } from '../../sessao/SessaoContext';
 import { type BuscaExplorar, consultaDaBusca, FILTROS_DO_TIPO, filtrosAtivos, validarBuscaExplorar } from './busca';
 import { CampoAtrasado } from './CampoAtrasado';
 import { Filtros, type Mudar } from './Filtros';
-import { NavPaginas } from './NavPaginas';
 
 const rota = getRouteApi('/autenticado/explorar');
 
@@ -102,6 +102,13 @@ export function Explorar() {
     select: (r) => r.generos.map((g) => g.nome_genero),
     staleTime: Infinity,
   });
+  // Só jogos (plataformas) e animes (estúdios) têm facetas.
+  const facetas = useQuery({
+    queryKey: chaves.catalogo.facetas(tipo),
+    queryFn: () => exigir(api.GET('/api/midias/facetas', { params: { query: { tipo } } })),
+    enabled: tipo === 'jogo' || tipo === 'anime',
+    staleTime: Infinity,
+  });
   const ativos = filtrosAtivos(busca, tipo, tipoPadrao);
 
   return (
@@ -124,7 +131,15 @@ export function Explorar() {
           />
         </label>
         <div className="mt-3">
-          <Filtros busca={busca} tipo={tipo} tipos={tipos} generos={generos} mudar={mudar} trocarTipo={trocarTipo} />
+          <Filtros
+            busca={busca}
+            tipo={tipo}
+            tipos={tipos}
+            generos={generos}
+            facetas={facetas}
+            mudar={mudar}
+            trocarTipo={trocarTipo}
+          />
         </div>
         {ativos ? (
           <button type="button" onClick={limpar} className="mt-4 text-[14px] font-semibold text-marca-texto hover:underline">
@@ -188,7 +203,7 @@ function Resultados({ resultado, busca, limpar, irParaPagina }: PropsResultados)
           );
         })}
       </ul>
-      <NavPaginas paginacao={paginas} ir={irParaPagina} />
+      <Paginacao paginacao={paginas} ir={irParaPagina} numeros />
     </div>
   );
 }

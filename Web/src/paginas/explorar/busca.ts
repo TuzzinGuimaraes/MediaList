@@ -114,3 +114,8 @@ export function filtrosAtivos(b: BuscaExplorar, tipo: TipoMidia, tipoPadrao: Tip
   const anos = b.ano_min !== undefined || b.ano_max !== undefined ? 1 : 0;
   return (tipo !== tipoPadrao ? 1 : 0) + (b.genero ? 1 : 0) + (b.situacao ? 1 : 0) + (b.ordem ? 1 : 0) + anos + extras;
 }
+
+/** O resumo da seção Ano fechada ("2000 a …"), ou null sem ano. */
+export function resumoDoAno(busca: BuscaExplorar): string | null {
+  return busca.ano_min !== undefined || busca.ano_max !== undefined ? `${busca.ano_min ?? '…'} a ${busca.ano_max ?? '…'}` : null;
+}

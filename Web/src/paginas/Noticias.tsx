@@ -11,7 +11,7 @@ import type { Esquemas } from '../api/tipos';
 import { Botao } from '../componentes/Botao';
 import { Carregando, ErroTela, Vazio } from '../componentes/Estados';
 import { Icone } from '../componentes/Icone';
-import { Paginador } from '../componentes/Paginador';
+import { Paginacao } from '../componentes/Paginacao';
 import { ehAdmin } from '../sessao/sessao';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { NovaNoticia } from './NovaNoticia';
@@ -80,7 +80,7 @@ export function Noticias() {
                 <CartaoNoticia key={n.id_noticia} noticia={n} />
               ))}
             </div>
-            <Paginador paginacao={paginacao(consulta.data)} mudar={mudar} />
+            <Paginacao paginacao={paginacao(consulta.data)} ir={mudar} />
           </>
         ) : (
           <Vazio texto="Nenhuma notícia disponível no momento." />

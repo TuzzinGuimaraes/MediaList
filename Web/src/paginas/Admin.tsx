@@ -17,7 +17,7 @@ import type { Esquemas } from '../api/tipos';
 import { Botao } from '../componentes/Botao';
 import { Modal } from '../componentes/Camada';
 import { Carregando, ErroTela, Vazio } from '../componentes/Estados';
-import { Paginador } from '../componentes/Paginador';
+import { Paginacao } from '../componentes/Paginacao';
 import { Selo } from '../componentes/Selo';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 
@@ -112,7 +112,7 @@ function Usuarios() {
           );
         })}
       </ul>
-      <Paginador paginacao={paginacao(consulta.data)} mudar={setPagina} />
+      <Paginacao paginacao={paginacao(consulta.data)} ir={setPagina} />
     </div>
   );
 }
