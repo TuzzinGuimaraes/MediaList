@@ -8,7 +8,7 @@ import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
 import { BotaoFiltros, GrupoFiltro, SheetFiltros } from '@/components/SheetFiltros';
-import { NOMES_TIPO } from '@/dominio/estadoConsumo';
+import { NOMES_TIPO } from '@dominio/estadoConsumo';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 import { useCores } from '@/tema/TemaContext';
 import { useCabecalhoQueEsconde } from '@/tema/useCabecalhoQueEsconde';

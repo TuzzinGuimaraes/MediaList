@@ -32,6 +32,7 @@ from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
 from schemas.midias import (
     AtualizacaoPublicada,
+    ConsultaFacetas,
     ConsultaMidias,
     ConsultaPopulares,
     ConsultaTrending,
@@ -39,7 +40,9 @@ from schemas.midias import (
     CorpoMidia,
     Midia,
     MidiaDetalhe,
+    RespostaAtividade,
     RespostaDistribuicao,
+    RespostaFacetas,
     RespostaNotas,
     RespostaPopulares,
     RespostaTrending,
@@ -54,7 +57,7 @@ avaliacoes = AvaliacaoRepository()
 #: Filtros de GET /midias, repassados ao Catálogo com o mesmo nome.
 FILTROS = (
     'busca', 'genero', 'status', 'autor', 'estudio', 'demografia', 'plataforma', 'desenvolvedor', 'modo_jogo',
-    'artista',
+    'artista', 'ano_min', 'ano_max',
 )
 
 ERROS_DE_ESCRITA = {**ERROS_COM_PERMISSAO, 'HTTP_404': Erro}
@@ -88,6 +91,13 @@ def trending_midias(query: ConsultaTrending):
 def midias_populares(query: ConsultaPopulares):
     """As Mídias com mais Usuários; a nota desempata."""
     return {'midias': catalogo.populares(query.tipo)}
+
+
+@midias_bp.route('/facetas', methods=['GET'])
+@contrato.validate(resp=Response(HTTP_200=RespostaFacetas), tags=['midias'])
+def facetas_midias(query: ConsultaFacetas):
+    """Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`."""
+    return catalogo.facetas(query.tipo)
 
 
 @midias_bp.route('/<string:id_midia>', methods=['GET'])
@@ -154,6 +164,15 @@ def criar_atualizacao_midia(id_midia, json: CorpoAtualizacao):
 def distribuicao_midia(id_midia):
     """Distribuição de status dos usuários para uma mídia."""
     return {'distribuicao': catalogo.distribuicao(id_midia)}
+
+
+@midias_bp.route('/<string:id_midia>/atividade', methods=['GET'])
+@contrato.validate(resp=Response(HTTP_200=RespostaAtividade, HTTP_404=Erro), tags=['midias'])
+def atividade_midia(id_midia):
+    """Mapa de atividade: adições à Lista, Avaliações e conclusões por dia nas últimas 52 semanas."""
+    if not catalogo.obter(id_midia):
+        return midia_nao_encontrada()
+    return catalogo.atividade(id_midia)
 
 
 @midias_bp.route('/<string:id_midia>/notas', methods=['GET'])

@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View } from 'r
 
 import { useSalvarAvaliacao } from '../api/avaliacoes';
 import { mensagemDeErro } from '../api/erros';
-import { type FormularioAvaliacao as Campos, validarAvaliacao } from '../dominio/avaliacao';
+import { type FormularioAvaliacao as Campos, validarAvaliacao } from '@dominio/avaliacao';
 import { Botao } from './Botao';
 import { Campo } from './Campo';
 

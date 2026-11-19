@@ -7,7 +7,7 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { Campo } from '@/components/Campo';
 import { TelaFormulario } from '@/components/Tela';
-import { validarLogin } from '@/dominio/conta';
+import { validarLogin } from '@dominio/conta';
 
 const textos = {
   titulo: 'MediaList',

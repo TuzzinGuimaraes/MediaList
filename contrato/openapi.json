@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "AtividadeDoDia": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "total": {
+            "description": "Adições à Lista, Avaliações e conclusões da Mídia no dia",
+            "minimum": 1,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data",
+          "total"
+        ],
+        "title": "AtividadeDoDia",
+        "type": "object"
+      },
       "AtualizacaoDeMidia": {
         "properties": {
           "dados_adicionais": {
@@ -360,6 +381,30 @@
         "title": "CodigoErro",
         "type": "string"
       },
+      "ConsultaFacetas": {
+        "properties": {
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sem Tipo, as facetas de todos",
+            "title": "Tipo"
+          }
+        },
+        "title": "ConsultaFacetas",
+        "type": "object"
+      },
       "ConsultaGeneros": {
         "properties": {
           "tipo": {
@@ -422,6 +467,36 @@
       "ConsultaMidias": {
         "description": "`GET /midias`: Tipo, filtros, ordem e página.",
         "properties": {
+          "ano_max": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "title": "Ano Max"
+          },
+          "ano_min": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "title": "Ano Min"
+          },
           "artista": {
             "anyOf": [
               {
@@ -4078,6 +4153,37 @@
         "title": "ProgressoItemLista",
         "type": "object"
       },
+      "RespostaAtividade": {
+        "properties": {
+          "dias": {
+            "description": "Só os dias com atividade, do mais antigo ao mais recente",
+            "items": {
+              "$ref": "#/components/schemas/AtividadeDoDia"
+            },
+            "title": "Dias",
+            "type": "array"
+          },
+          "fim": {
+            "description": "Hoje",
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "description": "1º dia da janela: 52 semanas (364 dias) terminando em `fim`",
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dias",
+          "inicio",
+          "fim"
+        ],
+        "title": "RespostaAtividade",
+        "type": "object"
+      },
       "RespostaAvaliacoesModeracao": {
         "properties": {
           "avaliacoes": {
@@ -4132,6 +4238,31 @@
         "title": "RespostaEstatisticas",
         "type": "object"
       },
+      "RespostaFacetas": {
+        "description": "Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o\nfiltro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).",
+        "properties": {
+          "estudios": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Estudios",
+            "type": "array"
+          },
+          "plataformas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plataformas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plataformas",
+          "estudios"
+        ],
+        "title": "RespostaFacetas",
+        "type": "object"
+      },
       "RespostaGeneros": {
         "properties": {
           "generos": {
@@ -4179,7 +4310,7 @@
                 "type": "null"
               }
             ],
-            "description": "Nulo se o banco não gravou o refresh; o login vale mesmo assim",
+            "description": "Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web (`X-Cliente: web`), em que o refresh vai no cookie httpOnly",
             "title": "Refresh Token"
           },
           "usuario": {
@@ -4311,8 +4442,16 @@
             "type": "string"
           },
           "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly",
+            "title": "Refresh Token"
           }
         },
         "required": [
@@ -4887,7 +5026,7 @@
     },
     "/api/auth/refresh": {
       "post": {
-        "description": "Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.",
+        "description": "O web (`X-Cliente: web`) manda e recebe o refresh no cookie `medialist_refresh`, e o corpo da resposta leva `refresh_token: null`; o app, no corpo. Recusado no web, o cookie é apagado.\n\nBanco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.",
         "operationId": "post__api_auth_refresh",
         "parameters": [],
         "requestBody": {
@@ -6304,6 +6443,48 @@
             }
           },
           {
+            "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "in": "query",
+            "name": "ano_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+              "title": "Ano Min"
+            }
+          },
+          {
+            "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "in": "query",
+            "name": "ano_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+              "title": "Ano Max"
+            }
+          },
+          {
             "description": "",
             "in": "query",
             "name": "ordem",
@@ -6346,6 +6527,64 @@
           }
         },
         "summary": "Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/facetas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_facetas",
+        "parameters": [
+          {
+            "description": "Sem Tipo, as facetas de todos",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sem Tipo, as facetas de todos",
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaFacetas"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`.",
         "tags": [
           "midias"
         ]
@@ -6701,6 +6940,59 @@
           }
         ],
         "summary": "Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/atividade": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_atividade",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaAtividade"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Mapa de atividade: adições à Lista, Avaliações e conclusões por dia nas últimas 52 semanas.",
         "tags": [
           "midias"
         ]

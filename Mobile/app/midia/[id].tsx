@@ -16,16 +16,16 @@ import { Info } from '@/components/Info';
 import { Secao } from '@/components/Secao';
 import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { Banner, PosterDoDetalhe, Voltar } from '@/components/TopoDetalhe';
-import { formatarData } from '@/dominio/datas';
-import { nomeDoRotulo, somarPorEstado } from '@/dominio/estadoConsumo';
-import { temProgresso, textoDoProgresso } from '@/dominio/itemLista';
+import { formatarData } from '@dominio/datas';
+import { nomeDoRotulo, somarPorEstado } from '@dominio/estadoConsumo';
+import { temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import {
   atributosDoTipo,
   notasDaMidia,
   ROTULO_NOTA_MEDIA,
   tituloAlternativo,
   tituloDaMidia,
-} from '@/dominio/midia';
+} from '@dominio/midia';
 import { useCores } from '@/tema/TemaContext';
 
 const textos = {

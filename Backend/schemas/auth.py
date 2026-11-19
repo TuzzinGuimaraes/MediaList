@@ -73,13 +73,16 @@ class UsuarioDaSessao(BaseModel):
 
 class RespostaLogin(BaseModel):
     access_token: str
-    refresh_token: str | None = Field(description='Nulo se o banco não gravou o refresh; o login vale mesmo assim')
+    refresh_token: str | None = Field(
+        description='Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web '
+        '(`X-Cliente: web`), em que o refresh vai no cookie httpOnly',
+    )
     usuario: UsuarioDaSessao
 
 
 class RespostaRefresh(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: str | None = Field(description='Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly')
 
 
 class UsuarioAtual(BaseModel):

@@ -12,17 +12,13 @@ updates:
         update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
-    directory: /Frontend
+    directory: /Web
     schedule:
       interval: weekly
     groups:
-      frontend:
+      web:
         patterns: ["*"]
         update-types: ["minor", "patch"]
-    # Tailwind 4 troca o plugin do PostCSS; entra junto com a migração para Vite (ticket 19).
-    ignore:
-      - dependency-name: "tailwindcss"
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /Mobile
@@ -61,7 +57,7 @@ updates:
   - package-ecosystem: docker
     directories:
       - /Backend
-      - /Frontend
+      - /Web
     schedule:
       interval: weekly
     groups:

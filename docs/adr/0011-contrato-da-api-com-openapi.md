@@ -33,6 +33,18 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   (faixas de 1 a 10, a nota arredondada) e a Avaliação do Usuário logado, ou null sem login.
   Assim os clientes buscam só a 1ª página das Avaliações, em vez de todas para montar o gráfico
   e achar a própria.
+- **Filtro por ano:** `GET /midias` aceita `ano_min` e `ano_max` (inteiros de 1 a 9999,
+  inclusive, sobre o ano da `data_lancamento`); Mídia sem data fica fora quando há filtro de ano.
+  O `total` conta só as que passam no filtro.
+- **Atividade de uma Mídia:** `GET /midias/<id>/atividade` devolve
+  `{dias: [{data, total}], inicio, fim}`: quantas adições à Lista (`data_adicao`), Avaliações
+  (`data_avaliacao`) e conclusões (`data_conclusao`) houve em cada dia das últimas 52 semanas
+  (364 dias, `fim` é hoje). Só saem os dias com atividade, em ordem; 404 se a Mídia não existe.
+  Hoje e o dia de cada instante seguem o fuso da sessão do banco.
+- **Facetas do catálogo:** `GET /midias/facetas?tipo=` devolve `{plataformas, estudios}`, os
+  valores distintos e ordenados dos filtros `plataforma` e `estudio` de `GET /midias`, para os
+  clientes oferecerem opções em vez de texto livre. Plataformas só nos jogos, estúdios só nos
+  animes; o que não se aplica ao Tipo vem vazio, e sem Tipo vêm os dois.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no

@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { FILTROS_PADRAO, type FiltrosLista, type OpcoesDosFiltros, type OrdemLista } from '../dominio/filtrosLista';
+import { FILTROS_PADRAO, type FiltrosLista, type OpcoesDosFiltros, type OrdemLista } from '@dominio/filtrosLista';
 import { GrupoFiltro, SheetFiltros } from './SheetFiltros';
 
 const textos = {

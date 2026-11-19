@@ -1,0 +1,71 @@
+// Os cards do Início montados da Mídia e do Item, com as regras do dominio/.
+import { nomeDoProgresso, textoDoProgresso } from '@dominio/itemLista';
+import { type ComSituacao, emLancamento } from '@dominio/situacao';
+
+import type { Esquemas } from '../../api/tipos';
+import { CardA, CardC, NotasCartao } from '../../componentes/Cards';
+import { cartaoDaMidia } from '../../componentes/cartao';
+import { Selo, SeloStatus } from '../../componentes/Selo';
+
+type ItemLista = Esquemas['ItemLista'];
+/** Em alta e GET /midias trazem a Mídia inteira; Populares, só o resumo. */
+type MidiaDoCartao = Esquemas['MidiaPopular'] & Partial<ComSituacao>;
+
+const LARGURA_A = 160;
+const LARGURA_C = 340;
+const ALTURA_C = 136;
+
+type Contexto = {
+  /** Item da Mídia na Lista, se houver (selo de Status e fio). */
+  item: ItemLista | undefined;
+  posicaoTop: number | null;
+};
+
+/** Card A de um carrossel de catálogo: selos de lançamento e de Status sobre o pôster. */
+export function CartaoCatalogo({ midia, item, posicaoTop, largura = LARGURA_A }: Contexto & { midia: MidiaDoCartao; largura?: number }) {
+  const lancamento = emLancamento(midia);
+  const selos =
+    lancamento || item ? (
+      <>
+        {lancamento ? <Selo texto={lancamento} tom="marca" /> : null}
+        {item ? <SeloStatus rotulo={item.status_consumo} tipo={item.tipo} sobreImagem /> : null}
+      </>
+    ) : null;
+  return (
+    <CardA
+      {...cartaoDaMidia(midia, item)}
+      notas={<NotasCartao midia={midia} />}
+      selos={selos}
+      posicaoTop={posicaoTop}
+      largura={largura}
+    />
+  );
+}
+
+/** Top 10: o numeral grande ao lado do card A. */
+export function CartaoTop({ posicao, ...props }: Contexto & { midia: MidiaDoCartao; posicao: number }) {
+  return (
+    <div className="flex shrink-0 items-end">
+      <span aria-hidden className="-mr-4 select-none text-[120px] font-bold leading-[0.85] tracking-[-0.06em] text-texto-suave/40">
+        {posicao}
+      </span>
+      <CartaoCatalogo {...props} largura={LARGURA_A - 16} />
+    </div>
+  );
+}
+
+/** Card C do Continuar: Status, Progresso e o fio. */
+export function CartaoContinuar({ item, posicaoTop }: Contexto & { item: ItemLista }) {
+  return (
+    <CardC
+      {...cartaoDaMidia(item, item)}
+      bannerUrl={item.banner_url}
+      notas={<NotasCartao midia={item} />}
+      status={<SeloStatus rotulo={item.status_consumo} tipo={item.tipo} />}
+      detalhe={`${nomeDoProgresso(item.tipo)}: ${textoDoProgresso(item)}`}
+      posicaoTop={posicaoTop}
+      largura={LARGURA_C}
+      altura={ALTURA_C}
+    />
+  );
+}

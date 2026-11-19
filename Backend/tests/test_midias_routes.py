@@ -60,6 +60,7 @@ def test_get_midias_repassa_filtros_ao_catalogo(client, catalogo):
     response = client.get(
         '/api/midias?tipo=jogo&pagina=1&por_pagina=15&busca=zelda&genero=Aventura'
         '&status=lancado&plataforma=Switch&desenvolvedor=Nintendo&modo_jogo=single&ordem=titulo'
+        '&ano_min=2000&ano_max=2010'
     )
 
     assert response.status_code == 200
@@ -69,7 +70,7 @@ def test_get_midias_repassa_filtros_ao_catalogo(client, catalogo):
     filtros = {
         'busca': 'zelda', 'genero': 'Aventura', 'status': 'lancado', 'autor': None, 'estudio': None,
         'demografia': None, 'plataforma': 'Switch', 'desenvolvedor': 'Nintendo', 'modo_jogo': 'single',
-        'artista': None, 'ordem': 'titulo',
+        'artista': None, 'ano_min': 2000, 'ano_max': 2010, 'ordem': 'titulo',
     }
     assert falso.chamadas == [('buscar', 'jogo', 1, 15, filtros), ('contar', 'jogo', filtros)]
 
@@ -100,6 +101,19 @@ def test_get_midias_com_tipo_ou_ordem_desconhecidos_responde_400(client, catalog
     assert response.get_json() == {
         'erro': 'Dados inválidos', 'codigo': 'dados_invalidos', 'detalhes': {campo: 'Valor fora dos permitidos'},
     }
+    assert falso.chamadas == []
+
+
+@pytest.mark.parametrize('consulta, campo', [('ano_min=dois-mil', 'ano_min'), ('ano_min=0', 'ano_min'),
+                                             ('ano_max=10000', 'ano_max')])
+def test_get_midias_com_ano_invalido_responde_400(client, catalogo, consulta, campo):
+    falso = catalogo()
+
+    response = client.get(f'/api/midias?{consulta}')
+
+    assert response.status_code == 400
+    assert response.get_json()['codigo'] == 'dados_invalidos'
+    assert list(response.get_json()['detalhes']) == [campo]
     assert falso.chamadas == []
 
 

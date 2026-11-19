@@ -1,28 +1,16 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 
+import { juntarCarrossel, type OrdemCarrossel } from '@dominio/carrossel';
 import { useSessao } from '../auth/SessaoContext';
-import { notaDeRanking } from '../dominio/midia';
-import { decrescente } from '../dominio/ordenacao';
 import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
-import type { Midia, OrdemCatalogo, PaginaMidias } from './tipos';
+import type { PaginaMidias } from './tipos';
 
 /** Quantas Mídias cada Tipo manda para um carrossel do Início. */
 export const POR_CARROSSEL = 20;
 
 /** As ordens do catálogo que viram carrossel no Início (a alfabética não). */
-export type OrdemCarrossel = Exclude<OrdemCatalogo, 'titulo'>;
-
-/**
- * Como juntar as respostas dos Tipos de um Recorte na mesma ordem que o backend usou em cada
- * uma: a chave decrescente da ordem, com null no fim.
- */
-const CHAVE_DA_ORDEM: Record<OrdemCarrossel, (m: Midia) => number | string | null> = {
-  nota_media: notaDeRanking,
-  data_lancamento: (m) => m.data_lancamento,
-  mais_adicionados: (m) => m.total_usuarios,
-  mais_concluidos: (m) => m.total_concluidos,
-};
+export type { OrdemCarrossel };
 
 function consultaCarrossel(
   cliente: Cliente,
@@ -42,10 +30,11 @@ function consultaCarrossel(
           return cliente.requisitar<PaginaMidias>(`/midias?${params}`);
         }),
       );
-      return respostas
-        .flatMap((r) => r.itens)
-        .sort(decrescente(CHAVE_DA_ORDEM[ordem]))
-        .slice(0, POR_CARROSSEL);
+      return juntarCarrossel(
+        respostas.map((r) => r.itens),
+        ordem,
+        POR_CARROSSEL,
+      );
     },
   };
 }

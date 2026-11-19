@@ -4,7 +4,7 @@
 # pode conter espaços.
 ROOT_DIR := $(CURDIR)
 BACKEND_DIR := ./Backend
-FRONTEND_DIR := ./Frontend
+WEB_DIR := ./Web
 MOBILE_DIR := ./Mobile
 DUMP_DIR := ./dumps
 
@@ -26,16 +26,16 @@ IMPORT_WORKERS ?= 8
 DUMP_NAME ?= medialist_$(shell date +%Y%m%d_%H%M%S).dump
 DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
-.PHONY: help install install-backend install-frontend install-mobile mobile-dev compose-build services-up \
-	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
-	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
-	lint-mobile build-frontend build api-tipos \
-	import-animes import-mangas import-jogos import-all seed-dev clean-frontend db-dump db-restore
+.PHONY: help install install-backend install-web install-mobile mobile-dev compose-build services-up \
+	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev web-dev smoke-postgres \
+	smoke-permissions smoke test-backend test-web test-mobile test lint lint-backend lint-web \
+	lint-mobile build-web build api-tipos clean-web \
+	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
-	@printf "  make services-up       Sobe frontend, backend e PostgreSQL via Docker\n"
-	@printf "  make compose-build     Rebuilda as imagens Docker de backend e frontend\n"
+	@printf "  make services-up       Sobe o web (serviço frontend), o backend e o PostgreSQL via Docker\n"
+	@printf "  make compose-build     Rebuilda as imagens Docker do backend e do web (serviço frontend)\n"
 	@printf "  make db-migrate        Aplica as migrações pendentes (alembic upgrade head, serviço migrate)\n"
 	@printf "  make db-revision MSG=\"...\" Cria uma revisão nova em Backend/migrations/versions\n"
 	@printf "  make db-shell          Abre o psql (usuário dono) dentro do container\n"
@@ -51,27 +51,28 @@ help:
 	@printf "  make seed-dev          Cria os dados de desenvolvimento (SEED_ARGS=--recriar refaz)\n"
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
-	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
+	@printf "  make web-dev           Inicia o web (Vite) em http://localhost:3006, /api -> :5000\n"
 	@printf "  make mobile-dev        Sobe o Expo para o Expo Go; no WSL2, anuncia o IP do Windows na porta 8081\n"
 	@printf "  make smoke             Executa os dois smoke tests no container backend\n"
-	@printf "  make test              Executa os testes do backend, do frontend e do mobile no host\n"
+	@printf "  make test              Executa os testes do backend, do web e do mobile no host\n"
 	@printf "  make test-backend      Executa o pytest do backend no host\n"
-	@printf "  make test-frontend     Executa os testes do frontend no host\n"
+	@printf "  make test-web          Executa os testes do web (Vitest)\n"
 	@printf "  make test-mobile       Executa os testes do mobile no host\n"
-	@printf "  make lint              Roda ruff (backend), eslint (frontend) e o lint do mobile\n"
+	@printf "  make lint              Roda ruff (backend), tsc e eslint (web) e o lint do mobile\n"
+	@printf "  make lint-web          Roda tsc e eslint do web\n"
 	@printf "  make api-tipos         Regera contrato/openapi.json e contrato/api.d.ts a partir do Backend\n"
-	@printf "  make build-frontend    Gera a build do frontend no host\n"
+	@printf "  make build-web         Gera a build do web no host (Web/dist)\n"
 	@printf "  make services-logs     Mostra logs do Docker Compose\n"
 	@printf "  make services-down     Derruba os containers do stack\n"
 	@printf "\nVariáveis úteis no Docker: BACKEND_PORT, FRONTEND_PORT, POSTGRES_PORT, RAWG_API_KEY, IMPORT_WORKERS\n\n"
 
-install: install-backend install-frontend install-mobile
+install: install-backend install-web install-mobile
 
 install-backend:
 	cd "$(BACKEND_DIR)" && $(PIP) install -r requirements-dev.txt
 
-install-frontend:
-	cd "$(FRONTEND_DIR)" && $(NPM) install
+install-web:
+	cd "$(WEB_DIR)" && $(NPM) install
 
 install-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) install
@@ -130,8 +131,9 @@ backend-dev:
 	$(DOCKER_COMPOSE) up -d postgres
 	cd "$(BACKEND_DIR)" && $(PYTHON) app.py
 
-frontend-dev:
-	cd "$(FRONTEND_DIR)" && $(NPM) start
+# Vite na 3006, com /api no proxy para :5000 (API_ALVO troca o destino).
+web-dev:
+	cd "$(WEB_DIR)" && $(NPM) run dev
 
 # No WSL2 confere o portproxy do Windows e fixa a porta 8081 (Mobile/scripts/dev.sh).
 # MOBILE_ARGS vai para o script: --dry-run só verifica; o resto vai para o expo start.
@@ -151,24 +153,24 @@ smoke: smoke-postgres smoke-permissions
 test-backend:
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m pytest -q
 
-test-frontend:
-	cd "$(FRONTEND_DIR)" && CI=true $(NPM) test -- --watchAll=false
-
 test-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) test -- --ci
 
-test: test-backend test-frontend test-mobile
+test-web:
+	cd "$(WEB_DIR)" && $(NPM) test
+
+test: test-backend test-web test-mobile
 
 lint-backend:
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m ruff check .
 
-lint-frontend:
-	cd "$(FRONTEND_DIR)" && npx eslint src
-
 lint-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) run lint
 
-lint: lint-backend lint-frontend lint-mobile
+lint-web:
+	cd "$(WEB_DIR)" && $(NPM) run typecheck && $(NPM) run lint
+
+lint: lint-backend lint-web lint-mobile
 
 # Contrato da API (ADR 0011): OpenAPI exportado sem subir o servidor, e os tipos
 # TS gerados dele. Os dois arquivos entram no git; o CI falha se ficarem velhos.
@@ -176,10 +178,10 @@ api-tipos:
 	cd "$(BACKEND_DIR)" && $(PYTHON) exportar_openapi.py
 	$(OPENAPI_TYPESCRIPT) contrato/openapi.json --output contrato/api.d.ts --default-non-nullable false
 
-build-frontend:
-	cd "$(FRONTEND_DIR)" && $(NPM) run build
+build-web:
+	cd "$(WEB_DIR)" && $(NPM) run build
 
-build: build-frontend
+build: build-web
 
 import-animes:
 	$(DOCKER_COMPOSE) up -d postgres
@@ -203,5 +205,5 @@ seed-dev:
 	$(DOCKER_COMPOSE) up -d --wait postgres
 	$(DOCKER_COMPOSE) run --rm --build backend python -m seed_dev $(SEED_ARGS)
 
-clean-frontend:
-	rm -rf "$(FRONTEND_DIR)/build"
+clean-web:
+	rm -rf "$(WEB_DIR)/dist"

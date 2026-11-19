@@ -100,7 +100,9 @@ export interface paths {
         put?: never;
         /**
          * Trocar um refresh token por um par novo de access + refresh (rotação).
-         * @description Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
+         * @description O web (`X-Cliente: web`) manda e recebe o refresh no cookie `medialist_refresh`, e o corpo da resposta leva `refresh_token: null`; o app, no corpo. Recusado no web, o cookie é apagado.
+         *
+         *     Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
          */
         post: operations["post__api_auth_refresh"];
         delete?: never;
@@ -319,6 +321,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/facetas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`. */
+        get: operations["get__api_midias_facetas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/midias/populares": {
         parameters: {
             query?: never;
@@ -367,6 +386,23 @@ export interface paths {
         post?: never;
         /** Deletar mídia central. */
         delete: operations["delete__api_midias_{id_midia}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/{id_midia}/atividade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mapa de atividade: adições à Lista, Avaliações e conclusões por dia nas últimas 52 semanas. */
+        get: operations["get__api_midias_{id_midia}_atividade"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -616,6 +652,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AtividadeDoDia */
+        AtividadeDoDia: {
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /**
+             * Total
+             * @description Adições à Lista, Avaliações e conclusões da Mídia no dia
+             */
+            total: number;
+        };
         /** AtualizacaoDeMidia */
         AtualizacaoDeMidia: {
             /** Dados Adicionais */
@@ -746,6 +795,15 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConsultaFacetas */
+        ConsultaFacetas: {
+            /**
+             * Tipo
+             * @description Sem Tipo, as facetas de todos
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -773,6 +831,18 @@ export interface components {
          * @description `GET /midias`: Tipo, filtros, ordem e página.
          */
         ConsultaMidias: {
+            /**
+             * Ano Max
+             * @description Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora
+             * @default null
+             */
+            ano_max?: number | null;
+            /**
+             * Ano Min
+             * @description Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora
+             * @default null
+             */
+            ano_min?: number | null;
             /**
              * Artista
              * @default null
@@ -2034,6 +2104,26 @@ export interface components {
             /** Progresso Atual */
             progresso_atual: number;
         };
+        /** RespostaAtividade */
+        RespostaAtividade: {
+            /**
+             * Dias
+             * @description Só os dias com atividade, do mais antigo ao mais recente
+             */
+            dias: components["schemas"]["AtividadeDoDia"][];
+            /**
+             * Fim
+             * Format: date
+             * @description Hoje
+             */
+            fim: string;
+            /**
+             * Inicio
+             * Format: date
+             * @description 1º dia da janela: 52 semanas (364 dias) terminando em `fim`
+             */
+            inicio: string;
+        };
         /** RespostaAvaliacoesModeracao */
         RespostaAvaliacoesModeracao: {
             /**
@@ -2056,6 +2146,17 @@ export interface components {
             estatisticas: components["schemas"]["EstatisticaPorTipo"][];
             resumo: components["schemas"]["ResumoEstatisticas"];
         };
+        /**
+         * RespostaFacetas
+         * @description Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
+         *     filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).
+         */
+        RespostaFacetas: {
+            /** Estudios */
+            estudios: string[];
+            /** Plataformas */
+            plataformas: string[];
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
@@ -2072,7 +2173,7 @@ export interface components {
             access_token: string;
             /**
              * Refresh Token
-             * @description Nulo se o banco não gravou o refresh; o login vale mesmo assim
+             * @description Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web (`X-Cliente: web`), em que o refresh vai no cookie httpOnly
              */
             refresh_token: string | null;
             usuario: components["schemas"]["UsuarioDaSessao"];
@@ -2120,8 +2221,11 @@ export interface components {
         RespostaRefresh: {
             /** Access Token */
             access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
+            /**
+             * Refresh Token
+             * @description Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly
+             */
+            refresh_token: string | null;
         };
         /** RespostaTrending */
         RespostaTrending: {
@@ -3321,6 +3425,10 @@ export interface operations {
                 desenvolvedor?: string | null;
                 modo_jogo?: string | null;
                 artista?: string | null;
+                /** @description Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora */
+                ano_min?: number | null;
+                /** @description Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora */
+                ano_max?: number | null;
                 ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
             };
             header?: never;
@@ -3336,6 +3444,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginaMidia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_facetas: {
+        parameters: {
+            query?: {
+                /** @description Sem Tipo, as facetas de todos */
+                tipo?: ("anime" | "manga" | "jogo") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaFacetas"];
                 };
             };
             /** @description Bad Request */
@@ -3582,6 +3722,46 @@ export interface operations {
             };
             /** @description Unprocessable Content */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}_atividade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaAtividade"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

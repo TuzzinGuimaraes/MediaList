@@ -1,4 +1,7 @@
 """Vocabulário de Estado de consumo e Rótulos de estado (ver CONTEXT.md)."""
+import json
+from pathlib import Path
+
 import pytest
 
 from schemas import estado_consumo as ec
@@ -92,3 +95,10 @@ def test_rotulo_de_estado_do_contrato_e_o_mesmo_conjunto_dos_rotulos_validos():
     from typing import get_args
 
     assert frozenset(get_args(ec.RotuloDeEstado)) == ec.ROTULOS_VALIDOS
+
+
+
+def test_rotulos_do_dominio_compartilhado_batem_com_o_backend():
+    """O web e o app leem os Rótulos de dominio/rotulosDeEstado.json; o backend é autoritativo (ADR 0002)."""
+    caminho = Path(__file__).resolve().parents[2] / 'dominio' / 'rotulosDeEstado.json'
+    assert json.loads(caminho.read_text(encoding='utf-8')) == ec.ROTULOS_POR_TIPO

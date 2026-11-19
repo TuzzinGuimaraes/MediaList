@@ -6,8 +6,8 @@ import { FlatList, Text, useWindowDimensions, View } from 'react-native';
 
 import { usePosicaoTop10 } from '../api/midias';
 import type { ItemLista, Midia } from '../api/tipos';
-import { estadoDe, nomeDoTipo } from '../dominio/estadoConsumo';
-import { notasDaMidia, tituloDaMidia } from '../dominio/midia';
+import { estadoDe, nomeDoTipo } from '@dominio/estadoConsumo';
+import { notasDaMidia, tituloDaMidia } from '@dominio/midia';
 import { useReduzirMovimento } from '../tema/movimento';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';

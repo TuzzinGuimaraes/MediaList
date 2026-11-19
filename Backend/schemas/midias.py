@@ -35,6 +35,8 @@ StatusJogo = Literal['lancado', 'em_desenvolvimento', 'cancelado', 'remasterizad
 Demografia = Literal['shounen', 'shoujo', 'seinen', 'josei', 'kodomomuke']
 ModoJogo = Literal['single', 'multi', 'ambos']
 OrigemNota = Literal['AniList', 'RAWG']
+#: Ano de lançamento nos filtros de `GET /midias`: o intervalo de uma data.
+Ano = Annotated[int, Field(ge=1, le=9999)]
 #: Ordens de `GET /midias` (`ORDENS` em `repositories/catalogo.py`).
 OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
@@ -59,6 +61,12 @@ class ConsultaMidias(ConsultaPaginada):
     desenvolvedor: TextoOpcional = None
     modo_jogo: TextoOpcional = None
     artista: TextoOpcional = None
+    ano_min: Annotated[Ano | None, VazioComoAusente] = Field(
+        default=None, description='Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora',
+    )
+    ano_max: Annotated[Ano | None, VazioComoAusente] = Field(
+        default=None, description='Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora',
+    )
     ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = 'nota_media'
 
 
@@ -69,6 +77,12 @@ class ConsultaTrending(BaseModel):
 
 class ConsultaPopulares(BaseModel):
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
+
+
+class ConsultaFacetas(BaseModel):
+    tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = Field(
+        default=None, description='Sem Tipo, as facetas de todos',
+    )
 
 
 class _CorpoMidiaBase(BaseModel):
@@ -237,6 +251,14 @@ class RespostaPopulares(BaseModel):
     midias: list[MidiaPopular]
 
 
+class RespostaFacetas(BaseModel):
+    """Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
+    filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes)."""
+
+    plataformas: list[str]
+    estudios: list[str]
+
+
 class ContagemPorRotulo(BaseModel):
     status_consumo: RotuloDeEstado
     total: int
@@ -254,6 +276,17 @@ class ContagemPorNota(BaseModel):
 class RespostaNotas(BaseModel):
     distribuicao: list[ContagemPorNota] = Field(description='As 10 faixas, de 1 a 10, inclusive as vazias')
     minha_avaliacao: AvaliacaoDaMidia | None = Field(description='A do Usuário logado; null sem login ou sem Avaliação')
+
+
+class AtividadeDoDia(BaseModel):
+    data: Data
+    total: int = Field(ge=1, description='Adições à Lista, Avaliações e conclusões da Mídia no dia')
+
+
+class RespostaAtividade(BaseModel):
+    dias: list[AtividadeDoDia] = Field(description='Só os dias com atividade, do mais antigo ao mais recente')
+    inicio: Data = Field(description='1º dia da janela: 52 semanas (364 dias) terminando em `fim`')
+    fim: Data = Field(description='Hoje')
 
 
 class AtualizacaoPublicada(BaseModel):

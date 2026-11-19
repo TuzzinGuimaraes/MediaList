@@ -1,0 +1,14 @@
+# Ignore do build de Web/Dockerfile (contexto na raiz do repositório): entra só o que o
+# Web usa. O BuildKit lê este arquivo no lugar do .dockerignore da raiz.
+*
+!Web
+!design
+!contrato
+!dominio
+**/node_modules
+**/.env
+**/.env.*
+Web/dist
+Web/src/estilo/tema.gerado.css
+**/*.test.ts
+**/*.test.tsx

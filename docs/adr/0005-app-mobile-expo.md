@@ -26,9 +26,12 @@ lojas na v1. Isso deixa de fora notificações push, que ficam para depois.
   recusado (401/403) limpa a sessão e volta ao login; falta de rede ou 5xx no refresh não
   desloga, vira o estado "tentar de novo". Login com `refresh_token: null` funciona até o
   access token expirar.
-- **Domínio** em `src/dominio/`: cópia em TS das regras do `CONTEXT.md` que a interface
-  precisa. O mapa de Rótulos de estado passa a existir em três lugares (backend, web,
-  app); aceito porque o mapa é estável e o backend valida (ADR 0002). O **Recorte de
+- **Domínio** em `dominio/` na raiz, compartilhado com o web e importado como `@dominio/*`:
+  cópia em TS das regras do `CONTEXT.md` que a interface precisa. O mapa de Rótulos de
+  estado fica em `dominio/rotulosDeEstado.json`, e um teste do backend confere que ele bate
+  com `schemas/estado_consumo.py`, que segue autoritativo (ADR 0002). *(Atualizado pelo
+  ticket 19 da revisão: antes ficava em `Mobile/src/dominio/`, e o mapa existia em três
+  lugares sem conferência.)* O **Recorte de
   catálogo** é estado de interface em memória. Sem Redux nem Zustand; formulários com
   estado simples e validação em funções puras.
 - **URL da API**: em desenvolvimento, o host do Metro (o IP da máquina na rede local) na
