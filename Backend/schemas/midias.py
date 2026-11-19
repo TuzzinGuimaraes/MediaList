@@ -264,6 +264,17 @@ class RespostaNotas(BaseModel):
     minha_avaliacao: AvaliacaoDaMidia | None = Field(description='A do Usuário logado; null sem login ou sem Avaliação')
 
 
+class AtividadeDoDia(BaseModel):
+    data: Data
+    total: int = Field(ge=1, description='Adições à Lista, Avaliações e conclusões da Mídia no dia')
+
+
+class RespostaAtividade(BaseModel):
+    dias: list[AtividadeDoDia] = Field(description='Só os dias com atividade, do mais antigo ao mais recente')
+    inicio: Data = Field(description='1º dia da janela: 52 semanas (364 dias) terminando em `fim`')
+    fim: Data = Field(description='Hoje')
+
+
 class AtualizacaoPublicada(BaseModel):
     mensagem: str
     notificacoes_enviadas: int

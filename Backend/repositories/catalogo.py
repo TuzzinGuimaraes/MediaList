@@ -262,6 +262,29 @@ class Catalogo:
             (id_midia,),
         )
 
+    def atividade(self, id_midia: str) -> dict[str, Any]:
+        """Atividade da Mídia por dia nas últimas 52 semanas (364 dias, o último é hoje):
+        adições à Lista, Avaliações e conclusões. Só os dias com atividade, em ordem.
+        Hoje e o dia de um instante seguem o fuso da sessão do banco."""
+        janela = consultar_um('SELECT CURRENT_DATE - 363 AS inicio, CURRENT_DATE AS fim')
+        dias = consultar(
+            """
+            SELECT dia AS data, count(*) AS total
+            FROM (
+                SELECT data_adicao::date AS dia FROM lista_usuarios WHERE id_midia = %(id)s
+                UNION ALL
+                SELECT data_conclusao FROM lista_usuarios WHERE id_midia = %(id)s
+                UNION ALL
+                SELECT data_avaliacao::date FROM avaliacoes WHERE id_midia = %(id)s
+            ) eventos
+            WHERE dia BETWEEN %(inicio)s AND %(fim)s
+            GROUP BY dia
+            ORDER BY dia
+            """,
+            {'id': id_midia, **janela},
+        )
+        return {**janela, 'dias': dias}
+
     def generos(self, tipo: str | None = None) -> list[dict[str, Any]]:
         """Gêneros, todos ou os que se aplicam ao Tipo (elemento inteiro de `aplicavel_a`)."""
         if tipo:

@@ -39,6 +39,7 @@ from schemas.midias import (
     CorpoMidia,
     Midia,
     MidiaDetalhe,
+    RespostaAtividade,
     RespostaDistribuicao,
     RespostaNotas,
     RespostaPopulares,
@@ -154,6 +155,15 @@ def criar_atualizacao_midia(id_midia, json: CorpoAtualizacao):
 def distribuicao_midia(id_midia):
     """Distribuição de status dos usuários para uma mídia."""
     return {'distribuicao': catalogo.distribuicao(id_midia)}
+
+
+@midias_bp.route('/<string:id_midia>/atividade', methods=['GET'])
+@contrato.validate(resp=Response(HTTP_200=RespostaAtividade, HTTP_404=Erro), tags=['midias'])
+def atividade_midia(id_midia):
+    """Mapa de atividade: adições à Lista, Avaliações e conclusões por dia nas últimas 52 semanas."""
+    if not catalogo.obter(id_midia):
+        return midia_nao_encontrada()
+    return catalogo.atividade(id_midia)
 
 
 @midias_bp.route('/<string:id_midia>/notas', methods=['GET'])
