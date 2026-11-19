@@ -35,3 +35,8 @@ const ROTULOS_NIVEL: Record<NivelAcesso, string> = {
 export function rotuloNivelAcesso(nivel: NivelAcesso): string {
   return ROTULOS_NIVEL[nivel] ?? nivel;
 }
+
+/** A inicial que o avatar mostra: a primeira letra do nome, maiúscula; "?" sem nome. */
+export function inicialDoNome(nome: string): string {
+  return nome.trim()[0]?.toUpperCase() ?? '?';
+}

@@ -5,6 +5,7 @@ import { FILTROS_PADRAO, type FiltrosLista, type OpcoesDosFiltros, type OrdemLis
 import { Botao } from '../../componentes/Botao';
 import { Sheet } from '../../componentes/Camada';
 import { Opcoes } from '../../componentes/Opcoes';
+import { OpcoesComTodos } from '../../componentes/OpcoesComTodos';
 
 const ORDENS: { valor: OrdemLista; nome: string }[] = [
   { valor: 'titulo', nome: 'Alfabética' },
@@ -12,9 +13,6 @@ const ORDENS: { valor: OrdemLista; nome: string }[] = [
   { valor: 'adicao', nome: 'Adicionado recentemente' },
   { valor: 'atualizacao', nome: 'Atualizado recentemente' },
 ];
-
-/** As pílulas trabalham com texto: '' é "todos". */
-const TODOS = '';
 
 type Props = {
   aberto: boolean;
@@ -42,19 +40,20 @@ export function FiltrosDaLista({ aberto, fechar, filtros, opcoes, mudar }: Props
       <div className="flex flex-col gap-6">
         <Opcoes rotulo="Ordem" opcoes={ORDENS} valor={filtros.ordem} mudar={(ordem) => mudar({ ...filtros, ordem })} />
         {opcoes.situacoes.length ? (
-          <Opcoes
+          <OpcoesComTodos
             rotulo="Situação"
-            opcoes={[{ valor: TODOS, nome: 'Todas' }, ...opcoes.situacoes.map((s) => ({ valor: s.valor, nome: s.titulo }))]}
-            valor={filtros.situacao ?? TODOS}
-            mudar={(s) => mudar({ ...filtros, situacao: s || null })}
+            todos="Todas"
+            opcoes={opcoes.situacoes.map((s) => ({ valor: s.valor, nome: s.titulo }))}
+            valor={filtros.situacao}
+            mudar={(s) => mudar({ ...filtros, situacao: s ?? null })}
           />
         ) : null}
         {opcoes.generos.length ? (
-          <Opcoes
+          <OpcoesComTodos
             rotulo="Gênero"
-            opcoes={[{ valor: TODOS, nome: 'Todos' }, ...opcoes.generos.map((g) => ({ valor: g, nome: g }))]}
-            valor={filtros.genero ?? TODOS}
-            mudar={(g) => mudar({ ...filtros, genero: g || null })}
+            opcoes={opcoes.generos.map((g) => ({ valor: g, nome: g }))}
+            valor={filtros.genero}
+            mudar={(g) => mudar({ ...filtros, genero: g ?? null })}
           />
         ) : null}
       </div>

@@ -1,4 +1,4 @@
-import { rotuloNivelAcesso, validarLogin, validarRegistro } from './conta';
+import { inicialDoNome, rotuloNivelAcesso, validarLogin, validarRegistro } from './conta';
 
 describe('validarLogin', () => {
   it('exige email e senha', () => {
@@ -29,5 +29,16 @@ describe('rotuloNivelAcesso', () => {
   it('traduz o Nível de acesso para a interface', () => {
     expect(rotuloNivelAcesso('usuario')).toBe('Usuário');
     expect(rotuloNivelAcesso('admin')).toBe('Administrador');
+  });
+});
+
+describe('inicialDoNome', () => {
+  it('é a primeira letra do nome, maiúscula, ignorando espaços', () => {
+    expect(inicialDoNome('  ana Souza')).toBe('A');
+    expect(inicialDoNome('Élio')).toBe('É');
+  });
+
+  it('nome vazio vira "?"', () => {
+    expect(inicialDoNome('   ')).toBe('?');
   });
 });

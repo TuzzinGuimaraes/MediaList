@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
-import { rotuloNivelAcesso } from '@dominio/conta';
+import { inicialDoNome, rotuloNivelAcesso } from '@dominio/conta';
 import { formatarData } from '@dominio/datas';
 import { formatarMedia } from '@dominio/estatisticas';
 
@@ -64,7 +64,7 @@ export function Perfil() {
     <main className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-10 lg:grid-cols-[minmax(0,1fr)_360px]">
       <header className="flex items-center gap-5 lg:col-span-2">
         <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-xl bg-marca text-[32px] font-bold text-sobre-marca">
-          {usuario.nome.trim()[0]?.toUpperCase() ?? '?'}
+          {inicialDoNome(usuario.nome)}
         </span>
         <div className="flex flex-col gap-1">
           <h1 className="text-[28px] font-bold text-texto-forte">{usuario.nome}</h1>

@@ -53,11 +53,14 @@ const textos = {
   manter: 'Manter',
 };
 
-/** "dd/mm/aaaa" do formulário ↔ "aaaa-mm-dd" do <input type="date">. */
-function paraIso(texto: string): string {
+/** "dd/mm/aaaa" do formulário → "aaaa-mm-dd" do <input type="date">. */
+function textoParaIso(texto: string): string {
   const [d, m, a] = texto.split('/');
   return texto ? `${a}-${m}-${d}` : '';
 }
+
+/** "aaaa-mm-dd" do <input type="date"> → "dd/mm/aaaa" do formulário; vazio se o campo foi limpo. */
+const isoParaTexto = (iso: string): string => formatarData(iso) ?? '';
 
 type PropsData = { rotulo: string; valor: string; minimo?: string; maximo: string; mudar(texto: string): void };
 
@@ -72,10 +75,10 @@ function CampoData({ rotulo, valor, minimo, maximo, mudar }: PropsData) {
         <input
           id={id}
           type="date"
-          value={paraIso(valor)}
+          value={textoParaIso(valor)}
           min={minimo || undefined}
           max={maximo}
-          onChange={(e) => mudar(formatarData(e.target.value) ?? '')}
+          onChange={(e) => mudar(isoParaTexto(e.target.value))}
           className="w-full rounded-md border border-borda bg-superficie-alta px-3 py-2.5 text-[15px] text-texto-forte outline-none focus:border-marca-texto [color-scheme:light_dark]"
         />
         {valor ? (
@@ -264,7 +267,7 @@ export function EditorItem({ midia, item, fechar }: Props) {
           <CampoData
             rotulo={textos.conclusao}
             valor={form.conclusao}
-            minimo={paraIso(form.inicio)}
+            minimo={textoParaIso(form.inicio)}
             maximo={hoje}
             mudar={mudar('conclusao')}
           />
