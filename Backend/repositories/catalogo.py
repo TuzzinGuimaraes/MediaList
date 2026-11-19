@@ -189,6 +189,14 @@ def _filtros(tipo: str | None, filtros: dict[str, Any]) -> tuple[str, list[Any]]
             clausulas.append(f'{coluna} = %s')
             params.append(filtros[filtro])
 
+    # Ano de lançamento, inclusive nos dois extremos; Mídia sem data fica fora.
+    if filtros.get('ano_min') is not None:
+        clausulas.append('m.data_lancamento >= make_date(%s, 1, 1)')
+        params.append(filtros['ano_min'])
+    if filtros.get('ano_max') is not None:
+        clausulas.append('m.data_lancamento < make_date(%s + 1, 1, 1)')
+        params.append(filtros['ano_max'])
+
     if filtros.get('plataforma'):
         # Elemento inteiro do text[] (índice GIN), não substring.
         clausulas.append('j.plataformas @> ARRAY[%s]::text[]')
@@ -216,7 +224,7 @@ class Catalogo:
         self, tipo: str | None = None, pagina: int = 1, limite: int = 20, filtros: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Uma página de Mídias. `filtros`: busca, genero, status, autor, estudio,
-        demografia, plataforma, desenvolvedor, modo_jogo, artista e ordem (ver ORDENS;
+        demografia, plataforma, desenvolvedor, modo_jogo, artista, ano_min, ano_max e ordem (ver ORDENS;
         desconhecida ou ausente vale 'nota_media')."""
         filtros = filtros or {}
         where, params = _filtros(tipo, filtros)

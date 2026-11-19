@@ -54,7 +54,7 @@ avaliacoes = AvaliacaoRepository()
 #: Filtros de GET /midias, repassados ao Catálogo com o mesmo nome.
 FILTROS = (
     'busca', 'genero', 'status', 'autor', 'estudio', 'demografia', 'plataforma', 'desenvolvedor', 'modo_jogo',
-    'artista',
+    'artista', 'ano_min', 'ano_max',
 )
 
 ERROS_DE_ESCRITA = {**ERROS_COM_PERMISSAO, 'HTTP_404': Erro}

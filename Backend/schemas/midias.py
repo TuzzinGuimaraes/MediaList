@@ -35,6 +35,8 @@ StatusJogo = Literal['lancado', 'em_desenvolvimento', 'cancelado', 'remasterizad
 Demografia = Literal['shounen', 'shoujo', 'seinen', 'josei', 'kodomomuke']
 ModoJogo = Literal['single', 'multi', 'ambos']
 OrigemNota = Literal['AniList', 'RAWG']
+#: Ano de lançamento nos filtros de `GET /midias`: o intervalo de uma data.
+Ano = Annotated[int, Field(ge=1, le=9999)]
 #: Ordens de `GET /midias` (`ORDENS` em `repositories/catalogo.py`).
 OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
@@ -59,6 +61,12 @@ class ConsultaMidias(ConsultaPaginada):
     desenvolvedor: TextoOpcional = None
     modo_jogo: TextoOpcional = None
     artista: TextoOpcional = None
+    ano_min: Annotated[Ano | None, VazioComoAusente] = Field(
+        default=None, description='Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora',
+    )
+    ano_max: Annotated[Ano | None, VazioComoAusente] = Field(
+        default=None, description='Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora',
+    )
     ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = 'nota_media'
 
 
