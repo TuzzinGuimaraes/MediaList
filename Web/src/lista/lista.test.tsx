@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { abrirLogado } from '../testes/app';
+import { erro } from '../testes/fetchSimulado';
 import { rotasDaLista, umaMidia, umItem } from './fixtures';
 
 describe('Minha Lista', () => {
@@ -126,5 +127,69 @@ describe('Minha Lista: abas, filtros e busca', () => {
     const sugestoes = await screen.findByRole('region', { name: 'Sugestões para você' });
     expect(within(sugestoes).getByRole('link', { name: /Dandadan/ })).toBeInTheDocument();
     expect(within(sugestoes).queryByRole('link', { name: /Frieren/ })).not.toBeInTheDocument();
+  });
+});
+
+
+describe('Minha Lista: stepper do Progresso', () => {
+  it('+1 aparece na hora e vai ao servidor como PUT /progresso', async () => {
+    let liberar: () => void = () => {};
+    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 3 });
+    const { user, api } = await abrirLogado('/lista', {
+      rotas: {
+        ...rotasDaLista([item]),
+        [`PUT /lista/${item.id_lista}/progresso`]: () =>
+          new Promise((r) => {
+            liberar = () => r({ status: 200, corpo: { mensagem: 'ok' } });
+          }),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
+
+    expect(screen.getByLabelText('Progresso: 4 de 12')).toBeInTheDocument();
+    expect(api.para(`PUT /lista/${item.id_lista}/progresso`)[0]?.corpo).toEqual({ progresso_atual: 4 });
+    liberar();
+  });
+
+  it('chegar ao total leva o Item a Concluído antes da resposta (ADR 0009)', async () => {
+    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 11 });
+    const { user } = await abrirLogado('/lista', {
+      rotas: {
+        ...rotasDaLista([item]),
+        [`PUT /lista/${item.id_lista}/progresso`]: () => new Promise(() => {}),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
+
+    expect(screen.getByRole('tab', { name: 'Concluído 1' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Em progresso 0' })).toBeInTheDocument();
+  });
+
+  it('um toque recusado é desfeito e o erro aparece', async () => {
+    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 3 });
+    const { user } = await abrirLogado('/lista', {
+      rotas: {
+        ...rotasDaLista([item]),
+        [`PUT /lista/${item.id_lista}/progresso`]: erro(400, 'dados_invalidos', 'Progresso acima do total.'),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Progresso acima do total.');
+    expect(screen.getByLabelText('Progresso: 3 de 12')).toBeInTheDocument();
+  });
+
+  it('o − fica desativado no 0 e o + no total', async () => {
+    const itens = [
+      umItem({ titulo_original: 'Novo', progresso_atual: 0, status_consumo: 'assistindo' }),
+      umItem({ titulo_original: 'Quase', progresso_atual: 12, status_consumo: 'assistindo' }),
+    ];
+    await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    expect(await screen.findByRole('button', { name: 'Menos um em Novo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Mais um em Quase' })).toBeDisabled();
   });
 });
