@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ErroApi } from '../api/erros';
 import { CatalogoProvider } from '../catalogo/CatalogoContext';
 import { Carregando, ErroTela } from '../componentes/Estados';
+import { EditorItemProvider } from '../lista/EditorItemContext';
 import { SessaoProvider, useSessao } from '../sessao/SessaoContext';
 import { TemaProvider } from '../tema/TemaContext';
 import { criarRoteador } from './rotas';
@@ -46,7 +47,10 @@ export function App({ historico }: { historico?: RouterHistory }) {
       <TemaProvider>
         <CatalogoProvider>
           <SessaoProvider>
-            <Roteamento historico={historico} />
+            {/* O editor do Item abre de qualquer tela (Lista, Início, detalhe). */}
+            <EditorItemProvider>
+              <Roteamento historico={historico} />
+            </EditorItemProvider>
           </SessaoProvider>
         </CatalogoProvider>
       </TemaProvider>
