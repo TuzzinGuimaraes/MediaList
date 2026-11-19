@@ -267,7 +267,7 @@ AUTENTICACAO_OPCIONAL = [{}, AUTENTICADO]
 #: token, expirado, revogado ou de Usuário desativado; 422 com o token malformado.
 #: Uso: `resp=Response(HTTP_200=X, **ERROS_AUTENTICADA)`.
 ERROS_AUTENTICADA = {'HTTP_401': Erro, 'HTTP_422': Erro}
-#: Mais o 403 de `permission_required` e `moderator_or_admin_required` (decorators.py).
+#: Mais o 403 de `admin_required` (decorators.py).
 ERROS_COM_PERMISSAO = {**ERROS_AUTENTICADA, 'HTTP_403': Erro}
 
 

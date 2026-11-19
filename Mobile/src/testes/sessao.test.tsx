@@ -16,21 +16,11 @@ const expirado: Resposta = erro(401, 'token_expirado', 'Sessão expirada');
 function perfilResponde(accessValido: string, nivel: NivelAcesso = 'usuario') {
   const exige = (corpo: RespostaMe | RespostaPermissoes) => (req: Requisicao) =>
     req.autorizacao === `Bearer ${accessValido}` ? { status: 200, corpo } : expirado;
-  const pode = nivel !== 'usuario';
   return {
     'GET /auth/me': exige({
       usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
     }),
-    'GET /usuario/permissoes': exige({
-      permissoes: {
-        nivel_acesso: nivel,
-        grupos: 'Usuários',
-        pode_criar: pode,
-        pode_editar: pode,
-        pode_deletar: pode,
-        pode_moderar: pode,
-      },
-    }),
+    'GET /usuario/permissoes': exige({ permissoes: { nivel_acesso: nivel } }),
   };
 }
 
@@ -100,14 +90,14 @@ describe('renovação da sessão', () => {
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
       'POST /auth/refresh': renovaPara('A2', 'R2'),
       'POST /auth/logout': { status: 200, corpo: {} },
-      ...perfilResponde('A2', 'moderador'),
+      ...perfilResponde('A2', 'admin'),
     });
     await entrar();
 
     await fireEvent.press(await aba('Perfil'));
 
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
-    expect(screen.getByText('Moderador')).toBeOnTheScreen();
+    expect(screen.getByText('Administrador')).toBeOnTheScreen();
     expect(api.para('POST /auth/refresh')[0].corpo).toEqual({ refresh_token: 'R1' });
     expect(api.para('GET /auth/me').map((r) => r.autorizacao)).toEqual(['Bearer A1', 'Bearer A2']);
 

@@ -3935,19 +3935,16 @@
             ],
             "title": "Foto Perfil"
           },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grupos"
-          },
           "id_usuario": {
             "title": "Id Usuario",
+            "type": "string"
+          },
+          "nivel_acesso": {
+            "enum": [
+              "usuario",
+              "admin"
+            ],
+            "title": "Nivel Acesso",
             "type": "string"
           },
           "nome_completo": {
@@ -4002,59 +3999,25 @@
           "total_jogos",
           "nota_media_usuario",
           "total_favoritos",
-          "grupos"
+          "nivel_acesso"
         ],
         "title": "Perfil",
         "type": "object"
       },
       "Permissoes": {
-        "description": "Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.",
+        "description": "Nível de acesso do Usuário (ADR 0012). No login e em GET /usuario/permissoes.",
         "properties": {
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo",
-            "title": "Grupos"
-          },
           "nivel_acesso": {
             "enum": [
-              "admin",
-              "moderador",
-              "usuario"
+              "usuario",
+              "admin"
             ],
             "title": "Nivel Acesso",
             "type": "string"
-          },
-          "pode_criar": {
-            "title": "Pode Criar",
-            "type": "boolean"
-          },
-          "pode_deletar": {
-            "title": "Pode Deletar",
-            "type": "boolean"
-          },
-          "pode_editar": {
-            "title": "Pode Editar",
-            "type": "boolean"
-          },
-          "pode_moderar": {
-            "title": "Pode Moderar",
-            "type": "boolean"
           }
         },
         "required": [
-          "nivel_acesso",
-          "grupos",
-          "pode_criar",
-          "pode_editar",
-          "pode_deletar",
-          "pode_moderar"
+          "nivel_acesso"
         ],
         "title": "Permissoes",
         "type": "object"
@@ -4525,20 +4488,16 @@
             "title": "Email",
             "type": "string"
           },
-          "grupos": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Nomes dos Grupos separados por vírgula; null sem Grupo",
-            "title": "Grupos"
-          },
           "id_usuario": {
             "title": "Id Usuario",
+            "type": "string"
+          },
+          "nivel_acesso": {
+            "enum": [
+              "usuario",
+              "admin"
+            ],
+            "title": "Nivel Acesso",
             "type": "string"
           },
           "nome_completo": {
@@ -4574,7 +4533,7 @@
           "data_cadastro",
           "ultimo_acesso",
           "ativo",
-          "grupos",
+          "nivel_acesso",
           "total_midias",
           "total_avaliacoes"
         ],
@@ -5034,16 +4993,6 @@
               }
             },
             "description": "Conflict"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erro"
-                }
-              }
-            },
-            "description": "Internal Server Error"
           }
         },
         "summary": "Registrar novo usuário",
@@ -5222,7 +5171,7 @@
             "bearer": []
           }
         ],
-        "summary": "Deletar avaliação: o autor, ou quem pode moderar.",
+        "summary": "Deletar avaliação: o autor, ou o admin.",
         "tags": [
           "avaliacoes"
         ]
@@ -7891,7 +7840,7 @@
             "bearer": []
           }
         ],
-        "summary": "Obter permissões do usuário.",
+        "summary": "Obter o Nível de acesso do usuário.",
         "tags": [
           "usuario"
         ]

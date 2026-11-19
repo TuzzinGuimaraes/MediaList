@@ -157,7 +157,7 @@ def test_listagem_detalhe_trending_e_populares(client, catalogo, prefixo):
 
 
 def test_atualizacao_aparece_no_detalhe(client, catalogo, pg, entrar):  # noqa: F811
-    admin = _usuario(pg, 'Administradores')
+    admin = _usuario(pg, 'admin')
 
     criada = client.post(f'/api/midias/{catalogo["anime"]}/atualizacoes', headers=entrar(admin), json={
         'tipo': 'episodio', 'titulo': 'Episódio 13',
@@ -170,7 +170,7 @@ def test_atualizacao_aparece_no_detalhe(client, catalogo, pg, entrar):  # noqa: 
 
 
 def test_put_grava_os_campos_do_tipo_e_o_detalhe_devolve(client, catalogo, pg, entrar):  # noqa: F811
-    admin = entrar(_usuario(pg, 'Administradores'))
+    admin = entrar(_usuario(pg, 'admin'))
     drama = banco.consultar_um("SELECT id_genero FROM generos WHERE nome_genero = 'Drama'")['id_genero']
 
     resposta = client.put(f'/api/midias/{catalogo["jogo"]}', headers=admin, json={
@@ -283,11 +283,11 @@ def test_avaliacao_do_criar_ao_apagar(client, catalogo, pg, entrar):  # noqa: F8
         404, {'erro': 'Avaliação não encontrada', 'codigo': 'nao_encontrado'})
 
 
-def test_moderador_apaga_avaliacao_de_outro(client, catalogo, pg, entrar):  # noqa: F811
-    autora, moderador = _usuario(pg), _usuario(pg, 'Moderadores')
+def test_admin_apaga_avaliacao_de_outro(client, catalogo, pg, entrar):  # noqa: F811
+    autora, admin = _usuario(pg), _usuario(pg, 'admin')
     criada = client.post('/api/avaliacoes', headers=entrar(autora), json={'id_midia': catalogo['anime'], 'nota': 6})
 
-    apagada = client.delete(f'/api/avaliacoes/{criada.get_json()["id_avaliacao"]}', headers=entrar(moderador))
+    apagada = client.delete(f'/api/avaliacoes/{criada.get_json()["id_avaliacao"]}', headers=entrar(admin))
 
     assert apagada.status_code == 200
     assert banco.consultar_um('SELECT count(*) AS n FROM avaliacoes WHERE id_usuario = %s', (autora,))['n'] == 0

@@ -42,7 +42,7 @@ describe('Header', () => {
         jest.clearAllMocks();
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'usuario', pode_moderar: false },
+            permissions: { nivel_acesso: 'usuario' },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({
@@ -84,7 +84,7 @@ describe('Header', () => {
         const apiCall = jest.fn().mockResolvedValue({ notificacoes: [{ id_midia: 'MID-1', tipo_midia: 'anime', tipo: 'episodio', titulo: 'Nova notificação', midia_nome: 'Anime X', mensagem: 'Teste', lida: false, data_criacao: '2026-11-13T09:30:00Z' }] });
         useAuth.mockReturnValue({
             user: { nome: 'Arthur' },
-            permissions: { nivel_acesso: 'admin', pode_moderar: true },
+            permissions: { nivel_acesso: 'admin' },
             logout: jest.fn().mockResolvedValue(undefined),
         });
         useApi.mockReturnValue({ apiCall });
@@ -100,5 +100,19 @@ describe('Header', () => {
         expect(await screen.findByText('Nova notificação')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
         await waitFor(() => expect(apiCall).toHaveBeenCalled());
+    });
+
+    test('esconde o admin de quem não é admin, inclusive uma sessão antiga de moderador', () => {
+        useAuth.mockReturnValue({
+            user: { nome: 'Arthur' },
+            // Sessão gravada antes do ticket 35: o moderador deixou de existir.
+            permissions: { nivel_acesso: 'moderador' },
+            logout: jest.fn().mockResolvedValue(undefined),
+        });
+        useSession.mockReturnValue({ sessao: 'animanga', setSessao: jest.fn() });
+
+        renderHeader('/');
+
+        expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
     });
 });

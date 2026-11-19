@@ -22,7 +22,7 @@ from contrato import (
     montar_pagina,
     resposta_erro,
 )
-from decorators import get_user_permissions
+from decorators import nivel_de_acesso
 from dominio.avaliacao import CONFLITO, Avaliacoes
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO
 from repositories.avaliacoes import AvaliacaoRepository
@@ -102,10 +102,9 @@ def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
     tags=['avaliacoes'], security=AUTENTICADO,
 )
 def deletar_avaliacao(avaliacao_id):
-    """Deletar avaliação: o autor, ou quem pode moderar."""
+    """Deletar avaliação: o autor, ou o admin."""
     user_id = get_jwt_identity()
-    pode_moderar = bool(get_user_permissions(user_id)['pode_moderar'])
-    resultado = avaliacoes.apagar(user_id, avaliacao_id, pode_moderar)
+    resultado = avaliacoes.apagar(user_id, avaliacao_id, nivel_de_acesso(user_id) == 'admin')
     if not resultado.bem_sucedido:
         return _erro(resultado)
     return {'mensagem': 'Avaliação removida com sucesso'}

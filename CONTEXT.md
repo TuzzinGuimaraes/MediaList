@@ -64,27 +64,17 @@ para a tela, e o leitor de tela diz "Catálogo".
 ## Usuário
 
 Uma pessoa cadastrada no sistema. Tem uma **Lista pessoal**, escreve **Avaliações** e
-pertence a um ou mais **Grupos**.
-
-## Grupo
-
-Um conjunto de poderes atribuível a Usuários: criar, editar, deletar e moderar conteúdo do
-Catálogo, mais um **Nível de acesso** (`admin`, `moderador`, `usuario`).
-
-Um Usuário pode pertencer a vários Grupos ao mesmo tempo. Quando pertence a mais de um,
-**vence o mais privilegiado**: o Usuário tem um poder se *qualquer* Grupo seu concede esse
-poder, e o Nível de acesso efetivo é o mais alto entre os seus Grupos.
-
-Um Usuário sem nenhum Grupo não tem poder algum. A ausência de Grupo nunca concede mais do
-que a presença de um.
+tem um único **Nível de acesso**.
 
 ## Nível de acesso
 
-A senioridade do Usuário, em ordem crescente: `usuario` < `moderador` < `admin`. Serve para
-rotular a pessoa na interface e para conceder acesso irrestrito ao `admin`.
+O que o Usuário pode fazer além do uso comum, em ordem crescente: `usuario` < `admin`. Todo
+cadastro novo é `usuario`.
 
-Não substitui os poderes individuais do **Grupo**: um moderador tem `pode_moderar` porque
-seu Grupo concede, não porque seu Nível é `moderador`.
+O `admin` pode tudo: moderar Avaliações, ativar ou desativar Usuários, criar Notícias,
+registrar Atualizações de mídia, editar e excluir Mídias e mudar o Nível dos outros. O
+`usuario` não pode nada disso. Ninguém ativa, desativa ou muda o Nível de si mesmo, nem de
+outro `admin`.
 
 ---
 

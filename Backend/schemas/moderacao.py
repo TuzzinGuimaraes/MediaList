@@ -4,6 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from contrato import Id, Instante, TipoDeMidia
+from schemas.auth import NivelAcesso
 from schemas.avaliacoes import CamposDaAvaliacao
 
 
@@ -24,6 +25,6 @@ class UsuarioModeracao(BaseModel):
     data_cadastro: Instante
     ultimo_acesso: Instante | None
     ativo: bool
-    grupos: str | None = Field(description='Nomes dos Grupos separados por vírgula; null sem Grupo')
+    nivel_acesso: NivelAcesso
     total_midias: int = Field(description='Itens na Lista pessoal')
     total_avaliacoes: int

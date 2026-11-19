@@ -32,7 +32,7 @@ describe('NewsPage', () => {
             total: 1,
         });
         useApi.mockReturnValue({ apiCall });
-        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
+        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin' } });
 
         render(<NewsPage />);
 
@@ -48,7 +48,7 @@ describe('NewsPage', () => {
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({ itens: [{ id_noticia: 'NOT-2', titulo: 'Nova noticia', conteudo: 'Texto', autor: 'Admin', data_publicacao: '2026-04-01T12:00:00Z', tags: [] }], pagina: 1, por_pagina: 20, total: 1 });
         useApi.mockReturnValue({ apiCall });
-        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin', pode_moderar: true } });
+        useAuth.mockReturnValue({ user: { nome: 'Admin' }, permissions: { nivel_acesso: 'admin' } });
 
         render(<NewsPage />);
         await screen.findByText('Nenhuma notícia disponível no momento.');
@@ -62,10 +62,21 @@ describe('NewsPage', () => {
 
     test('exibe estado vazio', async () => {
         useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ itens: [], pagina: 1, por_pagina: 20, total: 0 }) });
-        useAuth.mockReturnValue({ user: { nome: 'User' }, permissions: { nivel_acesso: 'usuario', pode_moderar: false } });
+        useAuth.mockReturnValue({ user: { nome: 'User' }, permissions: { nivel_acesso: 'usuario' } });
 
         render(<NewsPage />);
 
         expect(await screen.findByText('Nenhuma notícia disponível no momento.')).toBeInTheDocument();
+        expect(screen.queryByText('Criar Notícia')).not.toBeInTheDocument();
+    });
+
+    test('sessão antiga de moderador não cria notícia', async () => {
+        useApi.mockReturnValue({ apiCall: jest.fn().mockResolvedValue({ itens: [], pagina: 1, por_pagina: 20, total: 0 }) });
+        useAuth.mockReturnValue({ user: { nome: 'Mod' }, permissions: { nivel_acesso: 'moderador' } });
+
+        render(<NewsPage />);
+
+        await screen.findByText('Nenhuma notícia disponível no momento.');
+        expect(screen.queryByText('Criar Notícia')).not.toBeInTheDocument();
     });
 });

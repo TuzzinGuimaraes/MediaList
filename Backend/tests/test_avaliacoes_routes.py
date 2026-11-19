@@ -58,15 +58,15 @@ def test_editar_responde_200_com_a_nota_media_atualizada(client, auth_headers, m
     assert falso.chamadas == [('editar', 'USR-TEST-0001', 'AVL-1', {'nota': 7})]
 
 
-@pytest.mark.parametrize('pode_moderar', [0, 1])
-def test_apagar_passa_o_poder_de_moderar(client, auth_headers, modulo, monkeypatch, pode_moderar):
+@pytest.mark.parametrize('nivel, e_admin', [('usuario', False), ('admin', True)])
+def test_apagar_passa_se_e_admin(client, auth_headers, modulo, monkeypatch, nivel, e_admin):
     falso = modulo(Resultado(OK))
-    monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _id: {'pode_moderar': pode_moderar})
+    monkeypatch.setattr(avaliacoes_routes, 'nivel_de_acesso', lambda _id: nivel)
 
     resposta = client.delete('/api/avaliacoes/AVL-1', headers=auth_headers)
 
     assert (resposta.status_code, resposta.get_json()) == (200, {'mensagem': 'Avaliação removida com sucesso'})
-    assert falso.chamadas == [('apagar', 'USR-TEST-0001', 'AVL-1', bool(pode_moderar))]
+    assert falso.chamadas == [('apagar', 'USR-TEST-0001', 'AVL-1', e_admin)]
 
 
 AVALIACAO = {
@@ -105,7 +105,7 @@ CODIGO_DO_ERRO = {INVALIDO: 'dados_invalidos', NEGADO: 'acesso_negado', NAO_ENCO
 @pytest.mark.parametrize('codigo, status', [(INVALIDO, 400), (NEGADO, 403), (NAO_ENCONTRADO, 404), (CONFLITO, 409)])
 def test_erro_do_modulo_vira_o_codigo_http_com_a_mensagem(client, auth_headers, modulo, monkeypatch, codigo, status):
     modulo(Resultado(codigo, 'Mensagem do módulo'))
-    monkeypatch.setattr(avaliacoes_routes, 'get_user_permissions', lambda _id: {'pode_moderar': 0})
+    monkeypatch.setattr(avaliacoes_routes, 'nivel_de_acesso', lambda _id: 'usuario')
 
     for resposta in (
         client.get('/api/avaliacoes/MID-1'),

@@ -22,7 +22,7 @@ describe('CreateNoticiaModal', () => {
         const onClose = jest.fn();
 
         render(
-            <CreateNoticiaModal isOpen={true} onClose={onClose} onSave={onSave} userName="Moderador" />
+            <CreateNoticiaModal isOpen={true} onClose={onClose} onSave={onSave} userName="Admin" />
         );
 
         fireEvent.change(screen.getByPlaceholderText('Digite o título'), { target: { value: 'Nova notícia' } });

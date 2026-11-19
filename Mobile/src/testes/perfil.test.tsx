@@ -13,16 +13,7 @@ const me: { status: 200; corpo: RespostaMe } = {
 };
 const permissoes: { status: 200; corpo: RespostaPermissoes } = {
   status: 200,
-  corpo: {
-    permissoes: {
-      nivel_acesso: 'usuario',
-      grupos: 'Usuários',
-      pode_criar: false,
-      pode_editar: false,
-      pode_deletar: false,
-      pode_moderar: false,
-    },
-  },
+  corpo: { permissoes: { nivel_acesso: 'usuario' } },
 };
 
 // GET /usuario/estatisticas: contagens e somas como inteiro, nota_media como número ou null.

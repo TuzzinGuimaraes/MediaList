@@ -154,7 +154,7 @@ export interface paths {
         /** Editar a própria Avaliação; só os campos enviados. */
         put: operations["put__api_avaliacoes_{avaliacao_id}"];
         post?: never;
-        /** Deletar avaliação: o autor, ou quem pode moderar. */
+        /** Deletar avaliação: o autor, ou o admin. */
         delete: operations["delete__api_avaliacoes_{avaliacao_id}"];
         options?: never;
         head?: never;
@@ -602,7 +602,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obter permissões do usuário. */
+        /** Obter o Nível de acesso do usuário. */
         get: operations["get__api_usuario_permissoes"];
         put?: never;
         post?: never;
@@ -1971,10 +1971,13 @@ export interface components {
             email: string;
             /** Foto Perfil */
             foto_perfil: string | null;
-            /** Grupos */
-            grupos: string | null;
             /** Id Usuario */
             id_usuario: string;
+            /**
+             * Nivel Acesso
+             * @enum {string}
+             */
+            nivel_acesso: "usuario" | "admin";
             /** Nome Completo */
             nome_completo: string;
             /**
@@ -1995,27 +1998,14 @@ export interface components {
         };
         /**
          * Permissoes
-         * @description Permissões efetivas: vence o Grupo mais privilegiado. No login e em GET /usuario/permissoes.
+         * @description Nível de acesso do Usuário (ADR 0012). No login e em GET /usuario/permissoes.
          */
         Permissoes: {
-            /**
-             * Grupos
-             * @description Nomes dos Grupos: 'Usuários, Moderadores'; null sem Grupo
-             */
-            grupos: string | null;
             /**
              * Nivel Acesso
              * @enum {string}
              */
-            nivel_acesso: "admin" | "moderador" | "usuario";
-            /** Pode Criar */
-            pode_criar: boolean;
-            /** Pode Deletar */
-            pode_deletar: boolean;
-            /** Pode Editar */
-            pode_editar: boolean;
-            /** Pode Moderar */
-            pode_moderar: boolean;
+            nivel_acesso: "usuario" | "admin";
         };
         /**
          * Preferencias
@@ -2205,13 +2195,13 @@ export interface components {
             data_cadastro: string;
             /** Email */
             email: string;
-            /**
-             * Grupos
-             * @description Nomes dos Grupos separados por vírgula; null sem Grupo
-             */
-            grupos: string | null;
             /** Id Usuario */
             id_usuario: string;
+            /**
+             * Nivel Acesso
+             * @enum {string}
+             */
+            nivel_acesso: "usuario" | "admin";
             /** Nome Completo */
             nome_completo: string;
             /** Total Avaliacoes */
@@ -2577,15 +2567,6 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erro"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };

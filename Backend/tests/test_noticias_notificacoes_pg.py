@@ -41,17 +41,12 @@ def entrar(make_token):
     return _entrar
 
 
-def _usuario(pg, grupo='Usuários', nome='PG'):
-    with banco.transacao() as t:
-        id_usuario = t.consultar_um(
-            "INSERT INTO usuarios (nome_completo, email, senha_hash) VALUES (%s, %s, 'x') RETURNING id_usuario",
-            (nome, f'pg-{uuid.uuid4().hex}@exemplo.test'),
-        )['id_usuario']
-        t.executar(
-            "INSERT INTO usuarios_grupos (id_usuario, id_grupo) "
-            "SELECT %s, id_grupo FROM grupos_usuarios WHERE nome_grupo = %s",
-            (id_usuario, grupo),
-        )
+def _usuario(pg, nivel='usuario', nome='PG'):
+    id_usuario = banco.consultar_um(
+        "INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES (%s, %s, 'x', %s) "
+        "RETURNING id_usuario",
+        (nome, f'pg-{uuid.uuid4().hex}@exemplo.test', nivel),
+    )['id_usuario']
     pg['usuarios'].append(id_usuario)
     return id_usuario
 
@@ -72,7 +67,7 @@ def _na_lista(id_usuario, id_midia, status, favorito=False):
 
 
 def test_noticia_publicada_sai_na_lista_com_o_nome_do_autor(pg, client, entrar):
-    admin = _usuario(pg, 'Administradores', nome='Ana Admin')
+    admin = _usuario(pg, 'admin', nome='Ana Admin')
     titulo = f'Notícia PG {uuid.uuid4().hex}'
 
     antes = client.get('/api/noticias').get_json()['total']
@@ -94,7 +89,7 @@ def test_noticia_publicada_sai_na_lista_com_o_nome_do_autor(pg, client, entrar):
 
 
 def test_noticias_paginadas_sem_repetir_nem_pular(pg, client, entrar):
-    admin = _usuario(pg, 'Administradores')
+    admin = _usuario(pg, 'admin')
     for i in range(3):
         criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': f'Página {i}'})
         pg['noticias'].append(criada.get_json()['id_noticia'])
@@ -108,7 +103,7 @@ def test_noticias_paginadas_sem_repetir_nem_pular(pg, client, entrar):
 
 
 def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
-    admin = _usuario(pg, 'Administradores')
+    admin = _usuario(pg, 'admin')
     assistindo = _usuario(pg)
     favorito_completo = _usuario(pg)
     completo = _usuario(pg)
@@ -142,7 +137,7 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
 
 
 def test_falha_ao_notificar_desfaz_a_atualizacao(pg, client, entrar, monkeypatch):
-    admin = _usuario(pg, 'Administradores')
+    admin = _usuario(pg, 'admin')
     assistindo = _usuario(pg)
     id_midia = _anime(pg)
     _na_lista(assistindo, id_midia, 'assistindo')
@@ -165,7 +160,7 @@ def test_falha_ao_notificar_desfaz_a_atualizacao(pg, client, entrar, monkeypatch
 
 
 def test_marcar_todas_lidas_so_mexe_nas_do_usuario(pg, client, entrar):
-    admin = _usuario(pg, 'Administradores')
+    admin = _usuario(pg, 'admin')
     eu = _usuario(pg)
     outro = _usuario(pg)
     id_midia = _anime(pg)

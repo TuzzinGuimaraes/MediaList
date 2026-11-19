@@ -1,7 +1,7 @@
 """Refresh token rotativo (ADR-0006), pelo cliente Flask.
 
-O banco entra por duas costuras: a interface do módulo `banco` (FakeBanco) e
-`get_user_permissions` para o login (como em test_auth_routes.py), e o
+O banco entra por duas costuras: a interface do módulo `banco` (FakeBanco),
+que também dá o Nível de acesso no login, e o
 repositório de refresh tokens, trocado por uma tabela em memória.
 """
 import os
@@ -34,15 +34,8 @@ def login(client, monkeypatch, tokens):
         'email': 'refresh@example.com',
         'senha_hash': generate_password_hash('senha123'),
         'ativo': True,
-    }}).instalar(monkeypatch, auth_routes)
-    monkeypatch.setattr(auth_routes, 'get_user_permissions', lambda _user_id: {
         'nivel_acesso': 'usuario',
-        'grupos': 'Usuários',
-        'pode_criar': 1,
-        'pode_editar': 1,
-        'pode_deletar': 0,
-        'pode_moderar': 0,
-    })
+    }}).instalar(monkeypatch, auth_routes)
 
     def _login():
         response = client.post('/api/auth/login', json={

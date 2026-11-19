@@ -7,7 +7,7 @@ from spectree import Response
 
 from banco import consultar, consultar_um
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
-from decorators import get_user_permissions
+from decorators import nivel_de_acesso
 from schemas.usuario import RespostaEstatisticas, RespostaPerfil, RespostaPermissoes
 
 usuario_bp = Blueprint('usuario', __name__)
@@ -52,8 +52,8 @@ def obter_perfil():
     resp=Response(HTTP_200=RespostaPermissoes, **ERROS_AUTENTICADA), tags=['usuario'], security=AUTENTICADO,
 )
 def obter_permissoes():
-    """Obter permissões do usuário."""
-    return {'permissoes': get_user_permissions(get_jwt_identity())}
+    """Obter o Nível de acesso do usuário."""
+    return {'permissoes': {'nivel_acesso': nivel_de_acesso(get_jwt_identity())}}
 
 
 @usuario_bp.route('/estatisticas', methods=['GET'])

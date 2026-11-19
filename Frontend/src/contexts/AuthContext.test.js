@@ -59,14 +59,7 @@ describe('AuthContext', () => {
                     id: 'USR-1',
                     email: 'user@example.com',
                     // As mesmas `Permissoes` de GET /usuario/permissoes.
-                    permissoes: {
-                        nivel_acesso: 'admin',
-                        grupos: 'Administradores',
-                        pode_criar: true,
-                        pode_editar: false,
-                        pode_deletar: false,
-                        pode_moderar: true,
-                    },
+                    permissoes: { nivel_acesso: 'admin' },
                 },
             }),
         });
@@ -81,14 +74,7 @@ describe('AuthContext', () => {
 
         await waitFor(() => expect(localStorage.getItem('token')).toBe('token-login'));
         expect(JSON.parse(localStorage.getItem('user')).email).toBe('user@example.com');
-        expect(JSON.parse(localStorage.getItem('permissions'))).toEqual({
-            nivel_acesso: 'admin',
-            grupos: 'Administradores',
-            pode_criar: true,
-            pode_editar: false,
-            pode_deletar: false,
-            pode_moderar: true,
-        });
+        expect(JSON.parse(localStorage.getItem('permissions'))).toEqual({ nivel_acesso: 'admin' });
         expect(screen.getByTestId('user')).toHaveTextContent('user@example.com');
     });
 

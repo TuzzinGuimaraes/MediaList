@@ -13,10 +13,9 @@ from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, j
 from spectree import Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from banco import Conflito, consultar_um, executar, transacao
+from banco import Conflito, consultar_um, executar
 from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
-from decorators import get_user_permissions
 from repositories import AcessoRepository, RefreshTokenRepository
 from schemas.auth import (
     CorpoEsqueciSenha,
@@ -38,15 +37,6 @@ auth_bp = Blueprint('auth', __name__)
 refresh_token_repository = RefreshTokenRepository()
 # Também consultado pelos callbacks do JWT em app.py.
 acesso_repository = AcessoRepository()
-
-# Grupo atribuído a todo novo cadastro. Localizado por nome: a ordem em que o
-# schema semeia os grupos não é contrato, e um id fixo transforma qualquer
-# reordenação do seed em escalação de privilégio silenciosa.
-GRUPO_PADRAO = 'Usuários'
-
-
-class GrupoPadraoAusente(RuntimeError):
-    """O seed não tem o grupo padrão: o cadastro é abortado (500)."""
 
 
 # ============================================
@@ -83,7 +73,7 @@ def _revogar_access(claims):
 
 @auth_bp.route('/registro', methods=['POST'])
 @contrato.validate(
-    resp=Response(HTTP_201=UsuarioCriado, HTTP_409=Erro, HTTP_500=Erro), tags=['auth'],
+    resp=Response(HTTP_201=UsuarioCriado, HTTP_409=Erro), tags=['auth'],
 )
 def registro(json: CorpoRegistro):
     """Registrar novo usuário"""
@@ -95,33 +85,18 @@ def registro(json: CorpoRegistro):
         json.biografia,
     )
 
-    # Usuário e grupo padrão são criados na mesma transação: um usuário sem
-    # grupo não tem permissão alguma, então um cadastro pela metade é pior
-    # do que nenhum cadastro.
+    # O Nível de acesso fica no padrão da coluna (`usuario`).
     try:
-        with transacao() as t:
-            user_id = t.consultar_um(
-                """
-                INSERT INTO usuarios (nome_completo, email, senha_hash, data_nascimento, biografia)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id_usuario
-                """,
-                params,
-            )['id_usuario']
-
-            grupo = t.consultar_um("SELECT id_grupo FROM grupos_usuarios WHERE nome_grupo = %s", (GRUPO_PADRAO,))
-            if not grupo:
-                raise GrupoPadraoAusente(f"Grupo padrão '{GRUPO_PADRAO}' ausente no banco; cadastro abortado")
-
-            t.executar(
-                "INSERT INTO usuarios_grupos (id_usuario, id_grupo) VALUES (%s, %s)",
-                (user_id, grupo['id_grupo']),
-            )
+        user_id = consultar_um(
+            """
+            INSERT INTO usuarios (nome_completo, email, senha_hash, data_nascimento, biografia)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id_usuario
+            """,
+            params,
+        )['id_usuario']
     except Conflito:
         return resposta_erro(409, CodigoErro.CONFLITO, 'Email já cadastrado')
-    except GrupoPadraoAusente:
-        logger.error("Grupo padrão '%s' ausente no banco; cadastro abortado", GRUPO_PADRAO)
-        return resposta_erro(500, CodigoErro.ERRO_INTERNO, 'Configuração de grupos inválida')
 
     return {'mensagem': 'Usuário criado com sucesso!', 'id_usuario': user_id}, 201
 
@@ -131,7 +106,7 @@ def registro(json: CorpoRegistro):
 def login(json: CorpoLogin):
     """Login de usuário"""
     usuario = consultar_um(
-        "SELECT id_usuario, nome_completo, email, senha_hash, ativo FROM usuarios WHERE email = %s",
+        "SELECT id_usuario, nome_completo, email, senha_hash, ativo, nivel_acesso FROM usuarios WHERE email = %s",
         (json.email,),
     )
 
@@ -141,7 +116,6 @@ def login(json: CorpoLogin):
     if not usuario['ativo']:
         return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Usuário desativado')
 
-    permissions = get_user_permissions(usuario['id_usuario'])
     access_token = create_access_token(identity=usuario['id_usuario'])
 
     # Sem refresh o login continua valendo: o web não usa o campo, e um
@@ -161,7 +135,7 @@ def login(json: CorpoLogin):
             'id': usuario['id_usuario'],
             'nome': usuario['nome_completo'],
             'email': usuario['email'],
-            'permissoes': permissions,
+            'permissoes': {'nivel_acesso': usuario['nivel_acesso']},
         }
     }
 
