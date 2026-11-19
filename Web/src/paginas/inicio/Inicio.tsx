@@ -8,14 +8,18 @@ import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@
 
 import type { Esquemas } from '../../api/tipos';
 import { useCatalogo } from '../../catalogo/CatalogoContext';
+import { useEmAlta } from '../../catalogo/consultas';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Fileira } from '../../componentes/Fileira';
 import { ALTURA_NAV } from '../../layout/Casca';
+import { useLista } from '../lista/api';
+import { useEditorItem } from '../lista/EditorItemContext';
 import { CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
-import { useEditorItem } from '../../lista/EditorItemContext';
-import { useLista } from '../../lista/api';
-import { useCarrosseisPorGenero, useCarrossel, useEmAlta, usePopulares } from './consultas';
+import { useCarrosseisPorGenero, useCarrossel, usePopulares } from './consultas';
 import { Destaques } from './Destaques';
+
+/** Quantas Mídias de cada Tipo o Em alta traz (o Destaque usa as 5 primeiras). */
+const LIMITE_EM_ALTA = 10;
 
 type ItemLista = Esquemas['ItemLista'];
 type MidiaDoCarrossel = Esquemas['Midia'] | Esquemas['MidiaPopular'];
@@ -41,7 +45,7 @@ function SobANav({ children }: { children: ReactNode }) {
 
 export function Inicio() {
   const { recorte, tipos } = useCatalogo();
-  const emAlta = useEmAlta(recorte);
+  const emAlta = useEmAlta(recorte, LIMITE_EM_ALTA);
   const populares = usePopulares(recorte);
   const lista = useLista();
   const maioresNotas = useCarrossel(recorte, 'nota_media');

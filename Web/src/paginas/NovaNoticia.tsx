@@ -2,6 +2,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 
+import { CATEGORIAS_NOTICIA, type CategoriaNoticia } from '@dominio/noticia';
+
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { ErroApi, mensagemDeErro } from '../api/erros';
 import type { Esquemas } from '../api/tipos';
@@ -11,19 +14,7 @@ import { AreaTexto, Campo } from '../componentes/Campo';
 import { Opcoes } from '../componentes/Opcoes';
 import { useApi } from '../sessao/SessaoContext';
 
-const CATEGORIAS = [
-  { valor: 'geral', nome: 'Geral' },
-  { valor: 'lancamento', nome: 'Lançamento' },
-  { valor: 'temporada', nome: 'Nova temporada' },
-  { valor: 'evento', nome: 'Evento' },
-  { valor: 'manga', nome: 'Mangá' },
-  { valor: 'filme', nome: 'Filme' },
-  { valor: 'anuncio', nome: 'Anúncio' },
-] as const;
-
-type Categoria = (typeof CATEGORIAS)[number]['valor'];
-
-type Formulario = { titulo: string; conteudo: string; categoria: Categoria; tags: string; imagem_url: string };
+type Formulario = { titulo: string; conteudo: string; categoria: CategoriaNoticia; tags: string; imagem_url: string };
 
 const VAZIO: Formulario = { titulo: '', conteudo: '', categoria: 'geral', tags: '', imagem_url: '' };
 
@@ -53,7 +44,7 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
     mutationFn: (corpo: Esquemas['CorpoNoticia']) => exigir(api.POST('/api/noticias', { body: corpo })),
     onSuccess: async () => {
       setForm(VAZIO);
-      await queryClient.invalidateQueries({ queryKey: ['noticias'] });
+      await queryClient.invalidateQueries({ queryKey: chaves.noticias.todas });
       publicada();
     },
   });
@@ -115,7 +106,7 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
           erro={detalhes.conteudo}
           rows={6}
         />
-        <Opcoes rotulo="Categoria" opcoes={CATEGORIAS} valor={form.categoria} mudar={(c) => mudar('categoria', c)} />
+        <Opcoes rotulo="Categoria" opcoes={CATEGORIAS_NOTICIA} valor={form.categoria} mudar={(c) => mudar('categoria', c)} />
         <Campo
           rotulo="Tags"
           dica="Separadas por vírgula: anime, ação"

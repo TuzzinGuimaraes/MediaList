@@ -100,7 +100,9 @@ export interface paths {
         put?: never;
         /**
          * Trocar um refresh token por um par novo de access + refresh (rotação).
-         * @description Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
+         * @description O web (`X-Cliente: web`) manda e recebe o refresh no cookie `medialist_refresh`, e o corpo da resposta leva `refresh_token: null`; o app, no corpo. Recusado no web, o cookie é apagado.
+         *
+         *     Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
          */
         post: operations["post__api_auth_refresh"];
         delete?: never;
@@ -311,6 +313,23 @@ export interface paths {
         };
         /** Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas. */
         get: operations["get__api_midias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/midias/facetas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`. */
+        get: operations["get__api_midias_facetas"];
         put?: never;
         post?: never;
         delete?: never;
@@ -776,6 +795,15 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConsultaFacetas */
+        ConsultaFacetas: {
+            /**
+             * Tipo
+             * @description Sem Tipo, as facetas de todos
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -2118,6 +2146,17 @@ export interface components {
             estatisticas: components["schemas"]["EstatisticaPorTipo"][];
             resumo: components["schemas"]["ResumoEstatisticas"];
         };
+        /**
+         * RespostaFacetas
+         * @description Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
+         *     filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).
+         */
+        RespostaFacetas: {
+            /** Estudios */
+            estudios: string[];
+            /** Plataformas */
+            plataformas: string[];
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
@@ -2134,7 +2173,7 @@ export interface components {
             access_token: string;
             /**
              * Refresh Token
-             * @description Nulo se o banco não gravou o refresh; o login vale mesmo assim
+             * @description Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web (`X-Cliente: web`), em que o refresh vai no cookie httpOnly
              */
             refresh_token: string | null;
             usuario: components["schemas"]["UsuarioDaSessao"];
@@ -2182,8 +2221,11 @@ export interface components {
         RespostaRefresh: {
             /** Access Token */
             access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
+            /**
+             * Refresh Token
+             * @description Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly
+             */
+            refresh_token: string | null;
         };
         /** RespostaTrending */
         RespostaTrending: {
@@ -3402,6 +3444,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginaMidia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_facetas: {
+        parameters: {
+            query?: {
+                /** @description Sem Tipo, as facetas de todos */
+                tipo?: ("anime" | "manga" | "jogo") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaFacetas"];
                 };
             };
             /** @description Bad Request */

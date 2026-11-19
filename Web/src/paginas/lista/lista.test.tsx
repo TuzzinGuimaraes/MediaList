@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { abrirLogado } from '../testes/app';
-import { erro } from '../testes/fetchSimulado';
+import { abrirLogado } from '../../testes/app';
+import { erro } from '../../testes/fetchSimulado';
 import { rotasDaLista, umaMidia, umItem } from './fixtures';
 
 describe('Minha Lista', () => {

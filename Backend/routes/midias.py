@@ -32,6 +32,7 @@ from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
 from schemas.midias import (
     AtualizacaoPublicada,
+    ConsultaFacetas,
     ConsultaMidias,
     ConsultaPopulares,
     ConsultaTrending,
@@ -41,6 +42,7 @@ from schemas.midias import (
     MidiaDetalhe,
     RespostaAtividade,
     RespostaDistribuicao,
+    RespostaFacetas,
     RespostaNotas,
     RespostaPopulares,
     RespostaTrending,
@@ -89,6 +91,13 @@ def trending_midias(query: ConsultaTrending):
 def midias_populares(query: ConsultaPopulares):
     """As Mídias com mais Usuários; a nota desempata."""
     return {'midias': catalogo.populares(query.tipo)}
+
+
+@midias_bp.route('/facetas', methods=['GET'])
+@contrato.validate(resp=Response(HTTP_200=RespostaFacetas), tags=['midias'])
+def facetas_midias(query: ConsultaFacetas):
+    """Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`."""
+    return catalogo.facetas(query.tipo)
 
 
 @midias_bp.route('/<string:id_midia>', methods=['GET'])

@@ -3,10 +3,11 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
-import { rotuloNivelAcesso } from '@dominio/conta';
+import { inicialDoNome, rotuloNivelAcesso } from '@dominio/conta';
 import { formatarData } from '@dominio/datas';
 import { formatarMedia } from '@dominio/estatisticas';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { CardA, NotasCartao } from '../componentes/Cards';
 import { cartaoDaMidia } from '../componentes/cartao';
@@ -15,6 +16,7 @@ import { useCatalogo } from '../catalogo/CatalogoContext';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { SeletorTema } from '../tema/SeletorTema';
 import { EstatisticasPerfil } from './EstatisticasPerfil';
+import { useLista } from './lista/api';
 import { NotificacoesPerfil } from './NotificacoesPerfil';
 
 const MAX_FAVORITOS = 12;
@@ -44,19 +46,15 @@ export function Perfil() {
   const { tipos } = useCatalogo();
 
   const perfil = useQuery({
-    queryKey: ['usuario', 'perfil'],
+    queryKey: chaves.usuario.perfil,
     queryFn: () => exigir(api.GET('/api/usuario/perfil')),
     select: (r) => r.perfil,
   });
   const estatisticas = useQuery({
-    queryKey: ['usuario', 'estatisticas'],
+    queryKey: chaves.usuario.estatisticas,
     queryFn: () => exigir(api.GET('/api/usuario/estatisticas')),
   });
-  const lista = useQuery({
-    queryKey: ['lista', 'perfil'],
-    queryFn: () => exigir(api.GET('/api/lista')),
-    select: (r) => r.lista,
-  });
+  const lista = useLista();
 
   const desde = formatarData(perfil.data?.data_cadastro);
   const favoritos = lista.data?.filter((i) => i.favorito && tipos.includes(i.tipo)).slice(0, MAX_FAVORITOS);
@@ -66,7 +64,7 @@ export function Perfil() {
     <main className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-10 lg:grid-cols-[minmax(0,1fr)_360px]">
       <header className="flex items-center gap-5 lg:col-span-2">
         <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-xl bg-marca text-[32px] font-bold text-sobre-marca">
-          {usuario.nome.trim()[0]?.toUpperCase() ?? '?'}
+          {inicialDoNome(usuario.nome)}
         </span>
         <div className="flex flex-col gap-1">
           <h1 className="text-[28px] font-bold text-texto-forte">{usuario.nome}</h1>

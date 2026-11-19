@@ -1,5 +1,4 @@
-// Rotas tipadas (TanStack Router, code-based). Todas as telas existem desde o esqueleto;
-// as provisórias são trocadas pelos tickets 04 a 08 da spec web-novo.
+// Rotas tipadas (TanStack Router, code-based).
 import type { QueryClient } from '@tanstack/react-query';
 import {
   createRootRouteWithContext,
@@ -12,13 +11,15 @@ import {
 
 import { Casca } from '../layout/Casca';
 import { Entrar } from '../paginas/Entrar';
-import { Admin } from '../paginas/Admin';
+import { Admin } from '../paginas/admin/Admin';
 import { Explorar } from '../paginas/explorar/Explorar';
 import { validarBuscaExplorar } from '../paginas/explorar/busca';
 import { Inicio } from '../paginas/inicio/Inicio';
 import { Noticias } from '../paginas/Noticias';
 import { Perfil } from '../paginas/Perfil';
-import { Detalhe, Lista, NaoEncontrada } from '../paginas/Provisorias';
+import { Detalhe } from '../paginas/detalhe/Detalhe';
+import { Lista } from '../paginas/lista/Lista';
+import { NaoEncontrada } from '../paginas/NaoEncontrada';
 import { Registro } from '../paginas/Registro';
 import { ehAdmin, type EstadoSessao } from '../sessao/sessao';
 

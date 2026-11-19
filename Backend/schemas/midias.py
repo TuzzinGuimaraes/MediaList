@@ -79,6 +79,12 @@ class ConsultaPopulares(BaseModel):
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = None
 
 
+class ConsultaFacetas(BaseModel):
+    tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = Field(
+        default=None, description='Sem Tipo, as facetas de todos',
+    )
+
+
 class _CorpoMidiaBase(BaseModel):
     """Campos comuns do PUT. A Nota média e a Nota da fonte não são graváveis
     pela API (ticket 13): chegam e são ignoradas, como qualquer campo fora do modelo."""
@@ -243,6 +249,14 @@ class MidiaPopular(BaseModel):
 
 class RespostaPopulares(BaseModel):
     midias: list[MidiaPopular]
+
+
+class RespostaFacetas(BaseModel):
+    """Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
+    filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes)."""
+
+    plataformas: list[str]
+    estudios: list[str]
 
 
 class ContagemPorRotulo(BaseModel):

@@ -6,10 +6,10 @@ import { nomeDoTipo } from '@dominio/estadoConsumo';
 import { passoDeProgresso, proporcaoDoFio, temProgresso, totalDoItem } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
-import { FioProgresso } from '../componentes/FioProgresso';
-import { Icone } from '../componentes/Icone';
-import { Monograma } from '../componentes/Monograma';
-import { Selo, SeloStatus } from '../componentes/Selo';
+import { FioProgresso } from '../../componentes/FioProgresso';
+import { Icone } from '../../componentes/Icone';
+import { Monograma } from '../../componentes/Monograma';
+import { Selo, SeloStatus } from '../../componentes/Selo';
 import type { ItemLista } from './api';
 
 /** O que a Lista faz com um Item: abrir o editor e dar um passo no Progresso. */

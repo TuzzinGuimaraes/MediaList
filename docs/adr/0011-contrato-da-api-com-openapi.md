@@ -41,6 +41,10 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   (`data_avaliacao`) e conclusões (`data_conclusao`) houve em cada dia das últimas 52 semanas
   (364 dias, `fim` é hoje). Só saem os dias com atividade, em ordem; 404 se a Mídia não existe.
   Hoje e o dia de cada instante seguem o fuso da sessão do banco.
+- **Facetas do catálogo:** `GET /midias/facetas?tipo=` devolve `{plataformas, estudios}`, os
+  valores distintos e ordenados dos filtros `plataforma` e `estudio` de `GET /midias`, para os
+  clientes oferecerem opções em vez de texto livre. Plataformas só nos jogos, estúdios só nos
+  animes; o que não se aplica ao Tipo vem vazio, e sem Tipo vêm os dois.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no

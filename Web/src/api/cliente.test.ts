@@ -4,20 +4,22 @@ import { erro, semConexao, simularFetch } from '../testes/fetchSimulado';
 import { criarCliente, exigir, type FonteTokens } from './cliente';
 import { ErroApi, ErroRede } from './erros';
 
-/** Sessão em memória com access A1 e refresh R1, como depois de um login. */
-function fonte(inicial: { access: string | null; refresh: string | null } = { access: 'A1', refresh: 'R1' }) {
+/** Sessão em memória com o access A1, como depois de um login; o refresh fica no cookie. */
+function fonte(inicial: { access: string | null } = { access: 'A1' }) {
   const tokens = { ...inicial };
   const f = {
     access: () => tokens.access,
-    refresh: () => tokens.refresh,
-    renovados: vi.fn((novos: { access: string; refresh: string }) => Object.assign(tokens, novos)),
+    renovado: vi.fn((access: string) => {
+      tokens.access = access;
+    }),
     expirada: vi.fn(() => {
       tokens.access = null;
-      tokens.refresh = null;
     }),
   } satisfies FonteTokens;
   return { f, tokens };
 }
+
+const renovado = { status: 200, corpo: { access_token: 'A2', refresh_token: null } };
 
 const perfil = { status: 200, corpo: { permissoes: { nivel_acesso: 'usuario' } } };
 
@@ -39,7 +41,7 @@ describe('cliente da API', () => {
         corpo: { erro: 'Dados inválidos', codigo: 'dados_invalidos', detalhes: { email: 'Obrigatório' } },
       },
     });
-    const { f } = fonte({ access: null, refresh: null });
+    const { f } = fonte({ access: null });
 
     const falha = exigir(
       criarCliente(f).POST('/api/auth/registro', { body: { nome_completo: 'Ana', email: '', senha: 'x' } }),
@@ -60,18 +62,28 @@ describe('cliente da API', () => {
     await expect(exigir(criarCliente(fonte().f).GET('/api/usuario/permissoes'))).rejects.toBeInstanceOf(ErroRede);
   });
 
-  it('401 renova com o refresh e repete a requisição com o access novo', async () => {
+  it('toda requisição se identifica como o web (X-Cliente), o que libera o cookie do refresh', async () => {
+    const api = simularFetch({ 'GET /usuario/permissoes': perfil });
+
+    await exigir(criarCliente(fonte().f).GET('/api/usuario/permissoes'));
+
+    expect(api.para('GET /usuario/permissoes')[0]?.cliente).toBe('web');
+  });
+
+  it('401 renova pelo cookie (sem corpo) e repete a requisição com o access novo', async () => {
     const api = simularFetch({
       'GET /usuario/permissoes': (req) =>
         req.autorizacao === 'Bearer A2' ? perfil : erro(401, 'token_expirado', 'Token expirado'),
-      'POST /auth/refresh': { status: 200, corpo: { access_token: 'A2', refresh_token: 'R2' } },
+      'POST /auth/refresh': renovado,
     });
     const { f, tokens } = fonte();
 
     await exigir(criarCliente(f).GET('/api/usuario/permissoes'));
 
-    expect(api.para('POST /auth/refresh')[0]?.corpo).toEqual({ refresh_token: 'R1' });
-    expect(tokens).toEqual({ access: 'A2', refresh: 'R2' });
+    const refresh = api.para('POST /auth/refresh')[0];
+    expect(refresh?.corpo).toBeUndefined();
+    expect(refresh?.cliente).toBe('web');
+    expect(tokens).toEqual({ access: 'A2' });
     expect(api.para('GET /usuario/permissoes').map((c) => c.autorizacao)).toEqual(['Bearer A1', 'Bearer A2']);
   });
 
@@ -81,7 +93,7 @@ describe('cliente da API', () => {
         req.autorizacao === 'Bearer A2'
           ? { status: 201, corpo: { mensagem: 'ok', id_avaliacao: 'AV1' } }
           : erro(401, 'token_expirado', 'Token expirado'),
-      'POST /auth/refresh': { status: 200, corpo: { access_token: 'A2', refresh_token: 'R2' } },
+      'POST /auth/refresh': renovado,
     });
     const corpo = { id_midia: 'M1', nota: 8, titulo_avaliacao: 'Bom', texto_avaliacao: 'Gostei' };
 
@@ -94,7 +106,7 @@ describe('cliente da API', () => {
     const api = simularFetch({
       'GET /usuario/permissoes': (req) =>
         req.autorizacao === 'Bearer A2' ? perfil : erro(401, 'token_expirado', 'Token expirado'),
-      'POST /auth/refresh': { status: 200, corpo: { access_token: 'A2', refresh_token: 'R2' } },
+      'POST /auth/refresh': renovado,
     });
     const cliente = criarCliente(fonte().f);
 
@@ -127,7 +139,7 @@ describe('cliente da API', () => {
     expect(f.expirada).toHaveBeenCalledOnce();
   });
 
-  it('API fora no refresh não encerra a sessão: o erro sobe e o refresh fica', async () => {
+  it('API fora no refresh não encerra a sessão: o erro sobe e o access fica', async () => {
     simularFetch({
       'GET /usuario/permissoes': erro(401, 'token_expirado', 'Token expirado'),
       'POST /auth/refresh': erro(503, 'indisponivel', 'Serviço indisponível'),
@@ -136,7 +148,7 @@ describe('cliente da API', () => {
 
     await expect(exigir(criarCliente(f).GET('/api/usuario/permissoes'))).rejects.toMatchObject({ status: 503 });
     expect(f.expirada).not.toHaveBeenCalled();
-    expect(tokens.refresh).toBe('R1');
+    expect(tokens.access).toBe('A1');
   });
 
   it('401 do login é a resposta final, sem tentar refresh', async () => {

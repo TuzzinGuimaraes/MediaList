@@ -26,7 +26,7 @@ type Props = {
 };
 
 /** Fileira rolável na horizontal, com setas que aparecem no hover ou no foco. */
-export function Fileira({ titulo, children, vazia = false, acao, recuo = 'px-12' }: Props) {
+export function Fileira({ titulo, children, vazia = false, acao, recuo = 'px-6 lg:px-12' }: Props) {
   const trilho = useRef<HTMLDivElement>(null);
   const reduzir = useReduzirMovimento();
   if (vazia) return null;

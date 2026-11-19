@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
+import { inicialDoNome } from '@dominio/conta';
+
 import { Icone } from '../componentes/Icone';
 import { ehAdmin } from '../sessao/sessao';
 import { useSessao, useUsuario } from '../sessao/SessaoContext';
@@ -16,7 +18,7 @@ export function MenuConta({ sobreImagem }: { sobreImagem: boolean }) {
   const raiz = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const inicial = usuario.nome.trim()[0]?.toUpperCase() ?? '?';
+  const inicial = inicialDoNome(usuario.nome);
 
   useEffect(() => {
     if (!aberto) return;

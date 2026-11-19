@@ -11,6 +11,8 @@ export type Requisicao = {
   caminho: string;
   query: URLSearchParams;
   autorizacao: string | null;
+  /** Cabeçalho X-Cliente: o web manda "web" para usar o cookie do refresh. */
+  cliente: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- o teste lê o corpo como quiser.
   corpo: any;
 };
@@ -33,6 +35,7 @@ export function simularFetch(rotas: Rotas) {
       caminho: url.pathname.replace(/^\/api/, ''),
       query: url.searchParams,
       autorizacao: pedido.headers.get('Authorization'),
+      cliente: pedido.headers.get('X-Cliente'),
       corpo: texto ? JSON.parse(texto) : undefined,
     };
     chamadas.push(req);

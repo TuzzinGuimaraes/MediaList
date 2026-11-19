@@ -178,6 +178,17 @@ describe('Perfil', () => {
     expect(within(favoritos).queryByRole('link', { name: /Hades/ })).not.toBeInTheDocument();
   });
 
+  it('usa a Lista pessoal do cache da Lista, sem buscá-la de novo', async () => {
+    const { api, historico } = await abrirLogado('/lista', { rotas: rotasDoPerfil() });
+    await screen.findByRole('tablist');
+    expect(api.para('GET /lista')).toHaveLength(1);
+
+    historico.push('/perfil');
+
+    expect(await within(await secao('Favoritos')).findByRole('link', { name: /Frieren/ })).toBeInTheDocument();
+    expect(api.para('GET /lista')).toHaveLength(1);
+  });
+
   it('o seletor de tema fica no Perfil', async () => {
     await abrirLogado('/perfil', { rotas: rotasDoPerfil() });
 

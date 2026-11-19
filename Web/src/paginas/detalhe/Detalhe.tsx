@@ -17,8 +17,8 @@ import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
 import { proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { atributosDoTipo, notasDaMidia, ROTULO_NOTA_MEDIA, tituloAlternativo, tituloDaMidia } from '@dominio/midia';
 import { emLancamento } from '@dominio/situacao';
-import { useItemDaMidia } from '../../lista/api';
-import { useEditorItem } from '../../lista/EditorItemContext';
+import { useItemDaMidia } from '../lista/api';
+import { useEditorItem } from '../lista/EditorItemContext';
 import { Avaliacoes } from './Avaliacoes';
 import { useMidia } from './consultas';
 import { DistribuicaoNotas } from './DistribuicaoNotas';
@@ -44,7 +44,7 @@ export function Detalhe() {
 function Banner({ midia }: { midia: MidiaDetalhe }) {
   const imagem = midia.banner_url ?? midia.poster_url;
   return (
-    <div className="relative h-[440px] overflow-hidden bg-superficie">
+    <div className="relative h-[320px] overflow-hidden bg-superficie lg:h-[440px]">
       {imagem ? (
         <img
           src={imagem}
@@ -128,7 +128,7 @@ function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
           <Selo key={g} texto={g} />
         ))}
       </div>
-      <h1 className="text-[40px] font-bold leading-tight text-texto-forte">{tituloDaMidia(midia)}</h1>
+      <h1 className="text-[32px] font-bold leading-tight lg:text-[40px] text-texto-forte">{tituloDaMidia(midia)}</h1>
       {alternativo ? <p className="-mt-1 text-[16px] text-texto-suave">{alternativo}</p> : null}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         {notasDaMidia(midia).map((n) => (
@@ -196,13 +196,17 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
   return (
     <div className="pb-24">
       <Banner midia={midia} />
-      <div className="mx-auto grid max-w-[1280px] grid-cols-[200px_minmax(0,1fr)] gap-8 px-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10 lg:px-12">
-        <div className="-mt-56 flex flex-col gap-4">
+      {/* Desktop: duas colunas. Abaixo de 1024px, uma só: o pôster ao lado do botão e da ficha, e o resto embaixo. */}
+      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10 lg:px-12">
+        <div className="-mt-40 grid grid-cols-[180px_minmax(0,1fr)] items-start gap-6 lg:-mt-56 lg:flex lg:flex-col lg:gap-4">
           <Poster midia={midia} item={item.data} />
-          <BotaoDaLista midia={midia} />
-          <Ficha midia={midia} item={item.data} />
+          {/* No tablet, começa onde o banner acaba, ao lado do pôster. */}
+          <div className="flex flex-col gap-4 pt-40 lg:pt-0">
+            <BotaoDaLista midia={midia} />
+            <Ficha midia={midia} item={item.data} />
+          </div>
         </div>
-        <div className="-mt-28 flex flex-col gap-9">
+        <div className="flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
           <Sinopse texto={midia.sinopse} />
           <Atualizacoes atualizacoes={midia.atualizacoes} />

@@ -8,13 +8,13 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint
+from flask import Blueprint, after_this_request, request
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, jwt_required
 from spectree import Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from banco import Conflito, consultar_um, executar
-from config import EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
+from config import APP_ENV, EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from repositories import AcessoRepository, RefreshTokenRepository
 from schemas.auth import (
@@ -62,6 +62,46 @@ def _emitir_refresh(id_usuario):
     if not refresh_token_repository.criar(id_usuario, familia, token_hash, expira_em):
         return None
     return token
+
+# ============================================
+# REFRESH NO COOKIE (web)
+# ============================================
+# O web se identifica com `X-Cliente: web`: o refresh vai e volta num cookie httpOnly,
+# fora do alcance de um script injetado, e o corpo leva `refresh_token: null`. O app
+# não manda o cabeçalho e segue com o refresh no corpo. O cookie só é lido com o
+# cabeçalho: um formulário de outro site manda o cookie, mas não um cabeçalho próprio
+# (e o SameSite=Strict já o barra nos navegadores atuais).
+
+CABECALHO_CLIENTE = 'X-Cliente'
+COOKIE_REFRESH = 'medialist_refresh'
+COOKIE_PATH = '/api/auth'
+#: Em dev o web roda em http://localhost; nos outros ambientes, só HTTPS.
+COOKIE_SEGURO = APP_ENV != 'development'
+
+
+def _do_web():
+    return request.headers.get(CABECALHO_CLIENTE) == 'web'
+
+
+def _opcoes_do_cookie():
+    return {'path': COOKIE_PATH, 'httponly': True, 'secure': COOKIE_SEGURO, 'samesite': 'Strict'}
+
+
+def _gravar_cookie(token):
+    @after_this_request
+    def _gravar(resposta):
+        resposta.set_cookie(
+            COOKIE_REFRESH, token, max_age=int(REFRESH_TOKEN_EXPIRES.total_seconds()), **_opcoes_do_cookie(),
+        )
+        return resposta
+
+
+def _apagar_cookie():
+    @after_this_request
+    def _apagar(resposta):
+        resposta.delete_cookie(COOKIE_REFRESH, **_opcoes_do_cookie())
+        return resposta
+
 
 def _revogar_access(claims):
     """Blocklist persistida: o jti fica recusado até o token expirar."""
@@ -118,8 +158,8 @@ def login(json: CorpoLogin):
 
     access_token = create_access_token(identity=usuario['id_usuario'])
 
-    # Sem refresh o login continua valendo: o web não usa o campo, e um
-    # banco momentaneamente fora não deve derrubar o login.
+    # Sem refresh o login continua valendo: um banco momentaneamente fora não
+    # deve derrubar o login.
     refresh_token = _emitir_refresh(usuario['id_usuario'])
     if not refresh_token:
         logger.warning('Refresh token não emitido para %s', usuario['id_usuario'])
@@ -127,6 +167,10 @@ def login(json: CorpoLogin):
     # Último acesso é escrito aqui, no único momento em que o usuário de fato
     # acessou o sistema (antes vinha de um trigger em qualquer UPDATE).
     executar("UPDATE usuarios SET ultimo_acesso = now() WHERE id_usuario = %s", (usuario['id_usuario'],))
+
+    if refresh_token and _do_web():
+        _gravar_cookie(refresh_token)
+        refresh_token = None
 
     return {
         'access_token': access_token,
@@ -145,10 +189,26 @@ def login(json: CorpoLogin):
 def refresh(json: CorpoRefresh):
     """Trocar um refresh token por um par novo de access + refresh (rotação).
 
+    O web (`X-Cliente: web`) manda e recebe o refresh no cookie `medialist_refresh`, e o
+    corpo da resposta leva `refresh_token: null`; o app, no corpo. Recusado no web, o
+    cookie é apagado.
+
     Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de
     qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
     """
-    token = json.refresh_token
+    if not _do_web():
+        return _renovar(json.refresh_token if json else None)
+
+    resposta = _renovar(request.cookies.get(COOKIE_REFRESH))
+    if isinstance(resposta, tuple):
+        _apagar_cookie()
+        return resposta
+    _gravar_cookie(resposta['refresh_token'])
+    return {**resposta, 'refresh_token': None}
+
+
+def _renovar(token):
+    """O par novo `{access_token, refresh_token}`, ou a resposta de erro."""
     if not token:
         return _refresh_invalido()
 
@@ -216,10 +276,16 @@ def logout(json: CorpoLogout):
     """Fazer logout e revogar o token"""
     _revogar_access(get_jwt())
 
-    # Opcional: o app manda o refresh do aparelho para encerrar a sessão
-    # de verdade. Só revoga token do próprio usuário. Sem corpo JSON, `json` é None.
-    if json is not None and json.refresh_token:
-        refresh_token_repository.revogar(_hash_refresh(json.refresh_token), get_jwt_identity())
+    # Opcional: o app manda o refresh do aparelho no corpo, e o web no cookie, para
+    # encerrar a sessão de verdade. Só revoga token do próprio usuário. Sem corpo JSON,
+    # `json` é None.
+    if _do_web():
+        refresh_token = request.cookies.get(COOKIE_REFRESH)
+        _apagar_cookie()
+    else:
+        refresh_token = json.refresh_token if json is not None else None
+    if refresh_token:
+        refresh_token_repository.revogar(_hash_refresh(refresh_token), get_jwt_identity())
 
     return {'mensagem': 'Logout realizado com sucesso'}
 

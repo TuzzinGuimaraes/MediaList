@@ -4,13 +4,14 @@ import { useState } from 'react';
 
 import { formatarData } from '@dominio/datas';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { paginacao } from '../api/paginacao';
 import type { Esquemas } from '../api/tipos';
 import { Botao } from '../componentes/Botao';
 import { Carregando, ErroTela, Vazio } from '../componentes/Estados';
 import { Icone } from '../componentes/Icone';
-import { Paginador } from '../componentes/Paginador';
+import { Paginacao } from '../componentes/Paginacao';
 import { ehAdmin } from '../sessao/sessao';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { NovaNoticia } from './NovaNoticia';
@@ -50,7 +51,7 @@ export function Noticias() {
   const [criando, setCriando] = useState(false);
 
   const consulta = useQuery({
-    queryKey: ['noticias', pagina],
+    queryKey: chaves.noticias.pagina(pagina),
     queryFn: () => exigir(api.GET('/api/noticias', { params: { query: { pagina, por_pagina: NOTICIAS_POR_PAGINA } } })),
     placeholderData: keepPreviousData,
   });
@@ -79,7 +80,7 @@ export function Noticias() {
                 <CartaoNoticia key={n.id_noticia} noticia={n} />
               ))}
             </div>
-            <Paginador paginacao={paginacao(consulta.data)} mudar={mudar} />
+            <Paginacao paginacao={paginacao(consulta.data)} ir={mudar} />
           </>
         ) : (
           <Vazio texto="Nenhuma notícia disponível no momento." />

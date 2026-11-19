@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../../api/tipos';
+import { simularLargura } from '../../testes/ambiente';
 import { abrirLogado } from '../../testes/app';
 import { erro, type Requisicao, type Resposta, type Rotas } from '../../testes/fetchSimulado';
 
@@ -65,9 +66,22 @@ function generos(nomes: string[]) {
 
 const GENEROS = ['Ação', 'Aventura', 'Comédia', 'Drama', 'Fantasia', 'Mistério', 'Romance', 'Esportes', 'Terror', 'Slice of Life'];
 
-/** Rotas do Explorar: `GET /midias` responde com `responder` e os Gêneros com a lista acima. */
+const PLATAFORMAS = ['Android', 'iOS', 'Linux', 'macOS', 'Nintendo Switch', 'PC', 'PlayStation 4', 'PlayStation 5', 'Xbox One', 'Xbox Series S/X'];
+const ESTUDIOS = ['Bones', 'Kyoto Animation', 'Madhouse', 'MAPPA'];
+
+/** Facetas como a API: plataformas só nos jogos, estúdios só nos animes. */
+function facetas(req: Requisicao): Resposta {
+  const tipo = req.query.get('tipo');
+  const corpo: Esquemas['RespostaFacetas'] = {
+    plataformas: tipo === 'jogo' ? PLATAFORMAS : [],
+    estudios: tipo === 'anime' ? ESTUDIOS : [],
+  };
+  return { status: 200, corpo };
+}
+
+/** Rotas do Explorar: `GET /midias` responde com `responder`; Gêneros e facetas, com as listas acima. */
 function rotas(responder: (req: Requisicao) => Resposta = () => pagina([])): Rotas {
-  return { 'GET /midias': responder, 'GET /generos': generos(GENEROS) };
+  return { 'GET /midias': responder, 'GET /generos': generos(GENEROS), 'GET /midias/facetas': facetas };
 }
 
 /** A query da última chamada a `GET /midias`, como objeto. */
@@ -181,24 +195,48 @@ describe('Explorar', () => {
   it('no catálogo Jogos não há escolha de Tipo; Plataforma e Modo de jogo filtram', async () => {
     localStorage.setItem('medialist.catalogo', 'jogos');
     const { api, user } = await abrirLogado('/explorar', { rotas: rotas() });
-    await screen.findByRole('region', { name: 'Plataforma' });
+    const plataforma = await screen.findByRole('region', { name: 'Plataforma' });
 
     expect(screen.queryByRole('region', { name: 'Tipo' })).not.toBeInTheDocument();
     expect(ultimaBusca(api)).toMatchObject({ tipo: 'jogo' });
 
-    await user.type(screen.getByRole('textbox', { name: 'Plataforma' }), 'PC');
+    // A plataforma vai com o nome exato da faceta.
+    await user.click(await within(plataforma).findByRole('radio', { name: 'PlayStation 5' }));
     await user.click(screen.getByRole('radio', { name: 'Multijogador' }));
 
-    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ tipo: 'jogo', plataforma: 'PC', modo_jogo: 'multi' }));
+    await waitFor(() =>
+      expect(ultimaBusca(api)).toMatchObject({ tipo: 'jogo', plataforma: 'PlayStation 5', modo_jogo: 'multi' }),
+    );
+    expect(api.para('GET /midias/facetas').at(-1)!.query.get('tipo')).toBe('jogo');
   });
 
-  it('o Estúdio do anime vai para a busca depois da digitação', async () => {
-    const { api, user } = await abrirLogado('/explorar', { rotas: rotas() });
+  it('a Plataforma mostra as primeiras em pílulas e um "+N" com o resto', async () => {
+    localStorage.setItem('medialist.catalogo', 'jogos');
+    const { user } = await abrirLogado('/explorar', { rotas: rotas() });
+    const plataforma = await screen.findByRole('region', { name: 'Plataforma' });
 
-    await user.type(await screen.findByRole('textbox', { name: 'Estúdio' }), 'Madhouse');
+    expect(await within(plataforma).findByRole('radio', { name: 'Todas' })).toBeChecked();
+    expect(within(plataforma).queryByRole('radio', { name: 'Xbox One' })).not.toBeInTheDocument();
+
+    await user.click(within(plataforma).getByRole('button', { name: /Mostrar mais 2/ }));
+
+    expect(within(plataforma).getByRole('radio', { name: 'Xbox Series S/X' })).toBeInTheDocument();
+  });
+
+  it('o Estúdio do anime é escolhido nas pílulas das facetas', async () => {
+    const { api, user } = await abrirLogado('/explorar', { rotas: rotas() });
+    const estudio = await screen.findByRole('region', { name: 'Estúdio' });
+
+    await user.click(await within(estudio).findByRole('radio', { name: 'Madhouse' }));
 
     await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ estudio: 'Madhouse' }));
-    expect(api.para('GET /midias').filter((c) => c.query.has('estudio'))).toHaveLength(1);
+  });
+
+  it('um Estúdio da URL fora das primeiras continua visível e escolhido', async () => {
+    await abrirLogado('/explorar?estudio=Studio%20Fora', { rotas: rotas() });
+    const estudio = await screen.findByRole('region', { name: 'Estúdio' });
+
+    expect(await within(estudio).findByRole('radio', { name: 'Studio Fora' })).toBeChecked();
   });
 
   it('um link com Tipo de outro catálogo troca o catálogo da nav', async () => {
@@ -308,5 +346,19 @@ describe('Explorar', () => {
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
 
     expect(await screen.findByRole('link', { name: /Frieren/ })).toBeInTheDocument();
+  });
+
+  it('abaixo de 1024px, os filtros ficam num painel aberto pelo botão Filtros', async () => {
+    simularLargura(800);
+    const { api, user } = await abrirLogado('/explorar?genero=Drama', { rotas: rotas() });
+
+    expect(screen.queryByRole('region', { name: 'Gênero' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Filtros, 1 ativo' }));
+
+    const painel = screen.getByRole('dialog', { name: 'Filtros' });
+    await user.click(await within(painel).findByRole('radio', { name: 'Ação' }));
+
+    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ genero: 'Ação' }));
+    expect(screen.getByRole('searchbox', { name: 'Buscar por título' })).toBeInTheDocument();
   });
 });

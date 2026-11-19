@@ -2,28 +2,24 @@
 // respondem `{mensagem}` (e `id_lista` no POST): o Item gravado, inclusive a promoção a
 // Concluído, vem do GET /lista refeito.
 //
-// Cache: ['lista'] guarda o RespostaLista inteiro (GET /api/lista); o Início e o detalhe
-// leem a mesma chave (`useLista`, `useItemDaMidia`).
+// Cache: chaves.lista.toda (['lista']) guarda o RespostaLista inteiro (GET /api/lista); o
+// Início, o detalhe e o Perfil leem a mesma chave (`useLista`, `useItemDaMidia`).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { diaIso } from '@dominio/datas';
 import { aplicarProgresso, type DadosItem, totalDoItem } from '@dominio/itemLista';
-import { notaDeRanking } from '@dominio/midia';
-import { decrescente } from '@dominio/ordenacao';
-import type { Recorte } from '@dominio/recorte';
-import { TIPOS_DO_RECORTE } from '@dominio/recorte';
 
-import { exigir } from '../api/cliente';
-import type { Esquemas } from '../api/tipos';
-import { useApi } from '../sessao/SessaoContext';
+import { chaves } from '../../api/chaves';
+import { exigir } from '../../api/cliente';
+import type { Esquemas } from '../../api/tipos';
+import { useApi } from '../../sessao/SessaoContext';
 
 export type ItemLista = Esquemas['ItemLista'];
 type RespostaLista = Esquemas['RespostaLista'];
 
-export const CHAVE_LISTA = ['lista'] as const;
-const CHAVE_PROGRESSO = ['lista', 'progresso'] as const;
-const LIMITE_EM_ALTA = 20;
+const CHAVE_LISTA = chaves.lista.toda;
+const CHAVE_PROGRESSO = chaves.lista.progresso;
 
 function useConsultaLista() {
   const api = useApi();
@@ -43,23 +39,6 @@ export function useItemDaMidia(idMidia: string) {
   });
 }
 
-/** Em alta do catálogo (os endpoints filtram por um Tipo só), da maior nota para a menor. */
-export function useEmAltaDaLista(recorte: Recorte) {
-  const api = useApi();
-  return useQuery({
-    // Fora de ['lista']: gravar um Item não muda o Em alta.
-    queryKey: ['midias', 'sugestoes-da-lista', recorte],
-    queryFn: async () => {
-      const respostas = await Promise.all(
-        TIPOS_DO_RECORTE[recorte].map((tipo) =>
-          exigir(api.GET('/api/midias/trending', { params: { query: { tipo, limite: LIMITE_EM_ALTA } } })),
-        ),
-      );
-      return respostas.flatMap((r) => r.midias).sort(decrescente(notaDeRanking));
-    },
-  });
-}
-
 /**
  * Refaz o que deriva da Lista: ['lista'], as estatísticas do Perfil e o que o detalhe da
  * Mídia mostra (distribuição por Status, atividade).
@@ -69,8 +48,8 @@ function useInvalidarLista() {
   return (idMidia?: string) =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: CHAVE_LISTA }),
-      queryClient.invalidateQueries({ queryKey: ['usuario', 'estatisticas'] }),
-      idMidia ? queryClient.invalidateQueries({ queryKey: ['midias', idMidia] }) : null,
+      queryClient.invalidateQueries({ queryKey: chaves.usuario.estatisticas }),
+      idMidia ? queryClient.invalidateQueries({ queryKey: chaves.midias.detalhe(idMidia) }) : null,
     ]);
 }
 
