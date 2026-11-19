@@ -39,3 +39,9 @@ export function plataformasDoItem({ plataformas }: { plataformas: string | null 
     .map((p) => p.trim())
     .filter(Boolean);
 }
+
+
+/** Média de notas na tela: uma casa, com vírgula ("7,3"); sem média, "—". */
+export function formatarMedia(nota: number | null | undefined): string {
+  return nota == null ? '—' : nota.toFixed(1).replace('.', ',');
+}

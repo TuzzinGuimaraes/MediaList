@@ -1,4 +1,4 @@
-import { distribuicaoDeNotas, maisFrequentes, plataformasDoItem } from './estatisticas';
+import { distribuicaoDeNotas, formatarMedia, maisFrequentes, plataformasDoItem } from './estatisticas';
 
 describe('distribuicaoDeNotas', () => {
   it('conta as Notas pessoais de 1 a 10, arredondadas, ignorando os Itens sem nota', () => {
@@ -55,5 +55,16 @@ describe('plataformasDoItem', () => {
 
   it('sem plataformas, nenhuma', () => {
     expect(plataformasDoItem({ plataformas: null })).toEqual([]);
+  });
+});
+
+describe('formatarMedia', () => {
+  it('uma casa, com vírgula', () => {
+    expect(formatarMedia(7.25)).toBe('7,3');
+    expect(formatarMedia(8)).toBe('8,0');
+  });
+
+  it('sem média, um traço', () => {
+    expect(formatarMedia(null)).toBe('—');
   });
 });

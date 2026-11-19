@@ -12,7 +12,8 @@ import {
 
 import { Casca } from '../layout/Casca';
 import { Entrar } from '../paginas/Entrar';
-import { Detalhe, Explorar, Inicio, Lista, NaoEncontrada, Perfil } from '../paginas/Provisorias';
+import { Detalhe, Explorar, Inicio, Lista, NaoEncontrada } from '../paginas/Provisorias';
+import { Perfil } from '../paginas/Perfil';
 import { Admin } from '../paginas/Admin';
 import { Noticias } from '../paginas/Noticias';
 import { Registro } from '../paginas/Registro';
