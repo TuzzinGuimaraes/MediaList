@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { montarMapa, nivelDeAtividade } from './atividade';
 
 describe('nivelDeAtividade (faixas de intensidade do mapa)', () => {

@@ -12,8 +12,8 @@ import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Fileira } from '../../componentes/Fileira';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
-import { useEditorItem } from '../../lista/EditorItemContext';
-import { useLista } from '../../lista/api';
+import { useEditorItem } from '../lista/EditorItemContext';
+import { useLista } from '../lista/api';
 import { useCarrosseisPorGenero, useCarrossel, useEmAlta, usePopulares } from './consultas';
 import { Destaques } from './Destaques';
 

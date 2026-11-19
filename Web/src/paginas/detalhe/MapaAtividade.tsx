@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { ErroTela } from '../../componentes/Estados';
 import { TituloSecao } from '../../componentes/Fileira';
 import { formatarData } from '@dominio/datas';
-import { type DiaDoMapa, montarMapa, SEMANAS } from '../../dominio-ui/atividade';
+import { type DiaDoMapa, montarMapa, SEMANAS } from '@dominio/atividade';
 import { useAtividade } from './consultas';
 
 const CELULA = 11;

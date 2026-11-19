@@ -3,9 +3,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SessaoProvider } from '../sessao/SessaoContext';
-import { abrirLogado, rotasDaSessao } from '../testes/app';
-import { erro, simularFetch } from '../testes/fetchSimulado';
+import { SessaoProvider } from '../../sessao/SessaoContext';
+import { abrirLogado, rotasDaSessao } from '../../testes/app';
+import { erro, simularFetch } from '../../testes/fetchSimulado';
 import { EditorItemProvider, useEditorItem } from './EditorItemContext';
 import { type ItemLista, rotasDaLista, umaMidia, umItem } from './fixtures';
 

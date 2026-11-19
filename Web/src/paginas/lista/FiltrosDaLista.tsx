@@ -2,9 +2,9 @@
 // nos Itens do catálogo). Muda na hora; vale para todos os Status.
 import { FILTROS_PADRAO, type FiltrosLista, type OpcoesDosFiltros, type OrdemLista } from '@dominio/filtrosLista';
 
-import { Botao } from '../componentes/Botao';
-import { Sheet } from '../componentes/Camada';
-import { Opcoes } from '../componentes/Opcoes';
+import { Botao } from '../../componentes/Botao';
+import { Sheet } from '../../componentes/Camada';
+import { Opcoes } from '../../componentes/Opcoes';
 
 const ORDENS: { valor: OrdemLista; nome: string }[] = [
   { valor: 'titulo', nome: 'Alfabética' },

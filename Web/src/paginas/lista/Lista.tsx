@@ -19,15 +19,15 @@ import {
 import { foraDe } from '@dominio/inicio';
 import { estadosDaLista, itensDoEstado } from '@dominio/itemLista';
 
-import { mensagemDeErro } from '../api/erros';
-import { useCatalogo } from '../catalogo/CatalogoContext';
-import { CardA, NotasCartao } from '../componentes/Cards';
-import { cartaoDaMidia } from '../componentes/cartao';
-import { Carregando, ErroTela, Vazio } from '../componentes/Estados';
-import { Fileira } from '../componentes/Fileira';
-import { Icone } from '../componentes/Icone';
-import { COR_DO_ESTADO } from '../componentes/status';
-import { ALTURA_NAV } from '../layout/Casca';
+import { mensagemDeErro } from '../../api/erros';
+import { useCatalogo } from '../../catalogo/CatalogoContext';
+import { CardA, NotasCartao } from '../../componentes/Cards';
+import { cartaoDaMidia } from '../../componentes/cartao';
+import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
+import { Fileira } from '../../componentes/Fileira';
+import { Icone } from '../../componentes/Icone';
+import { COR_DO_ESTADO } from '../../componentes/status';
+import { ALTURA_NAV } from '../../layout/Casca';
 import { type ItemLista, useEmAltaDaLista, useLista, useMudarProgresso } from './api';
 import { type AcoesDoItem, CardItem } from './CardItem';
 import { useEditorItem } from './EditorItemContext';

@@ -14,9 +14,9 @@ import { decrescente } from '@dominio/ordenacao';
 import type { Recorte } from '@dominio/recorte';
 import { TIPOS_DO_RECORTE } from '@dominio/recorte';
 
-import { exigir } from '../api/cliente';
-import type { Esquemas } from '../api/tipos';
-import { useApi } from '../sessao/SessaoContext';
+import { exigir } from '../../api/cliente';
+import type { Esquemas } from '../../api/tipos';
+import { useApi } from '../../sessao/SessaoContext';
 
 export type ItemLista = Esquemas['ItemLista'];
 type RespostaLista = Esquemas['RespostaLista'];

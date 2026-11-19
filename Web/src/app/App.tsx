@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ErroApi } from '../api/erros';
 import { CatalogoProvider } from '../catalogo/CatalogoContext';
 import { Carregando, ErroTela } from '../componentes/Estados';
-import { EditorItemProvider } from '../lista/EditorItemContext';
+import { EditorItemProvider } from '../paginas/lista/EditorItemContext';
 import { SessaoProvider, useSessao } from '../sessao/SessaoContext';
 import { TemaProvider } from '../tema/TemaContext';
 import { criarRoteador } from './rotas';

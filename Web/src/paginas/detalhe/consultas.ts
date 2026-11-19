@@ -1,6 +1,6 @@
 // Consultas e escritas do detalhe da Mídia. Chaves: ['midias', id] (e o que vive sob
 // ['midias'], que Início e Explorar também usam) e ['avaliacoes', id] (a 1ª página e, sob
-// ela, as notas). O Item da Lista vem de `useItemDaMidia` (lista/api.ts, chave ['lista']).
+// ela, as notas). O Item da Lista vem de `useItemDaMidia` (paginas/lista/api.ts, chave ['lista']).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { exigir } from '../../api/cliente';

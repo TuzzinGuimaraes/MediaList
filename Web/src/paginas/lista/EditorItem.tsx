@@ -19,12 +19,12 @@ import {
 import { tituloDaMidia } from '@dominio/midia';
 import type { Midia } from '@dominio/tipos';
 
-import { mensagemDeErro } from '../api/erros';
-import { Botao } from '../componentes/Botao';
-import { Modal } from '../componentes/Camada';
-import { AreaTexto, Campo } from '../componentes/Campo';
-import { Icone } from '../componentes/Icone';
-import { COR_DO_ESTADO } from '../componentes/status';
+import { mensagemDeErro } from '../../api/erros';
+import { Botao } from '../../componentes/Botao';
+import { Modal } from '../../componentes/Camada';
+import { AreaTexto, Campo } from '../../componentes/Campo';
+import { Icone } from '../../componentes/Icone';
+import { COR_DO_ESTADO } from '../../componentes/status';
 import { type ItemLista, useRemoverItem, useSalvarItem } from './api';
 
 /** O que o editor lê da Mídia: a da listagem, a do detalhe ou o próprio Item servem. */

@@ -11,7 +11,7 @@ import { Botao } from '../../componentes/Botao';
 import { Icone } from '../../componentes/Icone';
 import { Selo, SeloStatus } from '../../componentes/Selo';
 import { useReduzirMovimento } from '../../tema/movimento';
-import type { MidiaDoEditor } from '../../lista/EditorItem';
+import type { MidiaDoEditor } from '../lista/EditorItem';
 
 type Midia = Esquemas['Midia'];
 type ItemLista = Esquemas['ItemLista'];

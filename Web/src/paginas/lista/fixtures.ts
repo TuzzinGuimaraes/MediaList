@@ -1,6 +1,6 @@
 // Itens de lista e Mídias para os testes de tela da Lista e do editor.
-import type { Esquemas } from '../api/tipos';
-import type { Rotas } from '../testes/fetchSimulado';
+import type { Esquemas } from '../../api/tipos';
+import type { Rotas } from '../../testes/fetchSimulado';
 
 export type ItemLista = Esquemas['ItemLista'];
 type Midia = Esquemas['Midia'];
