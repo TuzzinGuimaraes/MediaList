@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "AtividadeDoDia": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "total": {
+            "description": "Adições à Lista, Avaliações e conclusões da Mídia no dia",
+            "minimum": 1,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data",
+          "total"
+        ],
+        "title": "AtividadeDoDia",
+        "type": "object"
+      },
       "AtualizacaoDeMidia": {
         "properties": {
           "dados_adicionais": {
@@ -422,6 +443,36 @@
       "ConsultaMidias": {
         "description": "`GET /midias`: Tipo, filtros, ordem e página.",
         "properties": {
+          "ano_max": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "title": "Ano Max"
+          },
+          "ano_min": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "title": "Ano Min"
+          },
           "artista": {
             "anyOf": [
               {
@@ -4078,6 +4129,37 @@
         "title": "ProgressoItemLista",
         "type": "object"
       },
+      "RespostaAtividade": {
+        "properties": {
+          "dias": {
+            "description": "Só os dias com atividade, do mais antigo ao mais recente",
+            "items": {
+              "$ref": "#/components/schemas/AtividadeDoDia"
+            },
+            "title": "Dias",
+            "type": "array"
+          },
+          "fim": {
+            "description": "Hoje",
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "description": "1º dia da janela: 52 semanas (364 dias) terminando em `fim`",
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dias",
+          "inicio",
+          "fim"
+        ],
+        "title": "RespostaAtividade",
+        "type": "object"
+      },
       "RespostaAvaliacoesModeracao": {
         "properties": {
           "avaliacoes": {
@@ -6304,6 +6386,48 @@
             }
           },
           {
+            "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "in": "query",
+            "name": "ano_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ano de lançamento mínimo, inclusive; sem data de lançamento, a Mídia fica fora",
+              "title": "Ano Min"
+            }
+          },
+          {
+            "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+            "in": "query",
+            "name": "ano_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora",
+              "title": "Ano Max"
+            }
+          },
+          {
             "description": "",
             "in": "query",
             "name": "ordem",
@@ -6701,6 +6825,59 @@
           }
         ],
         "summary": "Atualizar qualquer mídia pelo id central; grava só os campos enviados do Tipo dela.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/atividade": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_atividade",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaAtividade"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Mapa de atividade: adições à Lista, Avaliações e conclusões por dia nas últimas 52 semanas.",
         "tags": [
           "midias"
         ]
