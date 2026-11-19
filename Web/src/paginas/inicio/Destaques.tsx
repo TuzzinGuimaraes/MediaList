@@ -59,7 +59,7 @@ function Destaque({ midia, item, posicaoTop, abrirEditor }: { midia: Midia; item
         ))}
         {top ? <Selo texto={`Top ${top}`} tom="marca" /> : null}
       </div>
-      <h2 className="line-clamp-2 text-[40px] font-bold leading-[1.05] text-white drop-shadow">{titulo}</h2>
+      <h2 className="line-clamp-2 text-[32px] font-bold lg:text-[40px] leading-[1.05] text-white drop-shadow">{titulo}</h2>
       <div className="flex flex-wrap items-center gap-3 text-[14px]">
         {notas.map((n) => (
           <span key={n.rotulo} aria-label={`${n.rotulo}: ${n.valor}`} className="flex items-center gap-1 text-white/75">
@@ -130,12 +130,12 @@ export function Destaques({ midias, itens, posicaoTop, abrirEditor }: Props) {
         role="group"
         aria-roledescription="destaque"
         aria-label={`${atual + 1} de ${total}`}
-        className="absolute inset-x-12 bottom-12"
+        className="absolute inset-x-6 bottom-14 lg:inset-x-12 lg:bottom-12"
       >
         <Destaque midia={midia} item={item} posicaoTop={posicaoTop} abrirEditor={abrirEditor} />
       </div>
       {total > 1 ? (
-        <div className="absolute bottom-12 right-12 flex gap-2">
+        <div className="absolute bottom-2 right-6 flex gap-2 lg:bottom-12 lg:right-12">
           {midias.map((m, i) => (
             <button
               key={m.id_midia}

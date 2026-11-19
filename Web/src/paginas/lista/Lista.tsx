@@ -67,8 +67,8 @@ export function Lista() {
 
   return (
     <div className="pb-24">
-      <div style={{ top: ALTURA_NAV }} className="sticky z-30 border-b border-borda bg-fundo/95 px-12 pt-8 backdrop-blur">
-        <div className="flex items-center gap-4">
+      <div style={{ top: ALTURA_NAV }} className="sticky z-30 border-b border-borda bg-fundo/95 px-6 pt-8 backdrop-blur lg:px-12">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <h1 className="text-[28px] font-bold text-texto-forte">{textos.titulo}</h1>
           <span className="text-texto-suave">{textos.itens(doCatalogo.length)}</span>
           <div className="ml-auto flex items-center gap-3">
@@ -98,12 +98,12 @@ export function Lista() {
       </div>
 
       {progresso.isError ? (
-        <p role="alert" className="px-12 pt-4 text-[14px] text-erro">
+        <p role="alert" className="px-6 pt-4 lg:px-12 text-[14px] text-erro">
           {mensagemDeErro(progresso.error)}
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-6 px-12 pt-6">
+      <div className="flex flex-col gap-6 px-6 pt-6 lg:px-12">
         {termo ? (
           resultados.length ? (
             <section aria-label="Resultados da busca">

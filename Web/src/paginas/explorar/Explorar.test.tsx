@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../../api/tipos';
+import { simularLargura } from '../../testes/ambiente';
 import { abrirLogado } from '../../testes/app';
 import { erro, type Requisicao, type Resposta, type Rotas } from '../../testes/fetchSimulado';
 
@@ -345,5 +346,19 @@ describe('Explorar', () => {
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
 
     expect(await screen.findByRole('link', { name: /Frieren/ })).toBeInTheDocument();
+  });
+
+  it('abaixo de 1024px, os filtros ficam num painel aberto pelo botão Filtros', async () => {
+    simularLargura(800);
+    const { api, user } = await abrirLogado('/explorar?genero=Drama', { rotas: rotas() });
+
+    expect(screen.queryByRole('region', { name: 'Gênero' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Filtros, 1 ativo' }));
+
+    const painel = screen.getByRole('dialog', { name: 'Filtros' });
+    await user.click(await within(painel).findByRole('radio', { name: 'Ação' }));
+
+    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ genero: 'Ação' }));
+    expect(screen.getByRole('searchbox', { name: 'Buscar por título' })).toBeInTheDocument();
   });
 });

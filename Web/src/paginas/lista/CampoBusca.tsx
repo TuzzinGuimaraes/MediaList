@@ -33,7 +33,7 @@ export function CampoBusca({ valor, mudar }: { valor: string | null; mudar(v: st
         onChange={(e) => mudar(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && mudar(null)}
         placeholder={textos.campoBusca}
-        className="w-64 bg-transparent text-[14px] text-texto-forte outline-none placeholder:text-texto-suave"
+        className="w-40 bg-transparent sm:w-64 text-[14px] text-texto-forte outline-none placeholder:text-texto-suave"
       />
       <button type="button" onClick={() => mudar(null)} aria-label={textos.fecharBusca} className="text-texto-suave hover:text-texto-forte">
         <Icone nome="fechar" tamanho={16} />

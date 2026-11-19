@@ -50,7 +50,7 @@ export function BuscaNav({ sobreImagem }: { sobreImagem: boolean }) {
           onBlur={() => !texto && setAberta(false)}
           onKeyDown={(e) => e.key === 'Escape' && (setTexto(''), setAberta(false))}
           placeholder="Títulos, gêneros…"
-          className="w-52 bg-transparent text-[14px] outline-none placeholder:text-current placeholder:opacity-60"
+          className="w-36 bg-transparent lg:w-52 text-[14px] outline-none placeholder:text-current placeholder:opacity-60"
         />
       </label>
     </form>

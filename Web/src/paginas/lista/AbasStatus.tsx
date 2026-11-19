@@ -30,7 +30,7 @@ export function AbasStatus({ estados, contagem, ativa, escolher }: PropsAbas) {
     lista.current?.querySelectorAll<HTMLElement>('[role="tab"]')[alvo]?.focus();
   };
   return (
-    <div ref={lista} role="tablist" aria-label={textos.abas} onKeyDown={mover} className="mt-4 flex gap-6">
+    <div ref={lista} role="tablist" aria-label={textos.abas} onKeyDown={mover} className="sem-barra mt-4 flex gap-6 overflow-x-auto whitespace-nowrap">
       {estados.map((e) => {
         const selecionada = e === ativa;
         return (

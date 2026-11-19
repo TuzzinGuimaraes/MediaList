@@ -1,8 +1,8 @@
-// Explorar (Resolution do 19): coluna de filtros à esquerda e grade de card A paginada pelo
-// `total`. Os filtros moram na URL (busca.ts): o link abre a mesma busca em outra aba.
+// Explorar (Resolution do 19): coluna de filtros à esquerda (abaixo de 1024px, num painel) e
+// grade de card A paginada pelo `total`. Os filtros moram na URL (busca.ts): o link abre a mesma busca em outra aba.
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { TipoMidia } from '@dominio/estadoConsumo';
 import { RECORTES, TIPOS_DO_RECORTE } from '@dominio/recorte';
@@ -15,10 +15,12 @@ import { type Pagina, paginacao } from '../../api/paginacao';
 import { useCatalogo } from '../../catalogo/CatalogoContext';
 import { CardA, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
+import { Sheet } from '../../componentes/Camada';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Icone } from '../../componentes/Icone';
 import { Paginacao } from '../../componentes/Paginacao';
 import { Selo } from '../../componentes/Selo';
+import { useTelaLarga } from '../../layout/telaLarga';
 import { useApi } from '../../sessao/SessaoContext';
 import { type BuscaExplorar, consultaDaBusca, FILTROS_DO_TIPO, filtrosAtivos, validarBuscaExplorar } from './busca';
 import { CampoAtrasado } from './CampoAtrasado';
@@ -74,6 +76,9 @@ export function Explorar() {
   const busca = rota.useSearch();
   const navigate = rota.useNavigate();
   const api = useApi();
+  const larga = useTelaLarga();
+  // Abaixo de 1024px, os filtros ficam num painel.
+  const [painel, setPainel] = useState(false);
 
   const navegar = (proxima: BuscaExplorar, replace = true) =>
     void navigate({ search: validarBuscaExplorar(proxima), replace });
@@ -111,6 +116,23 @@ export function Explorar() {
   });
   const ativos = filtrosAtivos(busca, tipo, tipoPadrao);
 
+  const filtros = (
+    <Filtros
+      busca={busca}
+      tipo={tipo}
+      tipos={tipos}
+      generos={generos}
+      facetas={facetas}
+      mudar={mudar}
+      trocarTipo={trocarTipo}
+    />
+  );
+  const botaoLimpar = ativos ? (
+    <button type="button" onClick={limpar} className="text-[14px] font-semibold text-marca-texto hover:underline">
+      Limpar filtros ({ativos})
+    </button>
+  ) : null;
+
   return (
     <div className="grid gap-8 px-6 pb-24 pt-6 md:px-12 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
       <aside
@@ -118,34 +140,45 @@ export function Explorar() {
         className="lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:self-start lg:overflow-y-auto lg:pr-2"
       >
         <h1 className="mb-5 text-[28px] font-bold text-texto-forte">Explorar</h1>
-        <label className="flex items-center gap-2 rounded-md border border-borda bg-superficie-alta px-3 focus-within:border-marca-texto">
-          <Icone nome="busca" tamanho={16} className="text-texto-suave" />
-          <CampoAtrasado
-            type="search"
-            aria-label="Buscar por título"
-            placeholder="Buscar por título"
-            valor={busca.busca ?? ''}
-            aceitar={(v) => v === '' || v.length >= MINIMO_BUSCA}
-            mudar={(v) => mudar({ busca: v || undefined })}
-            className="min-h-10 w-full bg-transparent text-[14px] text-texto-forte outline-none placeholder:text-texto-suave"
-          />
-        </label>
-        <div className="mt-3">
-          <Filtros
-            busca={busca}
-            tipo={tipo}
-            tipos={tipos}
-            generos={generos}
-            facetas={facetas}
-            mudar={mudar}
-            trocarTipo={trocarTipo}
-          />
+        <div className="flex items-center gap-3">
+          <label className="flex flex-1 items-center gap-2 rounded-md border border-borda bg-superficie-alta px-3 focus-within:border-marca-texto">
+            <Icone nome="busca" tamanho={16} className="text-texto-suave" />
+            <CampoAtrasado
+              type="search"
+              aria-label="Buscar por título"
+              placeholder="Buscar por título"
+              valor={busca.busca ?? ''}
+              aceitar={(v) => v === '' || v.length >= MINIMO_BUSCA}
+              mudar={(v) => mudar({ busca: v || undefined })}
+              className="min-h-10 w-full bg-transparent text-[14px] text-texto-forte outline-none placeholder:text-texto-suave"
+            />
+          </label>
+          {larga ? null : (
+            <button
+              type="button"
+              onClick={() => setPainel(true)}
+              aria-label={ativos ? `Filtros, ${ativos} ativo${ativos === 1 ? '' : 's'}` : 'Filtros'}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-md border border-borda px-3 text-[14px] font-semibold text-texto-forte hover:bg-superficie-alta"
+            >
+              <Icone nome="filtro" tamanho={16} /> Filtros
+              {ativos ? (
+                <span aria-hidden className="rounded-full bg-marca px-1.5 text-[12px] font-bold text-sobre-marca">
+                  {ativos}
+                </span>
+              ) : null}
+            </button>
+          )}
         </div>
-        {ativos ? (
-          <button type="button" onClick={limpar} className="mt-4 text-[14px] font-semibold text-marca-texto hover:underline">
-            Limpar filtros ({ativos})
-          </button>
-        ) : null}
+        {larga ? (
+          <>
+            <div className="mt-3">{filtros}</div>
+            {botaoLimpar ? <div className="mt-4">{botaoLimpar}</div> : null}
+          </>
+        ) : (
+          <Sheet titulo="Filtros" aberto={painel} fechar={() => setPainel(false)} rodape={botaoLimpar}>
+            {filtros}
+          </Sheet>
+        )}
       </aside>
       <section aria-label="Mídias encontradas" className="min-w-0 lg:pt-14">
         <Resultados
