@@ -1,5 +1,5 @@
 // Tema do web (Resolution do 29): Sistema, Escuro ou Claro, com o escuro como padrão.
-// O index.html repete esta regra num script inline, para aplicar antes do primeiro paint.
+// public/tema-inicial.js repete esta regra, para aplicar antes do primeiro paint.
 
 export type PreferenciaTema = 'sistema' | 'escuro' | 'claro';
 export type Tema = 'escuro' | 'claro';
