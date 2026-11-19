@@ -1,9 +1,9 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { Esquemas } from '../api/tipos';
-import { abrirLogado, adminBia } from '../testes/app';
-import { erro, type Requisicao, type Rotas } from '../testes/fetchSimulado';
+import type { Esquemas } from '../../api/tipos';
+import { abrirLogado, adminBia } from '../../testes/app';
+import { erro, type Requisicao, type Rotas } from '../../testes/fetchSimulado';
 
 type UsuarioModeracao = Esquemas['UsuarioModeracao'];
 type AvaliacaoModeracao = Esquemas['AvaliacaoModeracao'];

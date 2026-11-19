@@ -11,7 +11,7 @@ import {
 
 import { Casca } from '../layout/Casca';
 import { Entrar } from '../paginas/Entrar';
-import { Admin } from '../paginas/Admin';
+import { Admin } from '../paginas/admin/Admin';
 import { Explorar } from '../paginas/explorar/Explorar';
 import { validarBuscaExplorar } from '../paginas/explorar/busca';
 import { Inicio } from '../paginas/inicio/Inicio';
