@@ -2,16 +2,8 @@
 // o valor ("Anime & Mangá", "Jogos") e o leitor de tela diz "Catálogo"; nunca "sessão".
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 
-import type { Esquemas } from '../api/tipos';
-
-export type Recorte = 'animanga' | 'jogos';
-export type TipoMidia = Esquemas['Midia']['tipo'];
-
-export const NOMES_RECORTE: Record<Recorte, string> = { animanga: 'Anime & Mangá', jogos: 'Jogos' };
-export const RECORTES = Object.keys(NOMES_RECORTE) as Recorte[];
-
-// TODO(web-novo 01): trocar pelos Tipos do Recorte em `dominio/` quando o domínio compartilhado chegar.
-const TIPOS_DO_RECORTE: Record<Recorte, readonly TipoMidia[]> = { animanga: ['anime', 'manga'], jogos: ['jogo'] };
+import type { TipoMidia } from '@dominio/estadoConsumo';
+import { type Recorte, TIPOS_DO_RECORTE } from '@dominio/recorte';
 
 const CHAVE = 'medialist.catalogo';
 /** O web antigo guardava o Recorte com o nome "sessão"; a chave é descartada. */

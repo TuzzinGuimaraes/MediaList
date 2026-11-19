@@ -1,4 +1,6 @@
-import { COR_DO_ESTADO, type EstadoConsumo } from './status';
+import { type EstadoConsumo, estadoDe, NOMES_ESTADO, type TipoMidia } from '@dominio/estadoConsumo';
+
+import { COR_DO_ESTADO } from './status';
 
 /** Neutro (Tipo, Gênero), marca (destaque, ex. "Em exibição") ou um Status, na cor dele. */
 export type TomSelo = 'neutro' | 'marca' | EstadoConsumo;
@@ -41,4 +43,10 @@ export function Selo({ texto, tom = 'neutro', sobreImagem = false }: Props) {
       {texto}
     </span>
   );
+}
+
+/** Selo do Status de um Item, pelo rótulo gravado; rótulo que não vale para o Tipo não mostra nada. */
+export function SeloStatus({ rotulo, tipo, sobreImagem }: { rotulo: string; tipo: TipoMidia; sobreImagem?: boolean }) {
+  const estado = estadoDe(rotulo, tipo);
+  return estado ? <Selo texto={NOMES_ESTADO[estado]} tom={estado} sobreImagem={sobreImagem} /> : null;
 }

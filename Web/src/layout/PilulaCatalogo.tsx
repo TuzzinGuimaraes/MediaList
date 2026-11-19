@@ -1,4 +1,6 @@
-import { NOMES_RECORTE, RECORTES, useCatalogo } from '../catalogo/CatalogoContext';
+import { NOMES_RECORTE, RECORTES } from '@dominio/recorte';
+
+import { useCatalogo } from '../catalogo/CatalogoContext';
 
 /** Troca do catálogo na nav. O leitor de tela diz "Catálogo"; a palavra Recorte não aparece. */
 export function PilulaCatalogo({ sobreImagem }: { sobreImagem: boolean }) {

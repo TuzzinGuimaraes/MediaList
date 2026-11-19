@@ -15,7 +15,10 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "paths": { "@dominio/*": ["../dominio/*"] }
   },
-  "include": ["src", "../contrato/api.d.ts", "../design/tokens.d.ts"]
+  "include": ["src", "../dominio", "../contrato/api.d.ts", "../design/tokens.d.ts"],
+  "exclude": ["../dominio/**/*.test.ts"]
 }

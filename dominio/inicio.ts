@@ -43,7 +43,8 @@ export function generosQueVoceCurte(
  * do Status Concluído.
  */
 export function rotuloMaisConcluidos(tipos: readonly TipoMidia[]): string {
-  return tipos.length === 1 ? APRESENTACAO_DO_TIPO[tipos[0]].maisConcluidos : 'Mais concluídos';
+  const [unico] = tipos;
+  return tipos.length === 1 && unico ? APRESENTACAO_DO_TIPO[unico].maisConcluidos : 'Mais concluídos';
 }
 
 /**

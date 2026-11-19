@@ -1,21 +1,11 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Animated } from 'react-native';
 
-import type { TipoMidia } from '@dominio/estadoConsumo';
+import type { Recorte } from '@dominio/recorte';
 import { useReduzirMovimento } from '../tema/movimento';
 
-/** Recorte de catálogo: estado de interface em memória, não persistido (CONTEXT.md). */
-export type Recorte = 'animanga' | 'jogos';
-
-export const TIPOS_DO_RECORTE: Record<Recorte, TipoMidia[]> = {
-  animanga: ['anime', 'manga'],
-  jogos: ['jogo'],
-};
-
-export const NOMES_RECORTE: Record<Recorte, string> = {
-  animanga: 'Anime & Mangá',
-  jogos: 'Jogos',
-};
+/** Recorte de catálogo: no app, estado de interface em memória, não persistido (CONTEXT.md). */
+export { NOMES_RECORTE, type Recorte, TIPOS_DO_RECORTE } from '@dominio/recorte';
 
 /** Fade-out e fade-in do conteúdo ao trocar: ~200ms no total. */
 const METADE_TROCA_MS = 100;

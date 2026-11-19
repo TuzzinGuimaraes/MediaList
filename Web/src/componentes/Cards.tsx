@@ -1,9 +1,12 @@
 // Card A (denso, carrosséis de catálogo) e card C (informativo, Continuar e destaques),
 // pela Resolution do 29. Recebem dados já prontos para a tela: quem monta título, notas e
-// selos a partir da Mídia e do Item é a tela, com o `dominio/`.
-// TODO(web-novo 01): helpers de `dominio/` (título, notas, Status, fio) montam estas props.
+// selos a partir da Mídia e do Item é a tela, com o `dominio/`: `cartaoDaMidia` (título,
+// pôster, Tipo, fio), `NotasCartao` (notas) e `SeloStatus` (Status do Item).
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+
+import { notasDaMidia } from '@dominio/midia';
+import type { NotasDaMidia } from '@dominio/tipos';
 
 import { FioProgresso } from './FioProgresso';
 import { Monograma } from './Monograma';
@@ -33,6 +36,21 @@ function Poster({ url, titulo }: { url?: string | null; titulo: string }) {
     <div className="flex h-full items-center justify-center" title={titulo}>
       <Monograma tamanho={32} rotulo={null} />
     </div>
+  );
+}
+
+/** Linha das notas do card (Nota dos Usuários, Nota da fonte); nada sem notas. */
+export function NotasCartao({ midia }: { midia: NotasDaMidia }) {
+  const notas = notasDaMidia(midia);
+  if (notas.length === 0) return null;
+  return (
+    <span className="flex gap-2 text-[12px] text-texto-suave">
+      {notas.map((n) => (
+        <span key={n.rotulo} aria-label={`${n.rotulo}: ${n.valor}`}>
+          {n.curto} <span className="font-semibold text-texto">{n.valor}</span>
+        </span>
+      ))}
+    </span>
   );
 }
 

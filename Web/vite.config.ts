@@ -2,6 +2,7 @@
 // API_ALVO troca o destino do proxy, ex.: API_ALVO=http://localhost:5203 npm run dev.
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 import { gerarTema } from './scripts/tema.ts';
@@ -10,6 +11,8 @@ gerarTema();
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // dominio/ compartilhado com o app (dominio/README.md). Os testes dele rodam no jest do Mobile.
+  resolve: { alias: { '@dominio': fileURLToPath(new URL('../dominio', import.meta.url)) } },
   server: {
     port: 3006,
     strictPort: true,

@@ -13,7 +13,7 @@ export function formatarData(texto: string | null | undefined): string | null {
   if (!texto) return null;
   const rfc = /^\w{3}, (\d{2}) (\w{3}) (\d{4})/.exec(texto);
   if (rfc) {
-    const mes = MESES.indexOf(rfc[2]);
+    const mes = MESES.indexOf(rfc[2] ?? '');
     return mes < 0 ? null : `${rfc[1]}/${dois(mes + 1)}/${rfc[3]}`;
   }
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(texto);

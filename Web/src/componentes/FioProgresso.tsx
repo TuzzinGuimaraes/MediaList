@@ -4,7 +4,7 @@ const TRACO_CURTO = 14;
 type Props = {
   /**
    * Fração consumida, de 0 a 1; null quando o Item não tem total conhecido (traço curto).
-   * TODO(web-novo 01): a fração sai de `proporcaoDoFio` em `dominio/itemLista`.
+   * A tela a calcula com `proporcaoDoFio` (`@dominio/itemLista`).
    */
   proporcao: number | null;
   grosso?: boolean;
