@@ -140,6 +140,43 @@ jobs:
       - name: Build frontend image
         run: docker compose build frontend
 
+  # Web novo (ticket 19 da revisão). Convive com o job frontend até o Frontend/ sair.
+  web:
+    name: Web Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: Web
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: Web
+        run: npx tsc -b
+
+      - name: Lint (eslint)
+        working-directory: Web
+        run: npx eslint --max-warnings=0 .
+
+      - name: Run web test suite
+        working-directory: Web
+        run: npx vitest run
+
+      - name: Build
+        working-directory: Web
+        run: npm run build
+
   mobile:
     name: Mobile Tests
     runs-on: ubuntu-latest
