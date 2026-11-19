@@ -63,3 +63,35 @@ transação: o access token já é recusado pelo `ativo`, e reativar não ressus
 
 Custo aceito: duas consultas leves por requisição autenticada (blocklist e Usuário), sem
 cache. Um cache curto pode entrar se a carga pedir.
+
+## Web com o refresh num cookie httpOnly (Q79 do ticket 19)
+
+O web novo guardava o refresh no `localStorage`, legível por qualquer script injetado. Agora
+o refresh do web vai num cookie, e o do app continua no corpo.
+
+- **Como o web se identifica:** o cabeçalho `X-Cliente: web` em login, refresh e logout. Foi
+  escolhido no lugar de um campo no corpo porque o mesmo cabeçalho serve de proteção CSRF: um
+  formulário ou um `<img>` de outro site manda o cookie, mas não um cabeçalho próprio, e um
+  `fetch` de outra origem com esse cabeçalho precisa passar pelo preflight do CORS, que em
+  produção está desligado.
+- **Cookie `medialist_refresh`:** `HttpOnly`, `SameSite=Strict`, `Path=/api/auth`, `Max-Age`
+  igual à validade do refresh e `Secure` fora de `APP_ENV=development` (em dev o web roda em
+  `http://localhost`).
+- **Login:** com o cabeçalho, grava o cookie e devolve `refresh_token: null`.
+- **Refresh:** com o cabeçalho, lê só o cookie (o corpo é ignorado), grava o sucessor e devolve
+  `refresh_token: null`. Se recusar (401/403), apaga o cookie; um 5xx não toca nele. Sem o
+  cabeçalho, o cookie é ignorado e vale o corpo, como antes.
+- **Logout:** com o cabeçalho, revoga o refresh do cookie e apaga o cookie.
+
+A rotação, a detecção de reuso e a revogação por família não mudam: o valor do cookie é o mesmo
+token opaco. O cookie é compartilhado entre as abas, então duas renovações simultâneas ainda
+contariam como reuso; o web mantém a trava entre abas (Web Locks) em volta do refresh. O access
+continua só em memória. No `localStorage` o web guarda só uma marca sem segredo, para saber ao
+abrir se vale tentar o refresh e para avisar as outras abas do logout.
+
+Em dev o Vite faz proxy de `/api`, então o web e a API ficam na mesma origem e o cookie anda
+sem CORS. Em produção o nginx serve os dois na mesma origem e manda uma CSP
+(`Web/nginx.conf`) que limita de onde vêm scripts, imagens e conexões.
+
+Mudança de contrato: `RespostaRefresh.refresh_token` passou a aceitar null (o app nunca o recebe
+nulo, porque não manda o cabeçalho).
