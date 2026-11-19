@@ -11,8 +11,8 @@ import { Destaques } from '@/components/Destaques';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { useAtualizar } from '@/components/useAtualizar';
-import { estadoDe } from '@/dominio/estadoConsumo';
-import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@/dominio/inicio';
+import { estadoDe } from '@dominio/estadoConsumo';
+import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 
 const textos = {

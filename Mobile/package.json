@@ -55,6 +55,13 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "roots": [
+      "<rootDir>",
+      "<rootDir>/../dominio"
+    ],
+    "modulePaths": [
+      "<rootDir>/node_modules"
+    ],
     "setupFilesAfterEnv": [
       "./jest.setup.ts"
     ],

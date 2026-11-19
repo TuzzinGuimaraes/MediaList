@@ -3,11 +3,13 @@
 // da API (CartaoMidia, NotasDaMidia, DadosAvaliacao) são recortes dos gerados.
 
 import type { components } from '../../../contrato/api';
-import type { TipoMidia } from '../dominio/estadoConsumo';
+import type { TipoMidia } from '@dominio/estadoConsumo';
+import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia } from '@dominio/tipos';
 
 type Esquemas = components['schemas'];
 
-export type { TipoMidia };
+// Os recortes que o domínio também lê moram em dominio/tipos.ts.
+export type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, TipoMidia };
 
 // Erro
 
@@ -17,7 +19,6 @@ export type CodigoErro = Esquemas['CodigoErro'];
 
 // Sessão e Usuário
 
-export type NivelAcesso = Esquemas['Permissoes']['nivel_acesso'];
 /** `usuario` da resposta de POST /auth/login. */
 export type UsuarioSessao = Esquemas['UsuarioDaSessao'];
 /** POST /auth/login. `refresh_token` é null quando o banco não gravou o refresh (ADR 0006). */
@@ -33,8 +34,6 @@ export type RespostaEstatisticas = Esquemas['RespostaEstatisticas'];
 
 // Mídias
 
-/** A Mídia das listagens (GET /midias, /midias/trending): os campos de todos os Tipos. */
-export type Midia = Esquemas['Midia'];
 /** GET /midias/<id>: a Mídia com as Atualizações de mídia recentes. */
 export type MidiaDetalhe = Esquemas['MidiaDetalhe'];
 /** Linha de GET /midias/populares (view vw_midias_populares). */
@@ -61,9 +60,6 @@ export type OrigemNota = NonNullable<Midia['origem_nota']>;
  */
 export type OrdemCatalogo = Exclude<NonNullable<Esquemas['ConsultaMidias']['ordem']>, 'popularidade'>;
 
-/** As notas de uma Mídia (CONTEXT.md: Nota média, Nota da fonte), em qualquer listagem. */
-export type NotasDaMidia = Pick<Midia, 'nota_media' | 'nota_fonte' | 'origem_nota'>;
-
 /** O que o card de Mídia lê: serve para qualquer listagem (Mídia, populares, Item de lista). */
 export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'poster_url'> &
   NotasDaMidia;
@@ -78,13 +74,6 @@ export type PaginaAvaliacoes = Esquemas['PaginaAvaliacaoDaMidia'];
 export type RespostaNotas = Esquemas['RespostaNotas'];
 export type AvaliacaoCriada = Esquemas['AvaliacaoCriada'];
 export type AvaliacaoEditada = Esquemas['AvaliacaoEditada'];
-/**
- * O que o formulário de Avaliação manda em POST /avaliacoes (mais `id_midia`) e em
- * PUT /avaliacoes/<id>. A API aceita a nota como texto ("7,5"); o app já manda número.
- */
-export type DadosAvaliacao = Required<Pick<Esquemas['CorpoNovaAvaliacao'], 'titulo_avaliacao' | 'texto_avaliacao'>> & {
-  nota: number;
-};
 
 // Lista pessoal
 

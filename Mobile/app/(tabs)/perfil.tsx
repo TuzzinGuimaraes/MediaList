@@ -6,7 +6,7 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { EstatisticasPerfil } from '@/components/EstatisticasPerfil';
-import { rotuloNivelAcesso } from '@/dominio/conta';
+import { rotuloNivelAcesso } from '@dominio/conta';
 import type { PreferenciaTema } from '@/tema/tema';
 import { useTema } from '@/tema/TemaContext';
 

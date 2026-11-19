@@ -1,4 +1,4 @@
-import type { DadosAvaliacao } from '../api/tipos';
+import type { DadosAvaliacao } from './tipos';
 import { lerNota } from './nota';
 
 // Validação local do formulário de Avaliação. A escala da nota (0 a 10, uma casa) é a do

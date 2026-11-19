@@ -8,7 +8,7 @@ import {
   TIPOS,
   contarPorEstado,
   mediaNotasPessoais,
-} from '../dominio/estadoConsumo';
+} from '@dominio/estadoConsumo';
 import { useCores } from '../tema/TemaContext';
 import { Barras, type ItemBarras } from './Barras';
 import { Falha } from './EstadoTela';
