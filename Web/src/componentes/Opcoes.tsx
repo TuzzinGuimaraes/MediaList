@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 type Props<T extends string> = {
   /** Nome do grupo, para o leitor de tela e como legenda visível. */
@@ -8,10 +8,12 @@ type Props<T extends string> = {
   mudar(valor: T): void;
   /** Esconde a legenda (o contexto já diz o que é), mantendo o nome acessível. */
   semLegenda?: boolean;
+  /** Algo na mesma linha das pílulas, depois delas (ex.: o "+N" que mostra o resto). */
+  depois?: ReactNode;
 };
 
 /** Escolha única em pílulas (tema, filtros), com rádios nativos por baixo. */
-export function Opcoes<T extends string>({ rotulo, opcoes, valor, mudar, semLegenda = false }: Props<T>) {
+export function Opcoes<T extends string>({ rotulo, opcoes, valor, mudar, semLegenda = false, depois }: Props<T>) {
   const nome = useId();
   return (
     <fieldset className="flex flex-col gap-2">
@@ -32,6 +34,7 @@ export function Opcoes<T extends string>({ rotulo, opcoes, valor, mudar, semLege
             </span>
           </label>
         ))}
+        {depois}
       </div>
     </fieldset>
   );
