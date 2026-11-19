@@ -12,10 +12,13 @@ import {
 
 import { Casca } from '../layout/Casca';
 import { Entrar } from '../paginas/Entrar';
+import { Admin } from '../paginas/Admin';
 import { Explorar } from '../paginas/explorar/Explorar';
 import { validarBuscaExplorar } from '../paginas/explorar/busca';
 import { Inicio } from '../paginas/inicio/Inicio';
-import { Admin, Detalhe, Lista, NaoEncontrada, Noticias, Perfil } from '../paginas/Provisorias';
+import { Noticias } from '../paginas/Noticias';
+import { Perfil } from '../paginas/Perfil';
+import { Detalhe, Lista, NaoEncontrada } from '../paginas/Provisorias';
 import { Registro } from '../paginas/Registro';
 import { ehAdmin, type EstadoSessao } from '../sessao/sessao';
 
