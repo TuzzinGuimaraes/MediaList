@@ -3,7 +3,7 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
-import { estadoDe, nomeDoTipo } from '@dominio/estadoConsumo';
+import { nomeDoTipo } from '@dominio/estadoConsumo';
 import { notasDaMidia, ROTULO_NOTA_MEDIA, tituloDaMidia } from '@dominio/midia';
 
 import type { Esquemas } from '../../api/tipos';
