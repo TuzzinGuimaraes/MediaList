@@ -169,6 +169,7 @@ jobs:
         working-directory: Mobile
         run: npm run lint
 
+      # Inclui os testes de dominio/ (roots do jest no package.json).
       - name: Run mobile test suite
         working-directory: Mobile
         run: npm test -- --ci --coverage --coverageReporters=json-summary --coverageReporters=text-summary
