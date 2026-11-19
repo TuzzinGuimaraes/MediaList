@@ -3,7 +3,7 @@ import { createContext, type ReactNode, useContext, useEffect, useState, useSync
 
 import type { Api } from '../api/cliente';
 import type { UsuarioDaSessao } from '../api/tipos';
-import { CHAVE_REFRESH } from './armazenamento';
+import { CHAVE_CONECTADO } from './armazenamento';
 import { criarSessao, type EstadoSessao, type Sessao } from './sessao';
 
 const SessaoContext = createContext<Sessao | null>(null);
@@ -19,7 +19,7 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const ouvir = (e: StorageEvent) => {
-      if (e.key === null || (e.key === CHAVE_REFRESH && e.newValue === null)) sessao.refreshSumiu();
+      if (e.key === null || (e.key === CHAVE_CONECTADO && e.newValue === null)) sessao.outraAbaSaiu();
     };
     window.addEventListener('storage', ouvir);
     return () => window.removeEventListener('storage', ouvir);

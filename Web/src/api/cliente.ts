@@ -8,25 +8,32 @@ import createClient, { type Client } from 'openapi-fetch';
 import { ErroApi, ErroRede, erroDaResposta } from './erros';
 import type { Caminhos, Esquemas } from './tipos';
 
-/** O que o cliente precisa da sessão: os tokens vigentes e os avisos de troca e de fim. */
+/**
+ * O que o cliente precisa da sessão: o access vigente e os avisos de troca e de fim. O
+ * refresh não passa por aqui: fica no cookie httpOnly que o backend grava (ADR 0006).
+ */
 export type FonteTokens = {
   access(): string | null;
-  /** Lido a cada renovação: outra aba pode ter rotacionado o refresh. */
-  refresh(): string | null;
-  /** O refresh trocou o par: guardar antes de repetir as requisições. */
-  renovados(tokens: { access: string; refresh: string }): void;
+  /** O refresh trocou o access: guardar antes de repetir as requisições. */
+  renovado(access: string): void;
   /** A sessão não pôde ser renovada (refresh inválido, reusado, Usuário desativado). */
   expirada(): void | Promise<void>;
 };
 
+/**
+ * Cabeçalho que identifica o web: com ele, login, refresh e logout usam o cookie do refresh.
+ * Também é a proteção CSRF: outro site manda o cookie, mas não este cabeçalho.
+ */
+const CLIENTE_WEB = { 'X-Cliente': 'web' } as const;
+
 export type Api = Client<Caminhos> & {
-  /** Troca o refresh por um par novo; null se a sessão acabou. Usado ao reabrir o web. */
+  /** Troca o refresh do cookie por um access novo; null se a sessão acabou. Usado ao reabrir o web. */
   renovar(): Promise<string | null>;
 };
 
 /**
  * Rotas em que um 401 é a resposta final (credenciais erradas, refresh inválido). O
- * logout renova por conta própria (SessaoContext), porque o corpo leva o refresh vigente.
+ * logout renova por conta própria (sessao.ts), para revogar o refresh vigente.
  */
 const SEM_RENOVACAO = ['/api/auth/login', '/api/auth/registro', '/api/auth/refresh', '/api/auth/logout'];
 
@@ -34,9 +41,10 @@ const SEM_RENOVACAO = ['/api/auth/login', '/api/auth/registro', '/api/auth/refre
 const TRAVA_REFRESH = 'medialist.refresh';
 
 /**
- * Serializa a renovação entre abas (Web Locks): o refresh é rotativo e fica no
- * localStorage, compartilhado; duas abas renovando com o mesmo token contam como reuso
- * e derrubam a família inteira. Sem a API (navegador antigo, jsdom), roda direto.
+ * Serializa a renovação entre abas (Web Locks): o refresh é rotativo e o cookie é
+ * compartilhado; duas abas renovando com o mesmo token contam como reuso e derrubam a
+ * família inteira. Na fila, a segunda aba já manda o cookie que a primeira gravou.
+ * Sem a API (navegador antigo, jsdom), roda direto.
  */
 function travado<T>(fn: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
@@ -53,9 +61,9 @@ async function enviar(pedido: Request): Promise<Response> {
 }
 
 function comToken(pedido: Request, access: string | null): Request {
-  if (!access) return pedido;
   const cabecalhos = new Headers(pedido.headers);
-  cabecalhos.set('Authorization', `Bearer ${access}`);
+  cabecalhos.set('X-Cliente', CLIENTE_WEB['X-Cliente']);
+  if (access) cabecalhos.set('Authorization', `Bearer ${access}`);
   return new Request(pedido, { headers: cabecalhos });
 }
 
@@ -69,14 +77,10 @@ export function criarCliente(fonte: FonteTokens): Api {
 
   function renovar(): Promise<string | null> {
     renovacao ??= travado(async () => {
-      const refresh = fonte.refresh();
-      if (!refresh) return null;
-      const corpo: Esquemas['CorpoRefresh'] = { refresh_token: refresh };
       const resposta = await enviar(
         new Request(`${origem()}/api/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(corpo),
+          headers: { ...CLIENTE_WEB, Accept: 'application/json' },
         }),
       );
       // 401 (inválido, expirado, reusado) e 403 (Usuário desativado) encerram a sessão.
@@ -84,8 +88,8 @@ export function criarCliente(fonte: FonteTokens): Api {
       if (resposta.status === 401 || resposta.status === 403) return null;
       const dados: unknown = await resposta.json().catch(() => null);
       if (!resposta.ok) throw erroDaResposta(resposta.status, dados);
-      const { access_token, refresh_token } = dados as Esquemas['RespostaRefresh'];
-      fonte.renovados({ access: access_token, refresh: refresh_token });
+      const { access_token } = dados as Esquemas['RespostaRefresh'];
+      fonte.renovado(access_token);
       return access_token;
     }).finally(() => {
       renovacao = null;

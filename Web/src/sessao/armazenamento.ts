@@ -1,36 +1,36 @@
-// Onde a sessão do web fica guardada (ADR 0006, ticket 03 da spec web-novo).
+// O que a sessão do web guarda no navegador (ADR 0006).
 //
-// O access token fica só em memória (SessaoContext). O refresh precisa sobreviver ao
-// recarregar e às outras abas, e o backend hoje só o aceita no corpo do POST /auth/refresh
-// (não há cookie httpOnly): ele fica no localStorage. É legível por um script injetado
-// (XSS), o mesmo risco do token que o web antigo guardava lá, mas com limites: o refresh
-// é rotativo e o reuso derruba a família inteira; o access dura pouco em memória; e o
-// logout revoga os dois. O ideal (cookie httpOnly + SameSite emitido pelo backend) fica
-// como pendência na Resolution do ticket.
+// Nenhum token fica no localStorage. O access vive só em memória (sessao.ts) e o refresh
+// num cookie httpOnly que o backend grava em `/api/auth` (o script não o lê). Aqui fica só
+// a marca `medialist.conectado`, sem segredo: diz ao abrir se vale tentar o refresh e, ao
+// sumir, avisa as outras abas de que a sessão saiu.
 
-export const CHAVE_REFRESH = 'medialist.refresh';
+export const CHAVE_CONECTADO = 'medialist.conectado';
 
-/** Chaves do web antigo (em CRA, já removido): o token e o Usuário no localStorage. */
-const CHAVES_ANTIGAS = ['token', 'user', 'permissions'];
+/**
+ * Chaves antigas: o token e o Usuário do web em CRA, e o refresh que o web novo guardava
+ * aqui antes do cookie (`medialist.refresh`).
+ */
+const CHAVES_ANTIGAS = ['token', 'user', 'permissions', 'medialist.refresh'];
 
-export function lerRefresh(): string | null {
+export function estaConectado(): boolean {
   try {
-    return localStorage.getItem(CHAVE_REFRESH);
+    return localStorage.getItem(CHAVE_CONECTADO) === '1';
   } catch {
-    return null;
+    return false;
   }
 }
 
-export function guardarRefresh(token: string | null): void {
+export function marcarConectado(conectado: boolean): void {
   try {
-    if (token) localStorage.setItem(CHAVE_REFRESH, token);
-    else localStorage.removeItem(CHAVE_REFRESH);
+    if (conectado) localStorage.setItem(CHAVE_CONECTADO, '1');
+    else localStorage.removeItem(CHAVE_CONECTADO);
   } catch {
     // Armazenamento bloqueado (modo privado restrito): a sessão vale só nesta aba.
   }
 }
 
-/** Some com o token que o web antigo deixava no localStorage. */
+/** Some com os tokens que versões anteriores deixavam no localStorage. */
 export function descartarSessaoAntiga(): void {
   try {
     for (const chave of CHAVES_ANTIGAS) localStorage.removeItem(chave);

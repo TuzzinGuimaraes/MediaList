@@ -1,6 +1,6 @@
 // Helper de login dos testes de tela. Monta o app inteiro (provedores, rotas, casca) com
 // histórico em memória e o fetch simulado. Dois caminhos:
-// - `abrirLogado(url)`: há um refresh guardado (como ao reabrir o navegador); o app renova
+// - `abrirLogado(url)`: há uma sessão aberta (como ao reabrir o navegador); o app renova
 //   a sessão sozinho e abre direto em `url`;
 // - `entrarPeloLogin(url)`: abre sem sessão e passa pela tela de login.
 // As rotas de sessão (login, refresh, me, permissões, logout) já vêm prontas; `rotas`
@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 
 import type { Esquemas, UsuarioDaSessao } from '../api/tipos';
 import { App } from '../app/App';
-import { guardarRefresh } from '../sessao/armazenamento';
+import { marcarConectado } from '../sessao/armazenamento';
 import { type Resposta, type Rotas, simularFetch } from './fetchSimulado';
 
 export const usuarioAna: UsuarioDaSessao = {
@@ -28,12 +28,13 @@ export const adminBia: UsuarioDaSessao = {
   permissoes: { nivel_acesso: 'admin' },
 };
 
-export function loginOk(usuario: UsuarioDaSessao = usuarioAna, tokens = { access: 'A1', refresh: 'R1' }): Resposta {
-  const corpo: Esquemas['RespostaLogin'] = { access_token: tokens.access, refresh_token: tokens.refresh, usuario };
+/** Login do web: o refresh vai no cookie (que o teste não vê), e o corpo leva `refresh_token: null`. */
+export function loginOk(usuario: UsuarioDaSessao = usuarioAna, access = 'A1'): Resposta {
+  const corpo: Esquemas['RespostaLogin'] = { access_token: access, refresh_token: null, usuario };
   return { status: 200, corpo };
 }
 
-/** Rotas da sessão do `usuario`: o login devolve A1/R1 e o refresh devolve A2/R2. */
+/** Rotas da sessão do `usuario`: o login devolve o access A1 e o refresh, o A2. */
 export function rotasDaSessao(usuario: UsuarioDaSessao = usuarioAna): Rotas {
   const me: Esquemas['RespostaMe'] = {
     usuario: { id_usuario: usuario.id, nome_completo: usuario.nome, email: usuario.email, foto_perfil: null },
@@ -41,7 +42,7 @@ export function rotasDaSessao(usuario: UsuarioDaSessao = usuarioAna): Rotas {
   const permissoes: Esquemas['RespostaPermissoes'] = { permissoes: usuario.permissoes };
   return {
     'POST /auth/login': loginOk(usuario),
-    'POST /auth/refresh': { status: 200, corpo: { access_token: 'A2', refresh_token: 'R2' } },
+    'POST /auth/refresh': { status: 200, corpo: { access_token: 'A2', refresh_token: null } },
     'GET /auth/me': { status: 200, corpo: me },
     'GET /usuario/permissoes': { status: 200, corpo: permissoes },
     'POST /auth/logout': { status: 200, corpo: { mensagem: 'Logout realizado com sucesso' } },
@@ -64,9 +65,9 @@ export function navPrincipal() {
   return screen.findByRole('navigation', { name: 'Principal' });
 }
 
-/** Abre o app em `url` com o refresh R1 guardado e espera a casca autenticada. */
+/** Abre o app em `url` com a marca de sessão (o cookie do refresh existe) e espera a casca autenticada. */
 export async function abrirLogado(url = '/', opcoes: Opcoes = {}) {
-  guardarRefresh('R1');
+  marcarConectado(true);
   const aberto = abrirApp(url, opcoes);
   await navPrincipal();
   return aberto;

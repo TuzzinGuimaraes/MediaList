@@ -1,16 +1,16 @@
 // Sessão autenticada do web (ADR 0006), fora do React: access em memória, refresh rotativo
-// guardado (ver armazenamento.ts), logout que revoga os dois. "Sessão" aqui é só
+// no cookie httpOnly (ver armazenamento.ts), logout que revoga os dois. "Sessão" aqui é só
 // autenticação; o catálogo que a tela mostra é o CatalogoContext.
 import type { QueryClient } from '@tanstack/react-query';
 
 import { type Api, criarCliente, exigir } from '../api/cliente';
 import type { Esquemas, UsuarioDaSessao } from '../api/tipos';
-import { descartarSessaoAntiga, guardarRefresh, lerRefresh } from './armazenamento';
+import { descartarSessaoAntiga, estaConectado, marcarConectado } from './armazenamento';
 
 export type EstadoSessao =
   | { estado: 'carregando' }
   | { estado: 'anonima' }
-  /** Havia sessão guardada, mas a API não respondeu ao renová-la: o refresh fica para tentar de novo. */
+  /** Havia sessão aberta, mas a API não respondeu ao renová-la: o refresh fica para tentar de novo. */
   | { estado: 'indisponivel'; erro: unknown }
   | { estado: 'autenticada'; usuario: UsuarioDaSessao };
 
@@ -18,7 +18,7 @@ export type Sessao = ReturnType<typeof criarSessao>;
 
 export function criarSessao(queryClient: QueryClient) {
   descartarSessaoAntiga();
-  let estado: EstadoSessao = lerRefresh() ? { estado: 'carregando' } : { estado: 'anonima' };
+  let estado: EstadoSessao = estaConectado() ? { estado: 'carregando' } : { estado: 'anonima' };
   const ouvintes = new Set<() => void>();
   const mudar = (novo: EstadoSessao) => {
     estado = novo;
@@ -28,20 +28,18 @@ export function criarSessao(queryClient: QueryClient) {
   // O access vive só aqui: o cliente o lê a cada requisição.
   let access: string | null = null;
 
-  /** Encerramento local: apaga tokens e cache. Não chama o servidor. */
+  /** Encerramento local: apaga o access, a marca e o cache. Não chama o servidor. */
   function encerrar() {
     access = null;
-    guardarRefresh(null);
+    marcarConectado(false);
     queryClient.clear();
     mudar({ estado: 'anonima' });
   }
 
   const api: Api = criarCliente({
     access: () => access,
-    refresh: lerRefresh,
-    renovados: (novos) => {
-      access = novos.access;
-      guardarRefresh(novos.refresh);
+    renovado: (novo) => {
+      access = novo;
     },
     expirada: () => {
       if (estado.estado === 'autenticada') encerrar();
@@ -56,7 +54,7 @@ export function criarSessao(queryClient: QueryClient) {
       mudar({ estado: 'carregando' });
       try {
         if (!(await api.renovar())) {
-          guardarRefresh(null);
+          marcarConectado(false);
           mudar({ estado: 'anonima' });
           return;
         }
@@ -80,8 +78,9 @@ export function criarSessao(queryClient: QueryClient) {
   async function entrar(email: string, senha: string): Promise<void> {
     const resposta = await exigir(api.POST('/api/auth/login', { body: { email, senha } }));
     access = resposta.access_token;
-    // Sem refresh (banco sem a tabela), a sessão vale enquanto a aba estiver aberta.
-    guardarRefresh(resposta.refresh_token);
+    // O refresh veio no cookie. Sem ele (banco sem a tabela), o próximo refresh falha e a
+    // sessão vale enquanto a aba estiver aberta.
+    marcarConectado(true);
     mudar({ estado: 'autenticada', usuario: resposta.usuario });
   }
 
@@ -91,10 +90,10 @@ export function criarSessao(queryClient: QueryClient) {
   }
 
   async function sair(): Promise<void> {
-    // Revoga o access (blocklist) e o refresh desta sessão. O corpo leva o refresh vigente:
-    // se o access expirou, renova e repete com o refresh novo, senão o sucessor ficaria vivo.
+    // Revoga o access (blocklist) e o refresh do cookie, que o backend apaga. Se o access
+    // expirou, renova e repete: o logout exige um access válido.
     // Falhar (sem rede, API fora) não impede sair: o local é apagado de qualquer jeito.
-    const revogar = () => api.POST('/api/auth/logout', { body: { refresh_token: lerRefresh() } });
+    const revogar = () => api.POST('/api/auth/logout', { body: {} });
     try {
       const { response } = await revogar();
       if (response.status === 401 && (await api.renovar())) await revogar();
@@ -104,8 +103,8 @@ export function criarSessao(queryClient: QueryClient) {
     encerrar();
   }
 
-  /** Outra aba saiu (o refresh sumiu do armazenamento): esta também sai, sem chamar o servidor. */
-  function refreshSumiu() {
+  /** Outra aba saiu (a marca sumiu do armazenamento): esta também sai, sem chamar o servidor. */
+  function outraAbaSaiu() {
     if (estado.estado === 'autenticada') encerrar();
   }
 
@@ -120,7 +119,7 @@ export function criarSessao(queryClient: QueryClient) {
     entrar,
     registrar,
     sair,
-    refreshSumiu,
+    outraAbaSaiu,
   };
 }
 

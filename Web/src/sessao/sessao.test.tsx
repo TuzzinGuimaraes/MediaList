@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { erro } from '../testes/fetchSimulado';
 import { abrirApp, abrirLogado, entrarPeloLogin, navPrincipal, preencherLogin, usuarioAna } from '../testes/app';
-import { CHAVE_REFRESH } from './armazenamento';
+import { CHAVE_CONECTADO } from './armazenamento';
 
 describe('autenticação', () => {
   it('sem sessão, uma rota protegida leva ao login e, depois de entrar, volta para ela', async () => {
@@ -14,14 +14,18 @@ describe('autenticação', () => {
     await navPrincipal();
 
     expect(historico.location.pathname).toBe('/lista');
-    expect(api.para('POST /auth/login')[0]?.corpo).toEqual({ email: 'ana@exemplo.com', senha: 'segredo1' });
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBe('R1');
+    const login = api.para('POST /auth/login')[0];
+    expect(login?.corpo).toEqual({ email: 'ana@exemplo.com', senha: 'segredo1' });
+    expect(login?.cliente).toBe('web');
+    expect(localStorage.getItem(CHAVE_CONECTADO)).toBe('1');
   });
 
-  it('o access token fica só em memória', async () => {
+  it('nenhum token fica no localStorage: o access só em memória, o refresh no cookie', async () => {
     await entrarPeloLogin('/');
 
-    expect(JSON.stringify({ ...localStorage })).not.toContain('A1');
+    const guardado = JSON.stringify({ ...localStorage });
+    expect(guardado).not.toContain('A1');
+    expect(localStorage.getItem('medialist.refresh')).toBeNull();
   });
 
   it('credenciais erradas mostram a mensagem do servidor', async () => {
@@ -71,12 +75,13 @@ describe('autenticação', () => {
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
     const logout = api.para('POST /auth/logout')[0];
     expect(logout?.autorizacao).toBe('Bearer A1');
-    expect(logout?.corpo).toEqual({ refresh_token: 'R1' });
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBeNull();
+    expect(logout?.cliente).toBe('web');
+    expect(logout?.corpo).toEqual({});
+    expect(localStorage.getItem(CHAVE_CONECTADO)).toBeNull();
     expect(historico.location.pathname).toBe('/entrar');
   });
 
-  it('sair com o access expirado renova e revoga o refresh novo, não o velho', async () => {
+  it('sair com o access expirado renova e repete o logout com o access novo', async () => {
     const { user, api } = await entrarPeloLogin('/', {
       rotas: {
         'POST /auth/logout': (req) =>
@@ -90,7 +95,8 @@ describe('autenticação', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Sair' }));
 
     await screen.findByRole('heading', { name: 'Entrar' });
-    expect(api.para('POST /auth/logout').map((c) => c.corpo)).toEqual([{ refresh_token: 'R1' }, { refresh_token: 'R2' }]);
+    expect(api.para('POST /auth/logout').map((c) => c.autorizacao)).toEqual(['Bearer A1', 'Bearer A2']);
+    expect(api.para('POST /auth/refresh')).toHaveLength(1);
   });
 
   it('sair funciona mesmo com a API fora', async () => {
@@ -102,10 +108,11 @@ describe('autenticação', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Sair' }));
 
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBeNull();
+    expect(localStorage.getItem(CHAVE_CONECTADO)).toBeNull();
   });
 
-  it('descarta as chaves do web antigo (token no localStorage e catálogo como "sessão")', async () => {
+  it('descarta as chaves antigas (token e refresh no localStorage, catálogo como "sessão")', async () => {
+    localStorage.setItem('medialist.refresh', 'R0');
     localStorage.setItem('token', 'velho');
     localStorage.setItem('user', '{}');
     localStorage.setItem('permissions', '{}');
@@ -114,51 +121,58 @@ describe('autenticação', () => {
     abrirApp('/entrar');
     await screen.findByRole('heading', { name: 'Entrar' });
 
-    for (const chave of ['token', 'user', 'permissions', 'medialist_sessao']) {
+    for (const chave of ['medialist.refresh', 'token', 'user', 'permissions', 'medialist_sessao']) {
       expect(localStorage.getItem(chave)).toBeNull();
     }
   });
 });
 
 describe('refresh ao reabrir', () => {
-  it('com um refresh guardado, renova, busca o Usuário e abre sem login', async () => {
+  it('com a marca de sessão, renova pelo cookie, busca o Usuário e abre sem login', async () => {
     const { api, historico } = await abrirLogado('/explorar');
 
-    expect(api.para('POST /auth/refresh')[0]?.corpo).toEqual({ refresh_token: 'R1' });
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBe('R2');
+    const refresh = api.para('POST /auth/refresh')[0];
+    expect(refresh?.corpo).toBeUndefined();
+    expect(refresh?.cliente).toBe('web');
     expect(api.para('GET /auth/me')[0]?.autorizacao).toBe('Bearer A2');
     expect(historico.location.pathname).toBe('/explorar');
   });
 
-  it('refresh recusado limpa o guardado e vai ao login', async () => {
-    localStorage.setItem(CHAVE_REFRESH, 'R1');
+  it('sem a marca, vai ao login sem chamar o refresh', async () => {
+    const { api } = abrirApp('/lista');
+
+    expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
+    expect(api.para('POST /auth/refresh')).toHaveLength(0);
+  });
+
+  it('refresh recusado apaga a marca e vai ao login', async () => {
+    localStorage.setItem(CHAVE_CONECTADO, '1');
     abrirApp('/lista', { rotas: { 'POST /auth/refresh': erro(401, 'token_invalido', 'Refresh token inválido') } });
 
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBeNull();
+    expect(localStorage.getItem(CHAVE_CONECTADO)).toBeNull();
   });
 
-  it('API fora ao reabrir mostra o erro, guarda o refresh e tenta de novo', async () => {
-    localStorage.setItem(CHAVE_REFRESH, 'R1');
+  it('API fora ao reabrir mostra o erro, mantém a marca e tenta de novo', async () => {
+    localStorage.setItem(CHAVE_CONECTADO, '1');
     const { api, user } = abrirApp('/', {
       rotas: { 'POST /auth/refresh': erro(503, 'indisponivel', 'Serviço indisponível') },
     });
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Serviço indisponível');
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBe('R1');
+    expect(localStorage.getItem(CHAVE_CONECTADO)).toBe('1');
 
-    api.rotas['POST /auth/refresh'] = { status: 200, corpo: { access_token: 'A2', refresh_token: 'R2' } };
+    api.rotas['POST /auth/refresh'] = { status: 200, corpo: { access_token: 'A2', refresh_token: null } };
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
 
     await navPrincipal();
-    expect(localStorage.getItem(CHAVE_REFRESH)).toBe('R2');
   });
 
-  it('outra aba saiu (o refresh some do armazenamento): esta volta ao login', async () => {
+  it('outra aba saiu (a marca some do armazenamento): esta volta ao login', async () => {
     await abrirLogado('/');
 
-    localStorage.removeItem(CHAVE_REFRESH);
-    window.dispatchEvent(new StorageEvent('storage', { key: CHAVE_REFRESH, newValue: null }));
+    localStorage.removeItem(CHAVE_CONECTADO);
+    window.dispatchEvent(new StorageEvent('storage', { key: CHAVE_CONECTADO, newValue: null }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument());
   });
