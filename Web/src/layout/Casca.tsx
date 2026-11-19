@@ -9,6 +9,7 @@ import { useSessao } from '../sessao/SessaoContext';
 import { BuscaNav } from './BuscaNav';
 import { MenuConta } from './MenuConta';
 import { PilulaCatalogo } from './PilulaCatalogo';
+import { SinoNotificacoes } from './SinoNotificacoes';
 
 export const ALTURA_NAV = 72;
 /** Quanto rolar até a nav ficar sólida. */
@@ -66,6 +67,7 @@ function NavTopo({ sobreDestaque }: { sobreDestaque: boolean }) {
       <div className="ml-auto flex items-center gap-4">
         <PilulaCatalogo sobreImagem={sobreDestaque} />
         <BuscaNav sobreImagem={sobreDestaque} />
+        <SinoNotificacoes sobreImagem={sobreDestaque} />
         <MenuConta sobreImagem={sobreDestaque} />
       </div>
     </header>

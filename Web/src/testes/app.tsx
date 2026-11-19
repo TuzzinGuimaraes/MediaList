@@ -3,8 +3,8 @@
 // - `abrirLogado(url)`: há uma sessão aberta (como ao reabrir o navegador); o app renova
 //   a sessão sozinho e abre direto em `url`;
 // - `entrarPeloLogin(url)`: abre sem sessão e passa pela tela de login.
-// As rotas de sessão (login, refresh, me, permissões, logout) já vêm prontas; `rotas`
-// acrescenta as da tela testada ou troca alguma delas.
+// As rotas de sessão (login, refresh, me, permissões, logout) e as Notificações do sino já
+// vêm prontas; `rotas` acrescenta as da tela testada ou troca alguma delas.
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -46,6 +46,8 @@ export function rotasDaSessao(usuario: UsuarioDaSessao = usuarioAna): Rotas {
     'GET /auth/me': { status: 200, corpo: me },
     'GET /usuario/permissoes': { status: 200, corpo: permissoes },
     'POST /auth/logout': { status: 200, corpo: { mensagem: 'Logout realizado com sucesso' } },
+    // O sino da nav busca as Notificações em toda tela autenticada.
+    'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
   };
 }
 
