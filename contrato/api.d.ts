@@ -321,6 +321,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/facetas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`. */
+        get: operations["get__api_midias_facetas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/midias/populares": {
         parameters: {
             query?: never;
@@ -778,6 +795,15 @@ export interface components {
          * @enum {string}
          */
         CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        /** ConsultaFacetas */
+        ConsultaFacetas: {
+            /**
+             * Tipo
+             * @description Sem Tipo, as facetas de todos
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
+        };
         /** ConsultaGeneros */
         ConsultaGeneros: {
             /**
@@ -2120,6 +2146,17 @@ export interface components {
             estatisticas: components["schemas"]["EstatisticaPorTipo"][];
             resumo: components["schemas"]["ResumoEstatisticas"];
         };
+        /**
+         * RespostaFacetas
+         * @description Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
+         *     filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).
+         */
+        RespostaFacetas: {
+            /** Estudios */
+            estudios: string[];
+            /** Plataformas */
+            plataformas: string[];
+        };
         /** RespostaGeneros */
         RespostaGeneros: {
             /** Generos */
@@ -3407,6 +3444,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginaMidia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_facetas: {
+        parameters: {
+            query?: {
+                /** @description Sem Tipo, as facetas de todos */
+                tipo?: ("anime" | "manga" | "jogo") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaFacetas"];
                 };
             };
             /** @description Bad Request */

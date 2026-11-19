@@ -381,6 +381,30 @@
         "title": "CodigoErro",
         "type": "string"
       },
+      "ConsultaFacetas": {
+        "properties": {
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sem Tipo, as facetas de todos",
+            "title": "Tipo"
+          }
+        },
+        "title": "ConsultaFacetas",
+        "type": "object"
+      },
       "ConsultaGeneros": {
         "properties": {
           "tipo": {
@@ -4214,6 +4238,31 @@
         "title": "RespostaEstatisticas",
         "type": "object"
       },
+      "RespostaFacetas": {
+        "description": "Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o\nfiltro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).",
+        "properties": {
+          "estudios": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Estudios",
+            "type": "array"
+          },
+          "plataformas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plataformas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plataformas",
+          "estudios"
+        ],
+        "title": "RespostaFacetas",
+        "type": "object"
+      },
       "RespostaGeneros": {
         "properties": {
           "generos": {
@@ -6478,6 +6527,64 @@
           }
         },
         "summary": "Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/facetas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_facetas",
+        "parameters": [
+          {
+            "description": "Sem Tipo, as facetas de todos",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga",
+                    "jogo"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sem Tipo, as facetas de todos",
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaFacetas"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`.",
         "tags": [
           "midias"
         ]

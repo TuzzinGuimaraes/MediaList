@@ -285,6 +285,23 @@ class Catalogo:
         )
         return {**janela, 'dias': dias}
 
+    def facetas(self, tipo: str | None = None) -> dict[str, list[str]]:
+        """Plataformas (jogos) e estúdios (animes) distintos, em ordem; vazios fora do Tipo."""
+        plataformas = estudios = []
+        if tipo in (None, 'jogo'):
+            plataformas = [
+                linha['valor'] for linha in consultar(
+                    "SELECT DISTINCT p AS valor FROM jogos, unnest(plataformas) AS p WHERE p <> '' ORDER BY p"
+                )
+            ]
+        if tipo in (None, 'anime'):
+            estudios = [
+                linha['valor'] for linha in consultar(
+                    "SELECT DISTINCT estudio AS valor FROM animes WHERE estudio <> '' ORDER BY estudio"
+                )
+            ]
+        return {'plataformas': plataformas, 'estudios': estudios}
+
     def generos(self, tipo: str | None = None) -> list[dict[str, Any]]:
         """Gêneros, todos ou os que se aplicam ao Tipo (elemento inteiro de `aplicavel_a`)."""
         if tipo:
