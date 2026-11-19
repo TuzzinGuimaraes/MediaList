@@ -100,7 +100,9 @@ export interface paths {
         put?: never;
         /**
          * Trocar um refresh token por um par novo de access + refresh (rotação).
-         * @description Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
+         * @description O web (`X-Cliente: web`) manda e recebe o refresh no cookie `medialist_refresh`, e o corpo da resposta leva `refresh_token: null`; o app, no corpo. Recusado no web, o cookie é apagado.
+         *
+         *     Banco fora do ar não diz nada sobre o token: `Indisponivel` sobe antes de qualquer revogação, vira 503, e o app pode tentar de novo com o mesmo refresh.
          */
         post: operations["post__api_auth_refresh"];
         delete?: never;
@@ -2134,7 +2136,7 @@ export interface components {
             access_token: string;
             /**
              * Refresh Token
-             * @description Nulo se o banco não gravou o refresh; o login vale mesmo assim
+             * @description Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web (`X-Cliente: web`), em que o refresh vai no cookie httpOnly
              */
             refresh_token: string | null;
             usuario: components["schemas"]["UsuarioDaSessao"];
@@ -2182,8 +2184,11 @@ export interface components {
         RespostaRefresh: {
             /** Access Token */
             access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
+            /**
+             * Refresh Token
+             * @description Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly
+             */
+            refresh_token: string | null;
         };
         /** RespostaTrending */
         RespostaTrending: {
