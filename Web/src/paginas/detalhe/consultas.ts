@@ -1,10 +1,9 @@
 // Consultas e escritas do detalhe da Mídia. Chaves: ['midias', id] (e o que vive sob
-// ['midias'], que Início e Explorar também usam), ['lista'] (a Lista pessoal inteira, como
-// a recebe GET /lista) e ['avaliacoes', id] (a 1ª página e, sob ela, as notas).
+// ['midias'], que Início e Explorar também usam) e ['avaliacoes', id] (a 1ª página e, sob
+// ela, as notas). O Item da Lista vem de `useItemDaMidia` (lista/api.ts, chave ['lista']).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { exigir } from '../../api/cliente';
-import type { Esquemas } from '../../api/tipos';
 import { useApi } from '../../sessao/SessaoContext';
 import type { DadosAvaliacao } from '@dominio/tipos';
 
@@ -26,16 +25,6 @@ export function useAtividade(id: string) {
   return useQuery({
     queryKey: ['midias', id, 'atividade'],
     queryFn: () => exigir(api.GET('/api/midias/{id_midia}/atividade', caminho(id))),
-  });
-}
-
-/** O Item da Lista pessoal para esta Mídia; null se ela não está na Lista. */
-export function useItemDaLista(id: string) {
-  const api = useApi();
-  return useQuery({
-    queryKey: ['lista'],
-    queryFn: () => exigir(api.GET('/api/lista')),
-    select: (r: Esquemas['RespostaLista']) => r.lista.find((item) => item.id_midia === id) ?? null,
   });
 }
 

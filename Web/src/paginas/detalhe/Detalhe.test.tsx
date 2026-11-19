@@ -134,7 +134,8 @@ describe('Detalhe da Mídia', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Adicionar à Lista' }));
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByRole('button', { name: 'Salvar' })).toBeInTheDocument();
   });
 
   it('na Lista, o botão é Editar e a ficha traz o Status e o Progresso', async () => {

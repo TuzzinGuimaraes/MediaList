@@ -11,7 +11,7 @@ import { Botao } from '../../componentes/Botao';
 import { Icone } from '../../componentes/Icone';
 import { Selo, SeloStatus } from '../../componentes/Selo';
 import { useReduzirMovimento } from '../../tema/movimento';
-import type { AbrirEditor } from './editorDoItem';
+import type { MidiaDoEditor } from '../../lista/EditorItem';
 
 type Midia = Esquemas['Midia'];
 type ItemLista = Esquemas['ItemLista'];
@@ -23,7 +23,7 @@ type Props = {
   /** Itens da Lista; `undefined` enquanto ela carrega (o botão da Lista espera). */
   itens: ItemLista[] | undefined;
   posicaoTop(idMidia: string): number | null;
-  abrirEditor: AbrirEditor;
+  abrirEditor(midia: MidiaDoEditor, item: ItemLista | null): void;
 };
 
 function Fundo({ midia }: { midia: Midia }) {

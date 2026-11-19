@@ -76,16 +76,3 @@ export function useCarrosseisPorGenero(recorte: Recorte, generos: string[]) {
   const api = useApi();
   return useQueries({ queries: generos.map((g) => consultaCarrossel(api, recorte, 'nota_media', g)) });
 }
-
-/**
- * A Lista pessoal. A chave ['lista'] guarda a resposta inteira de GET /lista, a mesma do app,
- * para a tela da Lista e o editor do Item (ticket 07) dividirem o cache e invalidarem juntos.
- */
-export function useLista() {
-  const api = useApi();
-  return useQuery({
-    queryKey: ['lista'],
-    queryFn: () => exigir(api.GET('/api/lista')),
-    select: (r) => r.lista,
-  });
-}
