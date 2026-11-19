@@ -21,6 +21,7 @@ import { estadosDaLista, itensDoEstado } from '@dominio/itemLista';
 
 import { mensagemDeErro } from '../../api/erros';
 import { useCatalogo } from '../../catalogo/CatalogoContext';
+import { useEmAlta } from '../../catalogo/consultas';
 import { CardA, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
@@ -28,10 +29,13 @@ import { Fileira } from '../../componentes/Fileira';
 import { Icone } from '../../componentes/Icone';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import { ALTURA_NAV } from '../../layout/Casca';
-import { type ItemLista, useEmAltaDaLista, useLista, useMudarProgresso } from './api';
+import { type ItemLista, useLista, useMudarProgresso } from './api';
 import { type AcoesDoItem, CardItem } from './CardItem';
 import { useEditorItem } from './EditorItemContext';
 import { FiltrosDaLista } from './FiltrosDaLista';
+
+/** Quantas Mídias de cada Tipo o Em alta traz para as Sugestões (antes de tirar as que já estão na Lista). */
+const LIMITE_SUGESTOES = 20;
 
 const textos = {
   titulo: 'Minha Lista',
@@ -156,7 +160,7 @@ function Grade({ itens, acoes, comStatus }: { itens: ItemLista[]; acoes: AcoesDo
 /** "Sugestões para você": Em alta do catálogo fora da Lista, no card A. */
 function Sugestoes({ lista }: { lista: ItemLista[] }) {
   const { recorte } = useCatalogo();
-  const emAlta = useEmAltaDaLista(recorte);
+  const emAlta = useEmAlta(recorte, LIMITE_SUGESTOES);
   const sugestoes = foraDe(emAlta.data, lista);
   return (
     <div className="mt-12">

@@ -9,6 +9,7 @@ import { formatarData } from '@dominio/datas';
 import { nomeDoTipo } from '@dominio/estadoConsumo';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { mensagemDeErro } from '../api/erros';
 import { paginacao } from '../api/paginacao';
@@ -46,7 +47,7 @@ function Usuarios() {
   const [pagina, setPagina] = useState(1);
 
   const consulta = useQuery({
-    queryKey: ['moderacao', 'usuarios', pagina],
+    queryKey: chaves.moderacao.usuariosDaPagina(pagina),
     queryFn: () =>
       exigir(api.GET('/api/moderacao/usuarios', { params: { query: { pagina, por_pagina: USUARIOS_POR_PAGINA } } })),
     placeholderData: keepPreviousData,
@@ -59,7 +60,7 @@ function Usuarios() {
           ? api.PUT('/api/moderacao/usuarios/{target_user_id}/ativar', { params: { path: { target_user_id: id } } })
           : api.PUT('/api/moderacao/usuarios/{target_user_id}/desativar', { params: { path: { target_user_id: id } } }),
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['moderacao', 'usuarios'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.moderacao.usuarios }),
   });
 
   if (!consulta.data) {
@@ -122,14 +123,14 @@ function Avaliacoes() {
   const [excluindo, setExcluindo] = useState<Esquemas['AvaliacaoModeracao'] | null>(null);
 
   const consulta = useQuery({
-    queryKey: ['moderacao', 'avaliacoes'],
+    queryKey: chaves.moderacao.avaliacoes,
     queryFn: () => exigir(api.GET('/api/moderacao/avaliacoes')),
   });
 
   const excluir = useMutation({
     mutationFn: (id: string) => exigir(api.DELETE('/api/avaliacoes/{avaliacao_id}', { params: { path: { avaliacao_id: id } } })),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['moderacao', 'avaliacoes'] });
+      await queryClient.invalidateQueries({ queryKey: chaves.moderacao.avaliacoes });
       setExcluindo(null);
     },
   });

@@ -9,6 +9,7 @@ import { RECORTES, TIPOS_DO_RECORTE } from '@dominio/recorte';
 import { emLancamento } from '@dominio/situacao';
 import type { Midia } from '@dominio/tipos';
 
+import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
 import { type Pagina, paginacao } from '../../api/paginacao';
 import { useCatalogo } from '../../catalogo/CatalogoContext';
@@ -91,12 +92,12 @@ export function Explorar() {
 
   const consulta = consultaDaBusca(busca, tipo);
   const resultado = useQuery({
-    queryKey: ['midias', 'explorar', consulta],
+    queryKey: chaves.midias.explorar(consulta),
     queryFn: () => exigir(api.GET('/api/midias', { params: { query: consulta } })),
     placeholderData: keepPreviousData,
   });
   const generos = useQuery({
-    queryKey: ['generos', tipo],
+    queryKey: chaves.catalogo.generos(tipo),
     queryFn: () => exigir(api.GET('/api/generos', { params: { query: { tipo } } })),
     select: (r) => r.generos.map((g) => g.nome_genero),
     staleTime: Infinity,

@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { ErroApi, mensagemDeErro } from '../api/erros';
 import type { Esquemas } from '../api/tipos';
@@ -53,7 +54,7 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
     mutationFn: (corpo: Esquemas['CorpoNoticia']) => exigir(api.POST('/api/noticias', { body: corpo })),
     onSuccess: async () => {
       setForm(VAZIO);
-      await queryClient.invalidateQueries({ queryKey: ['noticias'] });
+      await queryClient.invalidateQueries({ queryKey: chaves.noticias.todas });
       publicada();
     },
   });

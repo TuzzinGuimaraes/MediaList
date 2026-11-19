@@ -2,10 +2,11 @@
 // meses, os dias da semana, a legenda e a dica do dia sob o ponteiro.
 import { useMemo, useState } from 'react';
 
+import { type DiaDoMapa, montarMapa, SEMANAS } from '@dominio/atividade';
+import { formatarData } from '@dominio/datas';
+
 import { ErroTela } from '../../componentes/Estados';
 import { TituloSecao } from '../../componentes/Fileira';
-import { formatarData } from '@dominio/datas';
-import { type DiaDoMapa, montarMapa, SEMANAS } from '@dominio/atividade';
 import { useAtividade } from './consultas';
 
 const CELULA = 11;

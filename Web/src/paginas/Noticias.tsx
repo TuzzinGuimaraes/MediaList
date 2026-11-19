@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { formatarData } from '@dominio/datas';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { paginacao } from '../api/paginacao';
 import type { Esquemas } from '../api/tipos';
@@ -50,7 +51,7 @@ export function Noticias() {
   const [criando, setCriando] = useState(false);
 
   const consulta = useQuery({
-    queryKey: ['noticias', pagina],
+    queryKey: chaves.noticias.pagina(pagina),
     queryFn: () => exigir(api.GET('/api/noticias', { params: { query: { pagina, por_pagina: NOTICIAS_POR_PAGINA } } })),
     placeholderData: keepPreviousData,
   });

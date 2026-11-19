@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../../api/tipos';
-import { abrirLogado, usuarioAna } from '../../testes/app';
+import { abrirLogado, navPrincipal, usuarioAna } from '../../testes/app';
+import { rotasDoInicio } from '../inicio/dadosDeTeste';
 import { erro, type Requisicao, type Rotas } from '../../testes/fetchSimulado';
 
 type MidiaDetalhe = Esquemas['MidiaDetalhe'];
@@ -215,6 +216,32 @@ describe('Detalhe da Mídia', () => {
     // A página e a Mídia (Nota média, total) são buscadas de novo.
     expect(api.para(`GET /avaliacoes/${ID}`).length).toBeGreaterThan(1);
     expect(api.para(`GET /midias/${ID}`).length).toBeGreaterThan(1);
+  });
+
+  it('uma Avaliação gravada refaz o que mostra nota em outras telas, como o Em alta do Início', async () => {
+    const r: Rotas = {
+      ...rotasDoInicio({}),
+      ...rotas(),
+      'POST /avaliacoes': {
+        status: 201,
+        corpo: { id_avaliacao: 'AVA-9', mensagem: 'ok', nota_media_atualizada: 8.7, total_avaliacoes: 26 },
+      },
+    };
+    const { user, api, historico } = await abrirLogado('/', { rotas: r });
+    await screen.findByRole('main');
+    const antes = api.para('GET /midias/trending').length;
+    expect(antes).toBeGreaterThan(0);
+
+    historico.push(`/midia/${ID}`);
+    await user.click(await screen.findByRole('button', { name: 'Escrever Avaliação' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Escrever Avaliação' });
+    await user.type(within(dialogo).getByLabelText('Nota (0 a 10)'), '8');
+    await user.click(within(dialogo).getByRole('button', { name: 'Publicar' }));
+    await screen.findByRole('button', { name: 'Escrever Avaliação' });
+
+    historico.push('/');
+    await navPrincipal();
+    await waitFor(() => expect(api.para('GET /midias/trending').length).toBeGreaterThan(antes));
   });
 
   it('recusa nota fora da escala sem chamar a API', async () => {

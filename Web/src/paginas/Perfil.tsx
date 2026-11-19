@@ -7,6 +7,7 @@ import { rotuloNivelAcesso } from '@dominio/conta';
 import { formatarData } from '@dominio/datas';
 import { formatarMedia } from '@dominio/estatisticas';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { CardA, NotasCartao } from '../componentes/Cards';
 import { cartaoDaMidia } from '../componentes/cartao';
@@ -15,6 +16,7 @@ import { useCatalogo } from '../catalogo/CatalogoContext';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { SeletorTema } from '../tema/SeletorTema';
 import { EstatisticasPerfil } from './EstatisticasPerfil';
+import { useLista } from './lista/api';
 import { NotificacoesPerfil } from './NotificacoesPerfil';
 
 const MAX_FAVORITOS = 12;
@@ -44,19 +46,15 @@ export function Perfil() {
   const { tipos } = useCatalogo();
 
   const perfil = useQuery({
-    queryKey: ['usuario', 'perfil'],
+    queryKey: chaves.usuario.perfil,
     queryFn: () => exigir(api.GET('/api/usuario/perfil')),
     select: (r) => r.perfil,
   });
   const estatisticas = useQuery({
-    queryKey: ['usuario', 'estatisticas'],
+    queryKey: chaves.usuario.estatisticas,
     queryFn: () => exigir(api.GET('/api/usuario/estatisticas')),
   });
-  const lista = useQuery({
-    queryKey: ['lista', 'perfil'],
-    queryFn: () => exigir(api.GET('/api/lista')),
-    select: (r) => r.lista,
-  });
+  const lista = useLista();
 
   const desde = formatarData(perfil.data?.data_cadastro);
   const favoritos = lista.data?.filter((i) => i.favorito && tipos.includes(i.tipo)).slice(0, MAX_FAVORITOS);

@@ -1,11 +1,12 @@
-// Consultas e escritas do detalhe da Mídia. Chaves: ['midias', id] (e o que vive sob
-// ['midias'], que Início e Explorar também usam) e ['avaliacoes', id] (a 1ª página e, sob
-// ela, as notas). O Item da Lista vem de `useItemDaMidia` (paginas/lista/api.ts, chave ['lista']).
+// Consultas e escritas do detalhe da Mídia (chaves em api/chaves.ts): o detalhe e a
+// atividade sob ['midias', id], e a 1ª página das Avaliações e as notas sob ['avaliacoes', id]. O Item da Lista vem de `useItemDaMidia` (paginas/lista/api.ts, chave ['lista']).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { DadosAvaliacao } from '@dominio/tipos';
+
+import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
 import { useApi } from '../../sessao/SessaoContext';
-import type { DadosAvaliacao } from '@dominio/tipos';
 
 /** O detalhe mostra só a 1ª página das Avaliações. */
 export const AVALIACOES_POR_PAGINA = 20;
@@ -15,7 +16,7 @@ const caminho = (id: string) => ({ params: { path: { id_midia: id } } });
 export function useMidia(id: string) {
   const api = useApi();
   return useQuery({
-    queryKey: ['midias', id],
+    queryKey: chaves.midias.detalhe(id),
     queryFn: () => exigir(api.GET('/api/midias/{id_midia}', caminho(id))),
   });
 }
@@ -23,7 +24,7 @@ export function useMidia(id: string) {
 export function useAtividade(id: string) {
   const api = useApi();
   return useQuery({
-    queryKey: ['midias', id, 'atividade'],
+    queryKey: chaves.midias.atividade(id),
     queryFn: () => exigir(api.GET('/api/midias/{id_midia}/atividade', caminho(id))),
   });
 }
@@ -32,7 +33,7 @@ export function useAtividade(id: string) {
 export function useNotas(id: string) {
   const api = useApi();
   return useQuery({
-    queryKey: ['avaliacoes', id, 'notas'],
+    queryKey: chaves.avaliacoes.notas(id),
     queryFn: () => exigir(api.GET('/api/midias/{id_midia}/notas', caminho(id))),
   });
 }
@@ -40,7 +41,7 @@ export function useNotas(id: string) {
 export function useAvaliacoes(id: string) {
   const api = useApi();
   return useQuery({
-    queryKey: ['avaliacoes', id],
+    queryKey: chaves.avaliacoes.daMidia(id),
     queryFn: () =>
       exigir(
         api.GET('/api/avaliacoes/{id_midia}', {
@@ -50,14 +51,17 @@ export function useAvaliacoes(id: string) {
   });
 }
 
-/** Uma Avaliação muda a Nota média e o Total de avaliações da Mídia, que também ordenam Início, Explorar e a Lista. */
+/**
+ * Uma Avaliação muda a Nota média e o Total de avaliações da Mídia: refaz tudo que os mostra
+ * (Início, Explorar, detalhe e Sugestões, sob ['midias']), a Lista e as Avaliações dela.
+ */
 function useInvalidarAvaliacoes(idMidia: string) {
   const queryClient = useQueryClient();
   return () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['midias'] }),
-      queryClient.invalidateQueries({ queryKey: ['lista'] }),
-      queryClient.invalidateQueries({ queryKey: ['avaliacoes', idMidia] }),
+      queryClient.invalidateQueries({ queryKey: chaves.midias.todas }),
+      queryClient.invalidateQueries({ queryKey: chaves.lista.toda }),
+      queryClient.invalidateQueries({ queryKey: chaves.avaliacoes.daMidia(idMidia) }),
     ]);
 }
 

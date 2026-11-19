@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { formatarData } from '@dominio/datas';
 
+import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { mensagemDeErro } from '../api/erros';
 import { Botao } from '../componentes/Botao';
@@ -14,12 +15,12 @@ export function NotificacoesPerfil() {
   const api = useApi();
   const queryClient = useQueryClient();
   const consulta = useQuery({
-    queryKey: ['notificacoes'],
+    queryKey: chaves.notificacoes,
     queryFn: () => exigir(api.GET('/api/notificacoes')),
   });
   const marcar = useMutation({
     mutationFn: () => exigir(api.PUT('/api/notificacoes/marcar-todas-lidas')),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notificacoes'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.notificacoes }),
   });
 
   if (!consulta.data) {
