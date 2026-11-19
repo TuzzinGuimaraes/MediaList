@@ -12,7 +12,9 @@ import {
 
 import { Casca } from '../layout/Casca';
 import { Entrar } from '../paginas/Entrar';
-import { Admin, Detalhe, Explorar, Inicio, Lista, NaoEncontrada, Noticias, Perfil } from '../paginas/Provisorias';
+import { Explorar } from '../paginas/explorar/Explorar';
+import { validarBuscaExplorar } from '../paginas/explorar/busca';
+import { Admin, Detalhe, Inicio, Lista, NaoEncontrada, Noticias, Perfil } from '../paginas/Provisorias';
 import { Registro } from '../paginas/Registro';
 import { ehAdmin, type EstadoSessao } from '../sessao/sessao';
 
@@ -84,8 +86,7 @@ const inicio = createRoute({
 const explorar = createRoute({
   getParentRoute: () => autenticado,
   path: '/explorar',
-  validateSearch: (s: Record<string, unknown>): { busca?: string } =>
-    typeof s.busca === 'string' && s.busca ? { busca: s.busca } : {},
+  validateSearch: validarBuscaExplorar,
   component: Explorar,
 });
 
