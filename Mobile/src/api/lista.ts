@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
-import { diaIso } from '../dominio/datas';
-import { aplicarProgresso, type DadosItem, totalDoItem } from '../dominio/itemLista';
+import { diaIso } from '@dominio/datas';
+import { aplicarProgresso, type DadosItem, totalDoItem } from '@dominio/itemLista';
 import { useCache } from './consulta';
 import type { ItemLista, RespostaLista } from './tipos';
 

@@ -1,8 +1,8 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import { notaDeRanking } from '../dominio/midia';
-import { decrescente } from '../dominio/ordenacao';
+import { notaDeRanking } from '@dominio/midia';
+import { decrescente } from '@dominio/ordenacao';
 import { type Recorte, TIPOS_DO_RECORTE } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
 import type { Midia, OrdemCatalogo, PaginaMidias } from './tipos';

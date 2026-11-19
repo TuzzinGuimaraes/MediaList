@@ -6,7 +6,7 @@ stepper, e a Lista mostrava um estado que o próprio Item desmentia.
 
 Para Tipos com Progresso e total conhecido (anime com `numero_episodios`, mangá com
 `numero_capitulos`), vale **Concluído ⇔ Progresso = total**. O autor continua sendo
-`Backend/dominio/lista_pessoal.py`, e `Mobile/src/dominio/itemLista.ts` espelha a regra só
+`Backend/dominio/lista_pessoal.py`, e `dominio/itemLista.ts` espelha a regra só
 para a tela mostrar o resultado antes da resposta:
 
 - Progresso enviado no total leva o Item a Concluído (como antes).

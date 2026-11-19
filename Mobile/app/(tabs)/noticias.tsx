@@ -7,7 +7,7 @@ import type { Noticia, Notificacao } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { useAtualizar } from '@/components/useAtualizar';
-import { formatarData } from '@/dominio/datas';
+import { formatarData } from '@dominio/datas';
 
 type SubAba = 'noticias' | 'notificacoes';
 

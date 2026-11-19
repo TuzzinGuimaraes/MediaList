@@ -3,9 +3,9 @@ import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { estadoDe, nomeDoRotulo, nomeDoTipo } from '../dominio/estadoConsumo';
-import { passoDeProgresso, temProgresso, totalDoItem } from '../dominio/itemLista';
-import { tituloDaMidia } from '../dominio/midia';
+import { estadoDe, nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
+import { passoDeProgresso, temProgresso, totalDoItem } from '@dominio/itemLista';
+import { tituloDaMidia } from '@dominio/midia';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
 import { SeloStatus, SeloTipo } from './Selo';

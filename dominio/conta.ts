@@ -1,4 +1,4 @@
-import type { NivelAcesso } from '../api/tipos';
+import type { NivelAcesso } from './tipos';
 
 // Validação local dos formulários de conta. O backend continua autoritativo:
 // estas funções só evitam uma ida ao servidor com dados obviamente errados.

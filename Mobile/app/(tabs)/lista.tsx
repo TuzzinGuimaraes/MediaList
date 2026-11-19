@@ -10,7 +10,7 @@ import type { AcoesDoItem } from '@/components/LinhaItem';
 import { PaginasStatus } from '@/components/PaginasStatus';
 import { SheetDaLista } from '@/components/SheetDaLista';
 import type { ControleDosFiltros } from '@/components/SheetFiltros';
-import type { EstadoConsumo } from '@/dominio/estadoConsumo';
+import type { EstadoConsumo } from '@dominio/estadoConsumo';
 import {
   buscarNaLista,
   FILTROS_PADRAO,
@@ -20,7 +20,7 @@ import {
   filtrosRestringem,
   opcoesDosFiltros,
   organizarLista,
-} from '@/dominio/filtrosLista';
+} from '@dominio/filtrosLista';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 
 export default function Lista() {

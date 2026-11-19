@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { type EstadoConsumo, NOMES_ESTADO, nomeDoTipo } from '../dominio/estadoConsumo';
+import { type EstadoConsumo, NOMES_ESTADO, nomeDoTipo } from '@dominio/estadoConsumo';
 import type { Cores, NomeCor } from '../tema/cores';
 import { useCores } from '../tema/TemaContext';
 

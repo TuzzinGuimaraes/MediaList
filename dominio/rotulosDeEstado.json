@@ -1,0 +1,24 @@
+{
+  "anime": {
+    "planejado": "planejado",
+    "em_progresso": "assistindo",
+    "pausado": "pausado",
+    "abandonado": "abandonado",
+    "concluido": "completo"
+  },
+  "manga": {
+    "planejado": "planejado",
+    "em_progresso": "lendo",
+    "pausado": "pausado",
+    "abandonado": "abandonado",
+    "concluido": "lido"
+  },
+  "jogo": {
+    "planejado": "na_fila",
+    "em_progresso": "jogando",
+    "pausado": "pausado",
+    "abandonado": "abandonado",
+    "concluido": "zerado",
+    "platinado": "platinado"
+  }
+}

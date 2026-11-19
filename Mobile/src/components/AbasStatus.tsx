@@ -1,6 +1,6 @@
 import { Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
 
-import { type EstadoConsumo, NOMES_ESTADO } from '../dominio/estadoConsumo';
+import { type EstadoConsumo, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import { useCores } from '../tema/TemaContext';
 import { corDoEstado } from './Selo';
 

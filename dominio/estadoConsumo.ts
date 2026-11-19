@@ -1,5 +1,7 @@
-// Estado de consumo e Rótulos de estado (CONTEXT.md). Cópia de
+// Estado de consumo e Rótulos de estado (CONTEXT.md). Espelho de
 // Backend/schemas/estado_consumo.py: o backend continua autoritativo (ADR 0002).
+
+import rotulosDeEstado from './rotulosDeEstado.json';
 
 export type TipoMidia = 'anime' | 'manga' | 'jogo';
 
@@ -66,31 +68,12 @@ export function eTerminal(estado: EstadoConsumo | null): boolean {
   return estado !== null && ESTADOS_TERMINAIS.has(estado);
 }
 
-/** Rótulo de cada estado, por Tipo. Estado ausente não se aplica ao Tipo (só jogo tem Platinado). */
-export const ROTULOS_POR_TIPO: Record<TipoMidia, Partial<Record<EstadoConsumo, string>>> = {
-  anime: {
-    planejado: 'planejado',
-    em_progresso: 'assistindo',
-    pausado: 'pausado',
-    abandonado: 'abandonado',
-    concluido: 'completo',
-  },
-  manga: {
-    planejado: 'planejado',
-    em_progresso: 'lendo',
-    pausado: 'pausado',
-    abandonado: 'abandonado',
-    concluido: 'lido',
-  },
-  jogo: {
-    planejado: 'na_fila',
-    em_progresso: 'jogando',
-    pausado: 'pausado',
-    abandonado: 'abandonado',
-    concluido: 'zerado',
-    platinado: 'platinado',
-  },
-};
+/**
+ * Rótulo de cada estado, por Tipo. Estado ausente não se aplica ao Tipo (só jogo tem Platinado).
+ * Os dados ficam em rotulosDeEstado.json para o backend conferir num teste
+ * (Backend/tests/test_estado_consumo.py) que batem com schemas/estado_consumo.py.
+ */
+export const ROTULOS_POR_TIPO: Record<TipoMidia, Partial<Record<EstadoConsumo, string>>> = rotulosDeEstado;
 
 /** Rótulos válidos para o Tipo, na ordem dos estados. */
 export function rotulosDoTipo(tipo: TipoMidia): string[] {

@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import type { ItemLista } from '../api/tipos';
-import { proporcaoDoFio } from '../dominio/itemLista';
+import { proporcaoDoFio } from '@dominio/itemLista';
 
 /** Largura do traço quando não se conhece o total. */
 const TRACO_CURTO = 14;

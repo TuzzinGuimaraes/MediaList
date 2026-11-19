@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import { notaDeRanking } from '../dominio/midia';
+import { notaDeRanking } from '@dominio/midia';
 import { type Recorte, TIPOS_DO_RECORTE, useRecorte } from '../recorte/RecorteContext';
 import type { Cliente } from './cliente';
 import { useCache } from './consulta';

@@ -1,4 +1,4 @@
-import type { Midia, NotasDaMidia } from '../api/tipos';
+import type { Midia, NotasDaMidia } from './tipos';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
 export function tituloDaMidia(midia: Pick<Midia, 'titulo_portugues' | 'titulo_original'>): string {

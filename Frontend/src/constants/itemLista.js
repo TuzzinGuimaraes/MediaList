@@ -1,4 +1,4 @@
-// Total do Progresso de um Item de lista, como o app calcula (Mobile/src/dominio/itemLista.ts):
+// Total do Progresso de um Item de lista, como o app calcula (dominio/itemLista.ts):
 // a cópia gravada no Item (`progresso_total`) ou, sem ela, o total da Mídia pelo Tipo.
 // Jogo não tem Progresso.
 export function totalDoItem(item) {

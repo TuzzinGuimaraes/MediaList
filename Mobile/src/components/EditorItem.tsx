@@ -6,8 +6,8 @@ import { Keyboard, Platform, Pressable, Text, TextInput, type TextInputProps, Vi
 import { mensagemDeErro } from '../api/erros';
 import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
-import { dataDoTexto, textoDaData } from '../dominio/datas';
-import { estadoDe, NOMES_ESTADO, rotulosDoTipo, type TipoMidia } from '../dominio/estadoConsumo';
+import { dataDoTexto, textoDaData } from '@dominio/datas';
+import { estadoDe, NOMES_ESTADO, rotulosDoTipo, type TipoMidia } from '@dominio/estadoConsumo';
 import {
   type EdicaoItem,
   type FormularioItem,
@@ -18,8 +18,8 @@ import {
   temProgresso,
   totalDoItem,
   validarItem,
-} from '../dominio/itemLista';
-import { tituloDaMidia } from '../dominio/midia';
+} from '@dominio/itemLista';
+import { tituloDaMidia } from '@dominio/midia';
 import { vibrarConfirmacao } from '../tema/haptics';
 import { useCores } from '../tema/TemaContext';
 import { BottomSheet } from './BottomSheet';

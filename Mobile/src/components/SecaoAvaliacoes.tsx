@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { useApagarAvaliacao } from '../api/avaliacoes';
 import { mensagemDeErro } from '../api/erros';
 import type { Avaliacao } from '../api/tipos';
-import { formatarData } from '../dominio/datas';
+import { formatarData } from '@dominio/datas';
 import { useCores } from '../tema/TemaContext';
 import { Botao } from './Botao';
 import { FormularioAvaliacao } from './FormularioAvaliacao';

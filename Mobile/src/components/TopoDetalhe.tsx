@@ -6,8 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePosicaoTop10 } from '../api/midias';
 import type { ItemLista, Midia } from '../api/tipos';
-import { estadoDe } from '../dominio/estadoConsumo';
-import { emLancamento } from '../dominio/situacao';
+import { estadoDe } from '@dominio/estadoConsumo';
+import { emLancamento } from '@dominio/situacao';
 import { useCores } from '../tema/TemaContext';
 import { FioProgresso } from './FioProgresso';
 import { Selo, SeloStatus, SeloTipo, SeloTop } from './Selo';
