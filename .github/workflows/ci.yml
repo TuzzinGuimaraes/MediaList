@@ -102,45 +102,6 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  frontend:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: Frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: Frontend
-        run: npm ci
-
-      # Config do CRA (eslintConfig no package.json). --max-warnings=0 mantém o
-      # rigor do antigo `CI=true npm run build`, que tratava aviso como erro.
-      - name: Lint (eslint)
-        working-directory: Frontend
-        run: npx eslint --max-warnings=0 src
-
-      - name: Run frontend test suite
-        working-directory: Frontend
-        run: CI=true npm test -- --watchAll=false --coverage --coverageReporters=json-summary --coverageReporters=text-summary
-
-      - name: Coverage summary
-        if: ${{ !cancelled() }}
-        run: node .github/scripts/jest-coverage-summary.js Frontend/coverage/coverage-summary.json "Cobertura do Frontend" >> "$GITHUB_STEP_SUMMARY"
-
-      # A imagem roda `npm run build` no estágio de build; não repetimos no runner.
-      - name: Build frontend image
-        run: docker compose build frontend
-
-  # Web novo (ticket 19 da revisão). Convive com o job frontend até o Frontend/ sair.
   web:
     name: Web Tests
     runs-on: ubuntu-latest
@@ -173,9 +134,9 @@ jobs:
         working-directory: Web
         run: npx vitest run
 
-      - name: Build
-        working-directory: Web
-        run: npm run build
+      # A imagem (Web/Dockerfile) roda `npm run build` no estágio de build; não repetimos no runner.
+      - name: Build web image
+        run: docker compose build frontend
 
   mobile:
     name: Mobile Tests
