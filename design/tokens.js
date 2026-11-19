@@ -1,5 +1,5 @@
-// Tokens de design do MediaList (ticket 29): fonte única para o app (Mobile/) e, no
-// ticket 31, para o web (Frontend/). Só dados, sem lógica de nenhum dos dois.
+// Tokens de design do MediaList (ticket 29): fonte única para o app (Mobile/) e o web
+// (Web/, via Web/scripts/tema.ts). Só dados, sem lógica de nenhum dos dois.
 //
 // Formato pensado para o `@theme` do Tailwind 4: cada cor vira `--color-<nome>` e cada
 // tema é um bloco de variáveis. Ex.: `@theme { --color-fundo: var(--cor-fundo); }` e

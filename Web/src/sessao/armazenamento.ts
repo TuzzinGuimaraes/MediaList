@@ -10,7 +10,7 @@
 
 export const CHAVE_REFRESH = 'medialist.refresh';
 
-/** Chaves do web antigo (Frontend/): o token e o Usuário no localStorage. */
+/** Chaves do web antigo (em CRA, já removido): o token e o Usuário no localStorage. */
 const CHAVES_ANTIGAS = ['token', 'user', 'permissions'];
 
 export function lerRefresh(): string | null {

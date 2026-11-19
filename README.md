@@ -6,7 +6,7 @@ Sistema full stack para catálogo, listas pessoais, avaliações e notícias de 
 - mangás
 - jogos
 
-O projeto agora pode ser distribuído como um stack Docker completo, com frontend, backend e PostgreSQL orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
+O projeto agora pode ser distribuído como um stack Docker completo, com web, backend e PostgreSQL orquestrados a partir de um único [docker-compose.yml](docker-compose.yml). Há também um app mobile em Expo, em [Mobile/](Mobile/README.md), que consome a mesma API.
 
 ## Visão geral
 
@@ -36,11 +36,11 @@ Além disso, o sistema oferece:
 - psycopg 3 + `psycopg_pool` (PostgreSQL, módulo `Backend/banco.py`)
 - `flask-jwt-extended`
 
-### Frontend
+### Web
 
-- React 19
-- Create React App
-- `lucide-react`
+- React 19 com TypeScript, Vite, TanStack Router e TanStack Query, Tailwind 4
+- Cliente tipado pelo contrato da API (`contrato/api.d.ts`, via `openapi-fetch`)
+- Regras compartilhadas com o app em `dominio/` e tokens de design em `design/`
 - Nginx para servir o build em produção
 
 ### Mobile
@@ -70,16 +70,18 @@ Além disso, o sistema oferece:
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
 │   └── test_*.py
-├── Frontend/
+├── Web/
 │   ├── Dockerfile
 │   ├── nginx.conf
-│   ├── public/
 │   ├── src/
 │   └── package.json
 ├── Mobile/
 │   ├── app/
 │   ├── src/
 │   └── package.json
+├── contrato/
+├── design/
+├── dominio/
 ├── docs/adr/
 ├── .env.example
 ├── CONTEXT.md
@@ -95,10 +97,10 @@ Para usar o stack completo com Docker, você só precisa de:
 - Docker
 - Docker Compose
 
-Para desenvolvimento local sem containerizar frontend/backend:
+Para desenvolvimento local sem containerizar web/backend:
 
 - Python 3.10+
-- Node.js 18+ e npm (o Mobile exige Node 22.13+)
+- Node.js 22.13+ e npm (Vite 8 e o Mobile exigem; o CI e a imagem do web usam o 24)
 
 ## Distribuição via Docker
 
@@ -120,7 +122,7 @@ make services-up
 
 Isso sobe:
 
-- `frontend` em `http://localhost:3005`
+- `frontend` (o web) em `http://localhost:3005`
 - `backend` em `http://localhost:5000`
 - `postgres` em `localhost:5433` (`POSTGRES_PORT`)
 
@@ -141,9 +143,9 @@ docker compose up --build -d
 
 ## Arquitetura de deploy
 
-### Frontend
+### Web
 
-O frontend é buildado em [Frontend/Dockerfile](Frontend/Dockerfile) e servido por Nginx. O proxy reverso configurado em [Frontend/nginx.conf](Frontend/nginx.conf) encaminha `/api` para o backend, então a versão distribuída não depende de `localhost` hardcoded.
+O web é buildado (Vite) em [Web/Dockerfile](Web/Dockerfile) e servido por Nginx no serviço `frontend` do Compose. O contexto do build é a raiz do repositório, porque o Web importa `design/`, `contrato/` e `dominio/`; o que entra no contexto está em [Web/Dockerfile.dockerignore](Web/Dockerfile.dockerignore). O [Web/nginx.conf](Web/nginx.conf) devolve o `index.html` nas rotas do SPA (ex.: `/explorar`) e encaminha `/api` para o backend, então a versão distribuída não depende de `localhost` hardcoded.
 
 ### Backend
 
@@ -170,7 +172,7 @@ O schema nao insere animes, mangas ou jogos de exemplo. O catalogo deve ser popu
 
 ## Desenvolvimento local
 
-Se preferir rodar frontend e backend no host, mantendo só o PostgreSQL no Docker:
+Se preferir rodar web e backend no host, mantendo só o PostgreSQL no Docker:
 
 ### 1. Instale as dependências locais
 
@@ -191,18 +193,18 @@ make db-migrate
 make backend-dev
 ```
 
-### 4. Rode o frontend
+### 4. Rode o web
 
 Em outro terminal:
 
 ```bash
-make frontend-dev
+make web-dev
 ```
 
 Nesse modo:
 
 - o backend local usa o PostgreSQL em `localhost:5433`
-- o frontend local usa `http://localhost:5000/api` no modo desenvolvimento
+- o web abre em `http://localhost:3006`, e o Vite encaminha `/api` para `http://localhost:5000` (outro destino: `API_ALVO=http://localhost:5203 make web-dev`)
 
 ## Comandos principais
 
@@ -210,8 +212,8 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 
 | Comando | O que faz |
 |---|---|
-| `make services-up` | Sobe frontend, backend e PostgreSQL |
-| `make compose-build` | Rebuilda as imagens Docker de backend e frontend |
+| `make services-up` | Sobe o web, o backend e o PostgreSQL |
+| `make compose-build` | Rebuilda as imagens Docker do backend e do web |
 | `make services-down` | Derruba os containers do stack |
 | `make services-logs` | Mostra logs do Docker Compose |
 | `make db-migrate` | Aplica as migrações pendentes (serviço `migrate`) |
@@ -230,12 +232,13 @@ O [Makefile](Makefile) centraliza os fluxos mais comuns.
 | `make seed-dev` | Cria os dados de desenvolvimento (Usuários de dev, Lista, Avaliações, Notificações) |
 | `make install` | Instala dependências locais para desenvolvimento sem Docker |
 | `make backend-dev` | Inicia a API Flask no host |
-| `make frontend-dev` | Inicia o frontend React no host |
-| `make test` | Executa os testes do backend, do frontend e do mobile no host |
+| `make web-dev` | Inicia o web (Vite) no host, na porta 3006 |
+| `make test` | Executa os testes do backend, do web e do mobile no host |
 | `make test-backend` | Executa o pytest do backend no host |
-| `make test-frontend` | Executa os testes do frontend no host |
+| `make test-web` | Executa os testes do web (Vitest) no host |
 | `make test-mobile` | Executa os testes do mobile no host |
-| `make build-frontend` | Gera a build do frontend no host |
+| `make lint` | Roda ruff (backend), tsc e eslint (web) e o lint do mobile |
+| `make build-web` | Gera a build do web no host (`Web/dist`) |
 
 ## Dados de desenvolvimento
 
