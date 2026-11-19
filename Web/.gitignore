@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Gerado de design/tokens.js por scripts/gerar-tema.mjs (predev e prebuild).
+src/estilo/tema.gerado.css

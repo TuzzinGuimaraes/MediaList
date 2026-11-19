@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+@import './tema.gerado.css';
+
+/* `claro:` para os poucos casos que precisam diferir do token (quase tudo vem das cores). */
+@custom-variant claro (&:where(.claro, .claro *));
+
+html,
+body {
+  font-family: var(--font-sans);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+}
+
+/* Fileiras roláveis sem barra visível; as setas rolam. */
+.sem-barra {
+  scrollbar-width: none;
+}
+.sem-barra::-webkit-scrollbar {
+  display: none;
+}
+
+/* Entradas do Sheet e do Modal (motion-safe:animate-[...] no componente). */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes deslizar {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
