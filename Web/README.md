@@ -20,14 +20,13 @@ troca: `←`/`→` mudam o valor do eixo ativo, `Shift+←`/`→` trocam o eixo,
 
 | Eixo | Valores |
 |---|---|
-| `nav` | `topo` (Topo), `lateral` (Lateral) |
-| `inicio` | `a` (Destaque largo), `b` (Destaque + coluna) |
-| `lista` | `linhas` (Abas + linhas), `grade` (Abas + grade) |
-| `explorar` | `coluna` (Coluna), `sheet` (Sheet) |
-| `detalhe` | `duas` (Duas colunas), `central` (Coluna central) |
+| `nav` | `lateral` (Lateral recolhida, 72px, abre no hover/foco), `topo` (Topo) |
 | `tema` | `escuro` (Carmesim), `claro` (Rubi) |
 
-Ex.: `http://localhost:3006/lista?nav=lateral&lista=grade&tema=claro`.
+Ex.: `http://localhost:3006/lista?nav=topo&tema=claro`.
+
+Fixos na 2ª rodada (veredito e Q72 a Q75 do ticket 19): Início híbrido, Lista em cards compactos,
+Explorar com coluna de filtros recolhíveis e detalhe em duas colunas com o mapa de atividade.
 
 ## O que é real
 
@@ -37,3 +36,10 @@ Ex.: `http://localhost:3006/lista?nav=lateral&lista=grade&tema=claro`.
   `POST /lista/adicionar`, `DELETE /lista/<id>`): mexem nos dados do Usuário de dev.
 - Cores e fonte saem de `design/tokens.js` (`npm run tema` gera `src/tema.gerado.css`).
 - Notícias, Perfil e Administração são páginas vazias.
+
+## O que é simulado
+
+- Mapa de atividade do detalhe: números gerados a partir do id da Mídia (`paginas/MapaAtividade.tsx`),
+  porque `GET /midias/<id>/atividade` ainda não existe.
+- Ano do Explorar: filtra só a página carregada, porque a API ainda não aceita `ano_min`/`ano_max`.
+- Plataformas e Estúdios do Explorar: tirados de uma amostra de 150 Mídias populares (`useFacetas`).

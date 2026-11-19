@@ -19,7 +19,6 @@ import {
   notasDe,
   passo,
   proporcaoDoFio,
-  recontagem,
   ROTULOS,
   temProgresso,
   tituloDe,
@@ -281,7 +280,7 @@ export function CardTop({ midia, posicao }: { midia: CartaoMidia; posicao: numbe
 
 // ---------------------------------------------------------------- stepper e linha do Item
 
-export function Stepper({ item }: { item: ItemLista }) {
+export function Stepper({ item, compacto }: { item: ItemLista; compacto?: boolean }) {
   const mudar = useMudarProgresso();
   const total = totalDoItem(item);
   const atual = item.progresso_atual ?? 0;
@@ -295,55 +294,52 @@ export function Stepper({ item }: { item: ItemLista }) {
           e.stopPropagation();
           if (novo !== null) mudar.mutate({ item, progresso: novo });
         }}
-        className="flex h-8 w-8 items-center justify-center text-texto-forte hover:text-marca-texto disabled:text-borda"
+        className={`flex items-center justify-center text-texto-forte hover:text-marca-texto disabled:text-borda ${compacto ? 'h-7 w-7' : 'h-8 w-8'}`}
         aria-label={delta === 1 ? 'Mais um' : 'Menos um'}
       >
-        <Icone nome={delta === 1 ? 'mais' : 'menos'} tamanho={16} />
+        <Icone nome={delta === 1 ? 'mais' : 'menos'} tamanho={compacto ? 14 : 16} />
       </button>
     );
   };
-  if (!temProgresso(item.tipo)) return <span className="text-[13px] text-texto-suave">{atual} h</span>;
+  if (!temProgresso(item.tipo)) return <span className="text-[12px] text-texto-suave">{atual} h</span>;
   return (
     <div className="flex items-center rounded-full border border-borda bg-superficie-alta">
       {botao(-1)}
-      <span className="min-w-12 text-center text-[13px] font-semibold tabular-nums text-texto-forte">{total !== null ? `${atual}/${total}` : atual}</span>
+      <span className={`text-center font-semibold tabular-nums text-texto-forte ${compacto ? 'min-w-10 text-[12px]' : 'min-w-12 text-[13px]'}`}>{total !== null ? `${atual}/${total}` : atual}</span>
       {botao(1)}
     </div>
   );
 }
 
-/** Linha do Item no estilo do card C, mais larga no desktop: clique abre o editor. */
+/** Card compacto do Item (~300px, Lista): pôster pequeno, título, Status, nota, stepper e fio. Clique abre o editor. */
 export function LinhaItem({ item, editar, comStatus = true }: { item: ItemLista; editar(): void; comStatus?: boolean }) {
   const estado = estadoDe(item.status_consumo, item.tipo);
   const fundo = item.banner_url ?? item.poster_url;
-  const rec = recontagem(item);
   return (
-    <div className="group relative flex h-[116px] overflow-hidden rounded-lg bg-superficie transition hover:ring-1 hover:ring-borda">
-      {fundo ? <img src={fundo} alt="" className={`absolute inset-0 h-full w-full object-cover opacity-35 ${item.banner_url ? '' : 'blur-md'}`} /> : null}
-      <div className="absolute inset-0 bg-gradient-to-r from-superficie via-superficie/85 to-superficie/60" />
-      <button onClick={editar} className="relative flex min-w-0 flex-1 gap-3 p-2.5 text-left">
-        <div className="aspect-[2/3] h-full shrink-0 overflow-hidden rounded-md bg-superficie-alta">
+    <div className="group relative flex h-[96px] overflow-hidden rounded-md bg-superficie transition hover:ring-1 hover:ring-borda">
+      {fundo ? (
+        <img src={fundo} alt="" loading="lazy" className={`absolute inset-0 h-full w-full object-cover opacity-25 ${item.banner_url ? '' : 'blur-md'}`} />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-r from-superficie via-superficie/90 to-superficie/70" />
+      <button onClick={editar} className="relative flex min-w-0 flex-1 gap-2.5 p-2 text-left" title={tituloDe(item)}>
+        <div className="aspect-[2/3] h-full shrink-0 overflow-hidden rounded bg-superficie-alta">
           <Poster midia={item} />
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
-          <Selo texto={NOMES_TIPO[item.tipo]} />
-          <span className="line-clamp-1 font-bold text-texto-forte group-hover:underline">{tituloDe(item)}</span>
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px]">
+        <div className="flex min-w-0 flex-col gap-1 pt-0.5">
+          <span className="line-clamp-2 text-[14px] font-semibold leading-tight text-texto-forte group-hover:underline">{tituloDe(item)}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
             {estado && comStatus ? <SeloStatus estado={estado} /> : null}
             {item.nota_usuario != null ? (
               <span className="inline-flex items-center gap-1 font-bold text-nota">
-                <Icone nome="estrela" tamanho={13} cheio /> {item.nota_usuario}
+                <Icone nome="estrela" tamanho={12} cheio /> {item.nota_usuario}
               </span>
             ) : null}
-            {item.favorito ? <Icone nome="coracao" tamanho={13} cheio className="text-marca-texto" /> : null}
-            {item.privado ? <Icone nome="cadeado" tamanho={13} className="text-texto-suave" /> : null}
-            {rec ? <span className="text-texto-suave">{rec}</span> : null}
+            {item.favorito ? <Icone nome="coracao" tamanho={12} cheio className="text-marca-texto" /> : null}
           </div>
-          <span className="line-clamp-1 text-[12px] text-texto-suave">{item.generos_lista.slice(0, 3).join(' · ')}</span>
         </div>
       </button>
-      <div className="relative flex items-end pb-3 pr-3">
-        <Stepper item={item} />
+      <div className="absolute bottom-2 right-2">
+        <Stepper item={item} compacto />
       </div>
       <FioProgresso item={item} />
     </div>

@@ -1,29 +1,13 @@
-// PROTÓTIPO (ticket 19, Q68): eixos de layout de desktop, cada um num search param
-// (?nav=topo&inicio=a&lista=linhas&explorar=coluna&detalhe=duas&tema=escuro), e a barra
-// flutuante que os troca. A barra só existe em dev (import.meta.env.DEV).
-import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
+// PROTÓTIPO (ticket 19, Q68 e Q71): eixos de layout de desktop, cada um num search param
+// (?nav=lateral&tema=escuro), e a barra flutuante que os troca. A barra só existe em dev.
+// Na 2ª rodada, Início, Lista, Explorar e detalhe ficaram fixos (veredito e Q72 a Q75).
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 export const EIXOS = {
   nav: [
+    ['lateral', 'Lateral recolhida'],
     ['topo', 'Topo'],
-    ['lateral', 'Lateral'],
-  ],
-  inicio: [
-    ['a', 'Destaque largo'],
-    ['b', 'Destaque + coluna'],
-  ],
-  lista: [
-    ['linhas', 'Abas + linhas'],
-    ['grade', 'Abas + grade'],
-  ],
-  explorar: [
-    ['coluna', 'Coluna'],
-    ['sheet', 'Sheet'],
-  ],
-  detalhe: [
-    ['duas', 'Duas colunas'],
-    ['central', 'Coluna central'],
   ],
   tema: [
     ['escuro', 'Escuro Carmesim'],
@@ -60,14 +44,6 @@ export function useAplicarTema() {
   }, [tema]);
 }
 
-/** Eixo da página atual, para ser o ativo da barra ao chegar nela. */
-function eixoDaRota(caminho: string): Eixo {
-  if (caminho.startsWith('/lista')) return 'lista';
-  if (caminho.startsWith('/explorar')) return 'explorar';
-  if (caminho.startsWith('/midia')) return 'detalhe';
-  return caminho === '/' ? 'inicio' : 'nav';
-}
-
 function digitando(alvo: EventTarget | null): boolean {
   const el = alvo as HTMLElement | null;
   return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
@@ -81,11 +57,8 @@ export function BarraVariantes() {
 function Barra() {
   const busca = useSearch({ strict: false }) as BuscaVariantes;
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const [ativo, setAtivo] = useState<Eixo>(eixoDaRota(pathname));
+  const [ativo, setAtivo] = useState<Eixo>('nav');
   const [aberta, setAberta] = useState(true);
-
-  useEffect(() => setAtivo(eixoDaRota(pathname)), [pathname]);
 
   const valor = (e: Eixo) => busca[e] ?? EIXOS[e][0][0];
 

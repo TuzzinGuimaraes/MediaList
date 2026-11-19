@@ -1,5 +1,6 @@
-// PROTÓTIPO, eixo `inicio`: A (destaque largo ~70vh + fileiras de card A) × B (destaque na
-// coluna principal + coluna lateral com Continuar em card C e Top 10). Os dados são os mesmos.
+// PROTÓTIPO, Início híbrido (Q72, fixo na 2ª rodada): destaque em ~45vh com troca a cada 6 s e
+// pontos; logo abaixo, a fileira Continuar (card C), visível sem rolar num 1080p; depois Em alta,
+// Top 10 (com numeral) e as demais da Resolution do 29, todas fileiras horizontais. Sem coluna.
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -15,7 +16,6 @@ import {
   Notas,
   Selo,
   SeloStatus,
-  TituloSecao,
   usePosicaoTop10,
   Vazio,
 } from '../componentes';
@@ -32,7 +32,6 @@ import {
   tituloDe,
 } from '../dominio';
 import { Icone } from '../icones';
-import { useVariante } from '../variantes';
 
 const INTERVALO_MS = 6000;
 
@@ -68,11 +67,10 @@ function useDadosInicio() {
 type Dados = NonNullable<ReturnType<typeof useDadosInicio>>;
 
 export function Inicio() {
-  const variante = useVariante('inicio');
   const dados = useDadosInicio();
   if (!dados) return <div className="pt-[var(--topo)]"><Carregando /></div>;
   if (!dados.emAlta.length) return <div className="pt-[var(--topo)]"><Vazio texto="Nenhuma Mídia neste catálogo ainda." /></div>;
-  return variante === 'b' ? <InicioB dados={dados} /> : <InicioA dados={dados} />;
+  return <InicioHibrido dados={dados} />;
 }
 
 /** Página atual dos destaques, trocando a cada 6 s enquanto não está pausada (hover). */
@@ -156,32 +154,27 @@ function FundoDestaque({ midia }: { midia: Midia }) {
   );
 }
 
-/** As fileiras de catálogo comuns às duas variantes (sem Continuar e Top 10 no B, que vão na coluna). */
-function Fileiras({ dados, comContinuarETop, recuo, largura = 168 }: { dados: Dados; comContinuarETop: boolean; recuo?: string; largura?: number }) {
+function Fileiras({ dados }: { dados: Dados }) {
   const linha = (titulo: string, midias: (Midia | MidiaPopular)[]) => (
-    <Fileira key={titulo} titulo={titulo} vazia={!midias.length} recuo={recuo}>
+    <Fileira key={titulo} titulo={titulo} vazia={!midias.length}>
       {midias.map((m) => (
-        <CardA key={m.id_midia} midia={m} largura={largura} />
+        <CardA key={m.id_midia} midia={m} largura={160} />
       ))}
     </Fileira>
   );
   return (
     <div className="flex flex-col gap-9">
-      {comContinuarETop ? (
-        <Fileira titulo="Continuar" vazia={!dados.continuar.length} recuo={recuo}>
-          {dados.continuar.map((i) => (
-            <CardC key={i.id_lista} midia={i} largura={360} />
-          ))}
-        </Fileira>
-      ) : null}
+      <Fileira titulo="Continuar" vazia={!dados.continuar.length}>
+        {dados.continuar.map((i) => (
+          <CardC key={i.id_lista} midia={i} largura={340} altura={136} />
+        ))}
+      </Fileira>
       {linha('Em alta', dados.emAlta)}
-      {comContinuarETop ? (
-        <Fileira titulo="Top 10 de hoje" vazia={!dados.top10.length} recuo={recuo}>
-          {dados.top10.map((m, i) => (
-            <CardTop key={m.id_midia} midia={m} posicao={i + 1} />
-          ))}
-        </Fileira>
-      ) : null}
+      <Fileira titulo="Top 10 de hoje" vazia={!dados.top10.length}>
+        {dados.top10.map((m, i) => (
+          <CardTop key={m.id_midia} midia={m} posicao={i + 1} />
+        ))}
+      </Fileira>
       {linha('Maiores notas', dados.maioresNotas)}
       {linha('Lançamentos recentes', dados.lancamentos)}
       {dados.porGenero.map((g) => linha(`Porque você curte ${g.genero}`, g.midias))}
@@ -191,91 +184,24 @@ function Fileiras({ dados, comContinuarETop, recuo, largura = 168 }: { dados: Da
   );
 }
 
-// ---------------------------------------------------------------- A
-
-function InicioA({ dados }: { dados: Dados }) {
+function InicioHibrido({ dados }: { dados: Dados }) {
   const d = useDestaques(dados.destaques.length);
   const midia = dados.destaques[d.pagina]!;
   return (
     <div className="pb-24">
-      <section className="relative h-[70vh] min-h-[520px] overflow-hidden" onMouseEnter={d.pausar} onMouseLeave={d.retomar}>
+      {/* 45vh, com piso para a nav no topo (72px) não comer o texto em telas baixas. */}
+      <section className="relative h-[45vh] min-h-[380px] overflow-hidden" onMouseEnter={d.pausar} onMouseLeave={d.retomar}>
         <FundoDestaque midia={midia} />
-        <div className="absolute bottom-[18%] left-12 max-w-[640px]">
-          <TextoDestaque midia={midia} />
+        <div className="absolute bottom-12 left-12 max-w-[620px]">
+          <TextoDestaque midia={midia} compacto />
         </div>
-        <div className="absolute bottom-[18%] right-12">
+        <div className="absolute bottom-12 right-12">
           <Pontos total={dados.destaques.length} pagina={d.pagina} ir={d.setPagina} />
         </div>
       </section>
-      <div className="relative z-10 -mt-[10vh]">
-        <Fileiras dados={dados} comContinuarETop />
+      <div className="relative z-10 -mt-4">
+        <Fileiras dados={dados} />
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- B
-
-function InicioB({ dados }: { dados: Dados }) {
-  const d = useDestaques(dados.destaques.length);
-  const midia = dados.destaques[d.pagina]!;
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_380px] gap-8 px-8 pb-24 pt-[calc(var(--topo)+24px)]">
-      <div className="flex min-w-0 flex-col gap-9">
-        <section className="relative h-[440px] overflow-hidden rounded-xl" onMouseEnter={d.pausar} onMouseLeave={d.retomar}>
-          <FundoDestaque midia={midia} />
-          <div className="absolute bottom-8 left-8 right-48">
-            <TextoDestaque midia={midia} compacto />
-          </div>
-          {/* Miniaturas dos destaques, no lugar dos pontos. */}
-          <div className="absolute bottom-6 right-6 flex gap-2">
-            {dados.destaques.map((m, i) => (
-              <button
-                key={m.id_midia}
-                onClick={() => d.setPagina(i)}
-                className={`relative h-[72px] w-12 overflow-hidden rounded transition ${i === d.pagina ? 'ring-2 ring-marca-forte' : 'opacity-60 hover:opacity-100'}`}
-                aria-label={tituloDe(m)}
-              >
-                {m.poster_url ? <img src={m.poster_url} alt="" className="h-full w-full object-cover" /> : null}
-              </button>
-            ))}
-          </div>
-        </section>
-        <Fileiras dados={dados} comContinuarETop={false} recuo="px-0" largura={150} />
-      </div>
-      <aside className="sticky top-[calc(var(--topo)+24px)] flex h-[calc(100vh-var(--topo)-48px)] flex-col gap-6 overflow-y-auto pr-1">
-        {dados.continuar.length ? (
-          <section>
-            <TituloSecao direita={<Link to="/lista" className="text-[13px] text-marca-texto hover:underline">Ver Lista</Link>}>Continuar</TituloSecao>
-            <div className="flex flex-col gap-2.5">
-              {dados.continuar.slice(0, 4).map((i) => (
-                <CardC key={i.id_lista} midia={i} altura={120} />
-              ))}
-            </div>
-          </section>
-        ) : null}
-        <section>
-          <TituloSecao>Top 10 de hoje</TituloSecao>
-          <ol className="flex flex-col">
-            {dados.top10.map((m, i) => (
-              <li key={m.id_midia}>
-                <Link to="/midia/$id" params={{ id: m.id_midia }} className="flex items-center gap-3 rounded-md px-1 py-1.5 hover:bg-superficie">
-                  <span className={`w-7 text-center text-[22px] font-bold ${i < 3 ? 'text-marca-texto' : 'text-texto-suave'}`}>{i + 1}</span>
-                  <span className="relative h-14 w-10 shrink-0 overflow-hidden rounded bg-superficie-alta">
-                    {m.poster_url ? <img src={m.poster_url} alt="" className="h-full w-full object-cover" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-1 text-[14px] font-semibold text-texto-forte">{tituloDe(m)}</span>
-                    <span className="text-[12px] text-texto-suave">
-                      {NOMES_TIPO[m.tipo]} · {m.total_usuarios} na Lista
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </aside>
     </div>
   );
 }

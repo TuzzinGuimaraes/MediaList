@@ -1,17 +1,16 @@
-// PROTÓTIPO, eixo `lista`: "Abas + linhas" (linhas no estilo card C com stepper) × "Abas + grade"
-// (pôsteres card A com fio e Status, stepper no hover). Filtros, Ordem e busca da Resolution do 34
-// valem nas duas: as contagens das abas refletem o filtro; com busca, uma lista única de resultados.
+// PROTÓTIPO, Lista (Q73, fixa na 2ª rodada): abas por Status e cards compactos de ~300px (pôster
+// pequeno, título, Status, nota, stepper e fio) em quantas colunas couberem. Filtros, Ordem e busca
+// da Resolution do 34: as contagens das abas refletem o filtro; com busca, uma lista única.
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { useEmAlta, useLista } from '../api';
 import { useCatalogo } from '../catalogo';
-import { CardA, Carregando, EditorItem, Fileira, FioProgresso, Gaveta, LinhaItem, Pilulas, Selo, SeloStatus, Stepper, Vazio } from '../componentes';
+import { CardA, Carregando, EditorItem, Fileira, Gaveta, LinhaItem, Pilulas, Vazio } from '../componentes';
 import {
   ABREVIADO,
   buscarNaLista,
   COR_DO_ESTADO,
   type EstadoConsumo,
-  estadoDe,
   FILTROS_PADRAO,
   filtrosAtivos,
   type FiltrosLista,
@@ -27,13 +26,10 @@ import {
   organizarLista,
   ROTULOS,
   type TipoMidia,
-  tituloDe,
 } from '../dominio';
 import { Icone } from '../icones';
-import { useVariante } from '../variantes';
 
 export function Lista() {
-  const variante = useVariante('lista');
   const { recorte, tipos } = useCatalogo();
   const lista = useLista();
   const emAlta = useEmAlta(recorte);
@@ -54,7 +50,6 @@ export function Lista() {
   const daAba = itensDoEstado(organizados, aba);
   const sugestoes = foraDe(emAlta.data, doCatalogo).slice(0, 20);
   const ativos = filtrosAtivos(filtros);
-  const Conteudo = variante === 'grade' ? Grade : Linhas;
 
   return (
     <div className="pb-24 pt-[var(--topo)]">
@@ -95,10 +90,10 @@ export function Lista() {
         )}
       </div>
 
-      <div className="flex flex-col gap-8 px-12 pt-6">
+      <div className="flex flex-col gap-6 px-12 pt-6">
         {buscando ? (
           resultados.length ? (
-            <Conteudo itens={resultados} editar={setEditando} comStatus />
+            <Cards itens={resultados} editar={setEditando} />
           ) : (
             <Vazio texto="Nada na Lista com esse título." />
           )
@@ -109,13 +104,13 @@ export function Lista() {
             </h2>
             {daAba.length ? (
               porTipo(daAba, tipos).map((s) => (
-                <section key={s.tipo ?? 'todos'} className="flex flex-col gap-3">
+                <section key={s.tipo ?? 'todos'} className="flex flex-col gap-2.5">
                   {s.tipo ? (
                     <h3 className="text-[15px] font-semibold text-texto-suave">
                       {NOMES_TIPO[s.tipo]} · {s.itens.length}
                     </h3>
                   ) : null}
-                  <Conteudo itens={s.itens} editar={setEditando} comStatus={aba === 'concluido'} />
+                  <Cards itens={s.itens} editar={setEditando} />
                 </section>
               ))
             ) : (
@@ -217,56 +212,13 @@ export function Grupo({ titulo, children }: { titulo: string; children: ReactNod
   );
 }
 
-type PropsConteudo = { itens: ItemLista[]; editar(i: ItemLista): void; comStatus: boolean };
-
-function Linhas({ itens, editar }: PropsConteudo) {
+/** Grade compacta: cards de ~300px, tantas colunas quanto couberem (3 ou 4 num 1080p). */
+function Cards({ itens, editar }: { itens: ItemLista[]; editar(i: ItemLista): void }) {
   return (
-    <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2">
       {itens.map((i) => (
         <LinhaItem key={i.id_lista} item={i} editar={() => editar(i)} />
       ))}
-    </div>
-  );
-}
-
-function Grade({ itens, editar, comStatus }: PropsConteudo) {
-  return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-x-4 gap-y-6">
-      {itens.map((i) => {
-        const estado = estadoDe(i.status_consumo, i.tipo);
-        return (
-          <div key={i.id_lista} className="group flex flex-col gap-1.5">
-            <div role="button" tabIndex={0} onClick={() => editar(i)} className="relative aspect-[2/3] cursor-pointer overflow-hidden rounded-md bg-superficie-alta">
-              {i.poster_url ? <img src={i.poster_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-              {estado && comStatus ? (
-                <span className="absolute inset-x-1 bottom-2">
-                  <SeloStatus estado={estado} sobreImagem />
-                </span>
-              ) : null}
-              {/* No hover: véu com o stepper e o atalho do editor. */}
-              <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/65 opacity-0 transition group-hover:opacity-100">
-                <span onClick={(e) => e.stopPropagation()}>
-                  <Stepper item={i} />
-                </span>
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-white">
-                  <Icone nome="editar" tamanho={14} /> Editar
-                </span>
-              </span>
-              <FioProgresso item={i} grosso />
-            </div>
-            <span className="line-clamp-2 text-[13px] leading-tight text-texto">{tituloDe(i)}</span>
-            <div className="flex items-center gap-2 text-[12px]">
-              <Selo texto={NOMES_TIPO[i.tipo]} />
-              {i.nota_usuario != null ? (
-                <span className="inline-flex items-center gap-1 font-bold text-nota">
-                  <Icone nome="estrela" tamanho={12} cheio /> {i.nota_usuario}
-                </span>
-              ) : null}
-              {i.favorito ? <Icone nome="coracao" tamanho={12} cheio className="text-marca-texto" /> : null}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

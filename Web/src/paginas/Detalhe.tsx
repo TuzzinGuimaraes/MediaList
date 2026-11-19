@@ -1,6 +1,6 @@
-// PROTÓTIPO, eixo `detalhe`: "Duas colunas" (banner largo, pôster sobreposto à esquerda com o
-// botão carmesim e a ficha; conteúdo e Avaliações à direita) × "Coluna central" (banner largo e
-// tudo numa coluna de ~900px, layout A do app com o botão grande abaixo do título).
+// PROTÓTIPO, detalhe em duas colunas (fixo na 2ª rodada): banner largo, pôster sobreposto à
+// esquerda com o botão carmesim e a ficha; à direita, cabeçalho, sinopse, o mapa de atividade
+// (Q75, com dados simulados) e as Avaliações.
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -20,15 +20,14 @@ import {
   UNIDADE,
 } from '../dominio';
 import { Icone } from '../icones';
-import { useVariante } from '../variantes';
+import { MapaAtividade } from './MapaAtividade';
 
 export function Detalhe() {
   const { id } = useParams({ from: '/autenticado/midia/$id' });
-  const variante = useVariante('detalhe');
   const midia = useMidia(id);
   const item = useItemDe(id);
   if (!midia.data) return <div className="pt-[var(--topo)]">{midia.isError ? <p className="p-12 text-erro">{midia.error.message}</p> : <Carregando />}</div>;
-  return variante === 'central' ? <DetalheCentral midia={midia.data} item={item} /> : <DetalheDuasColunas midia={midia.data} item={item} />;
+  return <DetalheDuasColunas midia={midia.data} item={item} />;
 }
 
 type Props = { midia: MidiaDetalhe; item: ItemLista | null | undefined };
@@ -98,19 +97,8 @@ function MeuItem({ item }: { item: ItemLista }) {
   );
 }
 
-function Ficha({ midia, emLinha }: { midia: MidiaDetalhe; emLinha?: boolean }) {
+function Ficha({ midia }: { midia: MidiaDetalhe }) {
   const atributos = atributosDe(midia);
-  if (emLinha)
-    return (
-      <dl className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-        {atributos.map(([r, v]) => (
-          <div key={r} className="rounded-md bg-superficie px-3 py-2">
-            <dt className="text-[12px] text-texto-suave">{r}</dt>
-            <dd className="line-clamp-2 text-[14px] font-semibold text-texto-forte">{v}</dd>
-          </div>
-        ))}
-      </dl>
-    );
   return (
     <dl className="flex flex-col divide-y divide-borda rounded-lg border border-borda bg-superficie">
       {atributos.map(([r, v]) => (
@@ -123,10 +111,10 @@ function Ficha({ midia, emLinha }: { midia: MidiaDetalhe; emLinha?: boolean }) {
   );
 }
 
-function Cabecalho({ midia, centro }: { midia: MidiaDetalhe; centro?: boolean }) {
+function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
   const alt = tituloAlternativo(midia);
   return (
-    <div className={`flex flex-col gap-2.5 ${centro ? 'items-center text-center' : ''}`}>
+    <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap gap-1.5">
         <Selo texto={NOMES_TIPO[midia.tipo]} />
         {midia.generos_lista.map((g) => (
@@ -217,38 +205,9 @@ function DetalheDuasColunas({ midia, item }: Props) {
         <div className="-mt-28 flex flex-col gap-9">
           <Cabecalho midia={midia} />
           <Sinopse texto={midia.sinopse} />
+          <MapaAtividade midia={midia} />
           <Avaliacoes midia={midia} />
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- Coluna central
-
-function DetalheCentral({ midia, item }: Props) {
-  return (
-    <div className="pb-24">
-      <Banner midia={midia} altura="480px" />
-      <div className="mx-auto -mt-64 flex max-w-[900px] flex-col gap-9 px-6">
-        <div className="flex items-end gap-7">
-          <Poster midia={midia} item={item} largura={190} />
-          <div className="flex min-w-0 flex-1 flex-col gap-4 pb-1">
-            <Cabecalho midia={midia} />
-            <div className="flex items-center gap-4">
-              <BotaoDaLista midia={midia} grande />
-              {item ? (
-                <div className="flex items-center gap-3">
-                  {estadoDe(item.status_consumo, item.tipo) ? <SeloStatus estado={estadoDe(item.status_consumo, item.tipo)!} /> : null}
-                  <Stepper item={item} />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-        <Ficha midia={midia} emLinha />
-        <Sinopse texto={midia.sinopse} />
-        <Avaliacoes midia={midia} />
       </div>
     </div>
   );

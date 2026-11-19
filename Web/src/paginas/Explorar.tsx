@@ -1,16 +1,14 @@
-// PROTÓTIPO, eixo `explorar`: "Coluna" (filtros numa coluna fixa à esquerda) × "Sheet" (barra
-// compacta que esconde ao rolar para baixo e volta ao subir, com os filtros num painel, como no app).
-// A grade (card A) e a paginação pelo `total` são as mesmas.
+// PROTÓTIPO, Explorar (Q74, fixo na 2ª rodada): coluna de filtros à esquerda, em seções
+// recolhíveis (Tipo, Gênero com 8 + "+N", Situação, Ano, Ordem e as do Tipo: Plataforma e Modo nos
+// jogos, Estúdio nos animes, Demografia nos mangás). Grade de card A e paginação pelo `total`.
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
-import { type FiltrosExplorar, type OrdemCatalogo, POR_PAGINA_EXPLORAR, useExplorar, useGeneros } from '../api';
+import { type FiltrosExplorar, type FiltrosExtras, type OrdemCatalogo, POR_PAGINA_EXPLORAR, SEM_EXTRAS, useExplorar, useFacetas, useGeneros } from '../api';
 import { useCatalogo } from '../catalogo';
-import { CardA, Carregando, Gaveta, Pilulas, Vazio } from '../componentes';
-import { NOMES_TIPO, nomeDaSituacao, type TipoMidia } from '../dominio';
+import { CardA, Carregando, Pilulas, Vazio } from '../componentes';
+import { type Midia, NOMES_TIPO, nomeDaSituacao, type TipoMidia } from '../dominio';
 import { Icone } from '../icones';
-import { useVariante } from '../variantes';
-import { Grupo } from './Lista';
 
 const ORDENS: [OrdemCatalogo, string][] = [
   ['nota_media', 'Maiores notas'],
@@ -26,64 +24,177 @@ const SITUACOES: Record<TipoMidia, string[]> = {
   jogo: ['lancado', 'em_desenvolvimento'],
 };
 
+const MODOS: [string, string][] = [
+  ['single', 'Um jogador'],
+  ['multi', 'Multijogador'],
+  ['ambos', 'Os dois'],
+];
+
+const DEMOGRAFIAS: [string, string][] = [
+  ['shounen', 'Shounen'],
+  ['shoujo', 'Shoujo'],
+  ['seinen', 'Seinen'],
+  ['josei', 'Josei'],
+  ['kodomomuke', 'Kodomomuke'],
+];
+
+const VISIVEIS = 8;
+
+/** PROTÓTIPO: a API ainda não aceita `ano_min`/`ano_max` (Q74); o Ano filtra só a página carregada. */
+type Anos = { de: string; ate: string };
+const SEM_ANOS: Anos = { de: '', ate: '' };
+
+function anoNaFaixa(m: Midia, a: Anos): boolean {
+  if (!a.de && !a.ate) return true;
+  const ano = m.data_lancamento ? Number(m.data_lancamento.slice(0, 4)) : null;
+  if (ano === null) return false;
+  return (!a.de || ano >= Number(a.de)) && (!a.ate || ano <= Number(a.ate));
+}
+
 type Estado = ReturnType<typeof useEstadoExplorar>;
 
 function useEstadoExplorar() {
   const { tipos } = useCatalogo();
   const { busca: buscaUrl } = useSearch({ strict: false }) as { busca?: string };
   const primeiro = tipos[0]!;
-  const [f, setF] = useState<FiltrosExplorar>({ tipo: primeiro, busca: buscaUrl ?? '', genero: null, status: null, ordem: 'nota_media', pagina: 1 });
+  const inicial: FiltrosExplorar = { tipo: primeiro, busca: buscaUrl ?? '', genero: null, status: null, ordem: 'nota_media', pagina: 1, ...SEM_EXTRAS };
+  const [f, setF] = useState<FiltrosExplorar>(inicial);
+  const [anos, setAnos] = useState<Anos>(SEM_ANOS);
   // Trocar de catálogo (ou buscar pelo topo) recomeça os filtros.
-  useEffect(() => setF((a) => ({ ...a, tipo: primeiro, genero: null, status: null, pagina: 1 })), [primeiro]);
+  useEffect(() => setF((a) => ({ ...a, tipo: primeiro, genero: null, status: null, pagina: 1, ...SEM_EXTRAS })), [primeiro]);
   useEffect(() => setF((a) => ({ ...a, busca: buscaUrl ?? '', pagina: 1 })), [buscaUrl]);
   const mudar = (p: Partial<FiltrosExplorar>) => setF((a) => ({ ...a, pagina: 1, ...p }));
+  const trocarTipo = (tipo: TipoMidia) => mudar({ tipo, genero: null, status: null, ...SEM_EXTRAS });
+  const limpar = () => {
+    mudar({ tipo: primeiro, genero: null, status: null, ordem: 'nota_media', ...SEM_EXTRAS });
+    setAnos(SEM_ANOS);
+  };
   const resultado = useExplorar(f);
   const generos = useGeneros(f.tipo);
-  const ativos = (f.genero ? 1 : 0) + (f.status ? 1 : 0) + (f.ordem !== 'nota_media' ? 1 : 0) + (f.tipo !== tipos[0] ? 1 : 0);
-  return { f, mudar, tipos, resultado, generos: generos.data ?? [], ativos };
+  const facetas = useFacetas(f.tipo);
+  const extras = (Object.keys(SEM_EXTRAS) as (keyof FiltrosExtras)[]).filter((k) => f[k]).length;
+  const ativos =
+    (f.genero ? 1 : 0) + (f.status ? 1 : 0) + (f.ordem !== 'nota_media' ? 1 : 0) + (f.tipo !== primeiro ? 1 : 0) + (anos.de || anos.ate ? 1 : 0) + extras;
+  return { f, mudar, trocarTipo, limpar, anos, setAnos, tipos, resultado, generos: generos.data ?? [], facetas: facetas.data, ativos };
 }
 
 export function Explorar() {
-  const variante = useVariante('explorar');
-  const estado = useEstadoExplorar();
-  return variante === 'sheet' ? <ExplorarSheet e={estado} /> : <ExplorarColuna e={estado} />;
+  const e = useEstadoExplorar();
+  return (
+    <div className="grid grid-cols-[280px_minmax(0,1fr)] gap-10 px-12 pb-24 pt-[calc(var(--topo)+28px)]">
+      <aside className="sem-barra sticky top-[calc(var(--topo)+28px)] h-[calc(100vh-var(--topo)-56px)] overflow-y-auto pr-2">
+        <h1 className="mb-5 text-[28px] font-bold text-texto-forte">Explorar</h1>
+        <CampoBusca e={e} />
+        <div className="mt-4 flex flex-col">
+          <Filtros e={e} />
+        </div>
+        {e.ativos ? (
+          <button onClick={e.limpar} className="mt-5 text-[14px] text-marca-texto hover:underline">
+            Limpar filtros ({e.ativos})
+          </button>
+        ) : null}
+      </aside>
+      <div className="pt-14">
+        <Resultados e={e} />
+      </div>
+    </div>
+  );
 }
 
-function Filtros({ e, semBusca }: { e: Estado; semBusca?: boolean }) {
-  const { f, mudar } = e;
+/** Seção recolhível da coluna; o resumo mostra o valor escolhido quando ela está fechada. */
+function Secao({ titulo, resumo, abertaDeInicio = true, children }: { titulo: string; resumo?: string | null; abertaDeInicio?: boolean; children: ReactNode }) {
+  const [aberta, setAberta] = useState(abertaDeInicio);
   return (
-    <div className="flex flex-col gap-6">
-      {semBusca ? null : <CampoBusca e={e} />}
-      {e.tipos.length > 1 ? (
-        <Grupo titulo="Tipo">
-          <Pilulas<TipoMidia> opcoes={e.tipos.map((t) => [t, NOMES_TIPO[t]])} valor={f.tipo} mudar={(tipo) => mudar({ tipo, genero: null, status: null })} />
-        </Grupo>
+    <section className="border-b border-borda py-3">
+      <button onClick={() => setAberta((a) => !a)} aria-expanded={aberta} className="flex w-full items-center gap-2 text-left">
+        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-texto-suave">{titulo}</h3>
+        {!aberta && resumo ? <span className="truncate text-[13px] text-marca-texto">{resumo}</span> : null}
+        <Icone nome="baixo" tamanho={16} className={`ml-auto text-texto-suave transition-transform duration-150 ${aberta ? 'rotate-180' : ''}`} />
+      </button>
+      {aberta ? <div className="pt-3">{children}</div> : null}
+    </section>
+  );
+}
+
+/** Pílulas com só as 8 primeiras visíveis e um chip "+N" que expande (e "Menos" que recolhe). */
+function PilulasLimitadas({ opcoes, valor, mudar, todos }: { opcoes: string[]; valor: string | null; mudar(v: string | null): void; todos: string }) {
+  const [tudo, setTudo] = useState(false);
+  // O escolhido fica sempre visível, mesmo fora dos 8.
+  const base = tudo ? opcoes : opcoes.slice(0, VISIVEIS);
+  const visiveis = valor && !base.includes(valor) ? [...base, valor] : base;
+  const resto = opcoes.length - VISIVEIS;
+  const chip = 'rounded-full border border-dashed border-borda px-3 py-1 text-[13px] font-semibold text-marca-texto hover:border-marca-texto';
+  return (
+    <div className="flex flex-wrap gap-1.5 [&>div]:contents">
+      <Pilulas<string | null> opcoes={[[null, todos], ...visiveis.map((g): [string, string] => [g, g])]} valor={valor} mudar={mudar} />
+      {resto > 0 ? (
+        <button onClick={() => setTudo((t) => !t)} className={chip} aria-expanded={tudo}>
+          {tudo ? 'Menos' : `+${resto}`}
+        </button>
       ) : null}
-      <Grupo titulo="Ordem">
-        <Pilulas<OrdemCatalogo> opcoes={ORDENS} valor={f.ordem} mudar={(ordem) => mudar({ ordem })} />
-      </Grupo>
-      <Grupo titulo="Situação">
+    </div>
+  );
+}
+
+function Filtros({ e }: { e: Estado }) {
+  const { f, mudar } = e;
+  const nomeDe = (opcoes: [string, string][], v: string | null) => opcoes.find(([k]) => k === v)?.[1] ?? null;
+  const campoAno = 'w-full rounded-md border border-borda bg-superficie-alta px-3 py-1.5 text-[14px] text-texto-forte outline-none focus:border-marca-texto';
+  return (
+    <>
+      {e.tipos.length > 1 ? (
+        <Secao titulo="Tipo" resumo={NOMES_TIPO[f.tipo]}>
+          <Pilulas<TipoMidia> opcoes={e.tipos.map((t) => [t, NOMES_TIPO[t]])} valor={f.tipo} mudar={e.trocarTipo} />
+        </Secao>
+      ) : null}
+      <Secao titulo="Gênero" resumo={f.genero}>
+        <PilulasLimitadas key={f.tipo} opcoes={e.generos.map((g) => g.nome_genero)} valor={f.genero} mudar={(genero) => mudar({ genero })} todos="Todos" />
+      </Secao>
+      <Secao titulo="Situação" resumo={f.status ? nomeDaSituacao(f.status) : null}>
         <Pilulas<string | null>
           opcoes={[[null, 'Todas'], ...SITUACOES[f.tipo].map((s): [string, string] => [s, nomeDaSituacao(s)])]}
           valor={f.status}
           mudar={(status) => mudar({ status })}
         />
-      </Grupo>
-      <Grupo titulo="Gênero">
-        <Pilulas<string | null>
-          opcoes={[[null, 'Todos'], ...e.generos.map((g): [string, string] => [g.nome_genero, g.nome_genero])]}
-          valor={f.genero}
-          mudar={(genero) => mudar({ genero })}
-        />
-      </Grupo>
-    </div>
+      </Secao>
+      <Secao titulo="Ano" resumo={e.anos.de || e.anos.ate ? `${e.anos.de || '…'} a ${e.anos.ate || '…'}` : null}>
+        <div className="flex items-center gap-2">
+          <input aria-label="Ano de" type="number" inputMode="numeric" placeholder="De" min={1900} max={2100} value={e.anos.de} onChange={(ev) => e.setAnos({ ...e.anos, de: ev.target.value })} className={campoAno} />
+          <span className="text-texto-suave">a</span>
+          <input aria-label="Ano até" type="number" inputMode="numeric" placeholder="Até" min={1900} max={2100} value={e.anos.ate} onChange={(ev) => e.setAnos({ ...e.anos, ate: ev.target.value })} className={campoAno} />
+        </div>
+      </Secao>
+      <Secao titulo="Ordem" resumo={nomeDe(ORDENS, f.ordem)}>
+        <Pilulas<OrdemCatalogo> opcoes={ORDENS} valor={f.ordem} mudar={(ordem) => mudar({ ordem })} />
+      </Secao>
+      {f.tipo === 'jogo' ? (
+        <>
+          <Secao titulo="Plataforma" resumo={f.plataforma}>
+            <PilulasLimitadas key="plataforma" opcoes={e.facetas?.plataformas ?? []} valor={f.plataforma} mudar={(plataforma) => mudar({ plataforma })} todos="Todas" />
+          </Secao>
+          <Secao titulo="Modo de jogo" resumo={nomeDe(MODOS, f.modo_jogo)}>
+            <Pilulas<string | null> opcoes={[[null, 'Todos'], ...MODOS]} valor={f.modo_jogo} mudar={(modo_jogo) => mudar({ modo_jogo })} />
+          </Secao>
+        </>
+      ) : null}
+      {f.tipo === 'anime' ? (
+        <Secao titulo="Estúdio" resumo={f.estudio}>
+          <PilulasLimitadas key="estudio" opcoes={e.facetas?.estudios ?? []} valor={f.estudio} mudar={(estudio) => mudar({ estudio })} todos="Todos" />
+        </Secao>
+      ) : null}
+      {f.tipo === 'manga' ? (
+        <Secao titulo="Demografia" resumo={nomeDe(DEMOGRAFIAS, f.demografia)}>
+          <Pilulas<string | null> opcoes={[[null, 'Todas'], ...DEMOGRAFIAS]} valor={f.demografia} mudar={(demografia) => mudar({ demografia })} />
+        </Secao>
+      ) : null}
+    </>
   );
 }
 
-function CampoBusca({ e, largo }: { e: Estado; largo?: boolean }) {
+function CampoBusca({ e }: { e: Estado }) {
   const navigate = useNavigate();
   return (
-    <label className={`flex items-center gap-2 rounded-md border border-borda bg-superficie-alta px-3 py-2 focus-within:border-marca-texto ${largo ? 'w-[420px]' : ''}`}>
+    <label className={`flex items-center gap-2 rounded-md border border-borda bg-superficie-alta px-3 py-2 focus-within:border-marca-texto`}>
       <Icone nome="busca" tamanho={16} className="text-texto-suave" />
       <input
         value={e.f.busca}
@@ -102,14 +213,23 @@ function Resultados({ e }: { e: Estado }) {
   const { data, isPending, isPlaceholderData } = e.resultado;
   if (isPending) return <Carregando />;
   if (!data?.itens.length) return <Vazio texto="Nenhuma Mídia com esses filtros." />;
+  const comAno = !!(e.anos.de || e.anos.ate);
+  const itens = data.itens.filter((m) => anoNaFaixa(m, e.anos));
   return (
     <div className={`flex flex-col gap-8 transition-opacity ${isPlaceholderData ? 'opacity-50' : ''}`}>
-      <p className="text-[14px] text-texto-suave">{data.total !== null ? `${data.total} Mídias` : `Página ${data.pagina}`}</p>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-x-4 gap-y-7">
-        {data.itens.map((m) => (
-          <CardA key={m.id_midia} midia={m} />
-        ))}
-      </div>
+      <p className="text-[14px] text-texto-suave">
+        {data.total !== null ? `${data.total} Mídias` : `Página ${data.pagina}`}
+        {comAno ? ` · ${itens.length} desta página no Ano escolhido (protótipo: o Ano ainda filtra só a página)` : ''}
+      </p>
+      {itens.length ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-x-4 gap-y-7">
+          {itens.map((m) => (
+            <CardA key={m.id_midia} midia={m} />
+          ))}
+        </div>
+      ) : (
+        <Vazio texto="Nada desta página no Ano escolhido." />
+      )}
       <Paginacao e={e} />
     </div>
   );
@@ -146,86 +266,5 @@ function Paginacao({ e }: { e: Estado }) {
         <Icone nome="direita" />
       </button>
     </nav>
-  );
-}
-
-// ---------------------------------------------------------------- Coluna
-
-function ExplorarColuna({ e }: { e: Estado }) {
-  return (
-    <div className="grid grid-cols-[280px_minmax(0,1fr)] gap-10 px-12 pb-24 pt-[calc(var(--topo)+28px)]">
-      <aside className="sticky top-[calc(var(--topo)+28px)] h-[calc(100vh-var(--topo)-56px)] overflow-y-auto pr-2">
-        <h1 className="mb-5 text-[28px] font-bold text-texto-forte">Explorar</h1>
-        <Filtros e={e} />
-        {e.ativos ? (
-          <button onClick={() => e.mudar({ tipo: e.tipos[0]!, genero: null, status: null, ordem: 'nota_media' })} className="mt-6 text-[14px] text-marca-texto hover:underline">
-            Limpar filtros ({e.ativos})
-          </button>
-        ) : null}
-      </aside>
-      <div className="pt-14">
-        <Resultados e={e} />
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- Sheet
-
-/** Esconde ao rolar para baixo e volta ao subir; com "reduzir movimento", fica fixa. */
-function useEscondeAoRolar() {
-  const [visivel, setVisivel] = useState(true);
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let ultimo = window.scrollY;
-    const ver = () => {
-      const y = window.scrollY;
-      if (Math.abs(y - ultimo) > 6) setVisivel(y < ultimo || y < 80);
-      ultimo = y;
-    };
-    window.addEventListener('scroll', ver, { passive: true });
-    return () => window.removeEventListener('scroll', ver);
-  }, []);
-  return visivel;
-}
-
-function ExplorarSheet({ e }: { e: Estado }) {
-  const [painel, setPainel] = useState(false);
-  const visivel = useEscondeAoRolar();
-  return (
-    <div className="pb-24 pt-[var(--topo)]">
-      <div
-        className={`sticky top-[var(--topo)] z-30 flex items-center gap-4 border-b border-borda bg-fundo/95 px-12 py-4 backdrop-blur transition-transform duration-300 ${
-          visivel ? '' : '-translate-y-[calc(100%+var(--topo))]'
-        }`}
-      >
-        <h1 className="text-[24px] font-bold text-texto-forte">Explorar</h1>
-        <CampoBusca e={e} largo />
-        {e.tipos.length > 1 ? (
-          <Pilulas<TipoMidia> opcoes={e.tipos.map((t) => [t, NOMES_TIPO[t]])} valor={e.f.tipo} mudar={(tipo) => e.mudar({ tipo, genero: null, status: null })} />
-        ) : null}
-        <button
-          onClick={() => setPainel(true)}
-          className="ml-auto flex items-center gap-2 rounded-md border border-borda px-3 py-2 text-[14px] text-texto-forte hover:bg-superficie-alta"
-        >
-          <Icone nome="filtro" tamanho={16} /> Filtros
-          {e.ativos ? <span className="rounded-full bg-marca px-1.5 text-[12px] font-bold text-sobre-marca">{e.ativos}</span> : null}
-        </button>
-      </div>
-      <div className="px-12 pt-6">
-        <Resultados e={e} />
-      </div>
-      <Gaveta titulo="Filtros" aberta={painel} fechar={() => setPainel(false)}>
-        <Filtros e={e} semBusca />
-        <div className="mt-8 flex gap-2">
-          <button onClick={() => e.mudar({ tipo: e.tipos[0]!, genero: null, status: null, ordem: 'nota_media' })} className="flex-1 rounded-md border border-borda py-2 text-texto-forte hover:bg-superficie-alta">
-            Limpar
-          </button>
-          <button onClick={() => setPainel(false)} className="flex-[2] rounded-md bg-marca py-2 font-bold text-sobre-marca hover:bg-marca-forte">
-            Ver resultados
-          </button>
-        </div>
-      </Gaveta>
-    </div>
   );
 }

@@ -143,7 +143,11 @@ export const useCarrossel = (recorte: Recorte, ordem: OrdemCatalogo) => useQuery
 export const useCarrosseisPorGenero = (recorte: Recorte, generos: string[]) =>
   useQueries({ queries: generos.map((g) => consultaCarrossel(recorte, 'nota_media', g)) });
 
-export type FiltrosExplorar = {
+/** Filtros extras por Tipo, que `GET /midias` já aceita: jogo (plataforma, modo_jogo), anime (estudio), mangá (demografia). */
+export type FiltrosExtras = { plataforma: string | null; modo_jogo: string | null; estudio: string | null; demografia: string | null };
+export const SEM_EXTRAS: FiltrosExtras = { plataforma: null, modo_jogo: null, estudio: null, demografia: null };
+
+export type FiltrosExplorar = FiltrosExtras & {
   tipo: TipoMidia;
   busca: string;
   genero: string | null;
@@ -163,6 +167,7 @@ export function useExplorar(f: FiltrosExplorar) {
       if (f.busca.trim()) p.set('busca', f.busca.trim());
       if (f.genero) p.set('genero', f.genero);
       if (f.status) p.set('status', f.status);
+      for (const k of Object.keys(SEM_EXTRAS) as (keyof FiltrosExtras)[]) if (f[k]) p.set(k, f[k]);
       return lerPagina(await requisitar<PaginaCrua<Midia>>(`/midias?${p}`));
     },
   });
@@ -173,6 +178,38 @@ export function useGeneros(tipo: TipoMidia) {
     queryKey: ['generos', tipo],
     queryFn: async () => (await requisitar<S['RespostaGeneros']>(`/generos?tipo=${tipo}`)).generos,
     staleTime: Infinity,
+  });
+}
+
+/**
+ * PROTÓTIPO: valores possíveis de Plataforma e Estúdio, tirados de uma amostra do catálogo
+ * (3 páginas de 50 por popularidade), ordenados pela frequência. O web real pede uma rota de facetas.
+ */
+export function useFacetas(tipo: TipoMidia) {
+  return useQuery({
+    queryKey: ['midias', 'facetas', tipo],
+    staleTime: Infinity,
+    enabled: tipo !== 'manga',
+    queryFn: async () => {
+      const paginas = await Promise.all(
+        [1, 2, 3].map((pagina) => requisitar<PaginaCrua<Midia>>(`/midias?tipo=${tipo}&ordem=popularidade&por_pagina=50&pagina=${pagina}`)),
+      );
+      const contar = (valores: (string | null | undefined)[]) => {
+        const n = new Map<string, { nome: string; total: number }>();
+        for (const v of valores) {
+          const nome = v?.trim();
+          if (!nome) continue;
+          const chave = nome.toLowerCase();
+          n.set(chave, { nome: n.get(chave)?.nome ?? nome, total: (n.get(chave)?.total ?? 0) + 1 });
+        }
+        return [...n.values()].sort((a, b) => b.total - a.total).map((v) => v.nome);
+      };
+      const ms = paginas.flatMap((p) => lerPagina(p).itens);
+      return {
+        plataformas: contar(ms.flatMap((m) => (m.plataformas ?? '').split(','))),
+        estudios: contar(ms.map((m) => m.estudio)),
+      };
+    },
   });
 }
 
