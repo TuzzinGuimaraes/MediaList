@@ -5,6 +5,7 @@
 ROOT_DIR := $(CURDIR)
 BACKEND_DIR := ./Backend
 FRONTEND_DIR := ./Frontend
+WEB_DIR := ./Web
 MOBILE_DIR := ./Mobile
 DUMP_DIR := ./dumps
 
@@ -29,7 +30,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 .PHONY: help install install-backend install-frontend install-mobile mobile-dev compose-build services-up \
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev frontend-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-frontend test-mobile test lint lint-backend lint-frontend \
-	lint-mobile build-frontend build api-tipos \
+	lint-mobile build-frontend build api-tipos web-dev test-web lint-web \
 	import-animes import-mangas import-jogos import-all seed-dev clean-frontend db-dump db-restore
 
 help:
@@ -52,6 +53,9 @@ help:
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make frontend-dev      Inicia o React no host em http://localhost:3005\n"
+	@printf "  make web-dev           Inicia o web novo (Vite) em http://localhost:3006, /api -> :5000\n"
+	@printf "  make test-web          Executa os testes do web novo (Vitest)\n"
+	@printf "  make lint-web          Roda tsc e eslint do web novo\n"
 	@printf "  make mobile-dev        Sobe o Expo para o Expo Go; no WSL2, anuncia o IP do Windows na porta 8081\n"
 	@printf "  make smoke             Executa os dois smoke tests no container backend\n"
 	@printf "  make test              Executa os testes do backend, do frontend e do mobile no host\n"
@@ -133,6 +137,10 @@ backend-dev:
 frontend-dev:
 	cd "$(FRONTEND_DIR)" && $(NPM) start
 
+# Web novo (ticket 19 da revisão): Vite na 3006, com /api no proxy para :5000.
+web-dev:
+	cd "$(WEB_DIR)" && $(NPM) run dev
+
 # No WSL2 confere o portproxy do Windows e fixa a porta 8081 (Mobile/scripts/dev.sh).
 # MOBILE_ARGS vai para o script: --dry-run só verifica; o resto vai para o expo start.
 mobile-dev:
@@ -157,6 +165,9 @@ test-frontend:
 test-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) test -- --ci
 
+test-web:
+	cd "$(WEB_DIR)" && $(NPM) test
+
 test: test-backend test-frontend test-mobile
 
 lint-backend:
@@ -167,6 +178,9 @@ lint-frontend:
 
 lint-mobile:
 	cd "$(MOBILE_DIR)" && $(NPM) run lint
+
+lint-web:
+	cd "$(WEB_DIR)" && $(NPM) run typecheck && $(NPM) run lint
 
 lint: lint-backend lint-frontend lint-mobile
 
