@@ -13,7 +13,6 @@ function EmConstrucao({ titulo, ticket }: { titulo: string; ticket: string }) {
   );
 }
 
-export const Inicio = () => <EmConstrucao titulo="Início" ticket="04" />;
 export const Explorar = () => <EmConstrucao titulo="Explorar" ticket="05" />;
 export const Detalhe = () => <EmConstrucao titulo="Mídia" ticket="06" />;
 export const Lista = () => <EmConstrucao titulo="Minha Lista" ticket="07" />;
