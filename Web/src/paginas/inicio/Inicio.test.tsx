@@ -78,12 +78,15 @@ describe('Início: destaque', () => {
 
     expect(within(destaques).getByText('Em progresso')).toBeInTheDocument();
     await user.click(await within(destaques).findByRole('button', { name: 'Editar: Berserk' }));
-    expect(screen.getByRole('dialog', { name: 'Editar' })).toBeInTheDocument();
+    const editar = screen.getByRole('dialog', { name: 'Berserk' });
+    expect(within(editar).getByRole('radio', { name: 'Em progresso' })).toBeChecked();
+    expect(within(editar).getByRole('button', { name: 'Salvar' })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
     await user.click(within(destaques).getByRole('button', { name: 'Destaque 2: Sousou no Frieren' }));
     await user.click(within(destaques).getByRole('button', { name: 'Adicionar à Lista: Sousou no Frieren' }));
-    expect(screen.getByRole('dialog', { name: 'Adicionar à Lista' })).toBeInTheDocument();
+    const adicionar = screen.getByRole('dialog', { name: 'Sousou no Frieren' });
+    expect(within(adicionar).getByRole('button', { name: 'Salvar' })).toBeInTheDocument();
   });
 });
 

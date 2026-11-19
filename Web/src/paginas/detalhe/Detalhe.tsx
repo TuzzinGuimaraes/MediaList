@@ -17,10 +17,11 @@ import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
 import { proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { atributosDoTipo, notasDaMidia, ROTULO_NOTA_MEDIA, tituloAlternativo, tituloDaMidia } from '@dominio/midia';
 import { emLancamento } from '@dominio/situacao';
+import { useItemDaMidia } from '../../lista/api';
+import { useEditorItem } from '../../lista/EditorItemContext';
 import { Avaliacoes } from './Avaliacoes';
-import { useItemDaLista, useMidia } from './consultas';
+import { useMidia } from './consultas';
 import { DistribuicaoNotas } from './DistribuicaoNotas';
-import { useEditorDoItem } from './editorDoItem';
 import { MapaAtividade } from './MapaAtividade';
 
 type MidiaDetalhe = Esquemas['MidiaDetalhe'];
@@ -100,23 +101,20 @@ function Ficha({ midia, item }: { midia: MidiaDetalhe; item: Item | null | undef
 }
 
 function BotaoDaLista({ midia }: { midia: MidiaDetalhe }) {
-  const item = useItemDaLista(midia.id_midia);
-  const [abrirEditor, editor] = useEditorDoItem();
+  const item = useItemDaMidia(midia.id_midia);
+  const { abrirEditor } = useEditorItem();
   if (item.isError) return <ErroTela erro={item.error} tentarDeNovo={() => void item.refetch()} />;
   // Só com a Lista carregada se sabe se é adicionar ou editar.
   if (item.data === undefined) return <div className="h-12 rounded-md bg-superficie motion-safe:animate-pulse" />;
   return (
-    <>
-      <Botao
-        tamanho="grande"
-        className="w-full"
-        icone={<Icone nome={item.data ? 'editar' : 'mais'} />}
-        onClick={() => abrirEditor(midia, item.data ?? null)}
-      >
-        {item.data ? 'Editar na Lista' : 'Adicionar à Lista'}
-      </Botao>
-      {editor}
-    </>
+    <Botao
+      tamanho="grande"
+      className="w-full"
+      icone={<Icone nome={item.data ? 'editar' : 'mais'} />}
+      onClick={() => abrirEditor(midia, item.data ?? null)}
+    >
+      {item.data ? 'Editar na Lista' : 'Adicionar à Lista'}
+    </Botao>
   );
 }
 
@@ -194,7 +192,7 @@ function Atualizacoes({ atualizacoes }: { atualizacoes: MidiaDetalhe['atualizaco
 }
 
 function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
-  const item = useItemDaLista(midia.id_midia);
+  const item = useItemDaMidia(midia.id_midia);
   return (
     <div className="pb-24">
       <Banner midia={midia} />

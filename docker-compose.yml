@@ -79,12 +79,12 @@ services:
       retries: 5
       start_period: 20s
 
+  # O web (Web/): build Vite servido pelo nginx, com /api encaminhado ao backend. O contexto é a
+  # raiz porque o Web importa design/, contrato/ e dominio/ (Web/Dockerfile.dockerignore).
   frontend:
     build:
-      context: ./Frontend
-      dockerfile: Dockerfile
-      args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-/api}
+      context: .
+      dockerfile: Web/Dockerfile
     restart: unless-stopped
     ports:
       - "${FRONTEND_BIND:-0.0.0.0}:${FRONTEND_PORT:-3005}:80"

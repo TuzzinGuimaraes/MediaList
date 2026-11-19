@@ -12,9 +12,10 @@ import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Fileira } from '../../componentes/Fileira';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
-import { useCarrosseisPorGenero, useCarrossel, useEmAlta, useLista, usePopulares } from './consultas';
+import { useEditorItem } from '../../lista/EditorItemContext';
+import { useLista } from '../../lista/api';
+import { useCarrosseisPorGenero, useCarrossel, useEmAlta, usePopulares } from './consultas';
 import { Destaques } from './Destaques';
-import { useEditorDoItem } from './editorDoItem';
 
 type ItemLista = Esquemas['ItemLista'];
 type MidiaDoCarrossel = Esquemas['Midia'] | Esquemas['MidiaPopular'];
@@ -47,7 +48,7 @@ export function Inicio() {
   const lancamentos = useCarrossel(recorte, 'data_lancamento');
   const maisAdicionados = useCarrossel(recorte, 'mais_adicionados');
   const maisConcluidos = useCarrossel(recorte, 'mais_concluidos');
-  const { abrirEditor, editor } = useEditorDoItem();
+  const { abrirEditor } = useEditorItem();
 
   // Sem a Lista (ainda carregando), os gêneros esperam: senão sairiam os das populares e trocariam.
   const itens: ItemLista[] | undefined = lista.data ?? (lista.isError ? [] : undefined);
@@ -127,7 +128,6 @@ export function Inicio() {
         </Fileira>
         {carrosseis.map((c) => linha(c.titulo, c.midias))}
       </div>
-      {editor}
     </div>
   );
 }
