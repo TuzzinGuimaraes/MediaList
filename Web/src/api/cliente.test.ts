@@ -15,6 +15,7 @@ function fonte(inicial: { access: string | null } = { access: 'A1' }) {
     expirada: vi.fn(() => {
       tokens.access = null;
     }),
+    trocaObrigatoria: vi.fn(),
   } satisfies FonteTokens;
   return { f, tokens };
 }
@@ -54,6 +55,24 @@ describe('cliente da API', () => {
       codigo: 'dados_invalidos',
       detalhes: { email: 'Obrigatório' },
     });
+  });
+
+  it('o 403 troca_de_senha_obrigatoria avisa a sessão; outro 403, não', async () => {
+    simularFetch({
+      'GET /usuario/permissoes': erro(403, 'troca_de_senha_obrigatoria', 'Defina uma nova senha para continuar'),
+      'GET /lista': erro(403, 'acesso_negado', 'Acesso negado'),
+    });
+    const { f } = fonte();
+    const api = criarCliente(f);
+
+    await expect(exigir(api.GET('/api/lista'))).rejects.toMatchObject({ codigo: 'acesso_negado' });
+    expect(f.trocaObrigatoria).not.toHaveBeenCalled();
+
+    await expect(exigir(api.GET('/api/usuario/permissoes'))).rejects.toMatchObject({
+      status: 403,
+      codigo: 'troca_de_senha_obrigatoria',
+    });
+    expect(f.trocaObrigatoria).toHaveBeenCalledTimes(1);
   });
 
   it('sem conexão vira ErroRede', async () => {

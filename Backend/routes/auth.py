@@ -13,7 +13,7 @@ from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, j
 from spectree import Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from banco import Conflito, consultar_um, executar
+from banco import Conflito, consultar_um, executar, transacao
 from config import APP_ENV, EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from repositories import AcessoRepository, RefreshTokenRepository
@@ -24,6 +24,7 @@ from schemas.auth import (
     CorpoRedefinirSenha,
     CorpoRefresh,
     CorpoRegistro,
+    CorpoTrocarSenha,
     RespostaLogin,
     RespostaMe,
     RespostaRefresh,
@@ -103,6 +104,20 @@ def _apagar_cookie():
         return resposta
 
 
+def _access_token(id_usuario, deve_trocar_senha):
+    """O claim `deve_trocar_senha` só vai no access de quem tem a Senha temporária pendente."""
+    claims = {'deve_trocar_senha': True} if deve_trocar_senha else None
+    return create_access_token(identity=id_usuario, additional_claims=claims)
+
+
+def _senha_confere(usuario, senha):
+    """Senha temporária vencida não confere, como uma senha errada."""
+    if not check_password_hash(usuario['senha_hash'], senha):
+        return False
+    expira_em = usuario['senha_temporaria_expira_em']
+    return not (usuario['deve_trocar_senha'] and expira_em and expira_em <= datetime.now(timezone.utc))
+
+
 def _revogar_access(claims):
     """Blocklist persistida: o jti fica recusado até o token expirar."""
     acesso_repository.revogar(claims['jti'], datetime.fromtimestamp(claims['exp'], timezone.utc))
@@ -146,17 +161,21 @@ def registro(json: CorpoRegistro):
 def login(json: CorpoLogin):
     """Login de usuário"""
     usuario = consultar_um(
-        "SELECT id_usuario, nome_completo, email, senha_hash, ativo, nivel_acesso FROM usuarios WHERE email = %s",
+        """
+        SELECT id_usuario, nome_completo, email, senha_hash, ativo, nivel_acesso,
+               deve_trocar_senha, senha_temporaria_expira_em
+        FROM usuarios WHERE email = %s
+        """,
         (json.email,),
     )
 
-    if not usuario or not check_password_hash(usuario['senha_hash'], json.senha):
+    if not usuario or not _senha_confere(usuario, json.senha):
         return resposta_erro(401, CodigoErro.NAO_AUTENTICADO, 'Email ou senha incorretos')
 
     if not usuario['ativo']:
         return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Usuário desativado')
 
-    access_token = create_access_token(identity=usuario['id_usuario'])
+    access_token = _access_token(usuario['id_usuario'], usuario['deve_trocar_senha'])
 
     # Sem refresh o login continua valendo: um banco momentaneamente fora não
     # deve derrubar o login.
@@ -180,7 +199,8 @@ def login(json: CorpoLogin):
             'nome': usuario['nome_completo'],
             'email': usuario['email'],
             'permissoes': {'nivel_acesso': usuario['nivel_acesso']},
-        }
+        },
+        'deve_trocar_senha': usuario['deve_trocar_senha'],
     }
 
 
@@ -243,7 +263,7 @@ def _renovar(token):
         return _refresh_invalido()
 
     return {
-        'access_token': create_access_token(identity=atual['id_usuario']),
+        'access_token': _access_token(atual['id_usuario'], atual['deve_trocar_senha']),
         'refresh_token': novo_token,
     }
 
@@ -260,13 +280,16 @@ def _refresh_invalido():
 def obter_usuario_atual():
     """Obter informações do usuário autenticado"""
     usuario = consultar_um(
-        "SELECT id_usuario, nome_completo, email, foto_perfil FROM usuarios WHERE id_usuario = %s",
+        """
+        SELECT id_usuario, nome_completo, email, foto_perfil, deve_trocar_senha
+        FROM usuarios WHERE id_usuario = %s
+        """,
         (get_jwt_identity(),),
     )
     if not usuario:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
-    return {'usuario': usuario}
+    return {'usuario': usuario, 'deve_trocar_senha': usuario['deve_trocar_senha']}
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -288,6 +311,51 @@ def logout(json: CorpoLogout):
         refresh_token_repository.revogar(_hash_refresh(refresh_token), get_jwt_identity())
 
     return {'mensagem': 'Logout realizado com sucesso'}
+
+
+@auth_bp.route('/trocar-senha', methods=['POST'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaRefresh, HTTP_400=Erro, **ERROS_AUTENTICADA), tags=['auth'], security=AUTENTICADO,
+)
+def trocar_senha(json: CorpoTrocarSenha):
+    """Trocar a própria senha; com a Senha temporária pendente, é a única saída além do logout.
+
+    Encerra as outras sessões, revoga o access usado e devolve um par novo, sem o claim
+    `deve_trocar_senha`. No web (`X-Cliente: web`) o refresh vai no cookie.
+    """
+    id_usuario = get_jwt_identity()
+    usuario = consultar_um(
+        "SELECT senha_hash, deve_trocar_senha, senha_temporaria_expira_em FROM usuarios WHERE id_usuario = %s",
+        (id_usuario,),
+    )
+    # Senha temporária vencida não serve nem para trocá-la: o admin gera outra.
+    if not usuario or not _senha_confere(usuario, json.senha_atual):
+        return resposta_erro(
+            400, CodigoErro.DADOS_INVALIDOS, 'Senha atual incorreta', {'senha_atual': 'Senha atual incorreta'},
+        )
+    if json.nova_senha == json.senha_atual:
+        motivo = 'A nova senha precisa ser diferente da atual'
+        return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, motivo, {'nova_senha': motivo})
+
+    # Senha nova e fim das sessões abertas juntos (ADR-0006): sem meia troca.
+    with transacao() as t:
+        t.executar(
+            """
+            UPDATE usuarios
+            SET senha_hash = %s, deve_trocar_senha = FALSE, senha_temporaria_expira_em = NULL
+            WHERE id_usuario = %s
+            """,
+            (generate_password_hash(json.nova_senha), id_usuario),
+        )
+        refresh_token_repository.revogar_do_usuario(id_usuario, t)
+    _revogar_access(get_jwt())
+
+    refresh_token = _emitir_refresh(id_usuario)
+    if refresh_token and _do_web():
+        _gravar_cookie(refresh_token)
+        refresh_token = None
+    return {'access_token': _access_token(id_usuario, False), 'refresh_token': refresh_token}
 
 
 @auth_bp.route('/esqueci-senha', methods=['POST'])
@@ -317,7 +385,7 @@ def esqueci_senha(json: CorpoEsqueciSenha):
 @auth_bp.route('/redefinir-senha', methods=['POST'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA),
     tags=['auth'], security=AUTENTICADO,
 )
 def redefinir_senha(json: CorpoRedefinirSenha):

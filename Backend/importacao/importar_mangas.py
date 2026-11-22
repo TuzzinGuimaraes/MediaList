@@ -3,6 +3,7 @@ Importador de mangás via AniList.
 """
 from __future__ import annotations
 
+from importacao import cursor
 from importacao.anilist import importar_do_anilist
 from importacao.db import salvar_manga
 from importacao.utils import (
@@ -103,41 +104,38 @@ def processar_e_inserir_manga(manga: dict):
     return result
 
 
-def importar_mangas(paginas: int = 20):
+def importar_mangas(paginas: int = 20, do_inicio: bool = False):
     """Executa a importação em lote de mangás."""
     stats = ImportStats(tipo_midia='manga', origem='AniList')
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
 
-    try:
-        for pagina in importar_do_anilist('MANGA', paginas, session=session, rate_limiter=rate_limiter):
-            if pagina.get('erro'):
-                stats.registrar_falha_pagina(pagina['pagina'])
+    def importar_pagina(pagina: dict):
+        for item in pagina['itens']:
+            try:
+                result = processar_e_inserir_manga(item)
+                stats.registrar_sucesso(ja_existia=result['ja_existia'])
+            except Exception as exc:
+                stats.registrar_falha()
                 registrar_falha_importacao(
                     tipo_midia='manga',
                     origem='AniList',
-                    exc=pagina['erro'],
-                    identificador=f"pagina-{pagina['pagina']}",
-                    payload=pagina.get('payload'),
-                    extra={'pagina': pagina['pagina'], 'etapa': 'listar_pagina'},
+                    exc=exc,
+                    identificador=item.get('id'),
+                    titulo=(item.get('title') or {}).get('romaji'),
+                    payload=item,
+                    extra={'pagina': pagina['pagina']},
                 )
-                continue
 
-            for item in pagina['itens']:
-                try:
-                    result = processar_e_inserir_manga(item)
-                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
-                except Exception as exc:
-                    stats.registrar_falha()
-                    registrar_falha_importacao(
-                        tipo_midia='manga',
-                        origem='AniList',
-                        exc=exc,
-                        identificador=item.get('id'),
-                        titulo=(item.get('title') or {}).get('romaji'),
-                        payload=item,
-                        extra={'pagina': pagina['pagina']},
-                    )
+    try:
+        cursor.importar_paginas(
+            'manga', 'AniList', stats,
+            lambda inicio: importar_do_anilist(
+                'MANGA', paginas, session=session, rate_limiter=rate_limiter, pagina_inicial=inicio
+            ),
+            importar_pagina,
+            do_inicio,
+        )
 
         logger.info('Importação de mangás concluída. %s', stats.to_dict())
         if stats.falhas:

@@ -1,12 +1,14 @@
 name: CI
 
 # push só na master; branches de trabalho rodam pelo pull_request. Assim um push
-# num PR aberto dispara uma execução, não duas.
+# num PR aberto dispara uma execução, não duas. O workflow deploy chama este
+# (workflow_call) antes de migrar e publicar.
 on:
   push:
     branches: [master]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 # Um push novo no mesmo PR (ou na mesma branch) cancela a execução anterior.
 concurrency:
@@ -17,6 +19,30 @@ permissions:
   contents: read
 
 jobs:
+  # Lint dos próprios workflows (com shellcheck nos `run:`, já instalado no runner).
+  # Binário fixo, conferido pelo sha256 antes de rodar (como o age no backup).
+  actionlint:
+    name: Lint dos workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      # sha256 do actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz (digest do release no GitHub).
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: actionlint
+        run: |
+          arquivo="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${arquivo}"
+          echo "${ACTIONLINT_SHA256}  ${arquivo}" | sha256sum --check --strict
+          tar -xzf "$arquivo" actionlint
+          ./actionlint -color
+
   backend:
     name: Backend Tests
     runs-on: ubuntu-latest

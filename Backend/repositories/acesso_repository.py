@@ -33,12 +33,14 @@ class AcessoRepository:
         return consultar_um('SELECT 1 FROM access_tokens_revogados WHERE jti = %s', (jti,)) is not None
 
     def usuario(self, id_usuario: str) -> dict[str, Any] | None:
-        """id e `ativo` do Usuário do token, ou None se ele não existe.
+        """id, `ativo` e `deve_trocar_senha` do Usuário do token, ou None se ele não existe.
 
         Identidade que nem é uuid (token de antes da troca de banco) também
         não existe. Banco fora levanta `Indisponivel` (503).
         """
         try:
-            return consultar_um('SELECT id_usuario, ativo FROM usuarios WHERE id_usuario = %s', (id_usuario,))
+            return consultar_um(
+                'SELECT id_usuario, ativo, deve_trocar_senha FROM usuarios WHERE id_usuario = %s', (id_usuario,),
+            )
         except Integridade:
             return None

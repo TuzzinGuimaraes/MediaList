@@ -91,6 +91,16 @@ def test_utils_health_sem_postgres_responde_503(client, monkeypatch):
     assert response.get_json() == {'status': 'unhealthy', 'postgres': 'disconnected'}
 
 
+def test_ping_responde_ok_com_o_banco_fora(client, monkeypatch):
+    """O monitor externo bate no ping: ele não acorda a Neon (ADR-0013)."""
+    FakeBanco({'SELECT 1': banco.Indisponivel('fora')}).instalar(monkeypatch, utils_routes)
+
+    response = client.get('/api/ping')
+
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok'}
+
+
 def test_moderacao_bloqueia_usuario_comum(client, auth_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'usuario')
 

@@ -307,6 +307,7 @@ class FakeRefreshTokenRepository:
                 return {
                     **linha,
                     'usuario_ativo': self.usuarios_ativos.get(linha['id_usuario'], True),
+                    'deve_trocar_senha': False,
                 }
         return None
 

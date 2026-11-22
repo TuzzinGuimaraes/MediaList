@@ -1,0 +1,82 @@
+name: importacao
+
+# Importação diária no runner (ADR-0013): não cabe nos 300 s de uma função da
+# Vercel. Cada execução retoma, por Tipo de mídia, do cursor guardado no banco.
+# Uma falha deixa o workflow vermelho, e o GitHub avisa por email.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      tipo:
+        description: Tipo de mídia
+        type: choice
+        options: [todos, anime, manga, jogo]
+        default: todos
+      paginas:
+        description: Páginas por Tipo de mídia, a partir do cursor
+        type: number
+        default: 20
+      do_inicio:
+        description: Ignorar o cursor e recomeçar da página 1
+        type: boolean
+        default: false
+
+# Uma Importação por vez; a nova espera a anterior em vez de cancelá-la no
+# meio de uma página.
+concurrency:
+  group: importacao-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  importacao:
+    name: Importação
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: Backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: Backend
+        run: pip install -r requirements.txt
+
+      # No agendamento os inputs vêm vazios e valem os defaults abaixo. Os
+      # valores entram por env, não interpolados no script. Sem RAWG_API_KEY a
+      # Importação de jogos é pulada com aviso.
+      - name: run_import
+        working-directory: Backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
+          TIPO: ${{ inputs.tipo || 'todos' }}
+          PAGINAS: ${{ inputs.paginas || 20 }}
+          DO_INICIO: ${{ inputs.do_inicio || false }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL ausente"
+            exit 1
+          fi
+          args=(--tipo "$TIPO" --paginas "$PAGINAS")
+          if [ "$DO_INICIO" = "true" ]; then args+=(--do-inicio); fi
+          python -m importacao.run_import "${args[@]}"
+
+      - name: Upload do log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: importacao-log-${{ github.run_id }}
+          path: Backend/importacao_logs/
+          if-no-files-found: warn
+          retention-days: 30

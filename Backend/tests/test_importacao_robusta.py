@@ -1,4 +1,5 @@
 """Importação robusta (ticket 08): rate limit, páginas com falha, RAWG sem chave, segredo fora do log."""
+import pytest
 import requests
 
 from importacao import anilist
@@ -41,6 +42,18 @@ class _SessaoFixa:
 class _SemEspera:
     def wait(self):
         pass
+
+
+@pytest.fixture(autouse=True)
+def cursor_em_memoria(monkeypatch):
+    """Estes testes não têm banco: o cursor da Importação fica num dict
+    (o comportamento dele no PostgreSQL está em test_importacao_cursor_pg)."""
+    from importacao import cursor
+
+    paginas = {}
+    monkeypatch.setattr(cursor, 'ler', lambda tipo: paginas.get(tipo, 1))
+    monkeypatch.setattr(cursor, 'gravar', lambda tipo, pagina: paginas.__setitem__(tipo, pagina))
+    return paginas
 
 
 def test_anilist_429_persistente_vira_pagina_com_falha_sem_laco():
@@ -112,8 +125,11 @@ def test_pagina_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
     for modulo in (importar_animes, importar_mangas):
         monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
 
-    _rodar_main(monkeypatch, '--tipo', 'anime')
-    _rodar_main(monkeypatch, '--tipo', 'manga')
+    # Página com falha (fonte fora do ar) sai com erro: o workflow importacao fica vermelho.
+    for tipo in ('anime', 'manga'):
+        with pytest.raises(SystemExit) as saiu:
+            _rodar_main(monkeypatch, '--tipo', tipo)
+        assert saiu.value.code == 1
 
     saida = capsys.readouterr().out
     assert 'anime: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[2]' in saida
@@ -133,14 +149,16 @@ def _preparar_jogos(monkeypatch, tmp_path, sessao, chave=CHAVE):
     return importar_jogos
 
 
-def test_pagina_de_jogos_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
+def test_pagina_de_jogos_com_falha_aparece_no_resumo_e_encerra_os_jogos(monkeypatch, capsys, tmp_path):
     url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
     _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
 
-    _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
+    with pytest.raises(SystemExit) as saiu:
+        _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
+    assert saiu.value.code == 1
 
     saida = capsys.readouterr().out
-    assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1, 2]' in saida
+    assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1]' in saida
 
 
 
@@ -173,7 +191,7 @@ def test_chave_rawg_nao_aparece_no_log_de_erros(monkeypatch, capsys, tmp_path, c
     url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
     _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
 
-    with caplog.at_level('INFO'):
+    with caplog.at_level('INFO'), pytest.raises(SystemExit):
         _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '1')
 
     jsonl = (tmp_path / 'erros.jsonl').read_text(encoding='utf-8')
@@ -219,3 +237,47 @@ def test_config_da_importacao_vem_do_config_do_backend():
     assert config_importacao.ANILIST_URL == config.ANILIST_API_URL
     assert config_importacao.RAWG_API_KEY == config.RAWG_API_KEY
     assert config_importacao.RAWG_BASE_URL == config.RAWG_API_URL
+
+
+def test_falha_http_real_com_a_chave_na_url_nao_vaza_no_jsonl_nem_no_log(monkeypatch, tmp_path, capsys):
+    """Sessão real (urllib3 com retry) contra um servidor local que derruba a conexão: o aviso
+    de retry e o erro levam a URL com `?key=`; nem o jsonl nem o arquivo de log levam a chave."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from importacao import importar_jogos, utils
+
+    class DerrubaAConexao(BaseHTTPRequestHandler):
+        """Fecha a conexão sem responder: o urllib3 avisa `Retrying ... after connection
+        broken ...: /api/games?key=...` e, esgotado, o requests levanta ConnectionError."""
+
+        def do_GET(self):
+            self.close_connection = True
+
+        def log_message(self, *args):
+            pass
+
+    servidor = HTTPServer(('127.0.0.1', 0), DerrubaAConexao)
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+
+    sessao_real = utils.criar_sessao_http
+    monkeypatch.setattr(utils, 'LOG_PATH', tmp_path / 'importacao.log')
+    monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
+    monkeypatch.setattr(importar_jogos, 'RAWG_API_KEY', CHAVE)
+    monkeypatch.setattr(importar_jogos, 'RAWG_BASE_URL', f'http://127.0.0.1:{servidor.server_port}/api')
+    monkeypatch.setattr(
+        importar_jogos, 'criar_sessao_http', lambda **kw: sessao_real(total_retries=2, backoff_factor=0)
+    )
+    try:
+        with pytest.raises(SystemExit):
+            _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '1')
+    finally:
+        servidor.shutdown()
+        utils.remover_log()
+
+    jsonl = (tmp_path / 'erros.jsonl').read_text(encoding='utf-8')
+    log = (tmp_path / 'importacao.log').read_text(encoding='utf-8')
+    assert 'key=***' in jsonl
+    assert 'Retrying' in log  # o aviso do urllib3 passou pelo handler da Importação
+    for texto in (jsonl, log, capsys.readouterr().err):
+        assert CHAVE not in texto

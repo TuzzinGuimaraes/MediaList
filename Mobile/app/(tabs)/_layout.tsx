@@ -31,6 +31,8 @@ export default function AbasLayout() {
   if (sessao.estado === 'carregando') return <Carregando />;
   // Sem sessão (nunca entrou, saiu, ou o refresh falhou): volta ao login.
   if (sessao.estado === 'anonima') return <Redirect href="/login" />;
+  // Senha temporária pendente: nenhuma aba abre até trocá-la ou sair.
+  if (sessao.estado === 'troca_de_senha') return <Redirect href="/definir-senha" />;
 
   return (
     <Tabs

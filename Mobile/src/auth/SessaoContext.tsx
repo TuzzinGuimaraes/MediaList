@@ -3,19 +3,25 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { type Cliente, type Tokens, criarCliente } from '../api/cliente';
 import { urlApi } from '../api/config';
-import type { DadosRegistro, RespostaLogin, UsuarioSessao } from '../api/tipos';
-import { apagarSessao, carregarSessao, guardarSessao, guardarTokens } from './armazenamento';
+import type { DadosRegistro, RespostaLogin, RespostaRefresh, UsuarioSessao } from '../api/tipos';
+import { apagarSessao, carregarSessao, guardarSessao, guardarTokens, guardarTrocaDeSenha } from './armazenamento';
 
 type EstadoSessao =
   | { estado: 'carregando' }
   | { estado: 'anonima' }
-  | { estado: 'autenticada'; usuario: UsuarioSessao };
+  | { estado: 'autenticada'; usuario: UsuarioSessao }
+  /** Entrou com uma Senha temporária (CONTEXT.md): só sai trocando a senha ou saindo da conta. */
+  | { estado: 'troca_de_senha'; usuario: UsuarioSessao };
 
 type ValorSessao = {
   sessao: EstadoSessao;
   cliente: Cliente;
   entrar(email: string, senha: string): Promise<void>;
   registrar(dados: DadosRegistro): Promise<void>;
+  /** Troca a senha e segue autenticado com o par novo, sem a troca pendente. */
+  trocarSenha(senhaAtual: string, novaSenha: string): Promise<void>;
+  /** A API indicou a Senha temporária pendente (`deve_trocar_senha` do /auth/me ou o 403). */
+  trocaObrigatoria(): void;
   sair(): Promise<void>;
 };
 
@@ -25,7 +31,7 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [sessao, setSessao] = useState<EstadoSessao>({ estado: 'carregando' });
   // Os tokens vivem fora do estado do React: o cliente HTTP os lê a cada requisição.
-  const [{ cliente, definirTokens, encerrar }] = useState(() => {
+  const [{ cliente, definirTokens, encerrar, trocaObrigatoria }] = useState(() => {
     let tokens: Tokens | null = null;
     const definirTokens = (novos: Tokens | null) => {
       tokens = novos;
@@ -42,6 +48,11 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
       })().finally(() => {
         encerramento = null;
       }));
+    const trocaObrigatoria = () => {
+      if (!tokens || encerramento) return;
+      void guardarTrocaDeSenha(true);
+      setSessao((s) => (s.estado === 'autenticada' ? { estado: 'troca_de_senha', usuario: s.usuario } : s));
+    };
     const cliente = criarCliente(urlApi(), {
       atuais: () => tokens,
       renovados: async (novos) => {
@@ -51,8 +62,9 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
       expirada: async () => {
         if (tokens || encerramento) await encerrar();
       },
+      trocaObrigatoria,
     });
-    return { cliente, definirTokens, encerrar };
+    return { cliente, definirTokens, encerrar, trocaObrigatoria };
   });
 
   useEffect(() => {
@@ -60,7 +72,8 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
     carregarSessao().then((guardada) => {
       if (!ativo) return;
       definirTokens(guardada?.tokens ?? null);
-      setSessao(guardada ? { estado: 'autenticada', usuario: guardada.usuario } : { estado: 'anonima' });
+      if (!guardada) return setSessao({ estado: 'anonima' });
+      setSessao({ estado: guardada.trocaDeSenha ? 'troca_de_senha' : 'autenticada', usuario: guardada.usuario });
     });
     return () => {
       ativo = false;
@@ -74,9 +87,10 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
         corpo: { email, senha },
       });
       const novos = { access: resposta.access_token, refresh: resposta.refresh_token };
-      await guardarSessao({ tokens: novos, usuario: resposta.usuario });
+      const trocaDeSenha = resposta.deve_trocar_senha;
+      await guardarSessao({ tokens: novos, usuario: resposta.usuario, trocaDeSenha });
       definirTokens(novos);
-      setSessao({ estado: 'autenticada', usuario: resposta.usuario });
+      setSessao({ estado: trocaDeSenha ? 'troca_de_senha' : 'autenticada', usuario: resposta.usuario });
     },
     [cliente, definirTokens],
   );
@@ -87,6 +101,22 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
       await entrar(dados.email, dados.senha);
     },
     [cliente, entrar],
+  );
+
+  const trocarSenha = useCallback(
+    async (senhaAtual: string, novaSenha: string) => {
+      const resposta = await cliente.requisitar<RespostaRefresh>('/auth/trocar-senha', {
+        metodo: 'POST',
+        corpo: { senha_atual: senhaAtual, nova_senha: novaSenha },
+      });
+      const novos = { access: resposta.access_token, refresh: resposta.refresh_token };
+      // Os tokens antes da flag: se o app morrer no meio, sobra o par novo com a tela de troca.
+      await guardarTokens(novos);
+      definirTokens(novos);
+      await guardarTrocaDeSenha(false);
+      setSessao((s) => (s.estado === 'troca_de_senha' ? { estado: 'autenticada', usuario: s.usuario } : s));
+    },
+    [cliente, definirTokens],
   );
 
   const sair = useCallback(async () => {
@@ -102,8 +132,8 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   }, [cliente, encerrar]);
 
   const valor = useMemo(
-    () => ({ sessao, cliente, entrar, registrar, sair }),
-    [sessao, cliente, entrar, registrar, sair],
+    () => ({ sessao, cliente, entrar, registrar, trocarSenha, trocaObrigatoria, sair }),
+    [sessao, cliente, entrar, registrar, trocarSenha, trocaObrigatoria, sair],
   );
 
   return <SessaoContext.Provider value={valor}>{children}</SessaoContext.Provider>;

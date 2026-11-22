@@ -50,6 +50,8 @@ class CodigoErro(StrEnum):
     TOKEN_REVOGADO = 'token_revogado'
     SESSAO_INVALIDA = 'sessao_invalida'
     ACESSO_NEGADO = 'acesso_negado'
+    #: Senha temporária ainda não trocada: só `/auth/trocar-senha`, `/auth/me` e `/auth/logout` respondem.
+    TROCA_DE_SENHA_OBRIGATORIA = 'troca_de_senha_obrigatoria'
     NAO_ENCONTRADO = 'nao_encontrado'
     METODO_NAO_PERMITIDO = 'metodo_nao_permitido'
     CONFLITO = 'conflito'
@@ -264,11 +266,11 @@ AUTENTICADO = {'bearer': []}
 AUTENTICACAO_OPCIONAL = [{}, AUTENTICADO]
 
 #: Erros de toda rota com `@jwt_required()`, vindos dos loaders do flask-jwt (app.py): 401 sem
-#: token, expirado, revogado ou de Usuário desativado; 422 com o token malformado.
+#: token, expirado, revogado ou de Usuário desativado; 403 `troca_de_senha_obrigatoria` com a
+#: Senha temporária ainda não trocada; 422 com o token malformado.
+#: O 403 do `admin_required` (decorators.py) também cabe aqui.
 #: Uso: `resp=Response(HTTP_200=X, **ERROS_AUTENTICADA)`.
-ERROS_AUTENTICADA = {'HTTP_401': Erro, 'HTTP_422': Erro}
-#: Mais o 403 de `admin_required` (decorators.py).
-ERROS_COM_PERMISSAO = {**ERROS_AUTENTICADA, 'HTTP_403': Erro}
+ERROS_AUTENTICADA = {'HTTP_401': Erro, 'HTTP_403': Erro, 'HTTP_422': Erro}
 
 
 def registrar_documentacao(app, em_producao: bool, spec: SpecTree = contrato) -> None:

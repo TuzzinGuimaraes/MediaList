@@ -9,7 +9,7 @@ import decorators
 from banco import consultar, consultar_um, executar, transacao
 from contrato import (
     AUTENTICADO,
-    ERROS_COM_PERMISSAO,
+    ERROS_AUTENTICADA,
     CodigoErro,
     ConsultaPaginada,
     Erro,
@@ -75,7 +75,7 @@ def _alterar_status(target_user_id, ativo):
 @jwt_required()
 @admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=RespostaAvaliacoesModeracao, **ERROS_COM_PERMISSAO),
+    resp=Response(HTTP_200=RespostaAvaliacoesModeracao, **ERROS_AUTENTICADA),
     tags=['moderacao'], security=AUTENTICADO,
 )
 def listar_avaliacoes_moderacao():
@@ -102,7 +102,7 @@ def listar_avaliacoes_moderacao():
 @jwt_required()
 @admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=Pagina[UsuarioModeracao], **ERROS_COM_PERMISSAO), tags=['moderacao'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Pagina[UsuarioModeracao], **ERROS_AUTENTICADA), tags=['moderacao'], security=AUTENTICADO,
 )
 def listar_usuarios_moderacao(query: ConsultaPaginada):
     """Uma página dos Usuários, mais recentes primeiro, para moderação."""
@@ -133,7 +133,7 @@ def listar_usuarios_moderacao(query: ConsultaPaginada):
 @jwt_required()
 @admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA),
     tags=['moderacao'], security=AUTENTICADO,
 )
 def desativar_usuario(target_user_id):
@@ -145,7 +145,7 @@ def desativar_usuario(target_user_id):
 @jwt_required()
 @admin_required
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_COM_PERMISSAO),
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA),
     tags=['moderacao'], security=AUTENTICADO,
 )
 def ativar_usuario(target_user_id):

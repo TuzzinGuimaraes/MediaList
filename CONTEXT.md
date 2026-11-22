@@ -44,6 +44,11 @@ O processo de trazer Mídias de uma fonte externa para o Catálogo. Uma Mídia i
 carrega o identificador da fonte de origem, o que torna a Importação repetível: reimportar
 atualiza a Mídia existente em vez de duplicá-la.
 
+Cada execução retoma, por Tipo de mídia, da página da fonte onde a anterior parou (o cursor
+da Importação), em vez de recomeçar da página 1. Uma página que falha não avança o cursor e
+encerra aquele Tipo, para não abrir buracos. Ao chegar ao fim da fonte, o cursor volta à
+página 1 e a Importação passa a atualizar as Mídias já importadas.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`
@@ -65,6 +70,18 @@ para a tela, e o leitor de tela diz "Catálogo".
 
 Uma pessoa cadastrada no sistema. Tem uma **Lista pessoal**, escreve **Avaliações** e
 tem um único **Nível de acesso**.
+
+## Senha temporária
+
+A senha que o admin gera para um Usuário que esqueceu a dele (`make redefinir-senha
+EMAIL=...`), já que o sistema não manda email. É aleatória, vale por 24 h e encerra as
+sessões abertas do Usuário. Quem entra com ela só consegue trocar a senha ou sair da conta:
+na interface aparece a tela "Defina sua nova senha", e a API recusa o resto com
+`troca_de_senha_obrigatoria`. Vencida, não vale para nada: não entra nem serve para a
+troca, como uma senha errada, e o admin gera outra.
+
+Não confundir com a recuperação por token (`/auth/esqueci-senha`), que depende de email e
+fica para o ticket 25.
 
 ## Nível de acesso
 

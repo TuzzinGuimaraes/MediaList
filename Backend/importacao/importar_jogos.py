@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from threading import local
 
+from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.db import salvar_jogo
 from importacao.utils import (
@@ -114,7 +115,7 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict):
     return result
 
 
-def importar_jogos(paginas: int = 25, workers: int = 4):
+def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False):
     """Executa a importação em lote de jogos. Sem RAWG_API_KEY, pula com aviso."""
     stats = ImportStats(tipo_midia='jogo', origem='RAWG')
     if not RAWG_API_KEY:
@@ -125,8 +126,9 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.25)
 
-    try:
-        for pagina in range(1, paginas + 1):
+    def buscar_paginas(inicio: int):
+        """Páginas da listagem da RAWG; `next` nulo é o fim da fonte."""
+        for pagina in range(inicio, inicio + paginas):
             try:
                 rate_limiter.wait()
                 response = session.get(
@@ -143,51 +145,45 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
                 response.raise_for_status()
                 data = response.json()
             except Exception as exc:
-                stats.registrar_falha_pagina(pagina)
+                yield {'pagina': pagina, 'itens': [], 'erro': exc, 'payload': {'pagina': pagina}}
+                return
+            yield {'pagina': pagina, 'itens': data.get('results', []), 'erro': None, 'fim': not data.get('next')}
+
+    def carregar_detalhe(jogo_basico: dict):
+        worker_session = _obter_sessao_rawg_worker()
+        return {'detalhe': buscar_detalhe_jogo(jogo_basico['slug'], worker_session, rate_limiter)}
+
+    def importar_pagina(pagina: dict):
+        for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
+            pagina['itens'],
+            carregar_detalhe,
+            max_workers=workers,
+        ):
+            detalhe = None
+            try:
+                if detalhe_exc:
+                    raise detalhe_exc
+
+                detalhe = (detalhe_result or {}).get('detalhe')
+                if not detalhe:
+                    raise LookupError('Detalhes do jogo não retornados pela API')
+
+                result = processar_e_inserir_jogo(jogo_basico, detalhe)
+                stats.registrar_sucesso(ja_existia=result['ja_existia'])
+            except Exception as exc:
+                stats.registrar_falha()
                 registrar_falha_importacao(
                     tipo_midia='jogo',
                     origem='RAWG',
                     exc=exc,
-                    identificador=f'pagina-{pagina}',
-                    payload={'pagina': pagina},
-                    extra={'pagina': pagina, 'etapa': 'listar_pagina'},
+                    identificador=jogo_basico.get('slug'),
+                    titulo=jogo_basico.get('name'),
+                    payload={'basico': jogo_basico, 'detalhe': detalhe},
+                    extra={'pagina': pagina['pagina']},
                 )
-                continue
 
-            def carregar_detalhe(jogo_basico: dict):
-                worker_session = _obter_sessao_rawg_worker()
-                return {'detalhe': buscar_detalhe_jogo(jogo_basico['slug'], worker_session, rate_limiter)}
-
-            for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
-                data.get('results', []),
-                carregar_detalhe,
-                max_workers=workers,
-            ):
-                detalhe = None
-                try:
-                    if detalhe_exc:
-                        raise detalhe_exc
-
-                    detalhe = (detalhe_result or {}).get('detalhe')
-                    if not detalhe:
-                        raise LookupError('Detalhes do jogo não retornados pela API')
-
-                    result = processar_e_inserir_jogo(jogo_basico, detalhe)
-                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
-                except Exception as exc:
-                    stats.registrar_falha()
-                    registrar_falha_importacao(
-                        tipo_midia='jogo',
-                        origem='RAWG',
-                        exc=exc,
-                        identificador=jogo_basico.get('slug'),
-                        titulo=jogo_basico.get('name'),
-                        payload={'basico': jogo_basico, 'detalhe': detalhe},
-                        extra={'pagina': pagina},
-                    )
-
-            if not data.get('next'):
-                break
+    try:
+        cursor.importar_paginas('jogo', 'RAWG', stats, buscar_paginas, importar_pagina, do_inicio)
 
         logger.info('Importação de jogos concluída. %s', stats.to_dict())
         if stats.falhas:

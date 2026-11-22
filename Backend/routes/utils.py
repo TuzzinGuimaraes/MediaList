@@ -1,5 +1,5 @@
 """
-Blueprint de utilidades: gêneros, Notificações e saúde (Mídias populares: blueprint `midias`).
+Blueprint de utilidades: gêneros, Notificações, ping e saúde (Mídias populares: blueprint `midias`).
 
 As rotas leem os parâmetros, chamam o Catálogo ou as Atualizações e respondem.
 Os testes trocam `catalogo` e `atualizacoes` deste módulo; `/health` fala com o
@@ -18,6 +18,7 @@ from repositories.catalogo import Catalogo
 from schemas.utils import (
     ConsultaGeneros,
     ConsultaNotificacoes,
+    Ping,
     RespostaGeneros,
     RespostaNotificacoes,
     Saude,
@@ -57,6 +58,13 @@ def marcar_todas_lidas():
     """Marcar como lidas todas as Notificações do Usuário."""
     marcadas = atualizacoes.marcar_todas_lidas(get_jwt_identity())
     return {'mensagem': f'{marcadas} notificações marcadas como lidas'}
+
+
+@utils_bp.route('/ping', methods=['GET'])
+@contrato.validate(resp=Response(HTTP_200=Ping), tags=['utils'])
+def ping():
+    """Responde se a API está de pé, sem tocar no banco (monitor externo, ADR-0013)."""
+    return {'status': 'ok'}
 
 
 @utils_bp.route('/health', methods=['GET'])

@@ -36,7 +36,7 @@ lista_pessoal = ListaPessoal(itens_lista, Catalogo())
 ERRO_SEM_ACESSO = 'Item não encontrado ou sem permissão'
 
 #: Respostas de erro comuns às rotas de escrita.
-ERROS_DA_ESCRITA = {'HTTP_400': Erro, 'HTTP_403': Erro, **ERROS_AUTENTICADA}
+ERROS_DA_ESCRITA = {'HTTP_400': Erro, **ERROS_AUTENTICADA}
 
 
 def _campos(corpo) -> dict:
@@ -84,7 +84,7 @@ def obter_lista_usuario(query: ConsultaLista):
 @lista_bp.route('/<string:target_user_id>', methods=['GET'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=RespostaLista, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+    resp=Response(HTTP_200=RespostaLista, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
 )
 def obter_lista_usuario_por_id(target_user_id, query: ConsultaLista):
     """Lista pessoal de um Usuário: só o próprio."""
@@ -143,7 +143,7 @@ def atualizar_item_lista(lista_id, json: EdicaoItemLista):
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+    resp=Response(HTTP_200=Mensagem, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
 )
 def remover_item_lista(lista_id):
     """Tirar um Item da Lista pessoal."""

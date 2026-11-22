@@ -43,6 +43,10 @@ class RespostaNotificacoes(BaseModel):
     notificacoes: list[Notificacao] = Field(description='As 50 mais recentes')
 
 
+class Ping(BaseModel):
+    status: Literal['ok']
+
+
 class Saude(BaseModel):
     status: Literal['healthy', 'unhealthy']
     postgres: Literal['connected', 'disconnected']

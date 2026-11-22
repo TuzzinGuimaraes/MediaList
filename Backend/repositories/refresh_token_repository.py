@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from banco import Indisponivel, consultar_um, executar, transacao
+from banco import Indisponivel, Transacao, consultar_um, executar, transacao
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,8 @@ class RefreshTokenRepository:
         return consultar_um(
             """
             SELECT rt.id_refresh, rt.id_usuario, rt.familia, rt.expira_em,
-                   rt.revogado, rt.substituido_por, u.ativo AS usuario_ativo
+                   rt.revogado, rt.substituido_por, u.ativo AS usuario_ativo,
+                   u.deve_trocar_senha
             FROM refresh_tokens rt
             JOIN usuarios u ON u.id_usuario = rt.id_usuario
             WHERE rt.token_hash = %s
@@ -79,6 +80,16 @@ class RefreshTokenRepository:
         executar(
             "UPDATE refresh_tokens SET revogado = TRUE WHERE familia = %s AND revogado = FALSE",
             (familia,),
+        )
+
+    def revogar_do_usuario(self, id_usuario: str, t: Transacao | None = None) -> None:
+        """Encerra todas as sessões do Usuário: troca e redefinição de senha.
+
+        Com `t`, roda na transação de quem chama, junto da mudança da senha.
+        """
+        (t.executar if t else executar)(
+            "UPDATE refresh_tokens SET revogado = TRUE WHERE id_usuario = %s AND revogado = FALSE",
+            (id_usuario,),
         )
 
     def revogar(self, token_hash: str, id_usuario: str) -> bool:

@@ -7,6 +7,9 @@ type Esquemas = components['schemas'];
 
 export type NivelAcesso = Esquemas['Permissoes']['nivel_acesso'];
 
+/** O `codigo` do envelope de erro da API (ADR 0011). */
+export type CodigoErro = Esquemas['CodigoErro'];
+
 /** A Mídia das listagens (GET /midias, /midias/trending): os campos de todos os Tipos. */
 export type Midia = Esquemas['Midia'];
 

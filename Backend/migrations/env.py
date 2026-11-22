@@ -1,7 +1,7 @@
 """Ambiente do Alembic: migrações em SQL puro (op.execute), sem metadata de ORM.
 
-Conecta com o dono do schema (DB_OWNER_USER), nunca com o usuário da aplicação,
-que só tem DML.
+Conecta com o dono do schema (DATABASE_OWNER_URL, ou DB_OWNER_USER no dev),
+nunca com o usuário da aplicação, que só tem DML.
 """
 from logging.config import fileConfig
 

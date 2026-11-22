@@ -12,7 +12,9 @@ export type EstadoSessao =
   | { estado: 'anonima' }
   /** Havia sessão aberta, mas a API não respondeu ao renová-la: o refresh fica para tentar de novo. */
   | { estado: 'indisponivel'; erro: unknown }
-  | { estado: 'autenticada'; usuario: UsuarioDaSessao };
+  | { estado: 'autenticada'; usuario: UsuarioDaSessao }
+  /** Entrou com uma Senha temporária: só sai trocando a senha ou saindo da conta. */
+  | { estado: 'troca_de_senha'; nome: string };
 
 export type Sessao = ReturnType<typeof criarSessao>;
 
@@ -42,9 +44,32 @@ export function criarSessao(queryClient: QueryClient) {
       access = novo;
     },
     expirada: () => {
-      if (estado.estado === 'autenticada') encerrar();
+      if (comSessao()) encerrar();
+    },
+    trocaObrigatoria: () => {
+      if (estado.estado !== 'autenticada') return;
+      queryClient.clear();
+      mudar({ estado: 'troca_de_senha', nome: estado.usuario.nome });
     },
   });
+
+  function comSessao() {
+    return estado.estado === 'autenticada' || estado.estado === 'troca_de_senha';
+  }
+
+  /** O Usuário do access vigente; com a troca pendente, nem pede as permissões (a API responderia 403). */
+  async function carregarUsuario(): Promise<void> {
+    const { usuario, deve_trocar_senha } = await exigir(api.GET('/api/auth/me'));
+    if (deve_trocar_senha) {
+      mudar({ estado: 'troca_de_senha', nome: usuario.nome_completo });
+      return;
+    }
+    const { permissoes } = await exigir(api.GET('/api/usuario/permissoes'));
+    mudar({
+      estado: 'autenticada',
+      usuario: { id: usuario.id_usuario, nome: usuario.nome_completo, email: usuario.email, permissoes },
+    });
+  }
 
   let restauracao: Promise<void> | null = null;
 
@@ -58,14 +83,7 @@ export function criarSessao(queryClient: QueryClient) {
           mudar({ estado: 'anonima' });
           return;
         }
-        const [{ usuario }, { permissoes }] = await Promise.all([
-          exigir(api.GET('/api/auth/me')),
-          exigir(api.GET('/api/usuario/permissoes')),
-        ]);
-        mudar({
-          estado: 'autenticada',
-          usuario: { id: usuario.id_usuario, nome: usuario.nome_completo, email: usuario.email, permissoes },
-        });
+        await carregarUsuario();
       } catch (erro) {
         mudar({ estado: 'indisponivel', erro });
       }
@@ -81,7 +99,25 @@ export function criarSessao(queryClient: QueryClient) {
     // O refresh veio no cookie. Sem ele (banco sem a tabela), o próximo refresh falha e a
     // sessão vale enquanto a aba estiver aberta.
     marcarConectado(true);
-    mudar({ estado: 'autenticada', usuario: resposta.usuario });
+    mudar(
+      resposta.deve_trocar_senha
+        ? { estado: 'troca_de_senha', nome: resposta.usuario.nome }
+        : { estado: 'autenticada', usuario: resposta.usuario },
+    );
+  }
+
+  /** Troca a senha (a temporária ou não) e segue com o access novo, sem a troca pendente. */
+  async function trocarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
+    const resposta = await exigir(
+      api.POST('/api/auth/trocar-senha', { body: { senha_atual: senhaAtual, nova_senha: novaSenha } }),
+    );
+    access = resposta.access_token;
+    try {
+      await carregarUsuario();
+    } catch (erro) {
+      // A senha já mudou: "Tentar de novo" reabre a sessão pelo refresh novo do cookie.
+      mudar({ estado: 'indisponivel', erro });
+    }
   }
 
   async function registrar(dados: Esquemas['CorpoRegistro']): Promise<void> {
@@ -105,7 +141,7 @@ export function criarSessao(queryClient: QueryClient) {
 
   /** Outra aba saiu (a marca sumiu do armazenamento): esta também sai, sem chamar o servidor. */
   function outraAbaSaiu() {
-    if (estado.estado === 'autenticada') encerrar();
+    if (comSessao()) encerrar();
   }
 
   return {
@@ -118,6 +154,7 @@ export function criarSessao(queryClient: QueryClient) {
     restaurar,
     entrar,
     registrar,
+    trocarSenha,
     sair,
     outraAbaSaiu,
   };

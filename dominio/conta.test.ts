@@ -1,4 +1,11 @@
-import { inicialDoNome, rotuloNivelAcesso, validarLogin, validarRegistro } from './conta';
+import {
+  inicialDoNome,
+  rotuloNivelAcesso,
+  TROCA_DE_SENHA_OBRIGATORIA,
+  validarLogin,
+  validarNovaSenha,
+  validarRegistro,
+} from './conta';
 
 describe('validarLogin', () => {
   it('exige email e senha', () => {
@@ -22,6 +29,31 @@ describe('validarRegistro', () => {
       'A senha precisa ter pelo menos 6 caracteres.',
     );
     expect(validarRegistro({ ...valido, confirmacao: 'outra' })).toBe('As senhas não conferem.');
+  });
+});
+
+describe('validarNovaSenha', () => {
+  const valida = { senhaAtual: 'temp2345', novaSenha: 'segredo1', confirmacao: 'segredo1' };
+
+  it('aceita a troca completa', () => {
+    expect(validarNovaSenha(valida)).toBeNull();
+  });
+
+  it('recusa sem a atual, nova curta, nova igual à atual e confirmação diferente', () => {
+    expect(validarNovaSenha({ ...valida, senhaAtual: '' })).toBe('Informe a senha atual.');
+    expect(validarNovaSenha({ ...valida, novaSenha: '12345', confirmacao: '12345' })).toBe(
+      'A nova senha precisa ter pelo menos 6 caracteres.',
+    );
+    expect(validarNovaSenha({ ...valida, novaSenha: 'temp2345', confirmacao: 'temp2345' })).toBe(
+      'A nova senha precisa ser diferente da atual.',
+    );
+    expect(validarNovaSenha({ ...valida, confirmacao: 'outra' })).toBe('As senhas não conferem.');
+  });
+});
+
+describe('TROCA_DE_SENHA_OBRIGATORIA', () => {
+  it('é o código do 403 de quem ainda não trocou a Senha temporária', () => {
+    expect(TROCA_DE_SENHA_OBRIGATORIA).toBe('troca_de_senha_obrigatoria');
   });
 });
 

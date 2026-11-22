@@ -19,6 +19,7 @@ function perfilResponde(accessValido: string, nivel: NivelAcesso = 'usuario') {
   return {
     'GET /auth/me': exige({
       usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
+      deve_trocar_senha: false,
     }),
     'GET /usuario/permissoes': exige({ permissoes: { nivel_acesso: nivel } }),
   };

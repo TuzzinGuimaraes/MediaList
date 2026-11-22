@@ -35,6 +35,8 @@ def login(client, monkeypatch, tokens):
         'senha_hash': generate_password_hash('senha123'),
         'ativo': True,
         'nivel_acesso': 'usuario',
+        'deve_trocar_senha': False,
+        'senha_temporaria_expira_em': None,
     }}).instalar(monkeypatch, auth_routes)
 
     def _login():
@@ -53,7 +55,7 @@ def test_login_devolve_access_e_refresh_token(login, tokens):
 
     assert data['refresh_token'] and data['access_token']
     assert data['usuario']['id'] == ID_USUARIO
-    assert set(data) == {'access_token', 'refresh_token', 'usuario'}
+    assert set(data) == {'access_token', 'refresh_token', 'usuario', 'deve_trocar_senha'}
 
 
 def test_refresh_token_nunca_e_guardado_em_claro(login, tokens):

@@ -132,15 +132,32 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     return rotas_auth.acesso_repository.revogado(jwt_payload['jti'])
 
 
+class TrocaDeSenhaObrigatoria(Exception):
+    """Senha temporária ainda não trocada (spec `producao`)."""
+
+
+#: O que a Senha temporária deixa usar: trocar a senha, saber quem é e sair.
+ROTAS_LIVRES_NA_TROCA = {'auth.trocar_senha', 'auth.obter_usuario_atual', 'auth.logout'}
+
+
 @jwt.user_lookup_loader
 def usuario_do_token(jwt_header, jwt_payload):
     """Usuário inexistente ou desativado não usa o token (ticket 26).
 
     Sem isso o token de um Usuário apagado seguia válido até expirar, e a rota
     falhava adiante (FK -> 400). Uma consulta por requisição autenticada.
+
+    Com a Senha temporária pendente, só as ROTAS_LIVRES_NA_TROCA respondem. Vale a
+    flag do banco, além do claim: um access emitido antes da redefinição não tem o
+    claim e também fica preso.
     """
     usuario = rotas_auth.acesso_repository.usuario(jwt_payload['sub'])
-    return usuario if usuario and usuario['ativo'] else None
+    if not usuario or not usuario['ativo']:
+        return None
+    pendente = usuario.get('deve_trocar_senha') or jwt_payload.get('deve_trocar_senha')
+    if pendente and request.endpoint not in ROTAS_LIVRES_NA_TROCA:
+        raise TrocaDeSenhaObrigatoria
+    return usuario
 
 
 @jwt.user_lookup_error_loader
@@ -199,6 +216,11 @@ def entrada_fora_do_modelo(erro):
     return resposta_erro(
         400, CodigoErro.DADOS_INVALIDOS, 'Dados inválidos', detalhes_de_validacao(erro.errors(include_url=False)),
     )
+
+
+@app.errorhandler(TrocaDeSenhaObrigatoria)
+def troca_de_senha_obrigatoria(_erro):
+    return resposta_erro(403, CodigoErro.TROCA_DE_SENHA_OBRIGATORIA, 'Defina uma nova senha para continuar')
 
 
 @app.errorhandler(Conflito)

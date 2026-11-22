@@ -4,10 +4,15 @@ import { useSessao } from '../auth/SessaoContext';
 import type { RespostaMe, RespostaPermissoes } from './tipos';
 
 export function useUsuarioAtual() {
-  const { cliente } = useSessao();
+  const { cliente, trocaObrigatoria } = useSessao();
   return useQuery({
     queryKey: ['usuario', 'me'],
-    queryFn: () => cliente.requisitar<RespostaMe>('/auth/me'),
+    queryFn: async () => {
+      const me = await cliente.requisitar<RespostaMe>('/auth/me');
+      // O /auth/me responde mesmo com a Senha temporária pendente: a flag leva à tela de troca.
+      if (me.deve_trocar_senha) trocaObrigatoria();
+      return me;
+    },
     select: (r) => r.usuario,
   });
 }
