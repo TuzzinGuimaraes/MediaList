@@ -1,0 +1,135 @@
+name: deploy
+
+# Publica web + API num só projeto Vercel (ADR-0013): CI verde, migração com o
+# dono, grants, e só então o deploy. Qualquer etapa que falhe para as seguintes,
+# então o código novo nunca roda num schema velho. A integração Git da Vercel
+# fica desligada (vercel.json), então só este workflow publica.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# Um deploy por vez; um novo espera o anterior terminar em vez de cancelá-lo
+# no meio de uma migração.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # CLI fixa: o build local (vercel build) foi verificado com esta versão.
+  VERCEL_CLI_VERSION: 66.6.0
+  VERCEL_PROJECT: medialist
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  migrar:
+    name: Migração (alembic upgrade head)
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: Backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: Backend
+        run: pip install -r requirements.txt
+
+      # O env.py do Alembic usa database_url(dono=True), que lê a DATABASE_OWNER_URL.
+      - name: alembic upgrade head
+        working-directory: Backend
+        env:
+          DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
+        run: python -m alembic upgrade head
+
+  grants:
+    name: Grants
+    needs: migrar
+    uses: ./.github/workflows/db-grants.yml
+    secrets:
+      DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  vercel:
+    name: Deploy na Vercel
+    needs: grants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Opcional (variável do repositório): o time da Vercel, se a conta tiver mais de um.
+      VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+
+      # O serviço api (vercel.json) roda em Python 3.14 (Backend/.python-version);
+      # o vercel build instala as dependências com o uv.
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install Vercel CLI e uv
+        run: |
+          npm install --global "vercel@${VERCEL_CLI_VERSION}"
+          pip install uv==0.13.9
+
+      # Cria o projeto na primeira vez e liga o checkout a ele. O token vai pela
+      # variável VERCEL_TOKEN, que a CLI lê, e não na linha de comando.
+      - name: vercel link
+        run: |
+          escopo=()
+          if [ -n "$VERCEL_SCOPE" ]; then escopo=(--scope "$VERCEL_SCOPE"); fi
+          if ! vercel project inspect "$VERCEL_PROJECT" "${escopo[@]}" > /dev/null; then
+            vercel project create "$VERCEL_PROJECT" "${escopo[@]}"
+          fi
+          vercel link --yes --project "$VERCEL_PROJECT" "${escopo[@]}"
+
+      # Variáveis de runtime da função, gravadas a cada deploy a partir dos
+      # secrets (o valor vai pelo stdin, fora do log e da linha de comando).
+      - name: Variáveis de ambiente da produção
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        run: |
+          gravar() {
+            printf '%s' "$2" | vercel env add "$1" --environment production --force --yes "$3"
+          }
+          gravar APP_ENV production --no-sensitive
+          gravar DB_POOL_MIN 0 --no-sensitive
+          gravar DB_POOL_MAX 3 --no-sensitive
+          gravar DATABASE_URL "$DATABASE_URL" --sensitive
+          gravar JWT_SECRET_KEY "$JWT_SECRET_KEY" --sensitive
+
+      - name: vercel pull
+        run: vercel pull --yes --environment=production
+
+      - name: vercel build
+        run: vercel build --prod
+
+      - name: vercel deploy
+        run: vercel deploy --prebuilt --prod

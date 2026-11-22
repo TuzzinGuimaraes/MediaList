@@ -1,12 +1,14 @@
 name: CI
 
 # push só na master; branches de trabalho rodam pelo pull_request. Assim um push
-# num PR aberto dispara uma execução, não duas.
+# num PR aberto dispara uma execução, não duas. O workflow deploy chama este
+# (workflow_call) antes de migrar e publicar.
 on:
   push:
     branches: [master]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 # Um push novo no mesmo PR (ou na mesma branch) cancela a execução anterior.
 concurrency:
@@ -17,6 +19,22 @@ permissions:
   contents: read
 
 jobs:
+  # Lint dos próprios workflows (com shellcheck nos `run:`, já instalado no runner).
+  # Script e binário fixos na mesma versão.
+  actionlint:
+    name: Lint dos workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+
   backend:
     name: Backend Tests
     runs-on: ubuntu-latest
