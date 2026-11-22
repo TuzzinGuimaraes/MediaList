@@ -34,7 +34,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
-	@printf "  make services-up       Sobe o web (serviço frontend), o backend e o PostgreSQL via Docker\n"
+	@printf "  make services-up       Builda e sobe o web (serviço frontend), o backend e o PostgreSQL via Docker\n"
 	@printf "  make compose-build     Rebuilda as imagens Docker do backend e do web (serviço frontend)\n"
 	@printf "  make db-migrate        Aplica as migrações pendentes (alembic upgrade head, serviço migrate)\n"
 	@printf "  make db-revision MSG=\"...\" Cria uma revisão nova em Backend/migrations/versions\n"
@@ -81,7 +81,7 @@ compose-build:
 	$(DOCKER_COMPOSE) build backend frontend
 
 services-up:
-	$(DOCKER_COMPOSE) up -d postgres backend frontend
+	$(DOCKER_COMPOSE) up -d --build postgres backend frontend
 
 services-down:
 	$(DOCKER_COMPOSE) down
