@@ -49,6 +49,7 @@ def redefinir(email: str) -> str | None:
     from werkzeug.security import generate_password_hash
 
     import banco
+    from repositories import RefreshTokenRepository
 
     senha = gerar_senha()
     with banco.transacao() as t:
@@ -63,10 +64,7 @@ def redefinir(email: str) -> str | None:
         )
         if not usuario:
             return None
-        t.executar(
-            'UPDATE refresh_tokens SET revogado = TRUE WHERE id_usuario = %s AND revogado = FALSE',
-            (usuario['id_usuario'],),
-        )
+        RefreshTokenRepository().revogar_do_usuario(usuario['id_usuario'], t)
     return senha
 
 
