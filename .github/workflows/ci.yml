@@ -20,11 +20,16 @@ permissions:
 
 jobs:
   # Lint dos próprios workflows (com shellcheck nos `run:`, já instalado no runner).
-  # Script e binário fixos na mesma versão.
+  # Binário fixo, conferido pelo sha256 antes de rodar (como o age no backup).
   actionlint:
     name: Lint dos workflows
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      # sha256 do actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz (digest do release no GitHub).
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 
     steps:
       - name: Checkout
@@ -32,7 +37,10 @@ jobs:
 
       - name: actionlint
         run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          arquivo="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${arquivo}"
+          echo "${ACTIONLINT_SHA256}  ${arquivo}" | sha256sum --check --strict
+          tar -xzf "$arquivo" actionlint
           ./actionlint -color
 
   backend:
