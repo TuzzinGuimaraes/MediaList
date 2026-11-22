@@ -372,6 +372,7 @@
           "token_revogado",
           "sessao_invalida",
           "acesso_negado",
+          "troca_de_senha_obrigatoria",
           "nao_encontrado",
           "metodo_nao_permitido",
           "conflito",
@@ -1591,6 +1592,26 @@
           "senha"
         ],
         "title": "CorpoRegistro",
+        "type": "object"
+      },
+      "CorpoTrocarSenha": {
+        "properties": {
+          "nova_senha": {
+            "minLength": 6,
+            "title": "Nova Senha",
+            "type": "string"
+          },
+          "senha_atual": {
+            "minLength": 1,
+            "title": "Senha Atual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "senha_atual",
+          "nova_senha"
+        ],
+        "title": "CorpoTrocarSenha",
         "type": "object"
       },
       "EdicaoItemLista": {
@@ -4315,6 +4336,11 @@
             "title": "Access Token",
             "type": "string"
           },
+          "deve_trocar_senha": {
+            "description": "Entrou com uma Senha temporária: o cliente leva à troca de senha, e as rotas autenticadas respondem 403 `troca_de_senha_obrigatoria` até lá",
+            "title": "Deve Trocar Senha",
+            "type": "boolean"
+          },
           "refresh_token": {
             "anyOf": [
               {
@@ -4334,19 +4360,26 @@
         "required": [
           "access_token",
           "refresh_token",
-          "usuario"
+          "usuario",
+          "deve_trocar_senha"
         ],
         "title": "RespostaLogin",
         "type": "object"
       },
       "RespostaMe": {
         "properties": {
+          "deve_trocar_senha": {
+            "description": "Senha temporária ainda não trocada",
+            "title": "Deve Trocar Senha",
+            "type": "boolean"
+          },
           "usuario": {
             "$ref": "#/components/schemas/UsuarioAtual"
           }
         },
         "required": [
-          "usuario"
+          "usuario",
+          "deve_trocar_senha"
         ],
         "title": "RespostaMe",
         "type": "object"
@@ -4860,6 +4893,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4917,6 +4960,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -5154,6 +5207,84 @@
         ]
       }
     },
+    "/api/auth/trocar-senha": {
+      "post": {
+        "description": "Encerra as outras sessões, revoga o access usado e devolve um par novo, sem o claim `deve_trocar_senha`. No web (`X-Cliente: web`) o refresh vai no cookie.",
+        "operationId": "post__api_auth_trocar-senha",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoTrocarSenha"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaRefresh"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Trocar a própria senha; com a Senha temporária pendente, é a única saída além do logout.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/avaliacoes": {
       "post": {
         "description": "",
@@ -5199,6 +5330,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -5672,6 +5813,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "422": {
             "content": {
@@ -7199,6 +7350,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7754,6 +7915,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -7811,6 +7982,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "422": {
             "content": {
@@ -7903,6 +8084,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -7979,6 +8170,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8037,6 +8238,16 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8094,6 +8305,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -8162,6 +8383,16 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "422": {
             "content": {

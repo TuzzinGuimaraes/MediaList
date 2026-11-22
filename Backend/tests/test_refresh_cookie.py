@@ -25,6 +25,8 @@ def login(client, monkeypatch):
         'senha_hash': generate_password_hash('senha123'),
         'ativo': True,
         'nivel_acesso': 'usuario',
+        'deve_trocar_senha': False,
+        'senha_temporaria_expira_em': None,
     }}).instalar(monkeypatch, auth_routes)
 
     def _login(headers=None):

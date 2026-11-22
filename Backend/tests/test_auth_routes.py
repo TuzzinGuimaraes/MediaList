@@ -74,6 +74,8 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
         'senha_hash': generate_password_hash('senha123'),
         'ativo': True,
         'nivel_acesso': 'usuario',
+        'deve_trocar_senha': False,
+        'senha_temporaria_expira_em': None,
     }})
 
     response = client.post('/api/auth/login', json={
@@ -84,7 +86,8 @@ def test_login_autentica_e_retorna_token(client, monkeypatch):
     data = response.get_json()
     assert response.status_code == 200
     # `token` (cópia de `access_token`) saiu: nenhum cliente lia.
-    assert set(data) == {'access_token', 'refresh_token', 'usuario'}
+    assert set(data) == {'access_token', 'refresh_token', 'usuario', 'deve_trocar_senha'}
+    assert data['deve_trocar_senha'] is False
     assert data['usuario'] == {
         'id': 'USR-LOGIN-1',
         'nome': 'Usuário Login',
@@ -128,6 +131,7 @@ def test_me_retorna_usuario_autenticado(client, auth_headers, monkeypatch):
         'nome_completo': 'Usuário Atual',
         'email': 'atual@example.com',
         'foto_perfil': None,
+        'deve_trocar_senha': False,
     }})
 
     response = client.get('/api/auth/me', headers=auth_headers)
@@ -138,7 +142,7 @@ def test_me_retorna_usuario_autenticado(client, auth_headers, monkeypatch):
         'nome_completo': 'Usuário Atual',
         'email': 'atual@example.com',
         'foto_perfil': None,
-    }}
+    }, 'deve_trocar_senha': False}
 
 
 def test_me_sem_token_retorna_401(client):

@@ -84,7 +84,7 @@ def criar_avaliacao(json: CorpoNovaAvaliacao):
 @avaliacoes_bp.route('/<string:avaliacao_id>', methods=['PUT'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=AvaliacaoEditada, HTTP_400=Erro, HTTP_403=Erro, **ERROS_AUTENTICADA),
+    resp=Response(HTTP_200=AvaliacaoEditada, HTTP_400=Erro, **ERROS_AUTENTICADA),
     tags=['avaliacoes'], security=AUTENTICADO,
 )
 def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
@@ -98,7 +98,7 @@ def editar_avaliacao(avaliacao_id, json: CorpoEdicaoAvaliacao):
 @avaliacoes_bp.route('/<string:avaliacao_id>', methods=['DELETE'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=Mensagem, HTTP_403=Erro, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA),
     tags=['avaliacoes'], security=AUTENTICADO,
 )
 def deletar_avaliacao(avaliacao_id):

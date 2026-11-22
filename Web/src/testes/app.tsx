@@ -30,7 +30,7 @@ export const adminBia: UsuarioDaSessao = {
 
 /** Login do web: o refresh vai no cookie (que o teste não vê), e o corpo leva `refresh_token: null`. */
 export function loginOk(usuario: UsuarioDaSessao = usuarioAna, access = 'A1'): Resposta {
-  const corpo: Esquemas['RespostaLogin'] = { access_token: access, refresh_token: null, usuario };
+  const corpo: Esquemas['RespostaLogin'] = { access_token: access, refresh_token: null, usuario, deve_trocar_senha: false };
   return { status: 200, corpo };
 }
 
@@ -38,6 +38,7 @@ export function loginOk(usuario: UsuarioDaSessao = usuarioAna, access = 'A1'): R
 export function rotasDaSessao(usuario: UsuarioDaSessao = usuarioAna): Rotas {
   const me: Esquemas['RespostaMe'] = {
     usuario: { id_usuario: usuario.id, nome_completo: usuario.nome, email: usuario.email, foto_perfil: null },
+    deve_trocar_senha: false,
   };
   const permissoes: Esquemas['RespostaPermissoes'] = { permissoes: usuario.permissoes };
   return {

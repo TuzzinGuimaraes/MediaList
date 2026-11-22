@@ -9,6 +9,7 @@ const me: { status: 200; corpo: RespostaMe } = {
   status: 200,
   corpo: {
     usuario: { id_usuario: 'USR-20261106-00007', nome_completo: 'Ana Souza', email: 'ana@exemplo.com', foto_perfil: null },
+    deve_trocar_senha: false,
   },
 };
 const permissoes: { status: 200; corpo: RespostaPermissoes } = {
