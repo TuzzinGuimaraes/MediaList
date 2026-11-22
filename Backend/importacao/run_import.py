@@ -35,7 +35,14 @@ def executar_importacao(tipo_midia: str, origem: str, funcao, *args, **kwargs) -
 def main():
     parser = argparse.ArgumentParser(description='Importador de mídias para MediaList DB')
     parser.add_argument('--tipo', choices=['anime', 'manga', 'jogo', 'todos'], default='todos')
-    parser.add_argument('--paginas', type=int, default=20, help='Número de páginas a importar')
+    parser.add_argument(
+        '--paginas', type=int, default=20,
+        help='Número de páginas a importar, a partir do cursor de cada Tipo de mídia',
+    )
+    parser.add_argument(
+        '--do-inicio', action='store_true',
+        help='Ignora o cursor da Importação e recomeça da página 1',
+    )
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
     args = parser.parse_args()
     configurar_log()
@@ -45,20 +52,25 @@ def main():
 
     if args.tipo in ('anime', 'todos'):
         print('=== Importando Animes (AniList) ===')
-        stats, erro_fatal = executar_importacao('anime', 'AniList', importar_animes, paginas=args.paginas)
+        stats, erro_fatal = executar_importacao(
+            'anime', 'AniList', importar_animes, paginas=args.paginas, do_inicio=args.do_inicio
+        )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
 
     if args.tipo in ('manga', 'todos'):
         print('=== Importando Mangás (AniList) ===')
-        stats, erro_fatal = executar_importacao('manga', 'AniList', importar_mangas, paginas=args.paginas)
+        stats, erro_fatal = executar_importacao(
+            'manga', 'AniList', importar_mangas, paginas=args.paginas, do_inicio=args.do_inicio
+        )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
 
     if args.tipo in ('jogo', 'todos'):
         print('=== Importando Jogos (RAWG) ===')
         stats, erro_fatal = executar_importacao(
-            'jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers
+            'jogo', 'RAWG', importar_jogos, paginas=args.paginas, workers=args.workers,
+            do_inicio=args.do_inicio,
         )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal

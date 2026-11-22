@@ -1,4 +1,5 @@
 """Importação robusta (ticket 08): rate limit, páginas com falha, RAWG sem chave, segredo fora do log."""
+import pytest
 import requests
 
 from importacao import anilist
@@ -41,6 +42,18 @@ class _SessaoFixa:
 class _SemEspera:
     def wait(self):
         pass
+
+
+@pytest.fixture(autouse=True)
+def cursor_em_memoria(monkeypatch):
+    """Estes testes não têm banco: o cursor da Importação fica num dict
+    (o comportamento dele no PostgreSQL está em test_importacao_cursor_pg)."""
+    from importacao import cursor
+
+    paginas = {}
+    monkeypatch.setattr(cursor, 'ler', lambda tipo: paginas.get(tipo, 1))
+    monkeypatch.setattr(cursor, 'gravar', lambda tipo, pagina: paginas.__setitem__(tipo, pagina))
+    return paginas
 
 
 def test_anilist_429_persistente_vira_pagina_com_falha_sem_laco():
@@ -133,14 +146,14 @@ def _preparar_jogos(monkeypatch, tmp_path, sessao, chave=CHAVE):
     return importar_jogos
 
 
-def test_pagina_de_jogos_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
+def test_pagina_de_jogos_com_falha_aparece_no_resumo_e_encerra_os_jogos(monkeypatch, capsys, tmp_path):
     url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
     _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
 
     _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
 
     saida = capsys.readouterr().out
-    assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1, 2]' in saida
+    assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1]' in saida
 
 
 

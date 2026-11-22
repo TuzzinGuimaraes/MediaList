@@ -3,6 +3,7 @@ Importador de mangás via AniList.
 """
 from __future__ import annotations
 
+from importacao import cursor
 from importacao.anilist import importar_do_anilist
 from importacao.db import salvar_manga
 from importacao.utils import (
@@ -103,14 +104,17 @@ def processar_e_inserir_manga(manga: dict):
     return result
 
 
-def importar_mangas(paginas: int = 20):
+def importar_mangas(paginas: int = 20, do_inicio: bool = False):
     """Executa a importação em lote de mangás."""
     stats = ImportStats(tipo_midia='manga', origem='AniList')
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
 
     try:
-        for pagina in importar_do_anilist('MANGA', paginas, session=session, rate_limiter=rate_limiter):
+        inicio = cursor.iniciar('manga', do_inicio)
+        for pagina in importar_do_anilist(
+            'MANGA', paginas, session=session, rate_limiter=rate_limiter, pagina_inicial=inicio
+        ):
             if pagina.get('erro'):
                 stats.registrar_falha_pagina(pagina['pagina'])
                 registrar_falha_importacao(
@@ -121,7 +125,8 @@ def importar_mangas(paginas: int = 20):
                     payload=pagina.get('payload'),
                     extra={'pagina': pagina['pagina'], 'etapa': 'listar_pagina'},
                 )
-                continue
+                # Sem avançar o cursor: a próxima execução tenta esta página de novo.
+                break
 
             for item in pagina['itens']:
                 try:
@@ -138,6 +143,9 @@ def importar_mangas(paginas: int = 20):
                         payload=item,
                         extra={'pagina': pagina['pagina']},
                     )
+
+            # No fim da fonte, volta à página 1 e passa a atualizar as Mídias já importadas.
+            cursor.gravar('manga', 1 if pagina.get('fim') else pagina['pagina'] + 1)
 
         logger.info('Importação de mangás concluída. %s', stats.to_dict())
         if stats.falhas:
