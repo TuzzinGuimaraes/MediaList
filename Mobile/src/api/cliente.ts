@@ -1,3 +1,5 @@
+import { TROCA_DE_SENHA_OBRIGATORIA } from '@dominio/conta';
+
 import { ErroRede, erroDaResposta } from './erros';
 import type { RespostaRefresh } from './tipos';
 
@@ -10,6 +12,8 @@ export type FonteTokens = {
   renovados(tokens: Tokens): Promise<void>;
   /** A sessão não pôde ser renovada: limpar e voltar ao login. */
   expirada(): Promise<void>;
+  /** A API respondeu 403 `troca_de_senha_obrigatoria`: a Senha temporária ainda não foi trocada. */
+  trocaObrigatoria(): void;
 };
 
 /** Rotas em que um 401 é a resposta final (credenciais erradas, refresh inválido). */
@@ -46,8 +50,10 @@ export function criarCliente(baseUrl: string, fonte: FonteTokens): Cliente {
 
   async function ler<T>(resposta: Response): Promise<T> {
     const corpo = await resposta.json().catch(() => null);
-    if (!resposta.ok) throw erroDaResposta(resposta.status, corpo);
-    return corpo as T;
+    if (resposta.ok) return corpo as T;
+    const erro = erroDaResposta(resposta.status, corpo);
+    if (erro.status === 403 && erro.codigo === TROCA_DE_SENHA_OBRIGATORIA) fonte.trocaObrigatoria();
+    throw erro;
   }
 
   // Um refresh por vez, compartilhado: o refresh token é rotativo (ADR 0006), e dois

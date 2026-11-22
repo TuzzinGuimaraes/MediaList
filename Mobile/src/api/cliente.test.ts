@@ -3,7 +3,12 @@ import { simularFetch } from '../testes/fetchSimulado';
 import { criarCliente } from './cliente';
 import { ErroApi } from './erros';
 
-const semSessao = { atuais: () => null, renovados: async () => {}, expirada: async () => {} };
+const semSessao = {
+  atuais: () => null,
+  renovados: async () => {},
+  expirada: async () => {},
+  trocaObrigatoria: jest.fn(),
+};
 const cliente = criarCliente('http://api.teste/api', semSessao);
 
 async function falha(promessa: Promise<unknown>): Promise<ErroApi> {
@@ -38,5 +43,18 @@ describe('erro da API', () => {
     expect(e.message).toBe('Erro 502');
     expect(e.codigo).toBeNull();
     expect(e.detalhes).toBeNull();
+  });
+
+  it('o 403 troca_de_senha_obrigatoria avisa a sessão; outro 403, não', async () => {
+    simularFetch({
+      'GET /lista': erro(403, 'acesso_negado', 'Acesso negado'),
+      'GET /usuario/permissoes': erro(403, 'troca_de_senha_obrigatoria', 'Defina uma nova senha para continuar'),
+    });
+
+    expect((await falha(cliente.requisitar('/lista'))).codigo).toBe('acesso_negado');
+    expect(semSessao.trocaObrigatoria).not.toHaveBeenCalled();
+
+    expect((await falha(cliente.requisitar('/usuario/permissoes'))).codigo).toBe('troca_de_senha_obrigatoria');
+    expect(semSessao.trocaObrigatoria).toHaveBeenCalledTimes(1);
   });
 });
