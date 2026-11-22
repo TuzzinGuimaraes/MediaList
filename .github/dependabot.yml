@@ -19,6 +19,13 @@ updates:
       web:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # @types/node acompanha o Node da imagem (LTS 24), que sobe à mão.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 espera o typescript-eslint suportar (peer < 7 em 2026-11).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /Mobile
@@ -42,6 +49,10 @@ updates:
       - dependency-name: "react-native-*"
       - dependency-name: "nativewind"
       - dependency-name: "tailwindcss"
+      # Também fixados pelo SDK (`npx expo install --check`).
+      - dependency-name: "@react-native-community/datetimepicker"
+      - dependency-name: "babel-preset-expo"
+      - dependency-name: "jest-expo"
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
