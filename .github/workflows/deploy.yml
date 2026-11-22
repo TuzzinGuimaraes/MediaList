@@ -31,6 +31,10 @@ jobs:
   migrar:
     name: Migração (alembic upgrade head)
     needs: ci
+    # Secrets e produção só a partir da master ou de uma tag v* (um workflow_dispatch
+    # noutra branch para aqui). O environment production repete a regra no GitHub.
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -59,6 +63,8 @@ jobs:
   grants:
     name: Grants
     needs: migrar
+    # O environment production fica no job do db-grants (job que chama não aceita).
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/db-grants.yml
     secrets:
       DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
@@ -67,11 +73,16 @@ jobs:
   vercel:
     name: Deploy na Vercel
     needs: grants
+    # Secrets e produção só a partir da master ou de uma tag v* (um workflow_dispatch
+    # noutra branch para aqui). O environment production repete a regra no GitHub.
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # O VERCEL_TOKEN vai só nos steps que chamam a CLI da Vercel, não no job:
+    # o npm install e o pip install não o enxergam.
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       # Opcional (variável do repositório): o time da Vercel, se a conta tiver mais de um.
       VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}
 
@@ -101,6 +112,8 @@ jobs:
       # Cria o projeto na primeira vez e liga o checkout a ele. O token vai pela
       # variável VERCEL_TOKEN, que a CLI lê, e não na linha de comando.
       - name: vercel link
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           escopo=()
           if [ -n "$VERCEL_SCOPE" ]; then escopo=(--scope "$VERCEL_SCOPE"); fi
@@ -113,6 +126,7 @@ jobs:
       # secrets (o valor vai pelo stdin, fora do log e da linha de comando).
       - name: Variáveis de ambiente da produção
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         run: |
@@ -126,10 +140,16 @@ jobs:
           gravar JWT_SECRET_KEY "$JWT_SECRET_KEY" --sensitive
 
       - name: vercel pull
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel pull --yes --environment=production
 
       - name: vercel build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel build --prod
 
       - name: vercel deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod
