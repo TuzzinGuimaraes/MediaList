@@ -45,6 +45,9 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   valores distintos e ordenados dos filtros `plataforma` e `estudio` de `GET /midias`, para os
   clientes oferecerem opções em vez de texto livre. Plataformas só nos jogos, estúdios só nos
   animes; o que não se aplica ao Tipo vem vazio, e sem Tipo vêm os dois.
+- **Ping:** `GET /ping` é público e responde 200 `{status: 'ok'}` sem tocar no banco, para o
+  monitor externo não manter a Neon acordada (ADR-0013). O `GET /health` segue medindo o
+  PostgreSQL (503 sem ele).
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
