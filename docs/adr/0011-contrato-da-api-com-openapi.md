@@ -24,8 +24,18 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   `dados_invalidos`, inclusive os que antes eram ignorados ou caíam num padrão (Tipo ou ordem
   desconhecidos, `refresh_token` que não é texto, `?nao_lidas=` inválido).
 - **Erros declarados:** cada rota declara os erros que devolve. As autenticadas somam
-  `ERROS_AUTENTICADA` (401 e o 422 do token malformado), e as com `admin_required` (ADR 0012) somam
-  `ERROS_COM_PERMISSAO` (mais o 403), os dois em `contrato.py`.
+  `ERROS_AUTENTICADA` (401, o 403 `troca_de_senha_obrigatoria` e o 422 do token malformado), que
+  já cobre o 403 das com `admin_required` (ADR 0012); `ERROS_COM_PERMISSAO` é o mesmo conjunto.
+  Os dois ficam em `contrato.py`.
+- **Senha temporária (spec `producao`):** login e `GET /auth/me` devolvem `deve_trocar_senha`, e
+  o access token de quem entrou com uma Senha temporária leva o claim `deve_trocar_senha` (o
+  refresh mantém). Enquanto a flag do Usuário estiver no banco, toda rota autenticada responde
+  403 `troca_de_senha_obrigatoria`, salvo `/auth/trocar-senha`, `/auth/me` e `/auth/logout`; vale
+  a flag do banco, então um access emitido antes da redefinição também fica preso.
+  `POST /auth/trocar-senha {senha_atual, nova_senha}` serve a qualquer Usuário: senha atual
+  errada ou nova igual à atual respondem 400 `dados_invalidos` com `detalhes`, a nova segue o
+  mínimo do registro (6), e a troca encerra as outras sessões, revoga o access usado e devolve
+  `{access_token, refresh_token}` (no web, o refresh no cookie).
 - **Paginação:** `Pagina[T]` = `{itens, pagina, por_pagina, total}` em `GET /midias`, nas
   Avaliações de uma Mídia, nas Notícias e nos Usuários da moderação. Lista pessoal, gêneros,
   trending, populares e Notificações ficam sem paginação.
