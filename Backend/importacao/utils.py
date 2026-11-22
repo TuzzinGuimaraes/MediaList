@@ -220,13 +220,15 @@ def registrar_falha_importacao(
         'identificador': identificador,
         'titulo': titulo,
         'erro_tipo': exc.__class__.__name__,
-        'erro': str(exc),
+        'erro': ocultar_segredos(str(exc)),
         'payload': payload,
         'extra': extra or {},
-        'traceback': traceback_text,
+        'traceback': ocultar_segredos(traceback_text),
     }
 
     ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Campos já ocultados acima (a chave crua não depende do escape do JSON) e a linha
+    # inteira de novo, para o payload e o extra.
     with ERROR_LOG_PATH.open('a', encoding='utf-8') as handle:
         handle.write(ocultar_segredos(json.dumps(record, ensure_ascii=False, default=str)))
         handle.write('\n')
@@ -236,7 +238,7 @@ def registrar_falha_importacao(
         titulo or identificador or 'item_sem_identificador',
         tipo_midia,
         origem,
-        ocultar_segredos(str(exc)),
+        record['erro'],
     )
 
 

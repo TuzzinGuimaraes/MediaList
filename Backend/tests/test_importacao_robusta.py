@@ -237,3 +237,47 @@ def test_config_da_importacao_vem_do_config_do_backend():
     assert config_importacao.ANILIST_URL == config.ANILIST_API_URL
     assert config_importacao.RAWG_API_KEY == config.RAWG_API_KEY
     assert config_importacao.RAWG_BASE_URL == config.RAWG_API_URL
+
+
+def test_falha_http_real_com_a_chave_na_url_nao_vaza_no_jsonl_nem_no_log(monkeypatch, tmp_path, capsys):
+    """Sessão real (urllib3 com retry) contra um servidor local que derruba a conexão: o aviso
+    de retry e o erro levam a URL com `?key=`; nem o jsonl nem o arquivo de log levam a chave."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from importacao import importar_jogos, utils
+
+    class DerrubaAConexao(BaseHTTPRequestHandler):
+        """Fecha a conexão sem responder: o urllib3 avisa `Retrying ... after connection
+        broken ...: /api/games?key=...` e, esgotado, o requests levanta ConnectionError."""
+
+        def do_GET(self):
+            self.close_connection = True
+
+        def log_message(self, *args):
+            pass
+
+    servidor = HTTPServer(('127.0.0.1', 0), DerrubaAConexao)
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+
+    sessao_real = utils.criar_sessao_http
+    monkeypatch.setattr(utils, 'LOG_PATH', tmp_path / 'importacao.log')
+    monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
+    monkeypatch.setattr(importar_jogos, 'RAWG_API_KEY', CHAVE)
+    monkeypatch.setattr(importar_jogos, 'RAWG_BASE_URL', f'http://127.0.0.1:{servidor.server_port}/api')
+    monkeypatch.setattr(
+        importar_jogos, 'criar_sessao_http', lambda **kw: sessao_real(total_retries=2, backoff_factor=0)
+    )
+    try:
+        with pytest.raises(SystemExit):
+            _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '1')
+    finally:
+        servidor.shutdown()
+        utils.remover_log()
+
+    jsonl = (tmp_path / 'erros.jsonl').read_text(encoding='utf-8')
+    log = (tmp_path / 'importacao.log').read_text(encoding='utf-8')
+    assert 'key=***' in jsonl
+    assert 'Retrying' in log  # o aviso do urllib3 passou pelo handler da Importação
+    for texto in (jsonl, log, capsys.readouterr().err):
+        assert CHAVE not in texto
