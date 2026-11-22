@@ -1,0 +1,47 @@
+name: db-grants
+
+# Reaplica o usuário da aplicação e os grants (só DML) no Neon, com o mesmo SQL
+# do dev (docker/postgres-init/01-app-user.sh). Idempotente. O deploy chama este
+# workflow depois da migração, para que tabelas novas não fiquem inacessíveis.
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      DATABASE_OWNER_URL:
+        required: true
+      DATABASE_URL:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  grants:
+    name: Grants do usuário da aplicação
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # O script conecta como o dono pela DATABASE_OWNER_URL. Usuário e senha da
+      # aplicação saem da DATABASE_URL; a senha é mascarada antes de qualquer
+      # outro comando e vai ao psql como variável (-v), nunca no texto do SQL.
+      - name: Aplicar grants
+        env:
+          DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          parte() {
+            python3 -c 'import os, sys, urllib.parse as u; print(u.unquote(getattr(u.urlsplit(os.environ["DATABASE_URL"]), sys.argv[1]) or ""))' "$1"
+          }
+          DB_PASSWORD="$(parte password)"
+          echo "::add-mask::$DB_PASSWORD"
+          DB_USER="$(parte username)"
+          if [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "::error::DATABASE_URL sem usuário ou senha"
+            exit 1
+          fi
+          export DB_USER DB_PASSWORD
+          sh docker/postgres-init/01-app-user.sh

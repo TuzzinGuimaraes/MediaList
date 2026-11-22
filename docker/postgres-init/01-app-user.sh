@@ -23,6 +23,8 @@ fi
 
 psql -v ON_ERROR_STOP=1 --no-psqlrc "$@" \
     -v app_user="$DB_USER" -v app_password="$DB_PASSWORD" <<'SQL'
+-- Erro sem o trecho do comando (o CREATE ROLE leva a senha): log do Actions.
+\set VERBOSITY terse
 -- Só cria se não existir; um papel existente fica como está (senha inclusive).
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')
