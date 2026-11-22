@@ -98,7 +98,13 @@ def importar(pg, monkeypatch):
         monkeypatch.setattr(modulo, 'criar_sessao_http', lambda **kw: fonte)
         monkeypatch.setattr(modulo, 'RateLimiter', _SemEspera)
         monkeypatch.setattr(sys, 'argv', ['run_import', '--tipo', tipo, *argv])
-        run_import.main()
+        try:
+            run_import.main()
+            codigo = 0
+        except SystemExit as saida:
+            codigo = saida.code
+        # Página com falha sai com erro (workflow importacao vermelho); sem falha, não.
+        assert codigo == (1 if fonte.falha_em & set(fonte.pedidas) else 0)
         return fonte.pedidas
 
     return _importar
