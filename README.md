@@ -319,6 +319,9 @@ docker compose run --rm backend python -m importacao.run_import --tipo jogo --pa
 docker compose run --rm backend python -m importacao.run_import --tipo todos --paginas 10
 ```
 
+Cada execução continua, por Tipo de mídia, da página onde a anterior parou (tabela
+`importacao_cursor`); `--do-inicio` ignora o cursor e recomeça da página 1.
+
 ### Variáveis importantes
 
 As configurações são lidas de [Backend/config.py](Backend/config.py) e [Backend/importacao/config.py](Backend/importacao/config.py).

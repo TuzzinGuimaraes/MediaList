@@ -50,14 +50,23 @@ query ($page: Int, $perPage: Int, $tipo: MediaType) {
 """
 
 
-def importar_do_anilist(tipo: str, paginas: int = 20, session=None, rate_limiter: RateLimiter | None = None):
-    """Retorna páginas do AniList com tratamento tolerante a falhas."""
+def importar_do_anilist(
+    tipo: str,
+    paginas: int = 20,
+    session=None,
+    rate_limiter: RateLimiter | None = None,
+    pagina_inicial: int = 1,
+):
+    """Retorna `paginas` páginas do AniList a partir de `pagina_inicial`, tolerante a falhas.
+
+    Cada página traz `fim=True` quando o AniList avisa que não há próxima (`hasNextPage`).
+    """
     own_session = session is None
     session = session or criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = rate_limiter or RateLimiter(0.35)
-    pagina = 1
+    pagina = pagina_inicial
     try:
-        while pagina <= paginas:
+        while pagina < pagina_inicial + paginas:
             payload = {
                 'query': QUERY_ANILIST,
                 'variables': {'page': pagina, 'perPage': 50, 'tipo': tipo},
@@ -76,9 +85,10 @@ def importar_do_anilist(tipo: str, paginas: int = 20, session=None, rate_limiter
                 pagina += 1
                 continue
 
-            yield {'pagina': pagina, 'itens': data['media'], 'erro': None}
+            fim = not data['pageInfo']['hasNextPage']
+            yield {'pagina': pagina, 'itens': data['media'], 'erro': None, 'fim': fim}
 
-            if not data['pageInfo']['hasNextPage']:
+            if fim:
                 break
 
             pagina += 1

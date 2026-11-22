@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from threading import local
 
+from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.db import salvar_jogo
 from importacao.utils import (
@@ -114,7 +115,7 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict):
     return result
 
 
-def importar_jogos(paginas: int = 25, workers: int = 4):
+def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False):
     """Executa a importação em lote de jogos. Sem RAWG_API_KEY, pula com aviso."""
     stats = ImportStats(tipo_midia='jogo', origem='RAWG')
     if not RAWG_API_KEY:
@@ -126,7 +127,8 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
     rate_limiter = RateLimiter(0.25)
 
     try:
-        for pagina in range(1, paginas + 1):
+        inicio = cursor.iniciar('jogo', do_inicio)
+        for pagina in range(inicio, inicio + paginas):
             try:
                 rate_limiter.wait()
                 response = session.get(
@@ -152,7 +154,8 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
                     payload={'pagina': pagina},
                     extra={'pagina': pagina, 'etapa': 'listar_pagina'},
                 )
-                continue
+                # Sem avançar o cursor: a próxima execução tenta esta página de novo.
+                break
 
             def carregar_detalhe(jogo_basico: dict):
                 worker_session = _obter_sessao_rawg_worker()
@@ -186,7 +189,10 @@ def importar_jogos(paginas: int = 25, workers: int = 4):
                         extra={'pagina': pagina},
                     )
 
-            if not data.get('next'):
+            # No fim da fonte (`next` nulo), volta à página 1 e passa a atualizar as Mídias já importadas.
+            fim = not data.get('next')
+            cursor.gravar('jogo', 1 if fim else pagina + 1)
+            if fim:
                 break
 
         logger.info('Importação de jogos concluída. %s', stats.to_dict())
