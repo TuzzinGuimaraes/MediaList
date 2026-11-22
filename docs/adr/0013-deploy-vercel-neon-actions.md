@@ -9,7 +9,7 @@ O banco é o **Neon Free** (PostgreSQL 18, sa-east-1). O backend lê `DATABASE_U
 O **GitHub Actions** faz o resto:
 - **Deploy** por tag `v*` ou manual: CI verde → `alembic upgrade head` → grants → `vercel deploy --prebuilt --prod`. A integração Git da Vercel fica desligada: sem deploy automático e sem previews, que usariam o banco de produção.
 - **Importação** diária no runner, retomando de um cursor por Tipo de mídia guardado no banco. Não cabe nos 300 s de uma função.
-- **Backup** semanal: `pg_dump -Fc` cifrado com `age` antes de virar artefato, porque artefatos de repo público são baixáveis por qualquer conta do GitHub. A chave privada fica fora do GitHub.
+- **Backup** semanal: `pg_dump -Fc` cifrado com `age` antes de virar artefato, porque artefatos de repo público são baixáveis por qualquer conta do GitHub. A chave privada fica fora do GitHub. Restauração (instant restore da Neon e backup): `docs/backup-restauracao.md`.
 
 Sem email em produção (ticket 25 adiado): o admin redefine uma senha por um script local, que gera uma **senha temporária** aleatória de 24 h e obriga a troca no próximo acesso.
 
