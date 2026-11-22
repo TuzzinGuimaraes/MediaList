@@ -259,6 +259,40 @@ def test_trocar_senha_recusa(client, usuario, senha_atual, nova_senha, campo):
     assert client.get('/api/auth/me', headers=_bearer(access)).status_code == 200
 
 
+def test_trocar_senha_com_a_temporaria_vencida_responde_como_senha_atual_errada(client, usuario, temporaria):
+    """A Senha temporária vencida não vale para nada, nem para trocá-la: o admin gera outra."""
+    access = _login(client, usuario['email'], temporaria).get_json()['access_token']
+    banco.executar(
+        "UPDATE usuarios SET senha_temporaria_expira_em = now() - interval '1 second' WHERE email = %s",
+        (usuario['email'],),
+    )
+    errada = _trocar(client, access, 'senha-errada', 'minhaNova1')
+
+    vencida = _trocar(client, access, temporaria, 'minhaNova1')
+
+    assert (vencida.status_code, vencida.get_json()) == (400, errada.get_json())
+    assert _login(client, usuario['email'], 'minhaNova1').status_code == 401
+    linha = banco.consultar_um('SELECT deve_trocar_senha FROM usuarios WHERE email = %s', (usuario['email'],))
+    assert linha['deve_trocar_senha'] is True
+
+
+def test_trocar_senha_e_atomica_com_a_revogacao_das_sessoes(client, app, usuario, monkeypatch):
+    """Se a revogação dos refresh tokens falha, a senha nova também não fica (ADR-0006)."""
+    outra_sessao = _login(client, usuario['email'], SENHA).get_json()['refresh_token']
+
+    def falha(*args, **kwargs):
+        raise RuntimeError('revogação falhou')
+
+    monkeypatch.setattr(auth_routes.refresh_token_repository, 'revogar_do_usuario', falha)
+    app.config['PROPAGATE_EXCEPTIONS'] = False
+    resposta = _trocar(client, usuario['login']['access_token'], SENHA, 'outraSenha1')
+
+    assert resposta.status_code == 500
+    assert _login(client, usuario['email'], 'outraSenha1').status_code == 401
+    assert _login(client, usuario['email'], SENHA).status_code == 200
+    assert client.post('/api/auth/refresh', json={'refresh_token': outra_sessao}).status_code == 200
+
+
 def test_script_le_o_env_producao_quando_existe(tmp_path, monkeypatch):
     monkeypatch.delenv('REDEFINIR_SENHA_TESTE', raising=False)
     arquivo = tmp_path / '.env.producao'

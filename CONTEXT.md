@@ -77,7 +77,8 @@ A senha que o admin gera para um Usuário que esqueceu a dele (`make redefinir-s
 EMAIL=...`), já que o sistema não manda email. É aleatória, vale por 24 h e encerra as
 sessões abertas do Usuário. Quem entra com ela só consegue trocar a senha ou sair da conta:
 na interface aparece a tela "Defina sua nova senha", e a API recusa o resto com
-`troca_de_senha_obrigatoria`. Vencida, não entra, como uma senha errada.
+`troca_de_senha_obrigatoria`. Vencida, não vale para nada: não entra nem serve para a
+troca, como uma senha errada, e o admin gera outra.
 
 Não confundir com a recuperação por token (`/auth/esqueci-senha`), que depende de email e
 fica para o ticket 25.

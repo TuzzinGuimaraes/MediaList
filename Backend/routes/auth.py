@@ -13,7 +13,7 @@ from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, j
 from spectree import Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from banco import Conflito, consultar_um, executar
+from banco import Conflito, consultar_um, executar, transacao
 from config import APP_ENV, EM_PRODUCAO, REFRESH_TOKEN_EXPIRES
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from repositories import AcessoRepository, RefreshTokenRepository
@@ -325,8 +325,12 @@ def trocar_senha(json: CorpoTrocarSenha):
     `deve_trocar_senha`. No web (`X-Cliente: web`) o refresh vai no cookie.
     """
     id_usuario = get_jwt_identity()
-    usuario = consultar_um("SELECT senha_hash FROM usuarios WHERE id_usuario = %s", (id_usuario,))
-    if not usuario or not check_password_hash(usuario['senha_hash'], json.senha_atual):
+    usuario = consultar_um(
+        "SELECT senha_hash, deve_trocar_senha, senha_temporaria_expira_em FROM usuarios WHERE id_usuario = %s",
+        (id_usuario,),
+    )
+    # Senha temporária vencida não serve nem para trocá-la: o admin gera outra.
+    if not usuario or not _senha_confere(usuario, json.senha_atual):
         return resposta_erro(
             400, CodigoErro.DADOS_INVALIDOS, 'Senha atual incorreta', {'senha_atual': 'Senha atual incorreta'},
         )
@@ -334,15 +338,17 @@ def trocar_senha(json: CorpoTrocarSenha):
         motivo = 'A nova senha precisa ser diferente da atual'
         return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, motivo, {'nova_senha': motivo})
 
-    executar(
-        """
-        UPDATE usuarios
-        SET senha_hash = %s, deve_trocar_senha = FALSE, senha_temporaria_expira_em = NULL
-        WHERE id_usuario = %s
-        """,
-        (generate_password_hash(json.nova_senha), id_usuario),
-    )
-    refresh_token_repository.revogar_do_usuario(id_usuario)
+    # Senha nova e fim das sessões abertas juntos (ADR-0006): sem meia troca.
+    with transacao() as t:
+        t.executar(
+            """
+            UPDATE usuarios
+            SET senha_hash = %s, deve_trocar_senha = FALSE, senha_temporaria_expira_em = NULL
+            WHERE id_usuario = %s
+            """,
+            (generate_password_hash(json.nova_senha), id_usuario),
+        )
+        refresh_token_repository.revogar_do_usuario(id_usuario, t)
     _revogar_access(get_jwt())
 
     refresh_token = _emitir_refresh(id_usuario)
