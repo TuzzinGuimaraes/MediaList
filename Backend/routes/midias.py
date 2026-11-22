@@ -17,7 +17,6 @@ from contrato import (
     AUTENTICACAO_OPCIONAL,
     AUTENTICADO,
     ERROS_AUTENTICADA,
-    ERROS_COM_PERMISSAO,
     CodigoErro,
     Erro,
     Mensagem,
@@ -60,7 +59,7 @@ FILTROS = (
     'artista', 'ano_min', 'ano_max',
 )
 
-ERROS_DE_ESCRITA = {**ERROS_COM_PERMISSAO, 'HTTP_404': Erro}
+ERROS_DE_ESCRITA = {**ERROS_AUTENTICADA, 'HTTP_404': Erro}
 
 
 def midia_nao_encontrada():
