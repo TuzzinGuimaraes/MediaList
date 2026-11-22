@@ -4097,6 +4097,20 @@
         "title": "Permissoes",
         "type": "object"
       },
+      "Ping": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Ping",
+        "type": "object"
+      },
       "Preferencias": {
         "description": "As preferências completas: o que o Usuário mudou, e os padrões no resto.",
         "properties": {
@@ -7815,6 +7829,39 @@
           }
         ],
         "summary": "Marcar como lidas todas as Notificações do Usuário.",
+        "tags": [
+          "utils"
+        ]
+      }
+    },
+    "/api/ping": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_ping",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ping"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Responde se a API está de pé, sem tocar no banco (monitor externo, ADR-0013).",
         "tags": [
           "utils"
         ]
