@@ -39,7 +39,8 @@ class RefreshTokenRepository:
         return consultar_um(
             """
             SELECT rt.id_refresh, rt.id_usuario, rt.familia, rt.expira_em,
-                   rt.revogado, rt.substituido_por, u.ativo AS usuario_ativo
+                   rt.revogado, rt.substituido_por, u.ativo AS usuario_ativo,
+                   u.deve_trocar_senha
             FROM refresh_tokens rt
             JOIN usuarios u ON u.id_usuario = rt.id_usuario
             WHERE rt.token_hash = %s
@@ -79,6 +80,13 @@ class RefreshTokenRepository:
         executar(
             "UPDATE refresh_tokens SET revogado = TRUE WHERE familia = %s AND revogado = FALSE",
             (familia,),
+        )
+
+    def revogar_do_usuario(self, id_usuario: str) -> None:
+        """Encerra todas as sessões do Usuário: troca e redefinição de senha."""
+        executar(
+            "UPDATE refresh_tokens SET revogado = TRUE WHERE id_usuario = %s AND revogado = FALSE",
+            (id_usuario,),
         )
 
     def revogar(self, token_hash: str, id_usuario: str) -> bool:

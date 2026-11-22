@@ -128,6 +128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/trocar-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trocar a própria senha; com a Senha temporária pendente, é a única saída além do logout.
+         * @description Encerra as outras sessões, revoga o access usado e devolve um par novo, sem o claim `deve_trocar_senha`. No web (`X-Cliente: web`) o refresh vai no cookie.
+         */
+        post: operations["post__api_auth_trocar-senha"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/avaliacoes": {
         parameters: {
             query?: never;
@@ -794,7 +814,7 @@ export interface components {
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
-        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
         /** ConsultaFacetas */
         ConsultaFacetas: {
             /**
@@ -1317,6 +1337,13 @@ export interface components {
             nome_completo: string;
             /** Senha */
             senha: string;
+        };
+        /** CorpoTrocarSenha */
+        CorpoTrocarSenha: {
+            /** Nova Senha */
+            nova_senha: string;
+            /** Senha Atual */
+            senha_atual: string;
         };
         /**
          * EdicaoItemLista
@@ -2172,6 +2199,11 @@ export interface components {
             /** Access Token */
             access_token: string;
             /**
+             * Deve Trocar Senha
+             * @description Entrou com uma Senha temporária: o cliente leva à troca de senha, e as rotas autenticadas respondem 403 `troca_de_senha_obrigatoria` até lá
+             */
+            deve_trocar_senha: boolean;
+            /**
              * Refresh Token
              * @description Nulo se o banco não gravou o refresh (o login vale mesmo assim) e no web (`X-Cliente: web`), em que o refresh vai no cookie httpOnly
              */
@@ -2180,6 +2212,11 @@ export interface components {
         };
         /** RespostaMe */
         RespostaMe: {
+            /**
+             * Deve Trocar Senha
+             * @description Senha temporária ainda não trocada
+             */
+            deve_trocar_senha: boolean;
             usuario: components["schemas"]["UsuarioAtual"];
         };
         /** RespostaNotas */
@@ -2451,6 +2488,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -2491,6 +2537,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2680,6 +2735,66 @@ export interface operations {
             };
         };
     };
+    "post__api_auth_trocar-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoTrocarSenha"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaRefresh"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     post__api_avaliacoes: {
         parameters: {
             query?: never;
@@ -2713,6 +2828,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3024,6 +3148,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3911,6 +4044,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4313,6 +4455,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -4360,6 +4511,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -4400,6 +4560,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4467,6 +4636,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -4514,6 +4692,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -4554,6 +4741,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4610,6 +4806,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

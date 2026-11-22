@@ -30,7 +30,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev web-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-web test-mobile test lint lint-backend lint-web \
 	lint-mobile build-web build api-tipos clean-web \
-	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore
+	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore redefinir-senha
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
@@ -49,6 +49,7 @@ help:
 	@printf "  make import-jogos      Importa jogos no container backend com concorrência limitada\n"
 	@printf "  make import-all        Executa todos os importadores no container backend\n"
 	@printf "  make seed-dev          Cria os dados de desenvolvimento (SEED_ARGS=--recriar refaz)\n"
+	@printf "  make redefinir-senha EMAIL=... Gera uma Senha temporária (24 h) no banco do .env.producao\n"
 	@printf "  make install           Instala dependências locais para desenvolvimento sem Docker\n"
 	@printf "  make backend-dev       Inicia a API Flask no host em http://localhost:5000\n"
 	@printf "  make web-dev           Inicia o web (Vite) em http://localhost:3006, /api -> :5000\n"
@@ -204,6 +205,12 @@ import-all:
 seed-dev:
 	$(DOCKER_COMPOSE) up -d --wait postgres
 	$(DOCKER_COMPOSE) run --rm --build backend python -m seed_dev $(SEED_ARGS)
+
+# Senha temporária (spec producao): roda no host, com a DATABASE_URL do .env.producao
+# da raiz (ou do ambiente). A senha sai só no stdout.
+redefinir-senha:
+	@test -n "$(EMAIL)" || (printf "Defina EMAIL=fulano@exemplo.com\n" && exit 1)
+	@cd "$(BACKEND_DIR)" && $(PYTHON) redefinir_senha.py "$(EMAIL)"
 
 clean-web:
 	rm -rf "$(WEB_DIR)/dist"

@@ -42,8 +42,18 @@ class CorpoEsqueciSenha(BaseModel):
     email: Preenchido
 
 
+#: A mesma regra do registro nos clientes (`SENHA_MINIMA` em `dominio/conta.ts`).
+SENHA_MINIMA = 6
+NovaSenha = Annotated[str, Field(min_length=SENHA_MINIMA)]
+
+
 class CorpoRedefinirSenha(BaseModel):
-    nova_senha: Annotated[str, Field(min_length=6)]
+    nova_senha: NovaSenha
+
+
+class CorpoTrocarSenha(BaseModel):
+    senha_atual: Preenchido
+    nova_senha: NovaSenha
 
 
 # ============================================
@@ -78,6 +88,10 @@ class RespostaLogin(BaseModel):
         '(`X-Cliente: web`), em que o refresh vai no cookie httpOnly',
     )
     usuario: UsuarioDaSessao
+    deve_trocar_senha: bool = Field(
+        description='Entrou com uma Senha temporária: o cliente leva à troca de senha, e as rotas '
+        'autenticadas respondem 403 `troca_de_senha_obrigatoria` até lá',
+    )
 
 
 class RespostaRefresh(BaseModel):
@@ -94,3 +108,4 @@ class UsuarioAtual(BaseModel):
 
 class RespostaMe(BaseModel):
     usuario: UsuarioAtual
+    deve_trocar_senha: bool = Field(description='Senha temporária ainda não trocada')
