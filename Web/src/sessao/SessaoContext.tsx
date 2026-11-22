@@ -43,6 +43,7 @@ export function useSessao() {
     sessaoAtual: sessao.estado,
     entrar: sessao.entrar,
     registrar: sessao.registrar,
+    trocarSenha: sessao.trocarSenha,
     sair: sessao.sair,
     tentarDeNovo: sessao.restaurar,
   };

@@ -3,6 +3,7 @@
 //
 // Uso nas telas: `exigir(api.GET('/api/midias', { params: { query: { tipo: 'anime' } } }))`
 // devolve os dados ou lança ErroApi/ErroRede, que o TanStack Query entende.
+import { TROCA_DE_SENHA_OBRIGATORIA } from '@dominio/conta';
 import createClient, { type Client } from 'openapi-fetch';
 
 import { ErroApi, ErroRede, erroDaResposta } from './erros';
@@ -18,6 +19,8 @@ export type FonteTokens = {
   renovado(access: string): void;
   /** A sessão não pôde ser renovada (refresh inválido, reusado, Usuário desativado). */
   expirada(): void | Promise<void>;
+  /** A API respondeu 403 `troca_de_senha_obrigatoria`: a Senha temporária ainda não foi trocada. */
+  trocaObrigatoria(): void;
 };
 
 /**
@@ -97,7 +100,19 @@ export function criarCliente(fonte: FonteTokens): Api {
     return renovacao;
   }
 
+  async function avisarTroca(resposta: Response): Promise<Response> {
+    if (resposta.status === 403) {
+      const corpo: unknown = await resposta.clone().json().catch(() => null);
+      if ((corpo as { codigo?: unknown } | null)?.codigo === TROCA_DE_SENHA_OBRIGATORIA) fonte.trocaObrigatoria();
+    }
+    return resposta;
+  }
+
   async function fetchAutenticado(pedido: Request): Promise<Response> {
+    return avisarTroca(await comRenovacao(pedido));
+  }
+
+  async function comRenovacao(pedido: Request): Promise<Response> {
     const usado = fonte.access();
     // O corpo de um Request só pode ser lido uma vez: a cópia é a da repetição.
     const copia = pedido.clone();

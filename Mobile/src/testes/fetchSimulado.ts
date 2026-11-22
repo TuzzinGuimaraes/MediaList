@@ -59,6 +59,11 @@ export const usuarioAna: UsuarioSessao = {
 };
 
 export function loginOk(tokens: { access: string; refresh: string | null }): Resposta {
-  const corpo: RespostaLogin = { access_token: tokens.access, refresh_token: tokens.refresh, usuario: usuarioAna };
+  const corpo: RespostaLogin = {
+    access_token: tokens.access,
+    refresh_token: tokens.refresh,
+    usuario: usuarioAna,
+    deve_trocar_senha: false,
+  };
   return { status: 200, corpo };
 }

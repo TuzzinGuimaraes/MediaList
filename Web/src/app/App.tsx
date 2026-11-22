@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ErroApi } from '../api/erros';
 import { CatalogoProvider } from '../catalogo/CatalogoContext';
 import { Carregando, ErroTela } from '../componentes/Estados';
+import { DefinirSenha } from '../paginas/DefinirSenha';
 import { EditorItemProvider } from '../paginas/lista/EditorItemContext';
 import { SessaoProvider, useSessao } from '../sessao/SessaoContext';
 import { TemaProvider } from '../tema/TemaContext';
@@ -35,6 +36,9 @@ function Roteamento({ historico }: { historico?: RouterHistory }) {
   }, [router, sessao, resolvida]);
 
   if (sessao.estado === 'carregando') return <Carregando telaCheia rotulo="Abrindo o MediaList" />;
+  // No lugar das rotas: nenhuma tela abre até trocar a senha ou sair. A URL fica, e a
+  // troca leva a ela.
+  if (sessao.estado === 'troca_de_senha') return <DefinirSenha nome={sessao.nome} />;
   if (sessao.estado === 'indisponivel') return <ErroTela telaCheia erro={sessao.erro} tentarDeNovo={() => void tentarDeNovo()} />;
   return <RouterProvider router={router} />;
 }
