@@ -27,6 +27,6 @@ def admin_required(f):
             return resposta_erro(403, CodigoErro.ACESSO_NEGADO, 'Acesso restrito a administradores')
         return f(*args, **kwargs)
 
-    # O teste do contrato confere que a rota declara o 403 (ERROS_COM_PERMISSAO).
+    # O teste do contrato confere que a rota declara o 403 (ERROS_AUTENTICADA).
     decorated_function.exige_permissao = True
     return decorated_function

@@ -95,42 +95,32 @@ def importar_animes(paginas: int = 20, do_inicio: bool = False):
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
 
-    try:
-        inicio = cursor.iniciar('anime', do_inicio)
-        for pagina in importar_do_anilist(
-            'ANIME', paginas, session=session, rate_limiter=rate_limiter, pagina_inicial=inicio
-        ):
-            if pagina.get('erro'):
-                stats.registrar_falha_pagina(pagina['pagina'])
+    def importar_pagina(pagina: dict):
+        for item in pagina['itens']:
+            try:
+                result = processar_e_inserir_anime(item)
+                stats.registrar_sucesso(ja_existia=result['ja_existia'])
+            except Exception as exc:
+                stats.registrar_falha()
                 registrar_falha_importacao(
                     tipo_midia='anime',
                     origem='AniList',
-                    exc=pagina['erro'],
-                    identificador=f"pagina-{pagina['pagina']}",
-                    payload=pagina.get('payload'),
-                    extra={'pagina': pagina['pagina'], 'etapa': 'listar_pagina'},
+                    exc=exc,
+                    identificador=item.get('id'),
+                    titulo=(item.get('title') or {}).get('romaji'),
+                    payload=item,
+                    extra={'pagina': pagina['pagina']},
                 )
-                # Sem avançar o cursor: a próxima execução tenta esta página de novo.
-                break
 
-            for item in pagina['itens']:
-                try:
-                    result = processar_e_inserir_anime(item)
-                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
-                except Exception as exc:
-                    stats.registrar_falha()
-                    registrar_falha_importacao(
-                        tipo_midia='anime',
-                        origem='AniList',
-                        exc=exc,
-                        identificador=item.get('id'),
-                        titulo=(item.get('title') or {}).get('romaji'),
-                        payload=item,
-                        extra={'pagina': pagina['pagina']},
-                    )
-
-            # No fim da fonte, volta à página 1 e passa a atualizar as Mídias já importadas.
-            cursor.gravar('anime', 1 if pagina.get('fim') else pagina['pagina'] + 1)
+    try:
+        cursor.importar_paginas(
+            'anime', 'AniList', stats,
+            lambda inicio: importar_do_anilist(
+                'ANIME', paginas, session=session, rate_limiter=rate_limiter, pagina_inicial=inicio
+            ),
+            importar_pagina,
+            do_inicio,
+        )
 
         logger.info('Importação de animes concluída. %s', stats.to_dict())
         if stats.falhas:

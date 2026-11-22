@@ -40,10 +40,7 @@ EM_PRODUCAO = APP_ENV == 'production'
 # iniciar (ver _validar_segredos_de_producao, no fim do módulo).
 _JWT_SECRET_DEV = 'sua-chave-secreta-super-segura'
 _DB_PASSWORD_DEV = 'MediaList@2025!Secure'
-_SEGREDOS_CONHECIDOS = {
-    'JWT_SECRET_KEY': {_JWT_SECRET_DEV, 'troque-esta-chave-em-producao'},
-    'DB_PASSWORD': {_DB_PASSWORD_DEV},
-}
+_JWT_SECRETS_CONHECIDOS = {_JWT_SECRET_DEV, 'troque-esta-chave-em-producao'}
 # Senha do dono: só conta quando o dono é usado (DB_OWNER_USER definido, como
 # no serviço migrate). O backend não recebe DB_OWNER_* e não precisa dela.
 _DB_OWNER_PASSWORD_DEV = 'medialist-owner-dev'
@@ -104,27 +101,29 @@ RAWG_API_KEY = os.getenv('RAWG_API_KEY', '')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 
 
+def _problema_do_segredo(nome, conhecidos, ausente):
+    """`ausente` se a variável falta, aviso se é um default conhecido, senão None."""
+    valor = os.getenv(nome)
+    if not valor:
+        return ausente
+    if valor in conhecidos:
+        return f'{nome} igual a um default conhecido'
+    return None
+
+
 def _problemas_de_producao():
     """Segredos ausentes ou iguais a um default conhecido."""
-    problemas = []
-    for nome, conhecidos in _SEGREDOS_CONHECIDOS.items():
-        # Com DATABASE_URL a senha do banco vem na URL: DB_PASSWORD não é usada.
-        if nome == 'DB_PASSWORD' and os.getenv('DATABASE_URL'):
-            continue
-        valor = os.getenv(nome)
-        if nome == 'DB_PASSWORD' and not valor:
-            problemas.append('DATABASE_URL ausente (ou DB_PASSWORD, para montar a URL das DB_*)')
-        elif not valor:
-            problemas.append(f'{nome} ausente')
-        elif valor in conhecidos:
-            problemas.append(f'{nome} igual a um default conhecido')
+    problemas = [_problema_do_segredo('JWT_SECRET_KEY', _JWT_SECRETS_CONHECIDOS, 'JWT_SECRET_KEY ausente')]
+    # Com DATABASE_URL a senha do banco vem na URL: DB_PASSWORD não é usada.
+    if not os.getenv('DATABASE_URL'):
+        problemas.append(_problema_do_segredo(
+            'DB_PASSWORD', {_DB_PASSWORD_DEV}, 'DATABASE_URL ausente (ou DB_PASSWORD, para montar a URL das DB_*)',
+        ))
     if os.getenv('DB_OWNER_USER'):
-        senha_dono = os.getenv('DB_OWNER_PASSWORD')
-        if not senha_dono:
-            problemas.append('DB_OWNER_PASSWORD ausente')
-        elif senha_dono == _DB_OWNER_PASSWORD_DEV:
-            problemas.append('DB_OWNER_PASSWORD igual a um default conhecido')
-    return problemas
+        problemas.append(_problema_do_segredo(
+            'DB_OWNER_PASSWORD', {_DB_OWNER_PASSWORD_DEV}, 'DB_OWNER_PASSWORD ausente',
+        ))
+    return [problema for problema in problemas if problema]
 
 
 def _validar_segredos_de_producao():

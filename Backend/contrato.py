@@ -268,10 +268,9 @@ AUTENTICACAO_OPCIONAL = [{}, AUTENTICADO]
 #: Erros de toda rota com `@jwt_required()`, vindos dos loaders do flask-jwt (app.py): 401 sem
 #: token, expirado, revogado ou de Usuário desativado; 403 `troca_de_senha_obrigatoria` com a
 #: Senha temporária ainda não trocada; 422 com o token malformado.
+#: O 403 do `admin_required` (decorators.py) também cabe aqui.
 #: Uso: `resp=Response(HTTP_200=X, **ERROS_AUTENTICADA)`.
 ERROS_AUTENTICADA = {'HTTP_401': Erro, 'HTTP_403': Erro, 'HTTP_422': Erro}
-#: Rotas com `admin_required` (decorators.py): o 403 dele já está em ERROS_AUTENTICADA.
-ERROS_COM_PERMISSAO = ERROS_AUTENTICADA
 
 
 def registrar_documentacao(app, em_producao: bool, spec: SpecTree = contrato) -> None:
