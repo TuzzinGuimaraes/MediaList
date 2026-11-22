@@ -47,6 +47,7 @@ export default function TelaDetalhe() {
   const { sessao } = useSessao();
   if (sessao.estado === 'carregando') return <Carregando />;
   if (sessao.estado === 'anonima') return <Redirect href="/login" />;
+  if (sessao.estado === 'troca_de_senha') return <Redirect href="/definir-senha" />;
   return <DetalheMidia />;
 }
 
