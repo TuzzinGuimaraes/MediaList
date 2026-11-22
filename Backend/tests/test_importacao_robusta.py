@@ -125,8 +125,11 @@ def test_pagina_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
     for modulo in (importar_animes, importar_mangas):
         monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
 
-    _rodar_main(monkeypatch, '--tipo', 'anime')
-    _rodar_main(monkeypatch, '--tipo', 'manga')
+    # Página com falha (fonte fora do ar) sai com erro: o workflow importacao fica vermelho.
+    for tipo in ('anime', 'manga'):
+        with pytest.raises(SystemExit) as saiu:
+            _rodar_main(monkeypatch, '--tipo', tipo)
+        assert saiu.value.code == 1
 
     saida = capsys.readouterr().out
     assert 'anime: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[2]' in saida
@@ -150,7 +153,9 @@ def test_pagina_de_jogos_com_falha_aparece_no_resumo_e_encerra_os_jogos(monkeypa
     url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
     _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
 
-    _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
+    with pytest.raises(SystemExit) as saiu:
+        _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '2')
+    assert saiu.value.code == 1
 
     saida = capsys.readouterr().out
     assert 'jogo: processados=0 sucessos=0 falhas=0 ja_existia=0 paginas_com_falha=[1]' in saida
@@ -186,7 +191,7 @@ def test_chave_rawg_nao_aparece_no_log_de_erros(monkeypatch, capsys, tmp_path, c
     url = f'https://api.rawg.io/api/games?key={CHAVE}&page=1'
     _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(_Resposta(502, url=url)))
 
-    with caplog.at_level('INFO'):
+    with caplog.at_level('INFO'), pytest.raises(SystemExit):
         _rodar_main(monkeypatch, '--tipo', 'jogo', '--paginas', '1')
 
     jsonl = (tmp_path / 'erros.jsonl').read_text(encoding='utf-8')

@@ -79,7 +79,9 @@ def main():
     for stats in resumo:
         print(stats.resumo())
 
-    if houve_erro_fatal:
+    # Página com falha é a fonte fora do ar (ou o cursor parado): sai com erro
+    # para o workflow importacao ficar vermelho. Falha de um item isolado, não.
+    if houve_erro_fatal or any(stats.paginas_com_falha for stats in resumo):
         sys.exit(1)
 
 
