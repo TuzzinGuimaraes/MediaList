@@ -30,7 +30,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev web-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-web test-mobile test lint lint-backend lint-web \
 	lint-mobile build-web build api-tipos clean-web \
-	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore redefinir-senha
+	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore db-restore-cifrado redefinir-senha
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
@@ -42,6 +42,7 @@ help:
 	@printf "  make db-grants         Reaplica o usuário da aplicação e os grants num banco existente\n"
 	@printf "  make db-dump           Gera um dump (pg_dump -Fc) em ./dumps\n"
 	@printf "  make db-restore        Restaura um dump com DUMP_FILE=/caminho/arquivo.dump\n"
+	@printf "  make db-restore-cifrado ARQ=... CHAVE=... Decifra (age) e restaura um backup do Actions\n"
 	@printf "  make smoke-postgres    Executa o smoke test de PostgreSQL no container backend\n"
 	@printf "  make smoke-permissions Executa o script de permissões no container backend\n"
 	@printf "  make import-animes     Importa animes no container backend\n"
@@ -119,14 +120,32 @@ db-dump:
 	$(DOCKER_COMPOSE) exec -T postgres sh -c 'exec pg_dump -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -Fc' > "$(DUMP_FILE)"
 	@printf "Dump criado em: %s\n" "$(DUMP_FILE)"
 
+# $(call pg_restore,<flags extras>): pg_restore no container, lendo o dump do stdin.
 # Substitui o conteúdo do banco pelo do dump (--clean --if-exists), mantendo os
 # grants do usuário da aplicação, que vêm dos default privileges do dono.
+pg_restore = $(DOCKER_COMPOSE) exec -T postgres sh -c 'exec pg_restore -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists --no-owner --role="$$POSTGRES_USER" --exit-on-error $(1)'
+
 db-restore:
 	@test -n "$(DUMP_FILE)" || (printf "Defina DUMP_FILE=/caminho/arquivo.dump\n" && exit 1)
 	@test -f "$(DUMP_FILE)" || (printf "Arquivo de dump não encontrado: %s\n" "$(DUMP_FILE)" && exit 1)
 	$(DOCKER_COMPOSE) up -d --wait postgres
-	$(DOCKER_COMPOSE) exec -T postgres sh -c 'exec pg_restore -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists --no-owner --role="$$POSTGRES_USER" --exit-on-error' < "$(DUMP_FILE)"
+	$(call pg_restore) < "$(DUMP_FILE)"
 	@printf "Dump restaurado a partir de: %s\n" "$(DUMP_FILE)"
+
+# Backup do workflow backup (docs/backup-restauracao.md): decifra com a chave
+# privada do age e restaura no Postgres local pelo pipe, sem dump em claro no disco.
+# --no-acl: os grants da Neon podem citar papéis que não existem aqui (neon_superuser);
+# os do usuário da aplicação vêm dos default privileges do dono.
+db-restore-cifrado: SHELL := /bin/bash
+db-restore-cifrado: .SHELLFLAGS := -o pipefail -c
+db-restore-cifrado:
+	@test -n "$(ARQ)" || (printf "Defina ARQ=/caminho/backup.dump.age\n" && exit 1)
+	@test -f "$(ARQ)" || (printf "Backup não encontrado: %s\n" "$(ARQ)" && exit 1)
+	@test -n "$(CHAVE)" || (printf "Defina CHAVE=/caminho/chave-age.txt\n" && exit 1)
+	@test -f "$(CHAVE)" || (printf "Chave não encontrada: %s\n" "$(CHAVE)" && exit 1)
+	$(DOCKER_COMPOSE) up -d --wait postgres
+	age -d -i "$(CHAVE)" "$(ARQ)" | $(call pg_restore,--no-acl)
+	@printf "Backup restaurado a partir de: %s\n" "$(ARQ)"
 
 backend-dev:
 	$(DOCKER_COMPOSE) up -d postgres

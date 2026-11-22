@@ -1,0 +1,62 @@
+name: backup
+
+# Backup semanal do banco da Neon (ADR-0013): pg_dump -Fc com o dono, cifrado
+# com o age antes de virar artefato, porque artefato de repo público é baixável
+# por qualquer conta do GitHub. A chave privada fica fora do GitHub.
+# Restauração: docs/backup-restauracao.md.
+on:
+  schedule:
+    # Domingo, 05:00 UTC (uma hora antes da Importação diária).
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: backup-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AGE_VERSION: v1.3.2
+  # sha256 do age-${AGE_VERSION}-linux-amd64.tar.gz (digest do release no GitHub).
+  AGE_SHA256: cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10
+
+jobs:
+  backup:
+    name: pg_dump cifrado
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install age
+        run: |
+          arquivo="age-${AGE_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLO "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/${arquivo}"
+          echo "${AGE_SHA256}  ${arquivo}" | sha256sum --check --strict
+          tar -xzf "$arquivo"
+          sudo install -m 0755 age/age /usr/local/bin/age
+          age --version
+
+      # O script falha se algum secret faltar e só grava o arquivo já cifrado.
+      - name: pg_dump | age
+        env:
+          DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -o pipefail
+          mkdir -p backup
+          .github/scripts/backup-cifrado.sh "backup/medialist_$(date -u +%Y%m%d_%H%M%S).dump.age"
+
+      # Cifrado não comprime: compression-level 0.
+      - name: Upload do backup cifrado
+        uses: actions/upload-artifact@v7
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup/*.dump.age
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
