@@ -100,6 +100,20 @@ def test_erro_inesperado_responde_500_sem_detalhe(client, auth_headers, avaliaca
     assert 'segredo interno' in caplog.text
 
 
+def test_erro_devolvido_pela_view_tem_content_length_do_corpo(client, monkeypatch):
+    """O SpecTree reserializa o corpo do `jsonify`; o Content-Length tem de acompanhar.
+
+    Com o header antigo (maior que o corpo), o proxy da Vercel esperava os bytes
+    que faltavam e a resposta travava até o timeout.
+    """
+    monkeypatch.setattr(midias_routes.catalogo, 'obter', lambda _id: None)
+
+    response = client.get(f'/api/midias/{uuid.uuid4()}')
+
+    assert response.status_code == 404
+    assert response.headers.getlist('Content-Length') == [str(len(response.get_data()))]
+
+
 def test_rota_inexistente_continua_404(client):
     assert client.get('/api/nao-existe').status_code == 404
 
