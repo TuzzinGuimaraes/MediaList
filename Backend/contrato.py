@@ -210,6 +210,20 @@ def deslocamento(query: ConsultaPaginada) -> int:
 # SpecTree
 # ============================================
 
+def _content_length_do_corpo(resposta):
+    """Recalcula o Content-Length depois que o SpecTree reserializa o corpo.
+
+    Quando a view devolve um `jsonify` (ex. `resposta_erro`), o SpecTree
+    reaproveita os headers dele, inclusive o Content-Length do JSON original,
+    e troca o corpo pelo reserializado pelo modelo, que pode ser menor. O
+    werkzeug local ignora a diferença; o proxy da Vercel espera os bytes que
+    faltam e a resposta trava.
+    """
+    if not resposta.is_streamed:
+        resposta.headers['Content-Length'] = str(len(resposta.get_data()))
+    return resposta
+
+
 class PluginContrato(FlaskPlugin):
     """Plugin Flask do SpecTree com a validação da resposta do MediaList.
 
@@ -220,7 +234,7 @@ class PluginContrato(FlaskPlugin):
     def validate_response(self, resp, resp_model, skip_validation, force_resp_serialize):
         resposta, erro = super().validate_response(resp, resp_model, skip_validation, True)
         if erro is None:
-            return resposta, erro
+            return _content_length_do_corpo(resposta), erro
         logger.warning(
             'Resposta fora do contrato em %s %s: %s', request.method, request.path, erro.errors(include_url=False),
         )
