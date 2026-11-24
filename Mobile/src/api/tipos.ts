@@ -81,6 +81,17 @@ export type AvaliacaoEditada = Esquemas['AvaliacaoEditada'];
 export type ItemLista = Esquemas['ItemLista'];
 export type RespostaLista = Esquemas['RespostaLista'];
 
+// Integrações
+
+/** Uma plataforma e a conta do Usuário nela (`disponivel` false sem a chave no servidor). */
+export type Integracao = Esquemas['Integracao'];
+export type ResultadoImportacao = Esquemas['ResultadoImportacao'];
+export type RespostaIntegracoes = Esquemas['RespostaIntegracoes'];
+/** POST /integracoes/<plataforma>/previa: o que a importação faria, até `expira_em`. */
+export type PreviaImportacao = Esquemas['PreviaImportacao'];
+/** POST /integracoes/steam/sincronizar: grava direto; `pendentes` ficam para a sincronização diária. */
+export type ResultadoSincronizacao = Esquemas['ResultadoSincronizacao'];
+
 // Notícias e Notificações
 
 export type Noticia = Esquemas['Noticia'];
