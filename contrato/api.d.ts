@@ -277,7 +277,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo. */
+        /**
+         * Aplicar a prévia na Lista (uma vez só, tudo ou nada): importa as obras que faltam no Catálogo.
+         * @description Prazo da requisição vencido responde 502 e a prévia continua valendo (as obras já importadas ficam).
+         */
         post: operations["post__api_integracoes_previas_{id_previa}_confirmar"];
         delete?: never;
         options?: never;
@@ -948,7 +951,7 @@ export interface components {
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
-        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "erro_interno";
+        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "lista_grande_demais" | "erro_interno";
         /**
          * ConexaoIntegracao
          * @description Nome de usuário (AniList, MAL) ou URL do perfil (Steam).
@@ -3572,6 +3575,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
         };
     };
     post__api_integracoes_steam_sincronizar: {
@@ -3621,6 +3633,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3710,6 +3731,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3862,6 +3892,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
