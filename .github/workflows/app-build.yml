@@ -1,0 +1,111 @@
+name: app-build
+
+# Gera o APK Android no EAS Build (perfil production) e o anexa ao GitHub Release
+# app-v<version> (ADR-0014). Manual: um APK novo só quando muda algo nativo, e
+# junto com a subida do `version` do app.json (que é o runtimeVersion).
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: app-build
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  # CLI fixa: os flags e o formato do --json foram conferidos nesta versão.
+  EAS_CLI_VERSION: 27.11.0
+
+jobs:
+  build:
+    name: APK (EAS Build)
+    # Secrets e produção só a partir da master ou de uma tag v* (um workflow_dispatch
+    # noutra branch para aqui). O environment production repete a regra no GitHub.
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    runs-on: ubuntu-latest
+    # O plano grátis do EAS põe o build numa fila de baixa prioridade.
+    timeout-minutes: 120
+
+    defaults:
+      run:
+        working-directory: Mobile
+
+    # O EXPO_TOKEN vai só nos steps que chamam o eas, não no job: o npm ci não o
+    # enxerga. Pelo mesmo motivo a expo-github-action não recebe `token` (ela o
+    # exportaria para todos os steps seguintes).
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Sem projectId/updates.url (eas init + eas update:configure, ticket 03) o
+      # eas tentaria editar o app.json no runner.
+      - name: Conferir app.json
+        id: app
+        run: |
+          if [ -z "$(jq -r '.expo.extra.eas.projectId // empty' app.json)" ] \
+            || [ -z "$(jq -r '.expo.updates.url // empty' app.json)" ]; then
+            echo "::error::app.json sem extra.eas.projectId ou updates.url: rode eas init e eas update:configure (ticket 03)."
+            exit 1
+          fi
+          versao="$(jq -r '.expo.version' app.json)"
+          echo "versao=${versao}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Mobile/package-lock.json
+
+      - name: Install mobile dependencies
+        run: npm ci
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@9.0.2
+        with:
+          eas-version: ${{ env.EAS_CLI_VERSION }}
+          packager: npm
+
+      # Com --wait, o --json é um array de builds; o APK está em artifacts.
+      - name: eas build
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          saida="${RUNNER_TEMP}/build.json"
+          eas build --platform android --profile production --non-interactive --wait --json > "$saida"
+          url="$(jq -r '.[0].artifacts.applicationArchiveUrl // .[0].artifacts.buildUrl // empty' "$saida")"
+          if [ -z "$url" ]; then
+            echo "::error::eas build terminou sem URL do APK."
+            cat "$saida"
+            exit 1
+          fi
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+
+      - name: Baixar o APK
+        env:
+          URL: ${{ steps.build.outputs.url }}
+          VERSAO: ${{ steps.app.outputs.versao }}
+        run: curl -fsSL --retry 3 -o "${RUNNER_TEMP}/medialist-${VERSAO}.apk" "$URL"
+
+      # Mesmo version: o asset é substituído (APK com versionCode maior, que
+      # atualiza o anterior).
+      - name: GitHub Release app-v<version>
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSAO: ${{ steps.app.outputs.versao }}
+        run: |
+          tag="app-v${VERSAO}"
+          apk="${RUNNER_TEMP}/medialist-${VERSAO}.apk"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            notas="APK Android do MediaList ${VERSAO}.
+
+          Instalação: baixe o medialist-${VERSAO}.apk no celular e abra. Na primeira vez o Android pede para permitir a instalação de apps de fontes desconhecidas para o navegador (ou o gerenciador de arquivos).
+
+          Um APK novo instala por cima do anterior, sem perder a sessão. As correções de JS chegam sozinhas (EAS Update)."
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" --title "MediaList ${VERSAO} (Android)" --notes "$notas"
+          fi
