@@ -113,6 +113,7 @@ function rotasDoPerfil(extra: Rotas = {}): Rotas {
     'GET /usuario/estatisticas': { status: 200, corpo: estatisticas },
     'GET /lista': { status: 200, corpo: { lista } },
     'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
+    'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
     ...extra,
   };
 }
@@ -238,5 +239,165 @@ describe('Perfil: Notificações', () => {
     await abrirLogado('/perfil', { rotas: rotasDoPerfil() });
 
     expect(await within(await secao('Notificações')).findByText('Nenhuma notificação por aqui.')).toBeInTheDocument();
+  });
+});
+
+
+type Integracao = Esquemas['Integracao'];
+
+function integracao(extra: Partial<Integracao> = {}): Integracao {
+  return {
+    plataforma: 'anilist',
+    rotulo: 'AniList',
+    disponivel: true,
+    conectada: false,
+    identificador: null,
+    nome_exibicao: null,
+    ultima_sincronizacao: null,
+    ultimo_resultado: null,
+    ...extra,
+  };
+}
+
+const conectadaAoAniList = integracao({ conectada: true, identificador: 'Ana', nome_exibicao: 'Ana' });
+
+const previa: Esquemas['PreviaImportacao'] = {
+  id_previa: 'PRV-1',
+  expira_em: '2026-11-25T13:00:00+00:00',
+  novos: 32,
+  atualizados: 5,
+  nao_encontrados: [{ titulo: 'Obra rara', link: 'https://anilist.co/anime/9' }],
+  total_nao_encontrados: 3,
+};
+
+describe('Perfil: Integrações', () => {
+  it('conecta o AniList pelo nome de usuário', async () => {
+    let conectada = false;
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': () => ({ status: 200, corpo: { integracoes: [conectada ? conectadaAoAniList : integracao()] } }),
+        'PUT /integracoes/anilist': () => {
+          conectada = true;
+          return { status: 200, corpo: conectadaAoAniList };
+        },
+      }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    await user.type(within(anilist).getByLabelText('Nome de usuário do AniList'), ' Ana ');
+    await user.click(within(anilist).getByRole('button', { name: 'Conectar' }));
+
+    expect(api.para('PUT /integracoes/anilist')[0]?.corpo).toEqual({ identificador: 'Ana' });
+    expect(await within(anilist).findByText('Ana')).toBeInTheDocument();
+    expect(within(anilist).getByRole('button', { name: 'Importar' })).toBeInTheDocument();
+  });
+
+  it('perfil privado mostra a mensagem da API com o passo para torná-lo público', async () => {
+    const { user } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [integracao()] } },
+        'PUT /integracoes/anilist': {
+          status: 400,
+          corpo: { erro: 'O perfil do AniList é privado. Deixe o perfil público.', codigo: 'perfil_privado' },
+        },
+      }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    await user.type(within(anilist).getByLabelText('Nome de usuário do AniList'), 'ana');
+    await user.click(within(anilist).getByRole('button', { name: 'Conectar' }));
+
+    expect(await within(anilist).findByRole('alert')).toHaveTextContent('Deixe o perfil público');
+  });
+
+  it('importar mostra a prévia, os Não encontrados com link, e só grava ao confirmar', async () => {
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [conectadaAoAniList] } },
+        'POST /integracoes/anilist/previa': { status: 200, corpo: previa },
+        'POST /integracoes/previas/PRV-1/confirmar': {
+          status: 200,
+          corpo: { novos: 32, atualizados: 5, nao_encontrados: previa.nao_encontrados, total_nao_encontrados: 3 },
+        },
+      }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    await user.click(await within(anilist).findByRole('button', { name: 'Importar' }));
+
+    const caixa = await within(anilist).findByRole('group', { name: 'Prévia da importação' });
+    expect(caixa).toHaveTextContent('32 novos · 5 atualizados · 3 não encontrados');
+    expect(within(caixa).getByRole('link', { name: 'Obra rara' })).toHaveAttribute('href', 'https://anilist.co/anime/9');
+    expect(within(caixa).getByText('e mais 2')).toBeInTheDocument();
+    expect(api.para('POST /integracoes/previas/PRV-1/confirmar')).toHaveLength(0);
+
+    await user.click(within(caixa).getByRole('button', { name: 'Confirmar' }));
+
+    expect(await within(anilist).findByRole('status')).toHaveTextContent('Importado: 32 novos · 5 atualizados · 3 não encontrados');
+    expect(api.para('POST /integracoes/previas/PRV-1/confirmar')).toHaveLength(1);
+    await waitFor(() => expect(api.para('GET /lista').length).toBeGreaterThan(1));
+  });
+
+  it('prévia sem nada novo não oferece confirmar', async () => {
+    const { user } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [conectadaAoAniList] } },
+        'POST /integracoes/anilist/previa': {
+          status: 200,
+          corpo: { ...previa, novos: 0, atualizados: 0, nao_encontrados: [], total_nao_encontrados: 0 },
+        },
+      }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    await user.click(await within(anilist).findByRole('button', { name: 'Importar' }));
+
+    const caixa = await within(anilist).findByRole('group', { name: 'Prévia da importação' });
+    expect(caixa).toHaveTextContent('Nada novo');
+    expect(within(caixa).queryByRole('button', { name: 'Confirmar' })).not.toBeInTheDocument();
+  });
+
+  it('mostra a última importação e desconecta', async () => {
+    let conectada = true;
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': () => ({
+          status: 200,
+          corpo: {
+            integracoes: [
+              conectada
+                ? { ...conectadaAoAniList, ultima_sincronizacao: '2026-11-24T10:00:00+00:00' }
+                : integracao(),
+            ],
+          },
+        }),
+        'DELETE /integracoes/anilist': () => {
+          conectada = false;
+          return { status: 200, corpo: { mensagem: 'Conta desconectada' } };
+        },
+      }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    expect(await within(anilist).findByText(/última importação em 24\/11\/2026/)).toBeInTheDocument();
+
+    await user.click(within(anilist).getByRole('button', { name: 'Desconectar' }));
+
+    expect(api.para('DELETE /integracoes/anilist')).toHaveLength(1);
+    expect(await within(anilist).findByLabelText('Nome de usuário do AniList')).toBeInTheDocument();
+  });
+
+  it('plataforma sem chave no servidor aparece indisponível', async () => {
+    await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': {
+          status: 200,
+          corpo: { integracoes: [integracao(), integracao({ plataforma: 'steam', rotulo: 'Steam', disponivel: false })] },
+        },
+      }),
+    });
+
+    const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
+    expect(steam).toHaveTextContent('Indisponível no momento.');
   });
 });
