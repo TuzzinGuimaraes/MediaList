@@ -33,12 +33,15 @@ from defusedxml.ElementTree import ParseError, fromstring
 
 from importacao.anilist import CAMPOS_MEDIA
 from importacao.config import ANILIST_URL
-from importacao.utils import criar_sessao_http
+from importacao.utils import ocultar_segredos
+from integracoes import prazo
 from integracoes.mapeamento import estado_da_origem, nota_mal
 from integracoes.plataforma import (
+    MAXIMO_ITENS,
     Conta,
     ErroDaIntegracao,
     ItemDeOrigem,
+    ListaGrandeDemais,
     OrigemIndisponivel,
     PerfilNaoEncontrado,
     PerfilPrivado,
@@ -51,6 +54,8 @@ logger = logging.getLogger(__name__)
 
 API_URL = 'https://api.myanimelist.net/v2'
 POR_PAGINA = 1000
+#: Páginas lidas por lista, no máximo (o teto de itens, `MAXIMO_ITENS`, vale para as duas juntas).
+MAXIMO_PAGINAS = -(-MAXIMO_ITENS // POR_PAGINA)
 LOTE_ANILIST = 50
 #: Tamanho máximo do arquivo enviado e do XML depois de descomprimir o `.gz`.
 LIMITE_XML = 5 * 1024 * 1024
@@ -102,8 +107,8 @@ def _chave() -> str:
 
 
 def _sem_chave(texto: str) -> str:
-    chave = _chave()
-    return texto.replace(chave, '***') if chave else texto
+    """`ocultar_segredos` central (que já cobre o `MAL_CLIENT_ID`)."""
+    return ocultar_segredos(texto)
 
 
 def _nome_de(identificador: str) -> str:
@@ -154,8 +159,11 @@ def _item(id_mal: int, tipo: str, titulo: str | None, status: str | None, progre
 
 def _pedir_ao_anilist(sessao, ids: list[int], tipo: str) -> list[dict]:
     variaveis = {'ids': ids, 'tipo': _TIPO_ANILIST[tipo], 'porPagina': LOTE_ANILIST}
+    prazo.conferir()
     try:
-        resposta = sessao.post(ANILIST_URL, json={'query': _CONSULTA_IDMAL, 'variables': variaveis}, timeout=30)
+        resposta = sessao.post(
+            ANILIST_URL, json={'query': _CONSULTA_IDMAL, 'variables': variaveis}, timeout=prazo.timeout(30),
+        )
         corpo = resposta.json()
     except Exception as exc:
         logger.warning('AniList sem resposta no casamento do MAL: %s', exc)
@@ -168,24 +176,28 @@ def _pedir_ao_anilist(sessao, ids: list[int], tipo: str) -> list[dict]:
 
 
 def casar(itens: list[ItemDeOrigem], sessao=None) -> list[ItemDeOrigem]:
-    """Os itens com `catalogo` apontando para a obra do AniList de mesmo `idMal` (quando há)."""
+    """Os itens com `catalogo` apontando para a obra do AniList de mesmo `idMal` (quando há).
+
+    `idMal` que o AniList dá para mais de uma obra não casa (Q109: sem palpite).
+    """
     propria = sessao is None
-    sessao = sessao or criar_sessao_http(total_retries=1, backoff_factor=0.5)
-    achadas: dict[tuple[str, int], dict] = {}
+    sessao = sessao or prazo.sessao_http(1, 0.5)
+    achadas: dict[tuple[str, int], dict[int, dict]] = {}
     try:
         for tipo in _TIPO_ANILIST:
             ids = list(dict.fromkeys(int(i.origem_id) for i in itens if i.tipo == tipo))
             for inicio in range(0, len(ids), LOTE_ANILIST):
                 for media in _pedir_ao_anilist(sessao, ids[inicio:inicio + LOTE_ANILIST], tipo):
                     if media.get('idMal') is not None and media.get('id') is not None:
-                        achadas.setdefault((tipo, int(media['idMal'])), media)
+                        achadas.setdefault((tipo, int(media['idMal'])), {})[int(media['id'])] = media
     finally:
         if propria:
             sessao.close()
 
     casados = []
     for item in itens:
-        media = achadas.get((item.tipo, int(item.origem_id)))
+        obras = achadas.get((item.tipo, int(item.origem_id))) or {}
+        media = next(iter(obras.values())) if len(obras) == 1 else None
         if media:
             item = replace(item, catalogo=RefCatalogo('anilist', str(media['id']), media))
         casados.append(item)
@@ -244,6 +256,8 @@ def ler_xml(conteudo: bytes) -> list[ItemDeOrigem]:
                 _texto(no, 'my_score'), _texto(no, 'my_start_date'), _texto(no, 'my_finish_date'),
                 repetindo=_texto(no, campo_repetindo) in ('1', 'YES', 'yes'),
             ))
+            if len(itens) > MAXIMO_ITENS:
+                raise ListaGrandeDemais()
     return itens
 
 
@@ -266,8 +280,13 @@ class MAL:
         return bool(_chave())
 
     def _pedir(self, sessao, url: str, params: dict | None) -> dict:
+        prazo.conferir()
         try:
-            resposta = sessao.get(url, params=params, headers={'X-MAL-CLIENT-ID': _chave()}, timeout=30)
+            # Sem seguir redirect: o cabeçalho com a chave não vai para outro host.
+            resposta = sessao.get(
+                url, params=params, headers={'X-MAL-CLIENT-ID': _chave()}, timeout=prazo.timeout(30),
+                allow_redirects=False,
+            )
         except Exception as exc:
             logger.warning('MyAnimeList sem resposta: %s', _sem_chave(str(exc)))
             raise OrigemIndisponivel(MENSAGEM_INDISPONIVEL) from exc
@@ -289,12 +308,16 @@ class MAL:
     def _paginas(self, nome: str, lista: str, limite: int):
         if not _chave():
             raise PlataformaIndisponivel(MENSAGEM_SEM_CHAVE)
-        sessao = self._sessao or criar_sessao_http(total_retries=1, backoff_factor=0.5)
+        sessao = self._sessao or prazo.sessao_http(1, 0.5)
         try:
             url: str | None = f'{API_URL}/users/{nome}/{lista}'
             params: dict | None = {'fields': 'list_status', 'limit': limite, 'nsfw': 'true'}
+            paginas = 0
             while url:
+                if paginas >= MAXIMO_PAGINAS:
+                    raise ListaGrandeDemais()
                 corpo = self._pedir(sessao, url, params)
+                paginas += 1
                 yield corpo.get('data') or []
                 proxima = (corpo.get('paging') or {}).get('next')
                 # `next` já traz a query inteira; só segue dentro da API do MAL.
@@ -327,6 +350,8 @@ class MAL:
                         status.get('score'), status.get('start_date'), status.get('finish_date'),
                         repetindo=bool(status.get(campo_repetindo)),
                     ))
+                if len(itens) > MAXIMO_ITENS:
+                    raise ListaGrandeDemais()
         return casar(itens, self._sessao_anilist)
 
     def itens_do_xml(self, conteudo: bytes) -> list[ItemDeOrigem]:

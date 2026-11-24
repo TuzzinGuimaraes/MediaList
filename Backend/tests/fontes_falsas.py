@@ -28,9 +28,11 @@ class SessaoGet:
     def __init__(self, rotas: dict):
         self.rotas = rotas
         self.chamadas: list[tuple[str, dict]] = []
+        self.timeouts: list[float | None] = []
 
     def get(self, url, params=None, timeout=None):
         self.chamadas.append((url, dict(params or {})))
+        self.timeouts.append(timeout)
         for padrao, resposta in self.rotas.items():
             if re.search(padrao, url):
                 if callable(resposta) and not isinstance(resposta, type):
