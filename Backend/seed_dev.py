@@ -336,11 +336,11 @@ def _semear_usuarios(rel: Relatorio) -> dict[str, str]:
         with banco.transacao() as t:
             criado = t.consultar_um(
                 'INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES (%s, %s, %s, %s) '
-                'ON CONFLICT (email) DO NOTHING RETURNING id_usuario',
+                'ON CONFLICT ((lower(email))) DO NOTHING RETURNING id_usuario',
                 (nome, email, generate_password_hash(senha), nivel),
             )
             id_usuario = (criado or t.consultar_um(
-                'SELECT id_usuario FROM usuarios WHERE email = %s', (email,)))['id_usuario']
+                'SELECT id_usuario FROM usuarios WHERE lower(email) = lower(%s)', (email,)))['id_usuario']
         rel.contar('Usuários', criado is not None)
         ids[email] = id_usuario
     return ids

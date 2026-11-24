@@ -28,7 +28,7 @@ def tokens(refresh_tokens):
 
 @pytest.fixture
 def login(client, monkeypatch, tokens):
-    FakeBanco({'FROM usuarios WHERE email': {
+    FakeBanco({'FROM usuarios WHERE lower(email)': {
         'id_usuario': ID_USUARIO,
         'nome_completo': 'Usuário Refresh',
         'email': 'refresh@example.com',

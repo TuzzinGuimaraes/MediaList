@@ -32,6 +32,8 @@ from spectree.models import SecuritySchemeData
 from spectree.page import PAGE_TEMPLATES
 from spectree.plugins.flask_plugin import FlaskPlugin
 
+from dominio.email import normalizar_email
+
 logger = logging.getLogger(__name__)
 
 
@@ -157,6 +159,14 @@ VazioComoAusente = BeforeValidator(_vazio_como_ausente)
 TextoOpcional = Annotated[str | None, VazioComoAusente]
 #: Texto obrigatório e não vazio.
 Preenchido = Annotated[str, Field(min_length=1)]
+
+
+def _email_normalizado(valor: Any) -> Any:
+    return normalizar_email(valor) if isinstance(valor, str) else valor
+
+
+#: Email de entrada, normalizado (`dominio.email`) antes de exigir que não seja vazio.
+Email = Annotated[str, BeforeValidator(_email_normalizado), Field(min_length=1)]
 
 
 class Mensagem(BaseModel):
