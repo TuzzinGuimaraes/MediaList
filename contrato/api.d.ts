@@ -3481,7 +3481,7 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3640,7 +3640,7 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3738,7 +3738,7 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3899,7 +3899,7 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             413: {
                 headers: {
                     [name: string]: unknown;
