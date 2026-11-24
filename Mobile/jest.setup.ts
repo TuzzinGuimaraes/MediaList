@@ -35,3 +35,37 @@ jest.mock('@react-native-community/datetimepicker', () => require('./src/testes/
 
 // Páginas deslizáveis da Lista: o componente nativo não existe no Jest.
 jest.mock('react-native-pager-view', () => require('./src/testes/pagerSimulado'));
+
+
+// expo-updates de mentira: por padrão desligado, como no dev e no Expo Go. O teste do Perfil
+// liga com `__definir` para simular um APK (embutido, com update em execução ou com update pendente).
+jest.mock('expo-updates', () => {
+  const desligado = {
+    ativo: false,
+    updateId: undefined as string | undefined,
+    isEmbeddedLaunch: false,
+    isUpdatePending: false,
+  };
+  let mockEstado = { ...desligado };
+  return {
+    get isEnabled() {
+      return mockEstado.ativo;
+    },
+    useUpdates: () => ({
+      currentlyRunning: { updateId: mockEstado.updateId, isEmbeddedLaunch: mockEstado.isEmbeddedLaunch },
+      isUpdatePending: mockEstado.isUpdatePending,
+      isUpdateAvailable: mockEstado.isUpdatePending,
+    }),
+    reloadAsync: jest.fn(async () => {}),
+    __definir: (estado: Partial<typeof desligado>) => {
+      mockEstado = { ...desligado, ...estado };
+    },
+    __limpar: () => {
+      mockEstado = { ...desligado };
+    },
+  };
+});
+
+beforeEach(() => {
+  require('expo-updates').__limpar();
+});
