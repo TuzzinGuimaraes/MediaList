@@ -30,7 +30,7 @@ DUMP_FILE ?= $(DUMP_DIR)/$(DUMP_NAME)
 	services-down services-logs db-migrate db-revision db-shell db-grants backend-dev web-dev smoke-postgres \
 	smoke-permissions smoke test-backend test-web test-mobile test lint lint-backend lint-web \
 	lint-mobile build-web build api-tipos clean-web \
-	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore db-restore-cifrado redefinir-senha
+	import-animes import-mangas import-jogos import-all seed-dev db-dump db-restore db-restore-cifrado redefinir-senha e2e
 
 help:
 	@printf "\nMediaList - comandos principais\n\n"
@@ -60,6 +60,7 @@ help:
 	@printf "  make test-backend      Executa o pytest do backend no host\n"
 	@printf "  make test-web          Executa os testes do web (Vitest)\n"
 	@printf "  make test-mobile       Executa os testes do mobile no host\n"
+	@printf "  make e2e               Fluxos E2E (Playwright) contra o stack local com seed-dev (E2E_BASE_URL)\n"
 	@printf "  make lint              Roda ruff (backend), tsc e eslint (web) e o lint do mobile\n"
 	@printf "  make lint-web          Roda tsc e eslint do web\n"
 	@printf "  make api-tipos         Regera contrato/openapi.json e contrato/api.d.ts a partir do Backend\n"
@@ -180,6 +181,13 @@ test-web:
 	cd "$(WEB_DIR)" && $(NPM) test
 
 test: test-backend test-web test-mobile
+
+# Fluxos E2E (Web/e2e/fluxos) contra o web do compose, já com `make seed-dev`. Precisa do
+# Chromium do Playwright (`cd Web && npx playwright install chromium`). A Senha temporária
+# sai do container backend do projeto do compose (E2E_COMPOSE_PROJECT, se não for o padrão).
+E2E_BASE_URL ?= http://localhost:$(or $(FRONTEND_PORT),3005)
+e2e:
+	cd "$(WEB_DIR)" && E2E_BASE_URL="$(E2E_BASE_URL)" $(NPM) run e2e
 
 lint-backend:
 	cd "$(BACKEND_DIR)" && $(PYTHON) -m ruff check .
