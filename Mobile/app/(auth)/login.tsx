@@ -1,11 +1,11 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text } from 'react-native';
 
 import { mensagemDeErro } from '@/api/erros';
 import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
-import { Campo } from '@/components/Campo';
+import { Campo, CampoSenha, type CampoSenhaRef } from '@/components/Campo';
 import { TelaFormulario } from '@/components/Tela';
 import { validarLogin } from '@dominio/conta';
 
@@ -24,8 +24,10 @@ export default function Login() {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const campoSenha = useRef<CampoSenhaRef>(null);
 
   async function enviar() {
+    campoSenha.current?.ocultar();
     const invalido = validarLogin({ email, senha });
     if (invalido) return setErro(invalido);
     setErro(null);
@@ -49,13 +51,18 @@ export default function Login() {
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoSenha.current?.focus()}
       />
-      <Campo
+      <CampoSenha
+        ref={campoSenha}
         rotulo={textos.senha}
         value={senha}
         onChangeText={setSenha}
-        secureTextEntry
         autoComplete="password"
+        returnKeyType="go"
+        onSubmitEditing={enviar}
       />
       {erro ? (
         <Text accessibilityRole="alert" className="text-corpo text-erro">

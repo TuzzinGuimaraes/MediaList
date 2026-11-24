@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { TextInput } from 'react-native';
 
 import type { RespostaMe } from '../api/tipos';
 import { erro } from './contrato';
@@ -114,6 +115,37 @@ describe('Senha temporária', () => {
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();
     expect(reaberto.para('GET /auth/me')[0].autorizacao).toBe('Bearer A3');
     expect(screen.queryByRole('header', { name: TITULO })).not.toBeOnTheScreen();
+  });
+
+  it('o teclado passa pelos três campos e envia; o olho em cada um volta a ocultar ao enviar', async () => {
+    const { api } = await entrarComTemporaria({ 'POST /auth/trocar-senha': trocaOk });
+    const focus = TextInput.prototype.focus as unknown as jest.Mock;
+    focus.mockClear();
+    const campos = ['Senha temporária', 'Nova senha', 'Confirme a nova senha'];
+    const valores = [TEMPORARIA, '12345', '12345'];
+    for (const [i, rotulo] of campos.entries()) {
+      await fireEvent.changeText(screen.getByLabelText(rotulo), valores[i]);
+    }
+
+    const olhos = screen.getAllByRole('button', { name: 'Mostrar senha' });
+    expect(olhos).toHaveLength(3);
+    for (const olho of olhos) await fireEvent.press(olho);
+    expect(campos.map((r) => screen.getByLabelText(r).props.secureTextEntry)).toEqual([false, false, false]);
+
+    for (const rotulo of campos.slice(0, 2)) {
+      expect(screen.getByLabelText(rotulo).props.returnKeyType).toBe('next');
+      await fireEvent(screen.getByLabelText(rotulo), 'submitEditing');
+    }
+    expect(focus.mock.contexts.map((c: { props: { accessibilityLabel: string } }) => c.props.accessibilityLabel)).toEqual(
+      campos.slice(1),
+    );
+    expect(screen.getByLabelText(campos[2]).props.returnKeyType).toBe('go');
+    await fireEvent(screen.getByLabelText(campos[2]), 'submitEditing');
+
+    // Enviou (e a validação recusou a nova curta): as três voltam a ficar ocultas.
+    expect(await screen.findByRole('alert')).toHaveTextContent('A nova senha precisa ter pelo menos 6 caracteres.');
+    expect(campos.map((r) => screen.getByLabelText(r).props.secureTextEntry)).toEqual([true, true, true]);
+    expect(api.para('POST /auth/trocar-senha')).toHaveLength(0);
   });
 
   it('valida antes de enviar: nova curta ou igual à temporária', async () => {

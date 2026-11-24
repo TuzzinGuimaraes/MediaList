@@ -1,11 +1,11 @@
 import { Redirect } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text } from 'react-native';
 
 import { mensagemDeErro } from '@/api/erros';
 import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
-import { Campo } from '@/components/Campo';
+import { CampoSenha, type CampoSenhaRef } from '@/components/Campo';
 import { Carregando } from '@/components/EstadoTela';
 import { TelaFormulario } from '@/components/Tela';
 import { validarNovaSenha } from '@dominio/conta';
@@ -42,8 +42,12 @@ function Formulario({ nome }: { nome: string }) {
   const [confirmacao, setConfirmacao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const campoAtual = useRef<CampoSenhaRef>(null);
+  const campoNova = useRef<CampoSenhaRef>(null);
+  const campoConfirmacao = useRef<CampoSenhaRef>(null);
 
   async function enviar() {
+    for (const campo of [campoAtual, campoNova, campoConfirmacao]) campo.current?.ocultar();
     const invalida = validarNovaSenha({ senhaAtual, novaSenha, confirmacao });
     if (invalida) return setErro(invalida);
     setErro(null);
@@ -62,26 +66,34 @@ function Formulario({ nome }: { nome: string }) {
         {textos.titulo}
       </Text>
       <Text className="text-corpo text-texto-suave">{textos.explicacao(nome)}</Text>
-      <Campo
+      <CampoSenha
+        ref={campoAtual}
         rotulo={textos.atual}
         value={senhaAtual}
         onChangeText={setSenhaAtual}
-        secureTextEntry
         autoComplete="current-password"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoNova.current?.focus()}
       />
-      <Campo
+      <CampoSenha
+        ref={campoNova}
         rotulo={textos.nova}
         value={novaSenha}
         onChangeText={setNovaSenha}
-        secureTextEntry
         autoComplete="new-password"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoConfirmacao.current?.focus()}
       />
-      <Campo
+      <CampoSenha
+        ref={campoConfirmacao}
         rotulo={textos.confirmacao}
         value={confirmacao}
         onChangeText={setConfirmacao}
-        secureTextEntry
         autoComplete="new-password"
+        returnKeyType="go"
+        onSubmitEditing={enviar}
       />
       {erro ? (
         <Text accessibilityRole="alert" className="text-corpo text-erro">
