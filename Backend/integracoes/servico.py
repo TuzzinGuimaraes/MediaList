@@ -2,8 +2,11 @@
 
 A prévia lê a origem, localiza cada item no Catálogo e conta o que `aplicar` faria
 (novos, atualizados, Não encontrados), sem gravar nada; guarda os itens que mudam por 1 h.
-Confirmar consome a prévia, importa as obras que faltam, recalcula `aplicar` com a Lista
-de agora e grava pela `ListaPessoal` (a mesma validação da rota da Lista).
+Confirmar importa as obras que faltam no Catálogo (commits próprios: o upsert da Importação
+é idempotente) e, numa transação só, consome a prévia, recalcula `aplicar` com a Lista de
+agora, grava pela `ListaPessoal` (a mesma validação da rota da Lista) e registra o resultado.
+Falha no meio desfaz tudo e a prévia continua valendo; dois confirmar da mesma prévia
+aplicam uma vez só (o DELETE da prévia trava a linha até o commit).
 
 Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
 `SemConta`/`PlataformaDesconhecida`.
@@ -14,18 +17,22 @@ from dataclasses import replace
 from datetime import date
 from typing import Any
 
+import banco
 from dominio.lista_pessoal import ListaPessoal
-from integracoes import catalogo, repositorio
+from integracoes import catalogo, prazo, repositorio
 from integracoes.anilist import AniList
 from integracoes.aplicar import NOVO, aplicar
 from integracoes.mal import MAL
 from integracoes.plataforma import (
     Conta,
+    ErroDaIntegracao,
     ItemDeOrigem,
     Plataforma,
     PlataformaIndisponivel,
+    conferir_tamanho,
     item_de_json,
     item_para_json,
+    link_seguro,
 )
 from integracoes.steam import Steam
 from repositories.itens_lista import ItensLista
@@ -36,6 +43,9 @@ PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList(), 'mal': MAL(), 'steam
 #: Quantos Não encontrados saem na resposta (o total sai à parte).
 AMOSTRA_NAO_ENCONTRADOS = 100
 
+#: Plataformas sem prévia: só sincronizam (`integracoes.sincronizacao_steam`).
+SO_SINCRONIZAM = frozenset({'steam'})
+
 
 class PlataformaDesconhecida(LookupError):
     """Nome de plataforma fora de `PLATAFORMAS`."""
@@ -43,6 +53,10 @@ class PlataformaDesconhecida(LookupError):
 
 class SemConta(LookupError):
     """A plataforma não está conectada para o Usuário."""
+
+
+class SemPrevia(ErroDaIntegracao):
+    """A plataforma não tem prévia (a Steam só sincroniza)."""
 
 
 class _CatalogoLocalizado:
@@ -62,7 +76,8 @@ def plataforma(nome: str) -> Plataforma:
     return PLATAFORMAS[nome]
 
 
-def _disponivel(nome: str) -> Plataforma:
+def plataforma_disponivel(nome: str) -> Plataforma:
+    """A plataforma registrada, se tem a chave no ambiente; senão PlataformaIndisponivel."""
     escolhida = plataforma(nome)
     if not escolhida.disponivel():
         raise PlataformaIndisponivel(f'{escolhida.rotulo} está indisponível no momento.')
@@ -90,7 +105,7 @@ def listar(id_usuario: str) -> list[dict[str, Any]]:
 
 def conectar(id_usuario: str, nome: str, identificador: str) -> dict[str, Any]:
     """Valida o perfil público na plataforma e grava a conta."""
-    escolhida = _disponivel(nome)
+    escolhida = plataforma_disponivel(nome)
     conta = escolhida.conectar(identificador)
     return _visao(escolhida, repositorio.gravar_conta(id_usuario, nome, conta))
 
@@ -113,12 +128,12 @@ def _contagens(novos: int, atualizados: int, nao_encontrados: list[dict[str, Any
     }
 
 
-def _planejar(id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date):
+def _planejar(id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date, db=banco):
     """(item, Mídia localizada ou None, Mudança) dos itens que mudam algo, e os Não encontrados.
 
     Item que não está no Catálogo e é importável conta como novo (a Mídia entra ao confirmar).
     """
-    atuais = repositorio.itens_do_usuario(id_usuario, sorted({m['id_midia'] for m in localizadas.values()}))
+    atuais = repositorio.itens_do_usuario(id_usuario, sorted({m['id_midia'] for m in localizadas.values()}), db)
     planos, nao_encontrados = [], []
     for item in itens:
         midia = localizadas.get(catalogo.chave(item)) if item.catalogo else None
@@ -141,6 +156,7 @@ def _sem_dados_se_localizado(item: ItemDeOrigem, midia) -> ItemDeOrigem:
 
 def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> dict[str, Any]:
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
+    conferir_tamanho(len(itens))
     planos, nao_encontrados = _planejar(id_usuario, itens, catalogo.localizar(itens), date.today())
     novos = sum(1 for *_, m in planos if m.tipo == NOVO)
     conteudo = {
@@ -157,7 +173,10 @@ def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> di
 
 def previa(id_usuario: str, nome: str) -> dict[str, Any]:
     """Lê a lista na plataforma conectada e monta a prévia."""
-    escolhida = _disponivel(nome)
+    if nome in SO_SINCRONIZAM:
+        rotulo = plataforma(nome).rotulo
+        raise SemPrevia(f'A {rotulo} não tem prévia: use "Sincronizar agora".')
+    escolhida = plataforma_disponivel(nome)
     conta = repositorio.conta(id_usuario, nome)
     if conta is None:
         raise SemConta(nome)
@@ -165,25 +184,25 @@ def previa(id_usuario: str, nome: str) -> dict[str, Any]:
     return previa_de_itens(id_usuario, nome, itens)
 
 
-def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | None = None) -> dict[str, Any]:
-    """Importa as obras que faltam e grava na Lista o que `aplicar` decidir. Devolve as contagens.
-
-    É o que o confirmar da prévia chama; a sincronização sem prévia (Steam) também pode chamar.
-    """
-    hoje = hoje or date.today()
+def _importar_faltantes(itens: list[ItemDeOrigem]) -> dict[tuple[str, str], catalogo.Localizada]:
+    """As Mídias dos itens, importando as que faltam (cada uma no seu commit; o upsert é idempotente)."""
     localizadas = catalogo.localizar(itens)
-    nao_encontrados: list[dict[str, Any]] = []
     for item in itens:
         chave = catalogo.chave(item)
         if chave is not None and chave not in localizadas:
+            prazo.conferir()
             importada = catalogo.importar(item)
             if importada:
                 localizadas[chave] = importada
+    return localizadas
 
-    lista = ListaPessoal(ItensLista(), _CatalogoLocalizado(localizadas))
+
+def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date) -> dict[str, Any]:
+    """Grava na Lista o que `aplicar` decidir, pelo executor `db` (a transação do chamador)."""
+    lista = ListaPessoal(ItensLista(db), _CatalogoLocalizado(localizadas))
     planos, faltando = _planejar(id_usuario, [i for i in itens if localizadas.get(catalogo.chave(i))],
-                                 localizadas, hoje)
-    nao_encontrados.extend(_nao_encontrado(i) for i in itens if not localizadas.get(catalogo.chave(i)))
+                                 localizadas, hoje, db)
+    nao_encontrados = [_nao_encontrado(i) for i in itens if not localizadas.get(catalogo.chave(i))]
     nao_encontrados.extend(faltando)
 
     novos = atualizados = 0
@@ -192,26 +211,44 @@ def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | No
             resultado = lista.adicionar(id_usuario, {**mudanca.campos, 'id_midia': midia['id_midia']})
             novos += resultado.bem_sucedido
         else:
-            resultado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos)
+            # Q114b: a origem chegar ao total nunca soma Recontagem.
+            resultado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False)
             atualizados += resultado.bem_sucedido
         if not resultado.bem_sucedido:
             nao_encontrados.append(_nao_encontrado(item))
     return _contagens(novos, atualizados, nao_encontrados)
 
 
-def confirmar(id_usuario: str, id_previa: str) -> dict[str, Any] | None:
+def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | None = None) -> dict[str, Any]:
+    """Importa as obras que faltam e grava na Lista (numa transação) o que `aplicar` decidir.
+
+    É o que a sincronização sem prévia (Steam) chama. Devolve as contagens.
+    """
+    localizadas = _importar_faltantes(itens)
+    with banco.transacao() as t:
+        return _gravar(t, id_usuario, itens, localizadas, hoje or date.today())
+
+
+def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> dict[str, Any] | None:
     """Aplica a prévia (uma vez só) e registra o resultado na conta. None se ela não vale mais."""
-    guardada = repositorio.consumir_previa(id_usuario, id_previa)
+    guardada = repositorio.ler_previa(id_usuario, id_previa)
     if guardada is None:
         return None
-    conteudo = guardada['conteudo']
-    resultado = aplicar_itens(id_usuario, [item_de_json(d) for d in conteudo['itens']])
-    anteriores = conteudo.get('nao_encontrados') or []
-    nao_encontrados = anteriores + resultado['nao_encontrados']
-    resultado = {
-        **resultado,
-        'nao_encontrados': nao_encontrados[:AMOSTRA_NAO_ENCONTRADOS],
-        'total_nao_encontrados': len(anteriores) + resultado['total_nao_encontrados'],
-    }
-    repositorio.registrar_resultado(id_usuario, guardada['plataforma'], resultado)
+    itens = [item_de_json(d) for d in guardada['conteudo']['itens']]
+    localizadas = _importar_faltantes(itens)
+
+    with banco.transacao() as t:
+        consumida = repositorio.consumir_previa(id_usuario, id_previa, t)
+        if consumida is None:
+            return None  # outro confirmar levou a prévia enquanto as obras eram importadas
+        resultado = _gravar(t, id_usuario, itens, localizadas, hoje or date.today())
+        anteriores = [{**n, 'link': link_seguro(n.get('link'))}
+                      for n in consumida['conteudo'].get('nao_encontrados') or []]
+        nao_encontrados = anteriores + resultado['nao_encontrados']
+        resultado = {
+            **resultado,
+            'nao_encontrados': nao_encontrados[:AMOSTRA_NAO_ENCONTRADOS],
+            'total_nao_encontrados': len(anteriores) + resultado['total_nao_encontrados'],
+        }
+        repositorio.registrar_resultado(id_usuario, consumida['plataforma'], resultado, t)
     return resultado

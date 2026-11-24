@@ -10,9 +10,10 @@ from spectree import Response
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
-from integracoes import mal, servico, sincronizacao_steam
+from integracoes import mal, prazo, servico, sincronizacao_steam
 from integracoes.plataforma import (
     ErroDaIntegracao,
+    ListaGrandeDemais,
     OrigemIndisponivel,
     PerfilNaoEncontrado,
     PerfilPrivado,
@@ -30,32 +31,43 @@ from schemas.integracoes import (
 
 integracoes_bp = Blueprint('integracoes', __name__)
 
-#: Erro da plataforma -> (status HTTP, código).
-_ERROS = {
-    PerfilPrivado: (400, CodigoErro.PERFIL_PRIVADO),
-    PerfilNaoEncontrado: (404, CodigoErro.PERFIL_NAO_ENCONTRADO),
-    OrigemIndisponivel: (502, CodigoErro.ORIGEM_INDISPONIVEL),
-    PlataformaIndisponivel: (503, CodigoErro.PLATAFORMA_INDISPONIVEL),
-}
+#: Erro da plataforma -> (status HTTP, código), por `isinstance` na ordem: subclasse herda o da base
+#: (ex. `prazo.TempoEsgotado` é `OrigemIndisponivel`, 502).
+_ERROS = (
+    (PerfilPrivado, 400, CodigoErro.PERFIL_PRIVADO),
+    (servico.SemPrevia, 400, CodigoErro.REQUISICAO_INVALIDA),
+    (PerfilNaoEncontrado, 404, CodigoErro.PERFIL_NAO_ENCONTRADO),
+    (ListaGrandeDemais, 413, CodigoErro.LISTA_GRANDE_DEMAIS),
+    (OrigemIndisponivel, 502, CodigoErro.ORIGEM_INDISPONIVEL),
+    (PlataformaIndisponivel, 503, CodigoErro.PLATAFORMA_INDISPONIVEL),
+)
 
 #: Erros das rotas que falam com a plataforma.
 ERROS_DA_PLATAFORMA = {
-    'HTTP_400': Erro, 'HTTP_404': Erro, 'HTTP_502': Erro, 'HTTP_503': Erro, **ERROS_AUTENTICADA,
+    'HTTP_400': Erro, 'HTTP_404': Erro, 'HTTP_413': Erro, 'HTTP_502': Erro, 'HTTP_503': Erro, **ERROS_AUTENTICADA,
 }
 
 
+def _erro_da_integracao(erro: ErroDaIntegracao):
+    for classe, status, codigo in _ERROS:
+        if isinstance(erro, classe):
+            return resposta_erro(status, codigo, str(erro))
+    return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro))
+
+
 def _executar(acao):
-    """Roda o caso de uso e traduz as exceções do serviço para o envelope de erro."""
+    """Roda o caso de uso no prazo da requisição (`integracoes.prazo`) e traduz as exceções do
+    serviço para o envelope de erro."""
     try:
-        return acao()
+        with prazo.na_requisicao():
+            return acao()
     except servico.PlataformaDesconhecida:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Plataforma desconhecida')
     except servico.SemConta as erro:
         rotulo = servico.plataforma(str(erro)).rotulo
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, f'Conecte o {rotulo} antes de importar')
     except ErroDaIntegracao as erro:
-        status, codigo = _ERROS[type(erro)]
-        return resposta_erro(status, codigo, str(erro))
+        return _erro_da_integracao(erro)
 
 
 @integracoes_bp.route('', methods=['GET'])
@@ -143,15 +155,21 @@ def previa_do_xml_do_mal(form: ArquivoXml):
 @integracoes_bp.route('/previas/<string:id_previa>/confirmar', methods=['POST'])
 @jwt_required()
 @contrato.validate(
-    resp=Response(HTTP_200=ResultadoImportacao, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    resp=Response(HTTP_200=ResultadoImportacao, HTTP_404=Erro, HTTP_502=Erro, **ERROS_AUTENTICADA),
     tags=['integracoes'], security=AUTENTICADO,
 )
 def confirmar_previa(id_previa):
-    """Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo."""
-    resultado = servico.confirmar(get_jwt_identity(), id_previa)
-    if resultado is None:
-        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Prévia não encontrada ou expirada: gere outra')
-    return resultado
+    """Aplicar a prévia na Lista (uma vez só, tudo ou nada): importa as obras que faltam no Catálogo.
+
+    Prazo da requisição vencido responde 502 e a prévia continua valendo (as obras já importadas ficam).
+    """
+    def acao():
+        resultado = servico.confirmar(get_jwt_identity(), id_previa)
+        if resultado is None:
+            return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Prévia não encontrada ou expirada: gere outra')
+        return resultado
+
+    return _executar(acao)
 
 
 @integracoes_bp.route('/steam/sincronizar', methods=['POST'])
