@@ -4,3 +4,6 @@ dist/
 web-build/
 expo-env.d.ts
 *.tsbuildinfo
+
+# Keystore baixada do EAS (guardar fora do repo)
+*.jks

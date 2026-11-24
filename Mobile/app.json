@@ -37,6 +37,21 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "a8e4c013-6733-4d93-a985-66090f3c8a0b"
+      }
+    },
+    "owner": "arturaguimaraes",
+    "updates": {
+      "url": "https://u.expo.dev/a8e4c013-6733-4d93-a985-66090f3c8a0b"
+    },
+    "ios": {}
   }
 }
