@@ -18,6 +18,7 @@ from dominio.lista_pessoal import ListaPessoal
 from integracoes import catalogo, repositorio
 from integracoes.anilist import AniList
 from integracoes.aplicar import NOVO, aplicar
+from integracoes.mal import MAL
 from integracoes.plataforma import (
     Conta,
     ItemDeOrigem,
@@ -29,7 +30,7 @@ from integracoes.plataforma import (
 from repositories.itens_lista import ItensLista
 
 #: As plataformas registradas, na ordem da tela. Os tickets do MAL e da Steam somam aqui.
-PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList()}
+PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList(), 'mal': MAL()}
 
 #: Quantos Não encontrados saem na resposta (o total sai à parte).
 AMOSTRA_NAO_ENCONTRADOS = 100

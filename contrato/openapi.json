@@ -1,6 +1,21 @@
 {
   "components": {
     "schemas": {
+      "ArquivoXml": {
+        "description": "O XML exportado do MyAnimeList (também o do AniList e do Kitsu), `.xml` ou `.xml.gz`, até 5 MB.",
+        "properties": {
+          "arquivo": {
+            "format": "binary",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "ArquivoXml",
+        "type": "object"
+      },
       "AtividadeDoDia": {
         "properties": {
           "data": {
@@ -6021,6 +6036,104 @@
           }
         ],
         "summary": "As plataformas de Integração e as contas conectadas do Usuário.",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/mal/xml": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_integracoes_mal_xml",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ArquivoXml"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaImportacao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Prévia a partir do XML exportado do MyAnimeList (só web). Não precisa conectar nem da chave do MAL.",
         "tags": [
           "integracoes"
         ]

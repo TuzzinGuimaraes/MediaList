@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from spectree.model_adapter.pydantic_adapter import BaseFile
 
 from contrato import Id, Instante
 
@@ -32,6 +33,12 @@ class PreviaImportacao(ResultadoImportacao):
 
     id_previa: Id
     expira_em: Instante
+
+
+class ArquivoXml(BaseModel):
+    """O XML exportado do MyAnimeList (também o do AniList e do Kitsu), `.xml` ou `.xml.gz`, até 5 MB."""
+
+    arquivo: BaseFile
 
 
 class Integracao(BaseModel):
