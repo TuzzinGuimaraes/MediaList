@@ -28,12 +28,14 @@ _PADRAO_CHAVE = re.compile(r'(\bkey=)[^&\s\'"]+', re.IGNORECASE)
 
 
 def ocultar_segredos(texto: str) -> str:
-    """Troca o valor de `key=` (chave da RAWG na query string) por ***."""
+    """Troca o valor de `key=` (chaves da RAWG e da Steam na query string) e as chaves cruas por ***."""
     texto = _PADRAO_CHAVE.sub(r'\1***', texto)
+    from config import STEAM_API_KEY
     from importacao.config import RAWG_API_KEY
 
-    if RAWG_API_KEY:
-        texto = texto.replace(RAWG_API_KEY, '***')
+    for chave in (RAWG_API_KEY, STEAM_API_KEY):
+        if chave:
+            texto = texto.replace(chave, '***')
     return texto
 
 
