@@ -8,6 +8,8 @@ psycopg-pool==3.3.3
 python-dotenv==1.2.4
 Werkzeug==3.1.9
 requests==2.34.2
+# XML exportado do MAL (Integrações): parser sem entidades externas nem bomba de expansão.
+defusedxml==0.7.1
 # Só para o Alembic (migrações em SQL puro); o app usa psycopg direto (ADR-0007).
 SQLAlchemy==2.1.9
 # Contrato da API: OpenAPI e validação de entrada/saída (ADR 0011).
