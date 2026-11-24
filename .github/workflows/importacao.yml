@@ -72,6 +72,18 @@ jobs:
           if [ "$DO_INICIO" = "true" ]; then args+=(--do-inicio); fi
           python -m importacao.run_import "${args[@]}"
 
+      # Sincronização diária da Steam (ADR-0015) de todos os Usuários conectados,
+      # sem o orçamento do "Sincronizar agora". Roda mesmo se a Importação falhou;
+      # sem STEAM_API_KEY é pulada com aviso. Mesmo log (e ocultação de segredos).
+      - name: Sincronização da Steam
+        if: ${{ !cancelled() && (github.event_name == 'schedule' || inputs.tipo == 'todos' || inputs.tipo == 'jogo') }}
+        working-directory: Backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+        run: python -m integracoes.job_steam
+
       - name: Upload do log
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
