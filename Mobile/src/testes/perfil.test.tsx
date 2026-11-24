@@ -48,6 +48,15 @@ const lista = {
   },
 };
 
+// No Jest o manifesto vem vazio; no APK e no Expo Go a versão vem do app.json.
+jest.mock('expo-constants', () => {
+  const real = jest.requireActual('expo-constants').default;
+  return {
+    __esModule: true,
+    default: Object.create(real, { expoConfig: { get: () => ({ ...real.expoConfig, version: '1.0.0' }) } }),
+  };
+});
+
 async function abrirPerfil() {
   await entrarPeloLogin();
   await fireEvent.press(await aba('Perfil'));
@@ -138,5 +147,52 @@ describe('estatísticas com erro', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
 
     expect(await barra('Jogo')).toHaveAccessibleName('Jogo: 3');
+  });
+});
+
+describe('versão do app no Perfil', () => {
+  const Updates = jest.requireMock('expo-updates');
+
+  beforeEach(() => {
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /auth/me': me,
+      'GET /usuario/permissoes': permissoes,
+      'GET /usuario/estatisticas': estatisticas,
+      'GET /lista': lista,
+    });
+  });
+
+  it('fora de build (dev, Expo Go) mostra só a versão, sem update nem botão', async () => {
+    await abrirPerfil();
+
+    expect(await screen.findByText('1.0.0')).toBeOnTheScreen();
+    expect(screen.queryByText(/embutido/)).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Atualizar agora' })).not.toBeOnTheScreen();
+  });
+
+  it('no APK sem update baixado, mostra a versão e "embutido"', async () => {
+    Updates.__definir({ ativo: true, isEmbeddedLaunch: true, updateId: 'f0e1d2c3-0000-4000-8000-000000000000' });
+    await abrirPerfil();
+
+    expect(await screen.findByText('1.0.0 · embutido')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Atualizar agora' })).not.toBeOnTheScreen();
+  });
+
+  it('com um update em execução, mostra o id curto dele', async () => {
+    Updates.__definir({ ativo: true, updateId: 'a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d' });
+    await abrirPerfil();
+
+    expect(await screen.findByText('1.0.0 · update a1b2c3d4')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Atualizar agora' })).not.toBeOnTheScreen();
+  });
+
+  it('com um update baixado e pendente, "Atualizar agora" recarrega o app', async () => {
+    Updates.__definir({ ativo: true, isEmbeddedLaunch: true, isUpdatePending: true });
+    await abrirPerfil();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Atualizar agora' }));
+
+    expect(Updates.reloadAsync).toHaveBeenCalledTimes(1);
   });
 });

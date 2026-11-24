@@ -3,12 +3,16 @@
     "name": "MediaList",
     "slug": "medialist",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "medialist",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#0E0E10",
     "android": {
+      "package": "dev.medialist.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E0E10"
