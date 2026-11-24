@@ -1,6 +1,6 @@
 """Sincronização da Steam (Q111, Q113): sem prévia, grava direto pela `servico.aplicar_itens`.
 
-1. Lê os jogos com horas do perfil conectado (`integracoes.steam`).
+1. Lê os jogos já abertos do perfil conectado (`integracoes.steam`).
 2. Os já casados em `steam_appids` vão primeiro: atualizar horas é barato e é o que o
    "Sincronizar agora" mais precisa entregar.
 3. Os que faltam casar passam pelo RAWG (`integracoes.rawg`), um por vez, enquanto houver
@@ -8,7 +8,10 @@
    grava o negativo (só é buscado de novo depois de `RETENTAR_NEGATIVO_DIAS`). O que não coube
    no orçamento, ou o RAWG fora do ar, fica `pendente` para a próxima (o job diário).
 
-`orcamento=None` (job diário) casa tudo. O resultado vai para `integracoes.ultimo_resultado`.
+O orçamento conta do início (ler a biblioteca e aplicar os já casados entram nele) e é
+conferido antes de cada chamada ao RAWG, não só entre jogos: um jogo pode pedir a busca, as
+lojas e o detalhe. `orcamento=None` (job diário) casa tudo. O resultado vai para
+`integracoes.ultimo_resultado`.
 """
 from __future__ import annotations
 
@@ -18,12 +21,15 @@ from datetime import date
 from typing import Any, Callable
 
 from integracoes import catalogo, repositorio, servico, steam_appids
-from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo
+from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
 from integracoes.rawg import Rawg
-from integracoes.steam import link_da_loja
 
 #: Orçamento do "Sincronizar agora", em segundos (a função da Vercel tem 300 s).
 ORCAMENTO_SEGUNDOS = 60
+
+
+class _OrcamentoEsgotado(OrigemIndisponivel):
+    """O orçamento acabou antes de uma chamada ao RAWG: o jogo fica pendente."""
 
 
 def _casar(item: ItemDeOrigem, rawg: Rawg) -> ItemDeOrigem | None:
@@ -66,11 +72,12 @@ def sincronizar(
 ) -> dict[str, Any]:
     """Sincroniza a Steam do Usuário; devolve novos, atualizados, Não encontrados e `pendentes`."""
     inicio = relogio()
-    steam = servico._disponivel('steam')
+    steam = servico.plataforma_disponivel('steam')
     conta = repositorio.conta(id_usuario, 'steam')
     if conta is None:
         raise servico.SemConta('steam')
     itens = steam.ler(Conta(conta['identificador'], conta['nome_exibicao']))
+    conferir_tamanho(len(itens))
 
     casamentos = steam_appids.ler([int(i.origem_id) for i in itens])
     casados, a_casar, sem_casamento = [], [], []
@@ -85,18 +92,23 @@ def sincronizar(
 
     ja_casados = servico.aplicar_itens(id_usuario, casados, hoje=hoje)
 
-    rawg = Rawg()
+    def conferir_orcamento() -> None:
+        if orcamento is not None and relogio() - inicio >= orcamento:
+            raise _OrcamentoEsgotado('orçamento do Sincronizar agora esgotado')
+
+    rawg = Rawg(antes_de_chamar=conferir_orcamento)
     recem_casados: list[ItemDeOrigem] = []
     pendentes = 0
     try:
         for posicao, item in enumerate(a_casar):
-            if not rawg.disponivel() or (orcamento is not None and relogio() - inicio >= orcamento):
+            if not rawg.disponivel():
                 pendentes = len(a_casar) - posicao
                 break
             try:
                 casado = _casar(item, rawg)
             except OrigemIndisponivel:
-                pendentes = len(a_casar) - posicao  # o RAWG caiu: o resto fica para a próxima
+                # Orçamento ou prazo esgotado, ou o RAWG caiu: este e o resto ficam para a próxima.
+                pendentes = len(a_casar) - posicao
                 break
             if casado:
                 recem_casados.append(casado)
@@ -106,7 +118,7 @@ def sincronizar(
         rawg.fechar()
 
     novos_casados = servico.aplicar_itens(id_usuario, recem_casados, hoje=hoje)
-    nao_casados = [{'titulo': i.titulo, 'link': link_da_loja(i.origem_id)} for i in sem_casamento]
+    nao_casados = [{'titulo': i.titulo, 'link': i.link} for i in sem_casamento]
     resultado = {
         **_somar(ja_casados, novos_casados, {
             'novos': 0, 'atualizados': 0, 'nao_encontrados': nao_casados, 'total_nao_encontrados': len(nao_casados),
