@@ -285,6 +285,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/integracoes/steam/sincronizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sincronizar agora: grava as horas dos jogos já casados e casa os novos até o orçamento (~60 s).
+         * @description Os que não couberem voltam em `pendentes` e ficam para a sincronização diária.
+         */
+        post: operations["post__api_integracoes_steam_sincronizar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/integracoes/{plataforma}": {
         parameters: {
             query?: never;
@@ -2485,6 +2505,28 @@ export interface components {
             /** Total Nao Encontrados */
             total_nao_encontrados: number;
         };
+        /**
+         * ResultadoSincronizacao
+         * @description A sincronização da Steam: grava direto, sem prévia.
+         */
+        ResultadoSincronizacao: {
+            /** Atualizados */
+            atualizados: number;
+            /**
+             * Nao Encontrados
+             * @description Amostra (até 100); o total está ao lado
+             */
+            nao_encontrados: components["schemas"]["NaoEncontrado"][];
+            /** Novos */
+            novos: number;
+            /**
+             * Pendentes
+             * @description Jogos ainda não casados com o Catálogo: ficam para a sincronização diária
+             */
+            pendentes: number;
+            /** Total Nao Encontrados */
+            total_nao_encontrados: number;
+        };
         /** ResumoEstatisticas */
         ResumoEstatisticas: {
             /** Concluidos */
@@ -3523,6 +3565,89 @@ export interface operations {
             };
             /** @description Unprocessable Content */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_integracoes_steam_sincronizar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoSincronizacao"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

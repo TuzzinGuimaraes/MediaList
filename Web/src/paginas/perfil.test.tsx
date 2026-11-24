@@ -475,3 +475,72 @@ describe('Perfil: Integrações', () => {
     expect(within(anilist).queryByLabelText('Arquivo XML exportado')).not.toBeInTheDocument();
   });
 });
+
+describe('Perfil: Integração com a Steam', () => {
+  const conectadaASteam = integracao({
+    plataforma: 'steam',
+    rotulo: 'Steam',
+    conectada: true,
+    identificador: '76561197960287930',
+    nome_exibicao: 'Fulano',
+  });
+
+  it('conecta pela URL do perfil', async () => {
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [integracao({ plataforma: 'steam', rotulo: 'Steam' })] } },
+        'PUT /integracoes/steam': { status: 200, corpo: conectadaASteam },
+      }),
+    });
+
+    const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
+    await user.type(within(steam).getByLabelText('URL do perfil da Steam'), 'steamcommunity.com/id/fulano');
+    await user.click(within(steam).getByRole('button', { name: 'Conectar' }));
+
+    expect(api.para('PUT /integracoes/steam')[0]?.corpo).toEqual({ identificador: 'steamcommunity.com/id/fulano' });
+  });
+
+  it('sincroniza sem prévia e mostra os jogos ainda em processamento', async () => {
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': {
+          status: 200,
+          corpo: { integracoes: [{ ...conectadaASteam, ultima_sincronizacao: '2026-11-24T10:00:00+00:00' }] },
+        },
+        'POST /integracoes/steam/sincronizar': {
+          status: 200,
+          corpo: { novos: 2, atualizados: 1, nao_encontrados: [], total_nao_encontrados: 0, pendentes: 12 },
+        },
+      }),
+    });
+
+    const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
+    expect(await within(steam).findByText(/última sincronização em 24\/11\/2026/)).toBeInTheDocument();
+    expect(within(steam).queryByRole('button', { name: 'Importar' })).not.toBeInTheDocument();
+
+    await user.click(within(steam).getByRole('button', { name: 'Sincronizar agora' }));
+
+    const status = await within(steam).findByRole('status');
+    expect(status).toHaveTextContent('Sincronizado: 2 novos · 1 atualizado');
+    expect(status).toHaveTextContent('12 jogos ainda em processamento');
+    expect(api.para('POST /integracoes/steam/sincronizar')).toHaveLength(1);
+    await waitFor(() => expect(api.para('GET /lista').length).toBeGreaterThan(1));
+  });
+
+  it('perfil que ficou privado mostra o passo para torná-lo público', async () => {
+    const { user } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [conectadaASteam] } },
+        'POST /integracoes/steam/sincronizar': {
+          status: 400,
+          corpo: { erro: 'O perfil da Steam é privado. Deixe "Detalhes dos jogos" como Público.', codigo: 'perfil_privado' },
+        },
+      }),
+    });
+
+    const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
+    await user.click(await within(steam).findByRole('button', { name: 'Sincronizar agora' }));
+
+    expect(await within(steam).findByRole('alert')).toHaveTextContent('Detalhes dos jogos');
+  });
+});

@@ -100,6 +100,10 @@ ANILIST_API_URL = os.getenv('ANILIST_API_URL', 'https://graphql.anilist.co')
 RAWG_API_KEY = os.getenv('RAWG_API_KEY', '')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 
+# Integração com a Steam (ADR 0015): sem a chave, a plataforma aparece indisponível.
+STEAM_API_KEY = os.getenv('STEAM_API_KEY', '')
+STEAM_API_URL = os.getenv('STEAM_API_URL', 'https://api.steampowered.com')
+
 
 def _problema_do_segredo(nome, conhecidos, ausente):
     """`ausente` se a variável falta, aviso se é um default conhecido, senão None."""

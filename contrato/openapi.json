@@ -4762,6 +4762,45 @@
         "title": "ResultadoImportacao",
         "type": "object"
       },
+      "ResultadoSincronizacao": {
+        "description": "A sincronização da Steam: grava direto, sem prévia.",
+        "properties": {
+          "atualizados": {
+            "title": "Atualizados",
+            "type": "integer"
+          },
+          "nao_encontrados": {
+            "description": "Amostra (até 100); o total está ao lado",
+            "items": {
+              "$ref": "#/components/schemas/NaoEncontrado"
+            },
+            "title": "Nao Encontrados",
+            "type": "array"
+          },
+          "novos": {
+            "title": "Novos",
+            "type": "integer"
+          },
+          "pendentes": {
+            "description": "Jogos ainda não casados com o Catálogo: ficam para a sincronização diária",
+            "title": "Pendentes",
+            "type": "integer"
+          },
+          "total_nao_encontrados": {
+            "title": "Total Nao Encontrados",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "novos",
+          "atualizados",
+          "nao_encontrados",
+          "total_nao_encontrados",
+          "pendentes"
+        ],
+        "title": "ResultadoSincronizacao",
+        "type": "object"
+      },
       "ResumoEstatisticas": {
         "properties": {
           "concluidos": {
@@ -6222,6 +6261,104 @@
           }
         ],
         "summary": "Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo.",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/steam/sincronizar": {
+      "post": {
+        "description": "Os que não couberem voltam em `pendentes` e ficam para a sincronização diária.",
+        "operationId": "post__api_integracoes_steam_sincronizar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoSincronizacao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sincronizar agora: grava as horas dos jogos já casados e casa os novos até o orçamento (~60 s).",
         "tags": [
           "integracoes"
         ]

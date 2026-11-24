@@ -65,6 +65,10 @@ Obra da lista que falta no Catálogo entra por **Importação** sob demanda, da 
 Catálogo (AniList para anime e mangá, RAWG para jogo). O que não casa com segurança fica em
 **Não encontrados** (título e link), sem palpite.
 
+Da Steam vêm só jogos com horas (`playtime_forever` em horas inteiras, gravadas no `progresso_atual`
+como em todo jogo). Ela não tem prévia: **sincroniza** todo dia e por "Sincronizar agora"; jogo
+ainda não casado com o Catálogo fica **pendente** para a próxima sincronização.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`

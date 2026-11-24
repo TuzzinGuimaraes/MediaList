@@ -1,4 +1,10 @@
-import { naoEncontradosForaDaAmostra, resumoDaImportacao, temOQueConfirmar } from './integracoes';
+import {
+  naoEncontradosForaDaAmostra,
+  resumoDaImportacao,
+  SINCRONIZA_SEM_PREVIA,
+  temOQueConfirmar,
+  textoDePendentes,
+} from './integracoes';
 
 describe('resumoDaImportacao', () => {
   it('junta as contagens com plural', () => {
@@ -29,5 +35,19 @@ describe('naoEncontradosForaDaAmostra', () => {
     const amostra = [{ titulo: 'A', link: null }];
     expect(naoEncontradosForaDaAmostra({ nao_encontrados: amostra, total_nao_encontrados: 4 })).toBe(3);
     expect(naoEncontradosForaDaAmostra({ nao_encontrados: amostra, total_nao_encontrados: 1 })).toBe(0);
+  });
+});
+
+describe('textoDePendentes', () => {
+  it('conta os jogos que ficaram para a sincronização diária', () => {
+    expect(textoDePendentes(12)).toBe('12 jogos ainda em processamento');
+    expect(textoDePendentes(1)).toBe('1 jogo ainda em processamento');
+    expect(textoDePendentes(0)).toBeNull();
+  });
+});
+
+describe('SINCRONIZA_SEM_PREVIA', () => {
+  it('só a Steam sincroniza sem prévia', () => {
+    expect([...SINCRONIZA_SEM_PREVIA]).toEqual(['steam']);
   });
 });

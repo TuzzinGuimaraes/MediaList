@@ -34,3 +34,12 @@ export function temOQueConfirmar(r: Pick<ResultadoImportacao, 'novos' | 'atualiz
 export function naoEncontradosForaDaAmostra(r: Pick<ResultadoImportacao, 'nao_encontrados' | 'total_nao_encontrados'>): number {
   return Math.max(r.total_nao_encontrados - r.nao_encontrados.length, 0);
 }
+
+/** Plataformas sem prévia: sincronizam direto, todo dia e por "Sincronizar agora" (Steam, Q113). */
+export const SINCRONIZA_SEM_PREVIA: ReadonlySet<NomePlataforma> = new Set<NomePlataforma>(['steam']);
+
+/** "12 jogos ainda em processamento" (null sem pendentes): o resto casa na sincronização diária. */
+export function textoDePendentes(pendentes: number): string | null {
+  if (pendentes <= 0) return null;
+  return `${contagem(pendentes, 'jogo', 'jogos')} ainda em processamento`;
+}

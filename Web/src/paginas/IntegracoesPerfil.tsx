@@ -11,7 +11,9 @@ import {
   naoEncontradosForaDaAmostra,
   PEDIDO_DE_CONTA,
   resumoDaImportacao,
+  SINCRONIZA_SEM_PREVIA,
   temOQueConfirmar,
+  textoDePendentes,
 } from '@dominio/integracoes';
 
 import { chaves } from '../api/chaves';
@@ -27,8 +29,43 @@ type Integracao = Esquemas['Integracao'];
 type Previa = Esquemas['PreviaImportacao'];
 type Resultado = Esquemas['ResultadoImportacao'];
 
+/** Invalida o que uma importação muda: a Lista, as estatísticas e os contadores das Mídias. */
+function invalidarDepoisDeImportar(queryClient: ReturnType<typeof useQueryClient>) {
+  for (const queryKey of [chaves.integracoes, chaves.lista.toda, ['usuario'], chaves.midias.todas]) {
+    void queryClient.invalidateQueries({ queryKey });
+  }
+}
+
+/** "Sincronizar agora" da Steam (Q113): grava direto, sem prévia; o que não coube fica pendente. */
+function SincronizarSteam() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const sincronizar = useMutation({
+    mutationFn: () => exigir(api.POST('/api/integracoes/steam/sincronizar')),
+    onSuccess: () => invalidarDepoisDeImportar(queryClient),
+  });
+  const pendentes = sincronizar.data ? textoDePendentes(sincronizar.data.pendentes) : null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Botao carregando={sincronizar.isPending} onClick={() => sincronizar.mutate()} className="self-start">
+        Sincronizar agora
+      </Botao>
+      {sincronizar.data ? (
+        <div role="status" className="flex flex-col gap-1 text-[14px]">
+          <p className="text-texto-forte">Sincronizado: {resumoDaImportacao(sincronizar.data)}</p>
+          {pendentes ? <p className="text-texto-suave">{pendentes}; o resto entra na sincronização diária.</p> : null}
+        </div>
+      ) : null}
+      {sincronizar.isError ? <Alerta erro={sincronizar.error} /> : null}
+    </div>
+  );
+}
+
 /** Conteúdo a mais por plataforma, abaixo dos botões (os tickets do MAL e da Steam somam aqui). */
-const EXTRAS: Partial<Record<NomePlataforma, (i: Integracao) => ReactNode>> = {};
+const EXTRAS: Partial<Record<NomePlataforma, (i: Integracao) => ReactNode>> = {
+  steam: () => <SincronizarSteam />,
+};
 
 function Alerta({ erro }: { erro: unknown }) {
   return (
@@ -71,9 +108,7 @@ function useConfirmarPrevia(aoConfirmar: (r: Resultado) => void) {
       exigir(api.POST('/api/integracoes/previas/{id_previa}/confirmar', { params: { path: { id_previa: id } } })),
     onSuccess: (r) => {
       aoConfirmar(r);
-      for (const queryKey of [chaves.integracoes, chaves.lista.toda, ['usuario'], chaves.midias.todas]) {
-        void queryClient.invalidateQueries({ queryKey });
-      }
+      invalidarDepoisDeImportar(queryClient);
     },
   });
 }
@@ -170,22 +205,25 @@ function Conectada({ integracao }: { integracao: Integracao }) {
   });
 
   const ultima = formatarData(integracao.ultima_sincronizacao);
+  const semPrevia = SINCRONIZA_SEM_PREVIA.has(integracao.plataforma);
   const erro = gerar.error ?? confirmar.error ?? desconectar.error;
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[14px] text-texto-suave">
         Conectado como <strong className="text-texto-forte">{integracao.nome_exibicao ?? integracao.identificador}</strong>
-        {ultima ? ` · última importação em ${ultima}` : ''}
+        {ultima ? ` · última ${semPrevia ? 'sincronização' : 'importação'} em ${ultima}` : ''}
       </p>
 
       {previa ? (
         <CaixaDaPrevia previa={previa} confirmar={confirmar} fechar={() => setPrevia(null)} />
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Botao carregando={gerar.isPending} onClick={() => gerar.mutate()}>
-            Importar
-          </Botao>
+          {semPrevia ? null : (
+            <Botao carregando={gerar.isPending} onClick={() => gerar.mutate()}>
+              Importar
+            </Botao>
+          )}
           <Botao variante="fantasma" carregando={desconectar.isPending} onClick={() => desconectar.mutate()}>
             Desconectar
           </Botao>

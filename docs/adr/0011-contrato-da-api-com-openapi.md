@@ -71,6 +71,10 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   `POST /integracoes/mal/xml` (multipart, campo `arquivo`, `.xml` ou `.xml.gz`, só web) devolve a
   mesma prévia sem precisar conectar nem da chave do MAL; XML inválido 400 `dados_invalidos`,
   acima de 5 MB 413.
+- **Steam (ADR 0015):** conecta pela URL do perfil (`/id/<vanity>`, `/profiles/<SteamID64>`) ou
+  o SteamID64; `identificador` guarda o SteamID64. Sem prévia: `POST /integracoes/steam/sincronizar`
+  grava direto e devolve as contagens com `pendentes` (jogos que não couberam no orçamento de
+  ~60 s e ficam para a sincronização diária).
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
