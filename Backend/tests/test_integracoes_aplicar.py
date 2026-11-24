@@ -124,13 +124,15 @@ def test_nota_da_origem_so_entra_sem_nota_pessoal():
 
 
 def test_nunca_grava_comentario_favorito_privado_nem_recontagem():
-    mudanca = aplicar(_item(), _origem(status=CONCLUIDO, progresso=28, data_conclusao='2026-11-20'), total=28, hoje=HOJE)
+    concluido = _origem(status=CONCLUIDO, progresso=28, data_conclusao='2026-11-20')
+    mudanca = aplicar(_item(), concluido, total=28, hoje=HOJE)
 
     assert set(mudanca.campos) <= {'status_consumo', 'progresso_atual', 'nota_usuario', 'data_inicio', 'data_conclusao'}
 
 
 def test_concluido_na_origem_leva_a_data_de_conclusao_e_preenche_inicio_vazio():
-    mudanca = aplicar(_item(), _origem(status=CONCLUIDO, progresso=28, data_conclusao='2026-11-20'), total=28, hoje=HOJE)
+    concluido = _origem(status=CONCLUIDO, progresso=28, data_conclusao='2026-11-20')
+    mudanca = aplicar(_item(), concluido, total=28, hoje=HOJE)
 
     assert mudanca.campos['status_consumo'] == 'completo'
     assert mudanca.campos['data_conclusao'] == '2026-11-20'
@@ -191,7 +193,8 @@ def test_jogo_na_fila_vira_jogando_com_horas_novas():
 
 def test_jogo_nunca_vira_zerado_nem_platinado_pela_origem():
     mudanca = aplicar(None, _jogo(status=CONCLUIDO), total=None, hoje=HOJE)
-    existente = aplicar({'status_consumo': 'jogando', 'progresso_atual': 1}, _jogo(status=CONCLUIDO), total=None, hoje=HOJE)
+    jogando = {'status_consumo': 'jogando', 'progresso_atual': 1}
+    existente = aplicar(jogando, _jogo(status=CONCLUIDO), total=None, hoje=HOJE)
 
     assert mudanca.campos['status_consumo'] == 'jogando'
     assert 'status_consumo' not in existente.campos
