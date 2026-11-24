@@ -3,7 +3,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 import { gerarTema } from './scripts/tema.ts';
 
@@ -23,5 +23,7 @@ export default defineConfig({
     setupFiles: ['./src/testes/preparar.ts'],
     css: false,
     restoreMocks: true,
+    // e2e/ é do Playwright (playwright.config.ts).
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 });
