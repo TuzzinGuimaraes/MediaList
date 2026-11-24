@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   # CLI fixa: os flags e o formato do --json foram conferidos nesta versão.
@@ -25,6 +25,9 @@ jobs:
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
     environment: production
     runs-on: ubuntu-latest
+    # Escrita só para o gh release; o checkout não guarda o token (persist-credentials).
+    permissions:
+      contents: write
     # O plano grátis do EAS põe o build numa fila de baixa prioridade.
     timeout-minutes: 120
 
@@ -33,11 +36,12 @@ jobs:
         working-directory: Mobile
 
     # O EXPO_TOKEN vai só nos steps que chamam o eas, não no job: o npm ci não o
-    # enxerga. Pelo mesmo motivo a expo-github-action não recebe `token` (ela o
-    # exportaria para todos os steps seguintes).
+    # enxerga. O eas-cli vem do npm em versão fixa, sem action de terceiro.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       # Sem projectId/updates.url (eas init + eas update:configure, ticket 03) o
       # eas tentaria editar o app.json no runner.
@@ -63,10 +67,7 @@ jobs:
         run: npm ci
 
       - name: Setup EAS CLI
-        uses: expo/expo-github-action@9.0.2
-        with:
-          eas-version: ${{ env.EAS_CLI_VERSION }}
-          packager: npm
+        run: npm install -g "eas-cli@${EAS_CLI_VERSION}"
 
       # Com --wait, o --json é um array de builds; o APK está em artifacts.
       - name: eas build
@@ -79,7 +80,7 @@ jobs:
           url="$(jq -r '.[0].artifacts.applicationArchiveUrl // .[0].artifacts.buildUrl // empty' "$saida")"
           if [ -z "$url" ]; then
             echo "::error::eas build terminou sem URL do APK."
-            cat "$saida"
+            jq -c '.[0] | {status, error}' "$saida" || true
             exit 1
           fi
           echo "url=${url}" >> "$GITHUB_OUTPUT"

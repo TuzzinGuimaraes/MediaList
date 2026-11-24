@@ -1,5 +1,7 @@
 # App mobile com Expo, na mesma base de código
 
+*Emendado pelo ADR-0014: o app passa a ser distribuído só para Android, como APK do EAS Build, com EAS Update. O desenvolvimento continua no Expo Go.*
+
 O MediaList ganha um app nativo (Android e iOS) para o lado do Usuário comum: entrar,
 explorar o Catálogo, ver o detalhe de uma Mídia, manter a Lista pessoal, escrever
 Avaliações, ler Notícias e Notificações e ver o perfil. Admin e moderação ficam só no web.

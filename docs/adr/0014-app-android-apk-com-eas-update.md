@@ -1,5 +1,7 @@
 # App só para Android, como APK do EAS Build, atualizado por EAS Update
 
+Emenda o ADR-0005 (que previa Android e iOS, sem EAS e sem publicação).
+
 O app (ADR-0005) é distribuído só para Android, como um APK gerado pelo EAS Build na nuvem da Expo e anexado a um GitHub Release (`app-v<version>`). Não há Play Store nem App Store. No iPhone, o MediaList é usado pelo web.
 
 O pacote é `dev.medialist.app` e a chave de assinatura é gerada e guardada pelo EAS, com uma cópia fora da Expo. Os dois são permanentes: trocar qualquer um faz o Android recusar o APK novo como atualização.

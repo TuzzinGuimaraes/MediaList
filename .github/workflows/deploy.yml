@@ -174,11 +174,13 @@ jobs:
       run:
         working-directory: Mobile
 
-    # O EXPO_TOKEN vai só no step do eas update; a expo-github-action não recebe
-    # `token`, que ela exportaria para todos os steps seguintes.
+    # O EXPO_TOKEN vai só no step do eas update. O eas-cli vem do npm em versão
+    # fixa, sem action de terceiro.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       # Até o ticket 03 (secret e eas init) o job passa com aviso, sem falhar o deploy.
       - name: Conferir EAS
@@ -189,8 +191,9 @@ jobs:
           motivo=""
           if [ "$TEM_TOKEN" != "true" ]; then
             motivo="secret EXPO_TOKEN ausente"
-          elif [ -z "$(jq -r '.expo.extra.eas.projectId // empty' app.json)" ]; then
-            motivo="app.json sem extra.eas.projectId"
+          elif [ -z "$(jq -r '.expo.extra.eas.projectId // empty' app.json)" ] \
+            || [ -z "$(jq -r '.expo.updates.url // empty' app.json)" ]; then
+            motivo="app.json sem extra.eas.projectId ou updates.url"
           fi
           if [ -n "$motivo" ]; then
             echo "::warning::EAS Update pulado: ${motivo} (ticket 03 da app-producao)."
@@ -213,10 +216,7 @@ jobs:
 
       - name: Setup EAS CLI
         if: steps.eas.outputs.pular != 'true'
-        uses: expo/expo-github-action@9.0.2
-        with:
-          eas-version: ${{ env.EAS_CLI_VERSION }}
-          packager: npm
+        run: npm install -g "eas-cli@${EAS_CLI_VERSION}"
 
       # O EXPO_PUBLIC_API_URL do env entra no bundle (o eas-cli repassa o env do
       # processo ao expo export); uma variável de mesmo nome no ambiente
