@@ -68,6 +68,9 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   mesmas contagens; prévia vencida, de outro ou já usada responde 404. Erros próprios:
   400 `perfil_privado` e 404 `perfil_nao_encontrado` (mensagem com o passo para a tela),
   502 `origem_indisponivel` e 503 `plataforma_indisponivel`; plataforma fora do registro, 404.
+  `POST /integracoes/mal/xml` (multipart, campo `arquivo`, `.xml` ou `.xml.gz`, só web) devolve a
+  mesma prévia sem precisar conectar nem da chave do MAL; XML inválido 400 `dados_invalidos`,
+  acima de 5 MB 413.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
