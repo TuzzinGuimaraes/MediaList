@@ -4,12 +4,13 @@ Blueprint de Integrações (ADR 0015): adaptador HTTP de `integracoes.servico`.
 `<plataforma>` é um nome de `integracoes.servico.PLATAFORMAS`; fora dele, 404. Os erros da
 plataforma viram o envelope de erro com um `codigo` próprio e a mensagem para a tela.
 """
-from flask import Blueprint
+from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
-from integracoes import servico
+from integracoes import mal, servico
 from integracoes.plataforma import (
     ErroDaIntegracao,
     OrigemIndisponivel,
@@ -18,6 +19,7 @@ from integracoes.plataforma import (
     PlataformaIndisponivel,
 )
 from schemas.integracoes import (
+    ArquivoXml,
     ConexaoIntegracao,
     Integracao,
     PreviaImportacao,
@@ -97,6 +99,44 @@ def desconectar_integracao(plataforma):
 def previa_integracao(plataforma):
     """Prévia da importação: contagens e Não encontrados, sem gravar. Vale 1 h, só para o dono."""
     return _executar(lambda: servico.previa(get_jwt_identity(), plataforma))
+
+
+@integracoes_bp.before_request
+def _limitar_o_xml():
+    """O upload do XML para de ler no limite (com folga para o envelope multipart)."""
+    if request.endpoint == 'integracoes.previa_do_xml_do_mal':
+        request.max_content_length = mal.LIMITE_XML + 64 * 1024
+
+
+@integracoes_bp.errorhandler(RequestEntityTooLarge)
+def _xml_grande_demais(_erro):
+    return resposta_erro(413, CodigoErro.DADOS_INVALIDOS, mal.MENSAGEM_GRANDE)
+
+
+@integracoes_bp.route('/mal/xml', methods=['POST'])
+@jwt_required()
+@contrato.validate(
+    form=ArquivoXml, resp=Response(HTTP_200=PreviaImportacao, HTTP_400=Erro, HTTP_413=Erro, HTTP_502=Erro,
+                                   **ERROS_AUTENTICADA),
+    tags=['integracoes'], security=AUTENTICADO,
+)
+def previa_do_xml_do_mal(form: ArquivoXml):
+    """Prévia a partir do XML exportado do MyAnimeList (só web). Não precisa conectar nem da chave do MAL."""
+    arquivo = request.files.get('arquivo')
+    if arquivo is None:
+        return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, mal.MENSAGEM_ARQUIVO, {'arquivo': 'Campo obrigatório'})
+    conteudo = arquivo.stream.read(mal.LIMITE_XML + 1)
+
+    def acao():
+        try:
+            itens = servico.plataforma('mal').itens_do_xml(conteudo)
+        except mal.ArquivoGrandeDemais as erro:
+            return resposta_erro(413, CodigoErro.DADOS_INVALIDOS, str(erro))
+        except mal.ArquivoInvalido as erro:
+            return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro))
+        return servico.previa_de_itens(get_jwt_identity(), 'mal', itens)
+
+    return _executar(acao)
 
 
 @integracoes_bp.route('/previas/<string:id_previa>/confirmar', methods=['POST'])

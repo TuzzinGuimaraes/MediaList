@@ -29,6 +29,8 @@ export function simularFetch(rotas: Rotas) {
   const falso = vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const pedido = new Request(entrada instanceof Request ? entrada : new URL(String(entrada), location.origin), init);
     const url = new URL(pedido.url);
+    // Multipart (o upload do XML do MAL) fica como o texto cru do corpo; o resto é JSON.
+    const multipart = pedido.headers.get('Content-Type')?.startsWith('multipart/form-data');
     const texto = await pedido.text();
     const req: Requisicao = {
       metodo: pedido.method.toUpperCase(),
@@ -36,7 +38,7 @@ export function simularFetch(rotas: Rotas) {
       query: url.searchParams,
       autorizacao: pedido.headers.get('Authorization'),
       cliente: pedido.headers.get('X-Cliente'),
-      corpo: texto ? JSON.parse(texto) : undefined,
+      corpo: multipart ? texto : texto ? JSON.parse(texto) : undefined,
     };
     chamadas.push(req);
 

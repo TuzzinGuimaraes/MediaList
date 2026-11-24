@@ -134,6 +134,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
         run: |
           gravar() {
             printf '%s' "$2" | vercel env add "$1" --environment production --force --yes "$3"
@@ -143,6 +144,8 @@ jobs:
           gravar DB_POOL_MAX 3 --no-sensitive
           gravar DATABASE_URL "$DATABASE_URL" --sensitive
           gravar JWT_SECRET_KEY "$JWT_SECRET_KEY" --sensitive
+          # Opcional: sem ela o MyAnimeList fica indisponível pela API (o XML segue funcionando).
+          if [ -n "$MAL_CLIENT_ID" ]; then gravar MAL_CLIENT_ID "$MAL_CLIENT_ID" --sensitive; fi
 
       - name: vercel pull
         env:

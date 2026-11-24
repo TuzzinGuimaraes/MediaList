@@ -98,7 +98,7 @@ def test_lista_as_plataformas_e_conecta_o_anilist(client, usuario, anilist):
     conectada = _conectar(client, headers, anilist, 'Fulano').get_json()
     depois = client.get('/api/integracoes', headers=headers).get_json()['integracoes']
 
-    assert [i['plataforma'] for i in antes] == ['anilist']
+    assert antes[0]['plataforma'] == 'anilist'  # a primeira; as outras nos testes delas
     assert antes[0]['conectada'] is False and antes[0]['disponivel'] is True
     assert conectada['conectada'] is True
     assert conectada['nome_exibicao'] == 'Fulano'
