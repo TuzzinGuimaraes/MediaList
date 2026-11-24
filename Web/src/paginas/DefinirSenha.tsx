@@ -2,7 +2,7 @@ import { validarNovaSenha } from '@dominio/conta';
 import { type FormEvent, useState } from 'react';
 
 import { Botao } from '../componentes/Botao';
-import { Campo } from '../componentes/Campo';
+import { CampoSenha } from '../componentes/Campo';
 import { useSessao } from '../sessao/SessaoContext';
 import { useErroDeFormulario } from './acesso';
 import { TelaDeAcesso } from './TelaDeAcesso';
@@ -52,27 +52,24 @@ export function DefinirSenha({ nome }: { nome: string }) {
         Olá, {nome}. Você entrou com uma senha temporária: escolha uma senha nova para continuar.
       </p>
       <form onSubmit={enviar} className="flex flex-col gap-4" noValidate>
-        <Campo
+        <CampoSenha
           rotulo="Senha temporária"
-          type="password"
           autoComplete="current-password"
           required
           value={senhaAtual}
           onChange={(e) => setSenhaAtual(e.target.value)}
           erro={detalhes.senha_atual}
         />
-        <Campo
+        <CampoSenha
           rotulo="Nova senha"
-          type="password"
           autoComplete="new-password"
           required
           value={novaSenha}
           onChange={(e) => setNovaSenha(e.target.value)}
           erro={detalhes.nova_senha}
         />
-        <Campo
+        <CampoSenha
           rotulo="Confirme a nova senha"
-          type="password"
           autoComplete="new-password"
           required
           value={confirmacao}

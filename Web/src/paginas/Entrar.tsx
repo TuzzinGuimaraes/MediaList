@@ -2,7 +2,7 @@ import { Link, useRouter, useSearch } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
 import { Botao } from '../componentes/Botao';
-import { Campo } from '../componentes/Campo';
+import { Campo, CampoSenha } from '../componentes/Campo';
 import { useSessao } from '../sessao/SessaoContext';
 import { destinoSeguro, useErroDeFormulario } from './acesso';
 import { TelaDeAcesso } from './TelaDeAcesso';
@@ -51,9 +51,8 @@ export function Entrar() {
           onChange={(e) => setEmail(e.target.value)}
           erro={detalhes.email}
         />
-        <Campo
+        <CampoSenha
           rotulo="Senha"
-          type="password"
           autoComplete="current-password"
           required
           value={senha}

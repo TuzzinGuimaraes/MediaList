@@ -1,11 +1,11 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { Text } from 'react-native';
+import { useRef, useState } from 'react';
+import { Text, type TextInputInstance } from 'react-native';
 
 import { mensagemDeErro } from '@/api/erros';
 import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
-import { Campo } from '@/components/Campo';
+import { Campo, CampoSenha, type CampoSenhaRef } from '@/components/Campo';
 import { TelaFormulario } from '@/components/Tela';
 import { type FormularioRegistro, validarRegistro } from '@dominio/conta';
 
@@ -29,11 +29,16 @@ export default function Registro() {
   });
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const campoEmail = useRef<TextInputInstance>(null);
+  const campoSenha = useRef<CampoSenhaRef>(null);
+  const campoConfirmacao = useRef<CampoSenhaRef>(null);
 
   const campo = (chave: keyof FormularioRegistro) => (valor: string) =>
     setForm((atual) => ({ ...atual, [chave]: valor }));
 
   async function enviar() {
+    campoSenha.current?.ocultar();
+    campoConfirmacao.current?.ocultar();
     const invalido = validarRegistro(form);
     if (invalido) return setErro(invalido);
     setErro(null);
@@ -49,28 +54,45 @@ export default function Registro() {
   return (
     <TelaFormulario>
       <Text className="text-titulo-tela font-bold text-texto-forte">{textos.titulo}</Text>
-      <Campo rotulo={textos.nome} value={form.nome} onChangeText={campo('nome')} autoComplete="name" />
       <Campo
+        rotulo={textos.nome}
+        value={form.nome}
+        onChangeText={campo('nome')}
+        autoComplete="name"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoEmail.current?.focus()}
+      />
+      <Campo
+        ref={campoEmail}
         rotulo={textos.email}
         value={form.email}
         onChangeText={campo('email')}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoSenha.current?.focus()}
       />
-      <Campo
+      <CampoSenha
+        ref={campoSenha}
         rotulo={textos.senha}
         value={form.senha}
         onChangeText={campo('senha')}
-        secureTextEntry
         autoComplete="new-password"
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => campoConfirmacao.current?.focus()}
       />
-      <Campo
+      <CampoSenha
+        ref={campoConfirmacao}
         rotulo={textos.confirmacao}
         value={form.confirmacao}
         onChangeText={campo('confirmacao')}
-        secureTextEntry
         autoComplete="new-password"
+        returnKeyType="go"
+        onSubmitEditing={enviar}
       />
       {erro ? (
         <Text accessibilityRole="alert" className="text-corpo text-erro">
