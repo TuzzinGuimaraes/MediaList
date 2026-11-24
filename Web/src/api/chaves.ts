@@ -42,6 +42,8 @@ export const chaves = {
     estatisticas: ['usuario', 'estatisticas'] as const,
   },
   notificacoes: ['notificacoes'] as const,
+  /** GET /integracoes: as plataformas e as contas conectadas. */
+  integracoes: ['integracoes'] as const,
   noticias: {
     todas: ['noticias'] as const,
     pagina: (pagina: number) => ['noticias', pagina] as const,

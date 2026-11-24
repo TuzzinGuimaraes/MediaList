@@ -377,10 +377,30 @@
           "metodo_nao_permitido",
           "conflito",
           "indisponivel",
+          "perfil_privado",
+          "perfil_nao_encontrado",
+          "origem_indisponivel",
+          "plataforma_indisponivel",
           "erro_interno"
         ],
         "title": "CodigoErro",
         "type": "string"
+      },
+      "ConexaoIntegracao": {
+        "description": "Nome de usuário (AniList, MAL) ou URL do perfil (Steam).",
+        "properties": {
+          "identificador": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Identificador",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identificador"
+        ],
+        "title": "ConexaoIntegracao",
+        "type": "object"
       },
       "ConsultaFacetas": {
         "properties": {
@@ -1860,6 +1880,90 @@
           "aplicavel_a"
         ],
         "title": "Genero",
+        "type": "object"
+      },
+      "Integracao": {
+        "description": "Uma plataforma e a conta do Usuário nela, quando conectada.",
+        "properties": {
+          "conectada": {
+            "title": "Conectada",
+            "type": "boolean"
+          },
+          "disponivel": {
+            "description": "False sem a chave da plataforma no servidor",
+            "title": "Disponivel",
+            "type": "boolean"
+          },
+          "identificador": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identificador"
+          },
+          "nome_exibicao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Exibicao"
+          },
+          "plataforma": {
+            "enum": [
+              "anilist",
+              "mal",
+              "steam"
+            ],
+            "title": "Plataforma",
+            "type": "string"
+          },
+          "rotulo": {
+            "description": "Nome da plataforma para a tela",
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "ultima_sincronizacao": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Sincronizacao"
+          },
+          "ultimo_resultado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultadoImportacao"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "plataforma",
+          "rotulo",
+          "disponivel",
+          "conectada",
+          "identificador",
+          "nome_exibicao",
+          "ultima_sincronizacao",
+          "ultimo_resultado"
+        ],
+        "title": "Integracao",
         "type": "object"
       },
       "ItemCriado": {
@@ -3612,6 +3716,32 @@
         "title": "MidiaPopular",
         "type": "object"
       },
+      "NaoEncontrado": {
+        "description": "Item da origem que não casou com o Catálogo: o Usuário adiciona à mão.",
+        "properties": {
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "link"
+        ],
+        "title": "NaoEncontrado",
+        "type": "object"
+      },
       "Noticia": {
         "properties": {
           "autor": {
@@ -4174,6 +4304,50 @@
         "title": "PreferenciasAtualizadas",
         "type": "object"
       },
+      "PreviaImportacao": {
+        "description": "O que a importação faria; só grava ao confirmar, até `expira_em` (1 h).",
+        "properties": {
+          "atualizados": {
+            "title": "Atualizados",
+            "type": "integer"
+          },
+          "expira_em": {
+            "format": "date-time",
+            "title": "Expira Em",
+            "type": "string"
+          },
+          "id_previa": {
+            "title": "Id Previa",
+            "type": "string"
+          },
+          "nao_encontrados": {
+            "description": "Amostra (até 100); o total está ao lado",
+            "items": {
+              "$ref": "#/components/schemas/NaoEncontrado"
+            },
+            "title": "Nao Encontrados",
+            "type": "array"
+          },
+          "novos": {
+            "title": "Novos",
+            "type": "integer"
+          },
+          "total_nao_encontrados": {
+            "title": "Total Nao Encontrados",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "novos",
+          "atualizados",
+          "nao_encontrados",
+          "total_nao_encontrados",
+          "id_previa",
+          "expira_em"
+        ],
+        "title": "PreviaImportacao",
+        "type": "object"
+      },
       "ProgressoItemLista": {
         "description": "Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.",
         "properties": {
@@ -4312,6 +4486,22 @@
           "generos"
         ],
         "title": "RespostaGeneros",
+        "type": "object"
+      },
+      "RespostaIntegracoes": {
+        "properties": {
+          "integracoes": {
+            "items": {
+              "$ref": "#/components/schemas/Integracao"
+            },
+            "title": "Integracoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "integracoes"
+        ],
+        "title": "RespostaIntegracoes",
         "type": "object"
       },
       "RespostaLista": {
@@ -4522,6 +4712,39 @@
           "midias"
         ],
         "title": "RespostaTrending",
+        "type": "object"
+      },
+      "ResultadoImportacao": {
+        "description": "Contagens de uma importação (prévia, confirmação ou a última sincronização).",
+        "properties": {
+          "atualizados": {
+            "title": "Atualizados",
+            "type": "integer"
+          },
+          "nao_encontrados": {
+            "description": "Amostra (até 100); o total está ao lado",
+            "items": {
+              "$ref": "#/components/schemas/NaoEncontrado"
+            },
+            "title": "Nao Encontrados",
+            "type": "array"
+          },
+          "novos": {
+            "title": "Novos",
+            "type": "integer"
+          },
+          "total_nao_encontrados": {
+            "title": "Total Nao Encontrados",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "novos",
+          "atualizados",
+          "nao_encontrados",
+          "total_nao_encontrados"
+        ],
+        "title": "ResultadoImportacao",
         "type": "object"
       },
       "ResumoEstatisticas": {
@@ -5732,6 +5955,474 @@
         "summary": "Saúde do sistema: 200 com o PostgreSQL de pé, 503 sem ele.",
         "tags": [
           "utils"
+        ]
+      }
+    },
+    "/api/integracoes": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_integracoes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaIntegracoes"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "As plataformas de Integração e as contas conectadas do Usuário.",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/previas/{id_previa}/confirmar": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_integracoes_previas_{id_previa}_confirmar",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_previa",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo.",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/{plataforma}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_integracoes_{plataforma}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "plataforma",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Desconectar a conta. A Lista fica como está.",
+        "tags": [
+          "integracoes"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_integracoes_{plataforma}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "plataforma",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConexaoIntegracao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Integracao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Conectar (ou trocar) a conta pública: valida que o perfil existe e é público.",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/{plataforma}/previa": {
+      "post": {
+        "description": "",
+        "operationId": "post__api_integracoes_{plataforma}_previa",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "plataforma",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaImportacao"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Prévia da importação: contagens e Não encontrados, sem gravar. Vale 1 h, só para o dono.",
+        "tags": [
+          "integracoes"
         ]
       }
     },
@@ -8442,6 +9133,9 @@
     },
     {
       "name": "preferencias"
+    },
+    {
+      "name": "integracoes"
     },
     {
       "name": "utils"

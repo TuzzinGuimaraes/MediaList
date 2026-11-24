@@ -58,6 +58,14 @@ class CodigoErro(StrEnum):
     METODO_NAO_PERMITIDO = 'metodo_nao_permitido'
     CONFLITO = 'conflito'
     INDISPONIVEL = 'indisponivel'
+    #: Integrações: o perfil existe, mas a lista não é pública (a mensagem diz como torná-la pública).
+    PERFIL_PRIVADO = 'perfil_privado'
+    #: Integrações: nenhum perfil com esse nome/URL na plataforma.
+    PERFIL_NAO_ENCONTRADO = 'perfil_nao_encontrado'
+    #: Integrações: a plataforma não respondeu (rede, 5xx, limite).
+    ORIGEM_INDISPONIVEL = 'origem_indisponivel'
+    #: Integrações: falta a chave da plataforma no ambiente (`MAL_CLIENT_ID`, `STEAM_API_KEY`).
+    PLATAFORMA_INDISPONIVEL = 'plataforma_indisponivel'
     ERRO_INTERNO = 'erro_interno'
 
 

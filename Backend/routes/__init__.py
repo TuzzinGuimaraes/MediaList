@@ -3,6 +3,7 @@ Blueprints da aplicação.
 """
 from .auth import auth_bp
 from .avaliacoes import avaliacoes_bp
+from .integracoes import integracoes_bp
 from .lista import lista_bp
 from .midias import midias_bp
 from .moderacao import moderacao_bp
@@ -17,6 +18,7 @@ __all__ = [
     'midias_bp',
     'lista_bp',
     'avaliacoes_bp',
+    'integracoes_bp',
     'noticias_bp',
     'moderacao_bp',
     'preferencias_bp',

@@ -58,6 +58,16 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
 - **Ping:** `GET /ping` é público e responde 200 `{status: 'ok'}` sem tocar no banco, para o
   monitor externo não manter a Neon acordada (ADR-0013). O `GET /health` segue medindo o
   PostgreSQL (503 sem ele).
+- **Integrações (ADR 0015):** `GET /integracoes` lista as plataformas registradas
+  (`disponivel` é false sem a chave no servidor) com a conta do Usuário, a última sincronização
+  e o último resultado. `PUT /integracoes/<plataforma> {identificador}` conecta validando o
+  perfil público; `DELETE` desconecta (a Lista fica). `POST /integracoes/<plataforma>/previa`
+  devolve `{id_previa, novos, atualizados, nao_encontrados: [{titulo, link}],
+  total_nao_encontrados, expira_em}` sem gravar (a amostra traz até 100); a prévia vale 1 h e
+  só para o dono. `POST /integracoes/previas/<id>/confirmar` aplica uma vez só e devolve as
+  mesmas contagens; prévia vencida, de outro ou já usada responde 404. Erros próprios:
+  400 `perfil_privado` e 404 `perfil_nao_encontrado` (mensagem com o passo para a tela),
+  502 `origem_indisponivel` e 503 `plataforma_indisponivel`; plataforma fora do registro, 404.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no

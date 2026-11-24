@@ -234,6 +234,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/integracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As plataformas de Integração e as contas conectadas do Usuário. */
+        get: operations["get__api_integracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integracoes/previas/{id_previa}/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo. */
+        post: operations["post__api_integracoes_previas_{id_previa}_confirmar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integracoes/{plataforma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Conectar (ou trocar) a conta pública: valida que o perfil existe e é público. */
+        put: operations["put__api_integracoes_{plataforma}"];
+        post?: never;
+        /** Desconectar a conta. A Lista fica como está. */
+        delete: operations["delete__api_integracoes_{plataforma}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integracoes/{plataforma}/previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prévia da importação: contagens e Não encontrados, sem gravar. Vale 1 h, só para o dono. */
+        post: operations["post__api_integracoes_{plataforma}_previa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lista": {
         parameters: {
             query?: never;
@@ -831,7 +900,15 @@ export interface components {
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
-        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "erro_interno";
+        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "erro_interno";
+        /**
+         * ConexaoIntegracao
+         * @description Nome de usuário (AniList, MAL) ou URL do perfil (Steam).
+         */
+        ConexaoIntegracao: {
+            /** Identificador */
+            identificador: string;
+        };
         /** ConsultaFacetas */
         ConsultaFacetas: {
             /**
@@ -1474,6 +1551,36 @@ export interface components {
             /** Nome Genero */
             nome_genero: string;
         };
+        /**
+         * Integracao
+         * @description Uma plataforma e a conta do Usuário nela, quando conectada.
+         */
+        Integracao: {
+            /** Conectada */
+            conectada: boolean;
+            /**
+             * Disponivel
+             * @description False sem a chave da plataforma no servidor
+             */
+            disponivel: boolean;
+            /** Identificador */
+            identificador: string | null;
+            /** Nome Exibicao */
+            nome_exibicao: string | null;
+            /**
+             * Plataforma
+             * @enum {string}
+             */
+            plataforma: "anilist" | "mal" | "steam";
+            /**
+             * Rotulo
+             * @description Nome da plataforma para a tela
+             */
+            rotulo: string;
+            /** Ultima Sincronizacao */
+            ultima_sincronizacao: string | null;
+            ultimo_resultado: components["schemas"]["ResultadoImportacao"] | null;
+        };
         /** ItemCriado */
         ItemCriado: {
             /** Id Lista */
@@ -1892,6 +1999,16 @@ export interface components {
             /** Total Usuarios */
             total_usuarios: number;
         };
+        /**
+         * NaoEncontrado
+         * @description Item da origem que não casou com o Catálogo: o Usuário adiciona à mão.
+         */
+        NaoEncontrado: {
+            /** Link */
+            link: string | null;
+            /** Titulo */
+            titulo: string;
+        };
         /** Noticia */
         Noticia: {
             /**
@@ -2149,6 +2266,30 @@ export interface components {
             modificado: boolean;
         };
         /**
+         * PreviaImportacao
+         * @description O que a importação faria; só grava ao confirmar, até `expira_em` (1 h).
+         */
+        PreviaImportacao: {
+            /** Atualizados */
+            atualizados: number;
+            /**
+             * Expira Em
+             * Format: date-time
+             */
+            expira_em: string;
+            /** Id Previa */
+            id_previa: string;
+            /**
+             * Nao Encontrados
+             * @description Amostra (até 100); o total está ao lado
+             */
+            nao_encontrados: components["schemas"]["NaoEncontrado"][];
+            /** Novos */
+            novos: number;
+            /** Total Nao Encontrados */
+            total_nao_encontrados: number;
+        };
+        /**
          * ProgressoItemLista
          * @description Corpo de PUT /lista/<id_lista>/progresso: o Progresso é o motivo da chamada.
          */
@@ -2213,6 +2354,11 @@ export interface components {
         RespostaGeneros: {
             /** Generos */
             generos: components["schemas"]["Genero"][];
+        };
+        /** RespostaIntegracoes */
+        RespostaIntegracoes: {
+            /** Integracoes */
+            integracoes: components["schemas"]["Integracao"][];
         };
         /** RespostaLista */
         RespostaLista: {
@@ -2293,6 +2439,23 @@ export interface components {
         RespostaTrending: {
             /** Midias */
             midias: components["schemas"]["Midia"][];
+        };
+        /**
+         * ResultadoImportacao
+         * @description Contagens de uma importação (prévia, confirmação ou a última sincronização).
+         */
+        ResultadoImportacao: {
+            /** Atualizados */
+            atualizados: number;
+            /**
+             * Nao Encontrados
+             * @description Amostra (até 100); o total está ao lado
+             */
+            nao_encontrados: components["schemas"]["NaoEncontrado"][];
+            /** Novos */
+            novos: number;
+            /** Total Nao Encontrados */
+            total_nao_encontrados: number;
         };
         /** ResumoEstatisticas */
         ResumoEstatisticas: {
@@ -3136,6 +3299,370 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Saude"];
+                };
+            };
+        };
+    };
+    get__api_integracoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaIntegracoes"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "post__api_integracoes_previas_{id_previa}_confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_previa: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacao"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_integracoes_{plataforma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plataforma: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConexaoIntegracao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integracao"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_integracoes_{plataforma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plataforma: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "post__api_integracoes_{plataforma}_previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plataforma: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviaImportacao"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
                 };
             };
         };

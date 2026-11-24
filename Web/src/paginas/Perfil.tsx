@@ -1,5 +1,5 @@
 // Perfil: dados da conta, resumo e estatísticas da Lista pessoal, favoritos do catálogo,
-// o seletor de tema (Resolution do 29) e as Notificações.
+// o seletor de tema (Resolution do 29), as Integrações e as Notificações.
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -16,6 +16,7 @@ import { useCatalogo } from '../catalogo/CatalogoContext';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { SeletorTema } from '../tema/SeletorTema';
 import { EstatisticasPerfil } from './EstatisticasPerfil';
+import { IntegracoesPerfil } from './IntegracoesPerfil';
 import { useLista } from './lista/api';
 import { NotificacoesPerfil } from './NotificacoesPerfil';
 
@@ -132,6 +133,9 @@ export function Perfil() {
       <div className="flex flex-col gap-6">
         <Secao titulo="Aparência">
           <SeletorTema />
+        </Secao>
+        <Secao titulo="Integrações">
+          <IntegracoesPerfil />
         </Secao>
         <Secao titulo="Notificações">
           <NotificacoesPerfil />

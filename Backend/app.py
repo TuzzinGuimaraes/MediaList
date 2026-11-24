@@ -26,6 +26,7 @@ from routes import auth as rotas_auth
 from routes import (
     auth_bp,
     avaliacoes_bp,
+    integracoes_bp,
     lista_bp,
     midias_bp,
     moderacao_bp,
@@ -120,6 +121,7 @@ app.register_blueprint(avaliacoes_bp, url_prefix='/api/avaliacoes')
 app.register_blueprint(noticias_bp, url_prefix='/api/noticias')
 app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')
 app.register_blueprint(preferencias_bp, url_prefix='/api/preferencias')
+app.register_blueprint(integracoes_bp, url_prefix='/api/integracoes')
 app.register_blueprint(utils_bp, url_prefix='/api')
 
 # Depois dos blueprints: o OpenAPI é gerado a partir das rotas registradas.
