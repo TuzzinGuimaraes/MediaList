@@ -4,7 +4,7 @@ Ver o docstring do pacote (`integracoes/__init__.py`) para como somar uma plataf
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, Protocol
 
 TipoDeMidia = Literal['anime', 'manga', 'jogo']
@@ -95,3 +95,15 @@ class Plataforma(Protocol):
     def ler(self, conta: Conta) -> list[ItemDeOrigem]:
         """A lista pública inteira, normalizada. Levanta os mesmos erros de `conectar`."""
         ...
+
+
+
+def item_para_json(item: ItemDeOrigem) -> dict[str, Any]:
+    """O item como JSON (para guardar na prévia)."""
+    return asdict(item)
+
+
+def item_de_json(dados: dict[str, Any]) -> ItemDeOrigem:
+    """Inverso de `item_para_json`."""
+    catalogo = dados.get('catalogo')
+    return ItemDeOrigem(**{**dados, 'catalogo': RefCatalogo(**catalogo) if catalogo else None})
