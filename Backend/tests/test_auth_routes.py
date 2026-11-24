@@ -30,7 +30,7 @@ def test_registro_cria_usuario_sem_dizer_o_nivel(client, monkeypatch):
 
 
 def test_registro_com_email_ja_cadastrado_responde_409(client, monkeypatch):
-    _banco(monkeypatch, {'INSERT INTO usuarios ': banco.Conflito('Registro já existe', 'usuarios_email_key')})
+    _banco(monkeypatch, {'INSERT INTO usuarios ': banco.Conflito('Registro já existe', 'uq_usuarios_email_lower')})
 
     response = client.post('/api/auth/registro', json={
         'nome_completo': 'Teste',
@@ -67,7 +67,7 @@ def test_registro_com_data_de_nascimento_vazia_grava_sem_ela(client, monkeypatch
 
 
 def test_login_autentica_e_retorna_token(client, monkeypatch):
-    fake = _banco(monkeypatch, {'FROM usuarios WHERE email': {
+    fake = _banco(monkeypatch, {'FROM usuarios WHERE lower(email)': {
         'id_usuario': 'USR-LOGIN-1',
         'nome_completo': 'Usuário Login',
         'email': 'user@example.com',

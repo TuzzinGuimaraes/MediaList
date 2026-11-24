@@ -164,7 +164,7 @@ def login(json: CorpoLogin):
         """
         SELECT id_usuario, nome_completo, email, senha_hash, ativo, nivel_acesso,
                deve_trocar_senha, senha_temporaria_expira_em
-        FROM usuarios WHERE email = %s
+        FROM usuarios WHERE lower(email) = %s
         """,
         (json.email,),
     )
@@ -363,7 +363,7 @@ def trocar_senha(json: CorpoTrocarSenha):
 def esqueci_senha(json: CorpoEsqueciSenha):
     """Solicitar redefinição de senha"""
     usuario = consultar_um(
-        "SELECT id_usuario, nome_completo, email FROM usuarios WHERE email = %s AND ativo = TRUE",
+        "SELECT id_usuario, nome_completo, email FROM usuarios WHERE lower(email) = %s AND ativo = TRUE",
         (json.email,),
     )
 

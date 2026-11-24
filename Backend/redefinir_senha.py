@@ -11,7 +11,8 @@ Sem email em produção, o admin roda este script na própria máquina e repassa
 
 A senha sai só no stdout, numa linha; o resto vai para o stderr. Basta DML, então usa a
 `DATABASE_URL` (usuário da aplicação), lida do `.env.producao` da raiz do repo quando ele
-existe, senão do ambiente. Email inexistente sai com código 1, sem mudar nada.
+existe, senão do ambiente. O email é normalizado (`dominio.email`), então vale em qualquer
+caixa. Email inexistente sai com código 1, sem mudar nada.
 """
 from __future__ import annotations
 
@@ -20,6 +21,8 @@ import secrets
 import sys
 
 from dotenv import load_dotenv
+
+from dominio.email import normalizar_email
 
 ENV_PRODUCAO = pathlib.Path(__file__).resolve().parents[1] / '.env.producao'
 
@@ -51,13 +54,14 @@ def redefinir(email: str) -> str | None:
     import banco
     from repositories import RefreshTokenRepository
 
+    email = normalizar_email(email)
     senha = gerar_senha()
     with banco.transacao() as t:
         usuario = t.consultar_um(
             """
             UPDATE usuarios
             SET senha_hash = %s, deve_trocar_senha = TRUE, senha_temporaria_expira_em = now() + %s::interval
-            WHERE email = %s
+            WHERE lower(email) = %s
             RETURNING id_usuario
             """,
             (generate_password_hash(senha), VALIDADE, email),
@@ -70,10 +74,10 @@ def redefinir(email: str) -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if len(args) != 1 or not args[0].strip():
+    if len(args) != 1 or not normalizar_email(args[0]):
         print('Uso: make redefinir-senha EMAIL=fulano@exemplo.com', file=sys.stderr)
         return 2
-    email = args[0].strip()
+    email = normalizar_email(args[0])
 
     senha = redefinir(email)
     if senha is None:
