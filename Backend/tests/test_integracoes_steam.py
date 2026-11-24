@@ -113,12 +113,14 @@ def test_chave_da_steam_nao_vai_para_o_log_quando_a_requisicao_falha(caplog):
 # Ler
 # ============================================
 
-@pytest.mark.parametrize(('minutos', 'horas'), [(0, 0), (29, 0), (30, 1), (89, 1), (90, 2), (6000, 100)])
-def test_horas_sao_minutos_sobre_60_arredondados(minutos, horas):
+@pytest.mark.parametrize(('minutos', 'horas'), [
+    (0, 0), (None, 0), (-5, 0), (1, 1), (29, 1), (30, 1), (89, 1), (90, 2), (6000, 100),
+])
+def test_horas_sao_minutos_sobre_60_arredondados_com_ao_menos_1_se_jogou(minutos, horas):
     assert horas_de(minutos) == horas
 
 
-def test_le_so_jogos_com_horas_e_a_data_da_ultima_vez():
+def test_le_todo_jogo_ja_aberto_e_a_data_da_ultima_vez():
     steam, sessao = _steam(rotas_steam([
         jogo_steam(10, 'Counter-Strike', 125, 1_764_000_000),
         jogo_steam(20, 'Nunca aberto', 0),
@@ -130,6 +132,7 @@ def test_le_so_jogos_com_horas_e_a_data_da_ultima_vez():
 
     assert [(i.origem_id, i.titulo, i.horas, i.jogado_em) for i in itens] == [
         ('10', 'Counter-Strike', 2, '2025-11-24'),
+        ('30', 'Dez minutos', 1, None),
         ('40', 'Sem data', 10, None),
     ]
     assert itens[0].tipo == 'jogo'

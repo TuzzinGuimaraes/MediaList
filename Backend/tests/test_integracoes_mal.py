@@ -28,8 +28,9 @@ class SessaoMal:
         self.respostas = list(respostas)
         self.pedidos = []
 
-    def get(self, url, params=None, headers=None, timeout=None):
-        self.pedidos.append({'url': url, 'params': params, 'headers': headers})
+    def get(self, url, params=None, headers=None, timeout=None, allow_redirects=True):
+        self.pedidos.append({'url': url, 'params': params, 'headers': headers, 'allow_redirects': allow_redirects,
+                             'timeout': timeout})
         if not self.respostas:
             raise AssertionError('GET além do esperado')
         resposta = self.respostas.pop(0)

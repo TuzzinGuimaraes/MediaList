@@ -19,7 +19,8 @@ import re
 from datetime import datetime, timezone
 
 from config import STEAM_API_KEY, STEAM_API_URL
-from importacao.utils import criar_sessao_http, ocultar_segredos
+from importacao.utils import ocultar_segredos
+from integracoes import prazo
 from integracoes.plataforma import (
     Conta,
     ItemDeOrigem,
@@ -49,8 +50,12 @@ MENSAGEM_INDISPONIVEL = 'A Steam não respondeu agora. Tente de novo em alguns m
 
 
 def horas_de(minutos: int | None) -> int:
-    """`playtime_forever` (minutos) em horas inteiras, arredondando a meia hora para cima."""
-    return (max(minutos or 0, 0) + 30) // 60
+    """`playtime_forever` (minutos) em horas inteiras, arredondando a meia hora para cima.
+
+    Jogo aberto (minutos > 0) tem pelo menos 1 hora (Q111b): 10 minutos não somem da Lista.
+    """
+    minutos = max(minutos or 0, 0)
+    return max(1, (minutos + 30) // 60) if minutos else 0
 
 
 def link_da_loja(appid: int | str) -> str:
@@ -98,9 +103,12 @@ class Steam:
         return bool(self.chave)
 
     def _get(self, metodo: str, params: dict) -> dict:
-        sessao = self._sessao or criar_sessao_http(total_retries=1, backoff_factor=0.5)
+        prazo.conferir()
+        sessao = self._sessao or prazo.sessao_http(1, 0.5)
         try:
-            resposta = sessao.get(f'{STEAM_API_URL}/{metodo}', params={'key': self.chave, **params}, timeout=20)
+            resposta = sessao.get(
+                f'{STEAM_API_URL}/{metodo}', params={'key': self.chave, **params}, timeout=prazo.timeout(20),
+            )
             if resposta.status_code != 200:
                 raise OrigemIndisponivel(f'{metodo} respondeu {resposta.status_code}')
             return (resposta.json() or {}).get('response') or {}
@@ -140,7 +148,7 @@ class Steam:
         return Conta(steamid, jogadores[0].get('personaname') or steamid)
 
     def ler(self, conta: Conta) -> list[ItemDeOrigem]:
-        """Os jogos com horas > 0 (Q111): biblioteca nunca aberta não lota a Lista."""
+        """Os jogos já abertos (`playtime_forever` > 0, Q111b): biblioteca nunca aberta não lota a Lista."""
         itens = []
         for jogo in self._jogos(conta.identificador):
             horas = horas_de(jogo.get('playtime_forever'))

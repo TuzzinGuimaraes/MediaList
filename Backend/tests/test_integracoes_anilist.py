@@ -21,9 +21,11 @@ class SessaoFalsa:
     def __init__(self, *respostas):
         self.respostas = list(respostas)
         self.enviados = []
+        self.timeouts = []
 
     def post(self, url, json=None, timeout=None):
         self.enviados.append(json)
+        self.timeouts.append(timeout)
         if not self.respostas:
             raise AssertionError('POST além do esperado')
         resposta = self.respostas.pop(0)

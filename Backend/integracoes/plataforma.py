@@ -6,8 +6,36 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, Protocol
+from urllib.parse import urlsplit
 
 TipoDeMidia = Literal['anime', 'manga', 'jogo']
+
+#: Teto de itens de origem por importação (anime + mangá, ou jogos): acima disso, `ListaGrandeDemais`
+#: em vez de estourar o tempo da função.
+MAXIMO_ITENS = 5000
+
+#: Hosts aceitos no link de um item (e dos Não encontrados), sempre em `https://`; subdomínios valem.
+HOSTS_DE_LINK = ('anilist.co', 'myanimelist.net', 'store.steampowered.com', 'rawg.io')
+
+
+def link_seguro(link: str | None) -> str | None:
+    """O link, se for `https://` de uma das plataformas (`HOSTS_DE_LINK`); senão None.
+
+    O link vem da origem e vai para a tela como `href`: nada de `javascript:`, outro host ou
+    credenciais na URL.
+    """
+    if not isinstance(link, str) or not link.startswith('https://'):
+        return None
+    try:
+        partes = urlsplit(link)
+        host = (partes.hostname or '').lower()
+    except ValueError:
+        return None
+    if partes.username is not None or partes.password is not None or partes.netloc.lower() not in (
+        host, f'{host}:443',
+    ):
+        return None
+    return link if any(host == h or host.endswith(f'.{h}') for h in HOSTS_DE_LINK) else None
 
 
 @dataclass(frozen=True)
@@ -55,6 +83,9 @@ class ItemDeOrigem:
     jogado_em: str | None = None
     catalogo: RefCatalogo | None = field(default=None, compare=False)
 
+    def __post_init__(self):
+        object.__setattr__(self, 'link', link_seguro(self.link))
+
 
 class ErroDaIntegracao(Exception):
     """Base dos erros que a rota traduz. A mensagem é a que o Usuário vê."""
@@ -74,6 +105,21 @@ class PlataformaIndisponivel(ErroDaIntegracao):
 
 class OrigemIndisponivel(ErroDaIntegracao):
     """A plataforma não respondeu (rede, 5xx, limite de requisições)."""
+
+
+class ListaGrandeDemais(ErroDaIntegracao):
+    """A lista da origem passa de `MAXIMO_ITENS`: não cabe numa requisição."""
+
+    def __init__(self, mensagem: str | None = None):
+        super().__init__(mensagem or (
+            f'A lista passa de {MAXIMO_ITENS} itens, o máximo que dá para importar de uma vez.'
+        ))
+
+
+def conferir_tamanho(quantidade: int, maximo: int | None = None) -> None:
+    """Levanta ListaGrandeDemais se `quantidade` passa do teto."""
+    if quantidade > (MAXIMO_ITENS if maximo is None else maximo):
+        raise ListaGrandeDemais()
 
 
 class Plataforma(Protocol):

@@ -15,11 +15,13 @@ import re
 
 from importacao.anilist import CAMPOS_MEDIA
 from importacao.config import ANILIST_URL
-from importacao.utils import criar_sessao_http
+from integracoes import prazo
 from integracoes.mapeamento import estado_da_origem, nota_anilist
 from integracoes.plataforma import (
+    MAXIMO_ITENS,
     Conta,
     ItemDeOrigem,
+    ListaGrandeDemais,
     OrigemIndisponivel,
     PerfilNaoEncontrado,
     PerfilPrivado,
@@ -29,6 +31,8 @@ from integracoes.plataforma import (
 logger = logging.getLogger(__name__)
 
 POR_CHUNK = 500
+#: Chunks lidos por Tipo, no máximo (o teto de itens, `MAXIMO_ITENS`, vale para os dois Tipos juntos).
+MAXIMO_CHUNKS = -(-MAXIMO_ITENS // POR_CHUNK)
 TIPOS = (('ANIME', 'anime'), ('MANGA', 'manga'))
 
 _NOME = re.compile(r'^[A-Za-z0-9_-]{2,40}$')
@@ -127,9 +131,12 @@ class AniList:
         return True
 
     def _consultar(self, consulta: str, variaveis: dict) -> dict:
-        sessao = self._sessao or criar_sessao_http(total_retries=1, backoff_factor=0.5)
+        prazo.conferir()
+        sessao = self._sessao or prazo.sessao_http(1, 0.5)
         try:
-            resposta = sessao.post(ANILIST_URL, json={'query': consulta, 'variables': variaveis}, timeout=30)
+            resposta = sessao.post(
+                ANILIST_URL, json={'query': consulta, 'variables': variaveis}, timeout=prazo.timeout(30),
+            )
             corpo = resposta.json()
         except Exception as exc:
             logger.warning('AniList sem resposta: %s', exc)
@@ -173,7 +180,11 @@ class AniList:
                         if item.origem_id not in vistos:
                             vistos.add(item.origem_id)
                             itens.append(item)
+                if len(itens) > MAXIMO_ITENS:
+                    raise ListaGrandeDemais()
                 if not colecao.get('hasNextChunk'):
                     break
+                if chunk >= MAXIMO_CHUNKS:
+                    raise ListaGrandeDemais()
                 chunk += 1
         return itens

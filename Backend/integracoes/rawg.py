@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Callable
+from urllib.parse import quote
 
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
-from importacao.utils import criar_sessao_http, ocultar_segredos
+from importacao.utils import ocultar_segredos
+from integracoes import prazo
 from integracoes.plataforma import OrigemIndisponivel
 
 logger = logging.getLogger(__name__)
@@ -29,11 +32,21 @@ def _na_steam(resultado: dict) -> bool:
     return any(((s or {}).get('store') or {}).get('slug') == 'steam' for s in resultado.get('stores') or [])
 
 
+def _caminho_do_jogo(slug: str, resto: str = '') -> str:
+    """`/games/<slug><resto>` com o slug (que vem da busca) escapado: não sai do path."""
+    return f"/games/{quote(str(slug), safe='')}{resto}"
+
+
 class Rawg:
-    def __init__(self, sessao=None, chave: str | None = None):
-        """`sessao` é um `requests.Session` (os testes passam uma falsa); `chave` padrão: `RAWG_API_KEY`."""
+    def __init__(self, sessao=None, chave: str | None = None, antes_de_chamar: Callable[[], None] | None = None):
+        """`sessao` é um `requests.Session` (os testes passam uma falsa); `chave` padrão: `RAWG_API_KEY`.
+
+        `antes_de_chamar` roda antes de cada GET (o orçamento da Steam levanta por ele); o prazo
+        da requisição (`integracoes.prazo`) também é conferido antes de cada GET.
+        """
         self._sessao = sessao
         self._chave = chave
+        self._antes_de_chamar = antes_de_chamar
 
     @property
     def chave(self) -> str:
@@ -44,11 +57,15 @@ class Rawg:
 
     def _get(self, caminho: str, params: dict | None = None) -> dict | None:
         """O JSON da resposta; None no 404."""
+        if self._antes_de_chamar is not None:
+            self._antes_de_chamar()
+        prazo.conferir()
         if self._sessao is None:
-            self._sessao = criar_sessao_http(total_retries=2, backoff_factor=1.0)
+            self._sessao = prazo.sessao_http(2, 1.0)
         try:
             resposta = self._sessao.get(
-                f'{RAWG_BASE_URL}{caminho}', params={'key': self.chave, **(params or {})}, timeout=20,
+                f'{RAWG_BASE_URL}{caminho}', params={'key': self.chave, **(params or {})},
+                timeout=prazo.timeout(20),
             )
             if resposta.status_code == 404:
                 return None
@@ -65,13 +82,13 @@ class Rawg:
         busca = self._get('/games', {'search': nome, 'page_size': 10}) or {}
         candidatos = [r for r in busca.get('results') or [] if r.get('slug') and _na_steam(r)]
         for candidato in candidatos[:CANDIDATOS]:
-            lojas = self._get(f"/games/{candidato['slug']}/stores") or {}
+            lojas = self._get(_caminho_do_jogo(candidato['slug'], '/stores')) or {}
             if any(loja.search(str(s.get('url') or '')) for s in lojas.get('results') or []):
                 return candidato['slug']
         return None
 
     def detalhe(self, slug: str) -> dict | None:
-        return self._get(f'/games/{slug}')
+        return self._get(_caminho_do_jogo(slug))
 
     def fechar(self) -> None:
         if self._sessao is not None:

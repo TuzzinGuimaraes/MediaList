@@ -277,14 +277,14 @@ class _PlataformaFalsa:
 
 def test_item_sem_casamento_vai_para_nao_encontrados_com_titulo_e_link(client, usuario, monkeypatch):
     _, headers = usuario
-    sem_casar = ItemDeOrigem('9', 'anime', 'Obra rara', 'https://exemplo.test/9', status='concluido')
+    sem_casar = ItemDeOrigem('9', 'anime', 'Obra rara', 'https://anilist.co/anime/9', status='concluido')
     monkeypatch.setitem(servico.PLATAFORMAS, 'anilist', _PlataformaFalsa([sem_casar]))
     client.put('/api/integracoes/anilist', json={'identificador': 'fulano'}, headers=headers)
 
     corpo = client.post('/api/integracoes/anilist/previa', headers=headers).get_json()
     confirmado = client.post(f"/api/integracoes/previas/{corpo['id_previa']}/confirmar", headers=headers).get_json()
 
-    esperado = [{'titulo': 'Obra rara', 'link': 'https://exemplo.test/9'}]
+    esperado = [{'titulo': 'Obra rara', 'link': 'https://anilist.co/anime/9'}]
     assert (corpo['novos'], corpo['nao_encontrados'], corpo['total_nao_encontrados']) == (0, esperado, 1)
     assert confirmado['nao_encontrados'] == esperado
 
@@ -315,3 +315,165 @@ def test_privado_vindo_da_plataforma_qualquer(client, usuario, monkeypatch):
     r = client.post('/api/integracoes/anilist/previa', headers=headers)
 
     assert r.get_json() == {'erro': 'privado, deixe público', 'codigo': 'perfil_privado'}
+
+
+
+# ============================================
+# Confirmar atômico, erros e limites (revisão do ticket 37)
+# ============================================
+
+def _previa_com(client, headers, monkeypatch, itens):
+    monkeypatch.setitem(servico.PLATAFORMAS, 'anilist', _PlataformaFalsa(itens))
+    client.put('/api/integracoes/anilist', json={'identificador': 'fulano'}, headers=headers)
+    corpo = client.post('/api/integracoes/anilist/previa', headers=headers).get_json()
+    assert 'id_previa' in corpo, corpo
+    return corpo
+
+
+def _item_anilist(id_anilist, **campos):
+    return ItemDeOrigem(
+        str(id_anilist), 'anime', f'AL {id_anilist}', f'https://anilist.co/anime/{id_anilist}',
+        catalogo=RefCatalogo('anilist', str(id_anilist)), **campos,
+    )
+
+
+def _previas(id_usuario):
+    return banco.consultar_um('SELECT count(*) AS n FROM importacao_previas WHERE id_usuario = %s', (id_usuario,))['n']
+
+
+def test_falha_no_meio_do_confirmar_nao_grava_item_nem_consome_a_previa(client, usuario, monkeypatch, anilist_ids):
+    from repositories.itens_lista import ItensLista
+
+    id_usuario, headers = usuario
+    (id_a, midia_a), (id_b, midia_b) = _anime_no_catalogo(anilist_ids), _anime_no_catalogo(anilist_ids)
+    corpo = _previa_com(client, headers, monkeypatch, [
+        _item_anilist(id_a, status='em_progresso', progresso=3),
+        _item_anilist(id_b, status='em_progresso', progresso=4),
+    ])
+    original, chamadas = ItensLista.criar_item, []
+
+    def quebra_no_segundo(self, *args):
+        chamadas.append(args)
+        if len(chamadas) == 2:
+            raise RuntimeError('o banco caiu no meio')
+        return original(self, *args)
+
+    monkeypatch.setattr(ItensLista, 'criar_item', quebra_no_segundo)
+    with pytest.raises(RuntimeError):
+        servico.confirmar(id_usuario, corpo['id_previa'])
+
+    assert len(chamadas) == 2
+    assert _item(id_usuario, midia_a) is None and _item(id_usuario, midia_b) is None
+    assert _previas(id_usuario) == 1
+    assert repositorio_conta(id_usuario)['ultimo_resultado'] is None
+
+    monkeypatch.setattr(ItensLista, 'criar_item', original)
+    confirmado = client.post(f"/api/integracoes/previas/{corpo['id_previa']}/confirmar", headers=headers)
+
+    assert confirmado.status_code == 200 and confirmado.get_json()['novos'] == 2
+    assert _item(id_usuario, midia_a)['progresso_atual'] == 3
+    assert _previas(id_usuario) == 0
+
+
+def repositorio_conta(id_usuario):
+    from integracoes import repositorio
+
+    return repositorio.conta(id_usuario, 'anilist')
+
+
+def test_dois_confirmar_simultaneos_aplicam_uma_vez(client, usuario, monkeypatch, anilist_ids):
+    import threading
+    import time
+
+    from integracoes import repositorio
+
+    id_usuario, headers = usuario
+    id_a, midia_a = _anime_no_catalogo(anilist_ids)
+    corpo = _previa_com(client, headers, monkeypatch, [_item_anilist(id_a, status='em_progresso', progresso=3)])
+    original = repositorio.registrar_resultado
+    dentro = threading.Event()
+
+    def devagar(*args):
+        dentro.set()
+        time.sleep(0.5)  # segura a transação com a prévia travada
+        return original(*args)
+
+    monkeypatch.setattr(repositorio, 'registrar_resultado', devagar)
+    resultados = []
+    primeiro = threading.Thread(target=lambda: resultados.append(servico.confirmar(id_usuario, corpo['id_previa'])))
+    primeiro.start()
+    assert dentro.wait(5)
+    resultados.append(servico.confirmar(id_usuario, corpo['id_previa']))
+    primeiro.join(5)
+
+    assert sorted(r is None for r in resultados) == [False, True]
+    assert next(r for r in resultados if r)['novos'] == 1
+    assert _item(id_usuario, midia_a)['progresso_atual'] == 3
+
+
+def test_importacao_nao_mexe_na_recontagem_quando_a_origem_chega_ao_total(client, usuario, monkeypatch, anilist_ids):
+    """Q114b: Item que já tinha conclusão e a origem chega ao total: Concluído, Recontagem igual."""
+    id_usuario, headers = usuario
+    id_a, midia_a = _anime_no_catalogo(anilist_ids, episodios=12)
+    banco.executar(
+        "INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo, progresso_atual, data_conclusao, "
+        "total_rewatches) VALUES (%s, %s, 'assistindo', 5, '2020-01-01', 2)",
+        (id_usuario, midia_a),
+    )
+    corpo = _previa_com(client, headers, monkeypatch, [_item_anilist(id_a, status='concluido', progresso=12)])
+
+    client.post(f"/api/integracoes/previas/{corpo['id_previa']}/confirmar", headers=headers)
+
+    item = _item(id_usuario, midia_a)
+    assert (item['status_consumo'], item['progresso_atual'], item['total_rewatches']) == ('completo', 12, 2)
+
+
+def test_lista_grande_demais_responde_413_com_mensagem(client, usuario, monkeypatch):
+    from integracoes.plataforma import ListaGrandeDemais
+
+    _, headers = usuario
+    monkeypatch.setitem(servico.PLATAFORMAS, 'anilist', _PlataformaFalsa([], ListaGrandeDemais()))
+    client.put('/api/integracoes/anilist', json={'identificador': 'fulano'}, headers=headers)
+
+    r = client.post('/api/integracoes/anilist/previa', headers=headers)
+
+    assert r.status_code == 413
+    assert r.get_json()['codigo'] == 'lista_grande_demais'
+    assert '5000' in r.get_json()['erro']
+
+
+def test_subclasse_de_erro_da_integracao_usa_o_codigo_da_base(client, usuario, monkeypatch):
+    class PrivadoEspecial(PerfilPrivado):
+        pass
+
+    _, headers = usuario
+    monkeypatch.setitem(servico.PLATAFORMAS, 'anilist', _PlataformaFalsa([], PrivadoEspecial('privado')))
+    client.put('/api/integracoes/anilist', json={'identificador': 'fulano'}, headers=headers)
+
+    r = client.post('/api/integracoes/anilist/previa', headers=headers)
+
+    assert (r.status_code, r.get_json()['codigo']) == (400, 'perfil_privado')
+
+
+def test_prazo_da_requisicao_vencido_responde_502_com_mensagem(client, usuario, anilist, monkeypatch):
+    from integracoes import prazo
+
+    _, headers = usuario
+    _conectar(client, headers, anilist)
+    sessao = anilist(_colecao(), _colecao())
+    monkeypatch.setattr(prazo, 'PRAZO_SEGUNDOS', 0)
+
+    r = client.post('/api/integracoes/anilist/previa', headers=headers)
+
+    assert (r.status_code, r.get_json()['codigo']) == (502, 'origem_indisponivel')
+    assert 'demorou' in r.get_json()['erro']
+    assert sessao.enviados == []
+
+
+def test_link_fora_das_plataformas_sai_sem_link_nos_nao_encontrados(client, usuario, monkeypatch):
+    _, headers = usuario
+    corpo = _previa_com(client, headers, monkeypatch, [
+        ItemDeOrigem('9', 'anime', 'Obra', 'javascript:alert(1)', status='concluido'),
+    ])
+
+    assert corpo['nao_encontrados'] == [{'titulo': 'Obra', 'link': None}]

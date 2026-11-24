@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from banco import consultar, consultar_um, executar
+import banco
 from tipos_midia import TIPOS, joins_das_filhas, por_tipo
 
 from .catalogo import FROM_MIDIA, SELECT_MIDIA, com_generos_lista
@@ -69,7 +69,14 @@ def _valor(campo: str, valor: Any) -> Any:
 
 
 class ItensLista:
-    """Os Itens de lista de todos os Usuários."""
+    """Os Itens de lista de todos os Usuários.
+
+    `executor` é onde as consultas rodam: o módulo `banco` (uma transação por chamada) ou uma
+    `banco.Transacao` aberta, para gravar vários Itens numa transação só (Integrações).
+    """
+
+    def __init__(self, executor=None):
+        self._db = executor or banco
 
     def listar(self, id_usuario: str, tipo: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
         """A Lista do Usuário: cada Item com a Mídia inteira, em ordem alfabética do título exibido.
@@ -91,7 +98,7 @@ class ItensLista:
             query += ' AND lu.status_consumo = %s'
             params.append(status)
 
-        return sorted((com_generos_lista(linha) for linha in consultar(query, params)), key=_chave_alfabetica)
+        return sorted((com_generos_lista(linha) for linha in self._db.consultar(query, params)), key=_chave_alfabetica)
 
     def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
         """Insere o Item e devolve o `id_lista`, ou None se já existia.
@@ -100,7 +107,7 @@ class ItensLista:
         CONFLICT DO NOTHING` sem linha devolvida é o Item já existente.
         """
         gravados = [c for c in COLUNAS_GRAVAVEIS if campos.get(c) is not None]
-        criado = consultar_um(
+        criado = self._db.consultar_um(
             f"""
             INSERT INTO lista_usuarios (id_usuario, id_midia, progresso_total{''.join(f', {c}' for c in gravados)})
             VALUES (%s, %s, (
@@ -123,7 +130,7 @@ class ItensLista:
             return False
 
         valores = {c: None if c == 'nota_usuario' and campos[c] == '' else _valor(c, campos[c]) for c in gravados}
-        executar(
+        self._db.executar(
             f"UPDATE lista_usuarios SET {', '.join(f'{c} = %s' for c in gravados)} WHERE id_lista = %s",
             (*valores.values(), id_lista),
         )
@@ -131,7 +138,7 @@ class ItensLista:
 
     def remover_item(self, id_lista: str, id_usuario: str) -> bool:
         """Apaga o Item do Usuário e diz se alguma linha saiu: Item de outro não sai."""
-        return executar(
+        return self._db.executar(
             'DELETE FROM lista_usuarios WHERE id_lista = %s AND id_usuario = %s', (id_lista, id_usuario)
         ) > 0
 
@@ -141,7 +148,7 @@ class ItensLista:
         `progresso_total_padrao` vem da Mídia, não da cópia no Item: é ele que
         decide Concluído.
         """
-        return consultar_um(
+        return self._db.consultar_um(
             f"""
             SELECT lu.id_lista, lu.id_usuario, lu.id_midia, lu.status_consumo, lu.progresso_atual,
                    lu.progresso_total, lu.data_conclusao, lu.total_rewatches,
@@ -159,7 +166,7 @@ class ItensLista:
 
     def obter_item_usuario(self, id_usuario: str, id_midia: str) -> dict[str, Any] | None:
         """O Item do Usuário para a Mídia, ou None."""
-        return consultar_um(
+        return self._db.consultar_um(
             'SELECT id_lista, id_usuario, id_midia FROM lista_usuarios WHERE id_usuario = %s AND id_midia = %s',
             (id_usuario, id_midia),
         )

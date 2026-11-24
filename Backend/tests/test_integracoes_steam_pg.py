@@ -77,7 +77,7 @@ def fontes(monkeypatch):
             servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
         )
         sessao_rawg = SessaoGet(rawg or {})
-        monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG))
+        monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))
         return sessao_rawg
 
     return instalar
@@ -166,6 +166,31 @@ def test_sem_chave_a_steam_aparece_indisponivel(client, usuario, monkeypatch):
 
     assert next(i for i in integracoes if i['plataforma'] == 'steam')['disponivel'] is False
     assert r.status_code == 503
+
+
+def test_steam_nao_tem_previa_e_responde_400_com_mensagem(client, usuario, fontes):
+    id_usuario, headers = usuario
+    fontes([])
+    _conectar(id_usuario)
+
+    r = client.post('/api/integracoes/steam/previa', headers=headers)
+
+    assert r.status_code == 400
+    assert r.get_json()['codigo'] == 'requisicao_invalida'
+    assert 'Sincronizar agora' in r.get_json()['erro']
+
+
+def test_jogo_aberto_por_poucos_minutos_entra_com_1_hora(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, slug, nome = jogo('Rapido')
+    _no_catalogo(appid, slug, nome)
+    fontes([jogo_steam(appid, nome, 10, HORA)])
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert corpo['novos'] == 1
+    assert _item(id_usuario, slug) == {'status_consumo': 'pausado', 'progresso_atual': 1}
 
 
 def test_sincronizar_sem_conta_e_404(client, usuario, fontes):
@@ -265,17 +290,20 @@ def test_orcamento_esgotado_atualiza_os_casados_e_deixa_os_novos_pendentes(clien
     assert _casamento(novo1[0]) is None  # pendente não vira negativo
 
 
-def test_orcamento_para_no_meio_e_o_resto_fica_pendente(usuario, fontes, jogo):
+def test_orcamento_e_conferido_antes_de_cada_chamada_ao_rawg(usuario, fontes, jogo):
+    """Cada jogo novo pede busca, lojas e detalhe: o orçamento para no meio do segundo jogo."""
     id_usuario, _ = usuario
     jogos = [jogo(f'J{i}') for i in range(3)]
-    fontes([jogo_steam(a, n, 120, HORA) for a, _, n in jogos], rawg_que_casa(*jogos))
+    rawg = fontes([jogo_steam(a, n, 120, HORA) for a, _, n in jogos], rawg_que_casa(*jogos))
     _conectar(id_usuario)
-    tempo = iter(range(0, 1000, 10))  # cada leitura do relógio avança 10 s
+    tempo = iter(range(0, 1000, 10))  # cada leitura do relógio avança 10 s; o início é 0
 
-    corpo = sincronizacao_steam.sincronizar(id_usuario, orcamento=25, relogio=lambda: next(tempo))
+    corpo = sincronizacao_steam.sincronizar(id_usuario, orcamento=45, relogio=lambda: next(tempo))
 
-    assert corpo['novos'] + corpo['pendentes'] == 3
-    assert 1 <= corpo['novos'] < 3
+    # J0: busca (10), lojas (20), detalhe (30); J1: busca (40), lojas (50 ≥ 45: não sai).
+    assert (corpo['novos'], corpo['pendentes']) == (1, 2)
+    assert len(rawg.chamadas) == 4
+    assert _casamento(jogos[1][0]) is None  # pendente no meio do casamento não grava nada
 
 
 def test_rawg_fora_do_ar_deixa_pendentes_sem_gravar_negativo(client, usuario, fontes, jogo):

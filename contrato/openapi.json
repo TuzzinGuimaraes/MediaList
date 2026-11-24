@@ -396,6 +396,7 @@
           "perfil_nao_encontrado",
           "origem_indisponivel",
           "plataforma_indisponivel",
+          "lista_grande_demais",
           "erro_interno"
         ],
         "title": "CodigoErro",
@@ -6180,7 +6181,7 @@
     },
     "/api/integracoes/previas/{id_previa}/confirmar": {
       "post": {
-        "description": "",
+        "description": "Prazo da requisição vencido responde 502 e a prévia continua valendo (as obras já importadas ficam).",
         "operationId": "post__api_integracoes_previas_{id_previa}_confirmar",
         "parameters": [
           {
@@ -6253,6 +6254,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Gateway"
           }
         },
         "security": [
@@ -6260,7 +6271,7 @@
             "bearer": []
           }
         ],
-        "summary": "Aplicar a prévia na Lista (uma vez só): importa as obras que faltam no Catálogo.",
+        "summary": "Aplicar a prévia na Lista (uma vez só, tudo ou nada): importa as obras que faltam no Catálogo.",
         "tags": [
           "integracoes"
         ]
@@ -6321,6 +6332,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
           },
           "422": {
             "content": {
@@ -6526,6 +6547,16 @@
             },
             "description": "Not Found"
           },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6633,6 +6664,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
           },
           "422": {
             "content": {

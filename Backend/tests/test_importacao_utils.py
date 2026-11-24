@@ -101,3 +101,12 @@ def test_configurar_log_grava_em_log_path_sem_duplicar_handlers(tmp_path, monkey
     assert len(raiz.handlers) == antes
     texto = log_path.read_text(encoding='utf-8')
     assert 'linha de teste key=***' in texto
+
+
+
+def test_ocultar_segredos_cobre_o_client_id_do_mal(monkeypatch):
+    from importacao.utils import ocultar_segredos
+
+    monkeypatch.setenv('MAL_CLIENT_ID', 'mal-id-secreto-123')
+
+    assert ocultar_segredos("headers={'X-MAL-CLIENT-ID': 'mal-id-secreto-123'}") == "headers={'X-MAL-CLIENT-ID': '***'}"

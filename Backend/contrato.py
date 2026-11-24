@@ -66,6 +66,8 @@ class CodigoErro(StrEnum):
     ORIGEM_INDISPONIVEL = 'origem_indisponivel'
     #: Integrações: falta a chave da plataforma no ambiente (`MAL_CLIENT_ID`, `STEAM_API_KEY`).
     PLATAFORMA_INDISPONIVEL = 'plataforma_indisponivel'
+    #: Integrações: a lista da origem passa do teto por importação (5000 itens).
+    LISTA_GRANDE_DEMAIS = 'lista_grande_demais'
     ERRO_INTERNO = 'erro_interno'
 
 
