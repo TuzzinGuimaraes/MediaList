@@ -25,6 +25,10 @@ CANDIDATOS = 3
 MENSAGEM_INDISPONIVEL = 'O RAWG não respondeu agora.'
 
 
+def _na_steam(resultado: dict) -> bool:
+    return any(((s or {}).get('store') or {}).get('slug') == 'steam' for s in resultado.get('stores') or [])
+
+
 class Rawg:
     def __init__(self, sessao=None, chave: str | None = None):
         """`sessao` é um `requests.Session` (os testes passam uma falsa); `chave` padrão: `RAWG_API_KEY`."""
@@ -59,10 +63,7 @@ class Rawg:
         """O slug do jogo no RAWG que vende este appid na Steam, ou None (sem palpite)."""
         loja = re.compile(rf'store\.steampowered\.com/app/{int(appid)}(?:\D|$)')
         busca = self._get('/games', {'search': nome, 'page_size': 10}) or {}
-        candidatos = [
-            r for r in busca.get('results') or []
-            if r.get('slug') and any(((s or {}).get('store') or {}).get('slug') == 'steam' for s in r.get('stores') or [])
-        ]
+        candidatos = [r for r in busca.get('results') or [] if r.get('slug') and _na_steam(r)]
         for candidato in candidatos[:CANDIDATOS]:
             lojas = self._get(f"/games/{candidato['slug']}/stores") or {}
             if any(loja.search(str(s.get('url') or '')) for s in lojas.get('results') or []):

@@ -9,7 +9,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
-from integracoes import servico
+from integracoes import servico, sincronizacao_steam
 from integracoes.plataforma import (
     ErroDaIntegracao,
     OrigemIndisponivel,
@@ -23,6 +23,7 @@ from schemas.integracoes import (
     PreviaImportacao,
     RespostaIntegracoes,
     ResultadoImportacao,
+    ResultadoSincronizacao,
 )
 
 integracoes_bp = Blueprint('integracoes', __name__)
@@ -111,3 +112,18 @@ def confirmar_previa(id_previa):
     if resultado is None:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Prévia não encontrada ou expirada: gere outra')
     return resultado
+
+
+@integracoes_bp.route('/steam/sincronizar', methods=['POST'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=ResultadoSincronizacao, **ERROS_DA_PLATAFORMA), tags=['integracoes'], security=AUTENTICADO,
+)
+def sincronizar_steam():
+    """Sincronizar agora: grava as horas dos jogos já casados e casa os novos até o orçamento (~60 s).
+
+    Os que não couberem voltam em `pendentes` e ficam para a sincronização diária.
+    """
+    return _executar(lambda: sincronizacao_steam.sincronizar(
+        get_jwt_identity(), orcamento=sincronizacao_steam.ORCAMENTO_SEGUNDOS,
+    ))

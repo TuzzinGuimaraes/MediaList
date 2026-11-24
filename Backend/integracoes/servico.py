@@ -26,10 +26,11 @@ from integracoes.plataforma import (
     item_de_json,
     item_para_json,
 )
+from integracoes.steam import Steam
 from repositories.itens_lista import ItensLista
 
 #: As plataformas registradas, na ordem da tela. Os tickets do MAL e da Steam somam aqui.
-PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList()}
+PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList(), 'steam': Steam()}
 
 #: Quantos Não encontrados saem na resposta (o total sai à parte).
 AMOSTRA_NAO_ENCONTRADOS = 100

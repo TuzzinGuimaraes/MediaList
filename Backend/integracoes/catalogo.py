@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable
 
 from banco import consultar
 from importacao.importar_animes import processar_e_inserir_anime
+from importacao.importar_jogos import processar_e_inserir_jogo
 from importacao.importar_mangas import processar_e_inserir_manga
 from integracoes.plataforma import ItemDeOrigem
 from tipos_midia import TIPOS
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 IMPORTADORES: dict[tuple[str, str], Callable[[dict], dict]] = {
     ('anilist', 'anime'): processar_e_inserir_anime,
     ('anilist', 'manga'): processar_e_inserir_manga,
+    # O detalhe do RAWG (`GET /games/<slug>`) traz o básico da listagem e o resto.
+    ('rawg', 'jogo'): lambda detalhe: processar_e_inserir_jogo(detalhe, detalhe),
 }
 
 #: Fonte de cada Tipo: a chave da fonte na tabela filha (`tipos_midia`).

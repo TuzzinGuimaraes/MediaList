@@ -27,6 +27,12 @@ class ResultadoImportacao(BaseModel):
     total_nao_encontrados: int
 
 
+class ResultadoSincronizacao(ResultadoImportacao):
+    """A sincronização da Steam: grava direto, sem prévia."""
+
+    pendentes: int = Field(description='Jogos ainda não casados com o Catálogo: ficam para a sincronização diária')
+
+
 class PreviaImportacao(ResultadoImportacao):
     """O que a importação faria; só grava ao confirmar, até `expira_em` (1 h)."""
 
