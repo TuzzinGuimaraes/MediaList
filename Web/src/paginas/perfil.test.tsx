@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../api/tipos';
 import { abrirLogado, usuarioAna } from '../testes/app';
-import type { Rotas } from '../testes/fetchSimulado';
+import { erro, type Rotas } from '../testes/fetchSimulado';
 
 type ItemLista = Esquemas['ItemLista'];
 type Notificacao = Esquemas['Notificacao'];
@@ -399,5 +399,79 @@ describe('Perfil: Integrações', () => {
 
     const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
     expect(steam).toHaveTextContent('Indisponível no momento.');
+  });
+
+  const mal = (extra: Partial<Integracao> = {}) => integracao({ plataforma: 'mal', rotulo: 'MyAnimeList', ...extra });
+
+  it('conecta o MyAnimeList pelo nome de usuário', async () => {
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [mal()] } },
+        'PUT /integracoes/mal': { status: 200, corpo: mal({ conectada: true, identificador: 'Ana', nome_exibicao: 'Ana' }) },
+      }),
+    });
+
+    const item = within(await secao('Integrações')).getByRole('listitem', { name: 'MyAnimeList' });
+    await user.type(within(item).getByLabelText('Nome de usuário do MyAnimeList'), 'Ana');
+    await user.click(within(item).getByRole('button', { name: 'Conectar' }));
+
+    expect(api.para('PUT /integracoes/mal')[0]?.corpo).toEqual({ identificador: 'Ana' });
+  });
+
+  it('envia o XML do MyAnimeList mesmo indisponível pela API, com prévia e confirmação', async () => {
+    const { user, api } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [mal({ disponivel: false })] } },
+        'POST /integracoes/mal/xml': { status: 200, corpo: previa },
+        'POST /integracoes/previas/PRV-1/confirmar': {
+          status: 200,
+          corpo: { novos: 32, atualizados: 5, nao_encontrados: [], total_nao_encontrados: 0 },
+        },
+      }),
+    });
+
+    const item = within(await secao('Integrações')).getByRole('listitem', { name: 'MyAnimeList' });
+    expect(item).toHaveTextContent('Indisponível no momento.');
+    const enviar = within(item).getByRole('button', { name: 'Enviar XML' });
+    expect(enviar).toBeDisabled();
+    const arquivo = new File(['<myanimelist></myanimelist>'], 'animelist.xml', { type: 'text/xml' });
+    await user.upload(within(item).getByLabelText('Arquivo XML exportado'), arquivo);
+    await user.click(enviar);
+
+    const caixa = await within(item).findByRole('group', { name: 'Prévia da importação' });
+    expect(caixa).toHaveTextContent('32 novos · 5 atualizados · 3 não encontrados');
+    const enviado = String(api.para('POST /integracoes/mal/xml')[0]?.corpo);
+    // O File do jsdom atravessa o FormData do Node só com o tipo (sem nome nem conteúdo).
+    expect(enviado).toContain('form-data; name="arquivo"');
+    expect(enviado).toContain('Content-Type: text/xml');
+
+    await user.click(within(caixa).getByRole('button', { name: 'Confirmar' }));
+
+    expect(await within(item).findByRole('status')).toHaveTextContent('Importado: 32 novos · 5 atualizados');
+    expect(api.para('POST /integracoes/previas/PRV-1/confirmar')).toHaveLength(1);
+  });
+
+  it('XML recusado mostra a mensagem da API', async () => {
+    const { user } = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [mal()] } },
+        'POST /integracoes/mal/xml': erro(400, 'dados_invalidos', 'Arquivo inválido: envie o XML exportado do MyAnimeList.'),
+      }),
+    });
+
+    const item = within(await secao('Integrações')).getByRole('listitem', { name: 'MyAnimeList' });
+    await user.upload(within(item).getByLabelText('Arquivo XML exportado'), new File(['x'], 'x.xml'));
+    await user.click(within(item).getByRole('button', { name: 'Enviar XML' }));
+
+    expect(await within(item).findByRole('alert')).toHaveTextContent('Arquivo inválido');
+  });
+
+  it('o AniList não oferece o XML', async () => {
+    await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({ 'GET /integracoes': { status: 200, corpo: { integracoes: [integracao()] } } }),
+    });
+
+    const anilist = within(await secao('Integrações')).getByRole('listitem', { name: 'AniList' });
+    expect(within(anilist).queryByLabelText('Arquivo XML exportado')).not.toBeInTheDocument();
   });
 });
