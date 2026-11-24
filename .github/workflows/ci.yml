@@ -164,6 +164,65 @@ jobs:
       - name: Build web image
         run: docker compose build frontend
 
+  # Fluxos E2E (Playwright, Web/e2e/fluxos) contra o stack inteiro do compose, que nasce
+  # vazio e recebe o seed-dev. Na falha, o relatório e os traces sobem como artefato.
+  e2e:
+    name: E2E do web (fluxos)
+    runs-on: ubuntu-latest
+    # Acima do globalTimeout do playwright.config.ts (10 min), para o relatório sair.
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: Web
+        run: npm ci
+
+      # --wait: postgres healthy, migrate concluído, backend e frontend healthy.
+      - name: Start stack
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Seed de desenvolvimento
+        run: make seed-dev
+
+      # Só o Chromium (com as libs do sistema), na versão fixa do package-lock.
+      - name: Install Chromium
+        working-directory: Web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E (fluxos)
+        working-directory: Web
+        env:
+          E2E_BASE_URL: http://localhost:3005
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-fluxos
+          path: |
+            Web/playwright-report/
+            Web/test-results/
+          retention-days: 14
+
+      - name: Stack logs
+        if: ${{ failure() }}
+        run: docker compose logs backend frontend
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v
+
   mobile:
     name: Mobile Tests
     runs-on: ubuntu-latest
