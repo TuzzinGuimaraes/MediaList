@@ -67,7 +67,12 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   só para o dono. `POST /integracoes/previas/<id>/confirmar` aplica uma vez só e devolve as
   mesmas contagens; prévia vencida, de outro ou já usada responde 404. Erros próprios:
   400 `perfil_privado` e 404 `perfil_nao_encontrado` (mensagem com o passo para a tela),
-  502 `origem_indisponivel` e 503 `plataforma_indisponivel`; plataforma fora do registro, 404.
+  413 `lista_grande_demais` (a origem passa de 5000 itens por importação),
+  502 `origem_indisponivel` (também quando o prazo de 240 s da requisição acaba) e 503
+  `plataforma_indisponivel`; plataforma fora do registro, 404. A Steam não tem prévia:
+  `POST /integracoes/steam/previa` responde 400 `requisicao_invalida`. Confirmar é tudo ou
+  nada: 502 por prazo deixa a prévia valendo. Os links dos Não encontrados só saem quando são
+  `https://` de anilist.co, myanimelist.net, store.steampowered.com ou rawg.io; senão, `null`.
   `POST /integracoes/mal/xml` (multipart, campo `arquivo`, `.xml` ou `.xml.gz`, só web) devolve a
   mesma prévia sem precisar conectar nem da chave do MAL; XML inválido 400 `dados_invalidos`,
   acima de 5 MB 413.
