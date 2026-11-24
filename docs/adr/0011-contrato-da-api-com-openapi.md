@@ -68,6 +68,10 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   mesmas contagens; prévia vencida, de outro ou já usada responde 404. Erros próprios:
   400 `perfil_privado` e 404 `perfil_nao_encontrado` (mensagem com o passo para a tela),
   502 `origem_indisponivel` e 503 `plataforma_indisponivel`; plataforma fora do registro, 404.
+- **Steam (ADR 0015):** conecta pela URL do perfil (`/id/<vanity>`, `/profiles/<SteamID64>`) ou
+  o SteamID64; `identificador` guarda o SteamID64. Sem prévia: `POST /integracoes/steam/sincronizar`
+  grava direto e devolve as contagens com `pendentes` (jogos que não couberam no orçamento de
+  ~60 s e ficam para a sincronização diária).
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
