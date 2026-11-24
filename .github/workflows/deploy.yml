@@ -4,7 +4,7 @@ name: deploy
 # dono, grants, e só então o deploy. Qualquer etapa que falhe para as seguintes,
 # então o código novo nunca roda num schema velho. A integração Git da Vercel
 # fica desligada (vercel.json), então só este workflow publica. Por último, o
-# EAS Update do app (ADR-0014).
+# smoke só leitura da produção e o EAS Update do app (ADR-0014).
 on:
   push:
     tags: ["v*"]
@@ -25,6 +25,8 @@ env:
   VERCEL_PROJECT: medialist
   # Mesma versão do app-build: flags e saída do eas conferidos nela.
   EAS_CLI_VERSION: 27.11.0
+  # Domínio de produção da Vercel: alvo do smoke e base da API no bundle do app.
+  PRODUCAO_URL: https://medialist-five.vercel.app
 
 jobs:
   ci:
@@ -157,12 +159,60 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod
 
+  # Smoke só leitura (Web/e2e/smoke) contra a produção recém-publicada: Início,
+  # rota profunda, erro de login na tela e /api/ping. Sem secrets nem environment;
+  # nada é gravado. Falhou, o app não recebe o update.
+  smoke:
+    name: Smoke da produção
+    needs: vercel
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
-  # EAS Update do app (ADR-0014) depois da API, para o JS novo nunca chamar uma
-  # rota que ainda não existe. Só chega aos APKs com o mesmo runtimeVersion.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: Web
+        run: npm ci
+
+      # Só o Chromium (com as libs do sistema), na versão fixa do package-lock.
+      - name: Install Chromium
+        working-directory: Web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E (smoke)
+        working-directory: Web
+        env:
+          E2E_BASE_URL: ${{ env.PRODUCAO_URL }}
+        run: npm run e2e:smoke
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-smoke
+          path: |
+            Web/playwright-report/
+            Web/test-results/
+          retention-days: 14
+
+  # EAS Update do app (ADR-0014) depois da API e do smoke, para o JS novo nunca
+  # chamar uma rota que ainda não existe nem ir para uma produção quebrada. Só
+  # chega aos APKs com o mesmo runtimeVersion.
   app-update:
     name: EAS Update (canal production)
-    needs: vercel
+    needs: smoke
     # Secrets e produção só a partir da master ou de uma tag v* (um workflow_dispatch
     # noutra branch para aqui). O environment production repete a regra no GitHub.
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
@@ -226,7 +276,7 @@ jobs:
         if: steps.eas.outputs.pular != 'true'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_API_URL: https://medialist-five.vercel.app/api
+          EXPO_PUBLIC_API_URL: ${{ env.PRODUCAO_URL }}/api
         run: |
           mensagem="${GITHUB_SHA::7} $(git log -1 --format=%s)"
           eas update --channel production --environment production --platform android --non-interactive --message "$mensagem"

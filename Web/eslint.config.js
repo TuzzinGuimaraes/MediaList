@@ -5,7 +5,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'src/estilo/tema.gerado.css'] },
+  { ignores: ['dist', 'src/estilo/tema.gerado.css', 'playwright-report', 'test-results'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended, reactHooks.configs.flat.recommended],
@@ -20,6 +20,8 @@ export default tseslint.config(
     files: ['src/testes/**', '**/*.test.{ts,tsx}', 'src/app/**', 'src/**/*Context.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
+  // E2E (Playwright) roda no Node.
+  { files: ['e2e/**'], languageOptions: { globals: globals.node } },
   {
     files: ['scripts/**', '*.config.{js,ts}'],
     extends: [js.configs.recommended],

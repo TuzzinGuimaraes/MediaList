@@ -2,3 +2,7 @@ node_modules/
 dist/
 # Gerado de design/tokens.js por scripts/gerar-tema.mjs (predev e prebuild).
 src/estilo/tema.gerado.css
+# Saída do Playwright (e2e/).
+/playwright-report/
+/test-results/
+/blob-report/
