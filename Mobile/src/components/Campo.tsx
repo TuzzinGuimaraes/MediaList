@@ -58,6 +58,7 @@ export function CampoSenha({ rotulo, ref, ...props }: PropsSenha) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={acao}
+          accessibilityState={{ selected: visivel }}
           onPress={() => setVisivel((v) => !v)}
           className="absolute right-0 h-11 w-11 items-center justify-center"
         >
