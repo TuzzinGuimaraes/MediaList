@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from contrato import Data, Id, Preenchido, VazioComoAusente
+from contrato import Data, Email, Id, Preenchido, VazioComoAusente
 
 #: Em ordem crescente (ADR 0012). Um Nível novo é mudança aditiva.
 NivelAcesso = Literal['usuario', 'admin']
@@ -17,14 +17,14 @@ NivelAcesso = Literal['usuario', 'admin']
 
 class CorpoRegistro(BaseModel):
     nome_completo: Preenchido
-    email: Preenchido
+    email: Email
     senha: Preenchido
     data_nascimento: Annotated[Data | None, VazioComoAusente] = None
     biografia: str | None = ''
 
 
 class CorpoLogin(BaseModel):
-    email: Preenchido
+    email: Email
     senha: Preenchido
 
 
@@ -39,7 +39,7 @@ class CorpoLogout(BaseModel):
 
 
 class CorpoEsqueciSenha(BaseModel):
-    email: Preenchido
+    email: Email
 
 
 #: A mesma regra do registro nos clientes (`SENHA_MINIMA` em `dominio/conta.ts`).

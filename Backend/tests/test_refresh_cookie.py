@@ -18,7 +18,7 @@ WEB = {'X-Cliente': 'web'}
 
 @pytest.fixture
 def login(client, monkeypatch):
-    FakeBanco({'FROM usuarios WHERE email': {
+    FakeBanco({'FROM usuarios WHERE lower(email)': {
         'id_usuario': ID_USUARIO,
         'nome_completo': 'Usuário Cookie',
         'email': 'cookie@example.com',
