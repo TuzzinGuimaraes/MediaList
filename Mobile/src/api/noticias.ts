@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { PaginaNoticias, RespostaNotificacoes } from './tipos';
+import type { Noticia, PaginaNoticias, RespostaNotificacoes } from './tipos';
 
 const chaveNotificacoes = ['notificacoes'] as const;
 
@@ -12,6 +12,16 @@ export function useNoticias() {
     queryKey: ['noticias'],
     queryFn: () => cliente.requisitar<PaginaNoticias>('/noticias?por_pagina=20'),
     select: (r) => r.itens,
+  });
+}
+
+/** Uma Notícia, aberta pela Notificação. */
+export function useNoticia(id: string) {
+  const { cliente, sessao } = useSessao();
+  return useQuery({
+    enabled: sessao.estado === 'autenticada',
+    queryKey: ['noticias', 'uma', id],
+    queryFn: () => cliente.requisitar<Noticia>(`/noticias/${encodeURIComponent(id)}`),
   });
 }
 
