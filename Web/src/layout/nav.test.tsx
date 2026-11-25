@@ -41,3 +41,20 @@ describe('nav no topo, do desktop ao tablet', () => {
     expect(within(screen.getByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Menu' })).toBeInTheDocument();
   });
 });
+
+
+describe('pílula do catálogo (Recorte) na nav', () => {
+  it('some na Minha Lista, onde manda o Tipo da coluna, e volta nas outras rotas', async () => {
+    const { user, historico } = await abrirLogado('/lista', {
+      rotas: { ...rotasDaLista, 'GET /noticias': { status: 200, corpo: { itens: [], total: 0, pagina: 1, por_pagina: 10 } } },
+    });
+
+    await screen.findByRole('heading', { level: 1, name: 'Minha Lista' });
+    expect(screen.queryByRole('group', { name: 'Catálogo' })).not.toBeInTheDocument();
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Principal' })).getByRole('link', { name: 'Notícias' }));
+
+    await waitFor(() => expect(historico.location.pathname).toBe('/noticias'));
+    expect(await screen.findByRole('group', { name: 'Catálogo' })).toBeInTheDocument();
+  });
+});

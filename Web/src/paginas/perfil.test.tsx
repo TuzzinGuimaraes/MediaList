@@ -181,7 +181,7 @@ describe('Perfil', () => {
 
   it('usa a Lista pessoal do cache da Lista, sem buscá-la de novo', async () => {
     const { api, historico } = await abrirLogado('/lista', { rotas: rotasDoPerfil() });
-    await screen.findByRole('tablist');
+    await screen.findByRole('navigation', { name: 'Status' });
     expect(api.para('GET /lista')).toHaveLength(1);
 
     historico.push('/perfil');

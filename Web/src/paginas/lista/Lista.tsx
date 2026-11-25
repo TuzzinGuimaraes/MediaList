@@ -1,132 +1,309 @@
-// Minha Lista (Resolutions do 19 e do 34): abas por Status com contagem, título colorido da
-// aba, subseções Anime/Mangá, cards compactos em grade auto-fill e "Sugestões para você".
-// Filtros e Ordem valem para todos os Status (as contagens refletem o filtro); a busca
-// procura em todos os Status e troca as abas por uma lista única de resultados.
-import { useState } from 'react';
+// Minha Lista (ticket 39, veredito e Resolution): coluna lateral com busca, Tipo, Status com
+// "Todos", Gênero, Situação e Ordem; cabeçalho fixo com o Status ativo, a contagem e o
+// alternador de formato; o corpo virtualizado no formato da URL ou no salvo (grade de capas
+// por padrão), com o cartão de destaque nas linhas. Dados de GET /lista; busca, filtros e
+// Ordem no cliente (`@dominio/filtrosLista`). Abre em "Todos", na Ordem salva (a
+// padrão da Q120: nota no anime/mangá, horas no jogo).
+import { getRouteApi, Link } from '@tanstack/react-router';
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { contarPorEstado, type EstadoConsumo } from '@dominio/estadoConsumo';
+import { contarPorEstado, estadoDe, mediaNotasPessoais, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import {
   buscarNaLista,
-  FILTROS_PADRAO,
-  type FiltrosLista,
-  filtrosAtivos,
+  contagemPorTipo,
+  doTipo,
   filtrosEfetivos,
-  filtrosRestringem,
+  generosPorFrequencia,
   opcoesDosFiltros,
   organizarLista,
+  type TipoDaLista,
+  tiposDoFiltro,
 } from '@dominio/filtrosLista';
-import { estadosDaLista, itensDoEstado } from '@dominio/itemLista';
+import { estadosDaLista } from '@dominio/itemLista';
+import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { mensagemDeErro } from '../../api/erros';
-import { useCatalogo } from '../../catalogo/CatalogoContext';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
-import { Icone } from '../../componentes/Icone';
+import { COR_DO_ESTADO } from '../../componentes/status';
 import { ALTURA_NAV } from '../../layout/Casca';
-import { AbasStatus } from './AbasStatus';
-import { useLista, useMudarProgresso } from './api';
-import { CampoBusca } from './CampoBusca';
-import type { AcoesDoItem } from './CardItem';
-import { useEditorItem } from './EditorItemContext';
-import { FiltrosDaLista } from './FiltrosDaLista';
-import { GradeItens } from './GradeItens';
-import { PainelStatus } from './PainelStatus';
-import { Sugestoes } from './Sugestoes';
-import { textos } from './textos';
+import { AlternadorFormato } from './AlternadorFormato';
+import { useLista, useMudarStatus } from './api';
+import type { Ordenacao } from './Colecao';
+import { CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, SeletorTipo, type StatusEscolhido } from './ColunaLateral';
+import { ALTURA_SEPARADOR, type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
+import { type AlvoDoFoco, alvoDoFoco, FocoDaLista, ID_CABECALHO, type MudancaPendente, vizinhosNaTela } from './focoDaLista';
+import { ProvedorDestaque } from './Destaque';
+import { type FormatoLista, formatoValido, usePreferenciasDaLista } from './preferencias';
+import { idsNaTela, secoesNaTela } from './secoes';
+import { formatarNumero, textos } from './textos';
+
+const rota = getRouteApi('/autenticado/lista');
+
+/** Altura do cabeçalho fixo antes de medir (e no jsdom, sem ResizeObserver). */
+const ALTURA_CABECALHO = 60;
+
+/** Onde termina o cabeçalho fixo: os separadores de Status e a coluna grudam abaixo dele. */
+function useAlturaDoCabecalho(pronto: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [altura, setAltura] = useState(ALTURA_CABECALHO);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observador = new ResizeObserver(() => setAltura(Math.round(el.getBoundingClientRect().height)));
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [pronto]);
+  return [ref, altura] as const;
+}
+
+/**
+ * O formato em vigor: o da URL (`?formato=`) vence e passa a ser o salvo; sem ele, o salvo.
+ * Trocar pelo alternador grava e põe na URL (a grade, o padrão, sai dela).
+ */
+function useFormato(salvo: FormatoLista, salvar: (f: FormatoLista) => void) {
+  // A raiz não valida a busca e repassa os parâmetros crus: valor desconhecido é ignorado aqui.
+  const bruto = rota.useSearch().formato;
+  const daUrl = formatoValido(bruto) ? bruto : undefined;
+  const navegar = rota.useNavigate();
+  // Grava quando a URL traz um formato novo; o alternador grava e muda a URL (que chega
+  // depois), e esse valor já está gravado.
+  const gravado = useRef<FormatoLista | undefined>(undefined);
+  useEffect(() => {
+    if (daUrl && daUrl !== gravado.current) {
+      gravado.current = daUrl;
+      salvar(daUrl);
+    }
+  }, [daUrl, salvar]);
+  const mudar = (f: FormatoLista) => {
+    gravado.current = f;
+    salvar(f);
+    void navegar({ search: f === 'grade' ? {} : { formato: f }, replace: true });
+  };
+  return [daUrl ?? salvo, mudar] as const;
+}
+
+/** Folga entre o que é fixo e o Item focado. */
+const FOLGA = 8;
+
+/**
+ * O `scroll-padding-top` da página: a nav, o cabeçalho fixo e, no "Todos", o separador
+ * grudento de Status. Assim o foco (Tab, ou o que a Lista põe depois de mudar o Status) e a
+ * rolagem até um Item nunca o deixam escondido embaixo deles. Sai com a Lista.
+ */
+function FolgaDeRolagem({ altura }: { altura: number }) {
+  useLayoutEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.scrollPaddingTop = `${altura}px`;
+    return () => {
+      raiz.style.scrollPaddingTop = '';
+    };
+  }, [altura]);
+  return null;
+}
+
+/** Quanto o foco pedido espera pelo Item (rolando até ele) antes de desistir. */
+const ESPERA_DO_FOCO = 2000;
+
+/**
+ * Foco e anúncio depois de mudar o Status pelo menu ⋯. O `pendente` guarda a mudança; quando
+ * ela chega à Lista (o cache otimista), a Lista escolhe o `alvo` pelo que ficou na tela
+ * (focoDaLista.ts). O Item vai às grades pelo contexto; o cabeçalho, foca-se aqui.
+ */
+function useFocoAposStatus() {
+  const [pendente, setPendente] = useState<MudancaPendente | null>(null);
+  const [alvo, setAlvo] = useState<AlvoDoFoco | null>(null);
+  const [anuncio, setAnuncio] = useState('');
+  useEffect(() => {
+    if (!alvo) return;
+    if ('cabecalho' in alvo) (document.getElementById(alvo.cabecalho) ?? document.getElementById(ID_CABECALHO))?.focus();
+    // O Item pode não aparecer (filtro, erro): o pedido vence e não rouba o foco mais tarde.
+    const desistir = setTimeout(() => setAlvo(null), ESPERA_DO_FOCO);
+    return () => clearTimeout(desistir);
+  }, [alvo]);
+  const focado = useCallback(() => setAlvo(null), []);
+  return { pendente, setPendente, alvo, setAlvo, anuncio, setAnuncio, focado };
+}
+
+type Restricao = { genero: string | null; situacao: string | null };
+const SEM_RESTRICAO: Restricao = { genero: null, situacao: null };
 
 export function Lista() {
-  const { tipos } = useCatalogo();
   const lista = useLista();
-  const progresso = useMudarProgresso();
-  const { abrirEditor } = useEditorItem();
-  const [aba, setAba] = useState<EstadoConsumo>('em_progresso');
-  const [filtros, setFiltros] = useState<FiltrosLista>(FILTROS_PADRAO);
-  const [painel, setPainel] = useState(false);
-  // null: busca fechada (só a lupa); texto: o campo aberto.
-  const [busca, setBusca] = useState<string | null>(null);
+  const status = useMudarStatus();
+  const [preferencias, mudarPreferencias] = usePreferenciasDaLista();
+  const [busca, setBusca] = useState('');
+  const [tipo, setTipo] = useState<TipoDaLista>('todos');
+  const [restricao, setRestricao] = useState<Restricao>(SEM_RESTRICAO);
+  const [escolhido, setEscolhido] = useState<StatusEscolhido>('todos');
+  const [refCabecalho, alturaCabecalho] = useAlturaDoCabecalho(lista.data !== undefined);
+  const salvarFormato = useCallback((formato: FormatoLista) => mudarPreferencias({ formato }), [mudarPreferencias]);
+  const [formato, mudarFormato] = useFormato(preferencias.formato, salvarFormato);
+  const foco = useFocoAposStatus();
 
   if (lista.isError) return <ErroTela erro={lista.error} tentarDeNovo={() => void lista.refetch()} />;
   if (!lista.data) return <Carregando rotulo="Carregando a Lista" />;
 
-  const acoes: AcoesDoItem = {
-    editar: (item) => abrirEditor(item, item),
-    passo: (item, passo) => progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo }),
+  const todos = lista.data;
+  const { ordem, inversa } = preferencias;
+  const doTipoEscolhido = doTipo(todos, tipo);
+  // Gênero ou Situação que não existem no Tipo escolhido voltam a "todos".
+  const filtros = filtrosEfetivos({ ...restricao, ordem, inversa }, opcoesDosFiltros(doTipoEscolhido));
+  const termo = busca.trim();
+  // Busca e filtros, sem o Tipo: as contagens do seletor de Tipo.
+  const semTipo = buscarNaLista(organizarLista(todos, filtros), termo);
+  const organizados = doTipo(semTipo, tipo);
+  const contagem = contarPorEstado(organizados);
+  const estados = estadosDaLista(tiposDoFiltro(tipo));
+  // Trocar de Tipo pode sumir com o Status escolhido (Platinado só existe em jogo).
+  const ativo: StatusEscolhido = escolhido === 'todos' || estados.includes(escolhido) ? escolhido : 'todos';
+  const noAtivo = ativo === 'todos' ? organizados.length : contagem[ativo];
+  const secoes = secoesNaTela(organizados, ativo, estados, tipo);
+  const naTela = idsNaTela(secoes);
+
+  // A mudança de Status chegou à Lista (o otimista ou o servidor): escolhe o foco pelo que
+  // ficou na tela e anuncia. Estado derivado do render anterior (o padrão do React).
+  const { pendente } = foco;
+  if (pendente && todos.find((i) => i.id_lista === pendente.id)?.status_consumo !== pendente.antes) {
+    foco.setPendente(null);
+    foco.setAlvo(alvoDoFoco(pendente, naTela, ativo === 'todos' ? secoes.map((s) => s.estado) : []));
+    foco.setAnuncio(pendente.anuncio);
+  }
+
+  const horas = doTipoEscolhido.filter((i) => i.tipo === 'jogo').reduce((soma, i) => soma + (i.progresso_atual ?? 0), 0);
+  const media = mediaNotasPessoais(doTipoEscolhido);
+
+  const ordenacao: Ordenacao = { ordem, inversa, mudar: mudarPreferencias };
+  const base: BaseDoCorpo = {
+    formato,
+    tipo,
+    ordenacao,
+    mudarStatus: (item, rotulo) => {
+      const novo = estadoDe(rotulo, item.tipo);
+      foco.setPendente({
+        id: item.id_lista,
+        antes: item.status_consumo,
+        vizinhos: vizinhosNaTela(naTela, item.id_lista),
+        secao: secoes.find((s) => s.grupos.some((g) => g.itens.includes(item)))?.estado ?? secoes[0]!.estado,
+        anuncio: textos.movido(tituloDaMidia(item), novo ? NOMES_ESTADO[novo] : rotulo),
+      });
+      status.mutate({ item, rotulo });
+    },
   };
 
-  const doCatalogo = lista.data.filter((i) => tipos.includes(i.tipo));
-  const opcoes = opcoesDosFiltros(doCatalogo);
-  const efetivos = filtrosEfetivos(filtros, opcoes);
-  const organizados = organizarLista(doCatalogo, efetivos);
-  const estados = estadosDaLista(tipos);
-  // Trocar para Jogos some com abas e traz Platinado: a aba que não existe volta à primeira.
-  const ativa = estados.includes(aba) ? aba : (estados[0] ?? 'em_progresso');
-  const contagem = contarPorEstado(organizados);
-  const daAba = itensDoEstado(organizados, ativa);
-  const termo = busca?.trim() ?? '';
-  const resultados = termo ? buscarNaLista(organizados, termo) : [];
-  const ativos = filtrosAtivos(efetivos);
+  const acao = (texto: string, aoClicar: () => void) => (
+    <button type="button" onClick={aoClicar} className={`rounded text-[14px] font-semibold text-marca-texto hover:underline ${FOCO}`}>
+      {texto}
+    </button>
+  );
+  const vazio = !todos.length ? (
+    <Vazio
+      texto={textos.vazia}
+      acao={
+        <Link to="/explorar" className={`rounded text-[14px] font-semibold text-marca-texto hover:underline ${FOCO}`}>
+          {textos.explorar}
+        </Link>
+      }
+    />
+  ) : termo && organizados.length && ativo !== 'todos' ? (
+    <Vazio texto={textos.nadaNoStatus(NOMES_ESTADO[ativo], termo)} acao={acao(textos.verEmTodos(organizados.length), () => setEscolhido('todos'))} />
+  ) : (
+    <Vazio
+      texto={termo ? textos.nadaComBusca(termo) : textos.nadaComFiltros}
+      acao={acao(textos.limparBuscaEFiltros, () => {
+        setBusca('');
+        setRestricao(SEM_RESTRICAO);
+      })}
+    />
+  );
 
+  const topo = ALTURA_NAV + alturaCabecalho;
   return (
-    <div className="pb-24">
-      <div style={{ top: ALTURA_NAV }} className="sticky z-30 border-b border-borda bg-fundo/95 px-6 pt-8 backdrop-blur lg:px-12">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 className="text-[28px] font-bold text-texto-forte">{textos.titulo}</h1>
-          <span className="text-texto-suave">{textos.itens(doCatalogo.length)}</span>
-          <div className="ml-auto flex items-center gap-3">
-            <CampoBusca valor={busca} mudar={setBusca} />
-            <button
-              type="button"
-              onClick={() => setPainel(true)}
-              aria-label={ativos ? textos.filtrosAtivos(ativos) : textos.filtros}
-              className="flex h-11 items-center gap-2 rounded-md border border-borda px-3 text-[14px] font-semibold text-texto-forte hover:bg-superficie-alta"
-            >
-              <Icone nome="filtro" tamanho={16} /> {textos.filtros}
-              {ativos ? (
-                <span aria-hidden className="rounded-full bg-marca px-1.5 text-[12px] font-bold text-sobre-marca">
-                  {ativos}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        </div>
-        {termo ? (
-          <p role="status" className="py-4 text-[14px] text-texto-suave">
-            {textos.resultados(resultados.length, termo)}
-          </p>
-        ) : (
-          <AbasStatus estados={estados} contagem={contagem} ativa={ativa} escolher={setAba} />
-        )}
+    <div className="px-6 pb-24 lg:px-10" style={{ '--topo-da-lista': `${topo}px` } as CSSProperties}>
+      <FolgaDeRolagem altura={topo + (ativo === 'todos' ? ALTURA_SEPARADOR : 0) + FOLGA} />
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-1 pb-4 pt-7">
+        <h1 className="text-[30px] font-bold leading-none text-texto-forte">{textos.titulo}</h1>
+        <p className="text-[14px] tabular-nums text-texto-suave">
+          {textos.itens(doTipoEscolhido.length)}
+          {horas > 0 ? (
+            <>
+              {' · '}
+              <span className="font-semibold text-texto-forte">{formatarNumero(horas)} h</span> {textos.horasEmJogos}
+            </>
+          ) : null}
+          {media !== null ? ` · ${textos.notaMedia(Math.round(media * 10) / 10)}` : ''}
+        </p>
       </div>
 
-      {progresso.isError ? (
-        <p role="alert" className="px-6 pt-4 lg:px-12 text-[14px] text-erro">
-          {mensagemDeErro(progresso.error)}
+      <div
+        ref={refCabecalho}
+        style={{ top: ALTURA_NAV }}
+        className="sticky z-30 -mx-6 flex min-h-[60px] flex-wrap items-center gap-3 border-b border-borda/70 bg-fundo/95 px-6 py-2.5 backdrop-blur lg:-mx-10 lg:px-10"
+      >
+        <p id={ID_CABECALHO} tabIndex={-1} aria-live="polite" className="flex min-w-0 items-baseline gap-2.5 outline-none">
+          <span className="truncate text-[20px] font-bold text-texto-forte" style={{ color: ativo === 'todos' ? undefined : COR_DO_ESTADO[ativo] }}>
+            {ativo === 'todos' ? textos.todos : NOMES_ESTADO[ativo]}
+          </span>{' '}
+          <span className="text-[14px] tabular-nums text-texto-suave">
+            {noAtivo}
+            {termo ? textos.com(termo) : ''}
+          </span>
+        </p>
+        <div className="ml-auto">
+          <AlternadorFormato formato={formato} mudar={mudarFormato} />
+        </div>
+      </div>
+
+      <p aria-live="polite" className="sr-only">
+        {foco.anuncio}
+      </p>
+
+      {status.isError ? (
+        <p role="alert" className="pt-4 text-[14px] text-erro">
+          {mensagemDeErro(status.error)}
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-6 px-6 pt-6 lg:px-12">
-        {termo ? (
-          resultados.length ? (
-            <section aria-label="Resultados da busca">
-              <GradeItens itens={resultados} acoes={acoes} comStatus />
-            </section>
-          ) : (
-            <Vazio texto={textos.semResultado} />
-          )
-        ) : (
-          <PainelStatus
-            estado={ativa}
-            total={contagem[ativa]}
-            itens={daAba}
-            tipos={tipos}
-            acoes={acoes}
-            filtrado={filtrosRestringem(efetivos)}
-          />
-        )}
+      <div className="flex flex-col gap-6 pt-5 lg:flex-row lg:gap-8">
+        <aside
+          aria-label={textos.coluna}
+          // Fixa e com rolagem própria só ao lado do corpo (lg); empilhada, cresce com o conteúdo.
+          className="sem-barra shrink-0 lg:sticky lg:top-[calc(var(--topo-da-lista)+16px)] lg:max-h-[calc(100vh-var(--topo-da-lista)-24px)] lg:w-[232px] lg:self-start lg:overflow-y-auto lg:pb-4"
+        >
+          <div className="flex flex-col gap-6">
+            <CampoBusca valor={busca} mudar={setBusca} />
+            <SeletorTipo
+              tipo={tipo}
+              contagem={contagemPorTipo(semTipo)}
+              mudar={(t) => {
+                setTipo(t);
+                setRestricao(SEM_RESTRICAO);
+              }}
+            />
+            <ListaStatus estados={estados} contagem={contagem} total={organizados.length} ativo={ativo} escolher={setEscolhido} />
+            <hr className="border-borda" />
+            <FiltrosColuna
+              generos={generosPorFrequencia(doTipoEscolhido)}
+              situacoes={opcoesDosFiltros(doTipoEscolhido).situacoes}
+              genero={filtros.genero}
+              situacao={filtros.situacao}
+              mudar={(m) => setRestricao((r) => ({ ...r, ...m }))}
+            />
+            <OrdemColuna ordem={ordem} inversa={inversa} tipo={tipo} mudar={mudarPreferencias} />
+          </div>
+        </aside>
+        <div className="min-w-0 flex-1">
+          <FocoDaLista.Provider value={{ alvo: foco.alvo && 'item' in foco.alvo ? foco.alvo.item : null, focado: foco.focado }}>
+            <ProvedorDestaque>
+              {ativo === 'todos' ? (
+                <CorpoTodos secoes={secoes} base={base} vazio={vazio} />
+              ) : (
+                <CorpoStatus secao={secoes[0]!} base={base} vazio={vazio} />
+              )}
+            </ProvedorDestaque>
+          </FocoDaLista.Provider>
+        </div>
       </div>
-
-      <Sugestoes lista={lista.data} />
-
-      <FiltrosDaLista aberto={painel} fechar={() => setPainel(false)} filtros={efetivos} opcoes={opcoes} mudar={setFiltros} />
     </div>
   );
 }

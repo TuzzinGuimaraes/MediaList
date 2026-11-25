@@ -1,12 +1,18 @@
-// Filtros, Ordem e busca da aba Lista. Valem para todas as páginas de Status, e as
-// contagens das abas saem dos Itens já filtrados.
-import type { TipoMidia } from './estadoConsumo';
+// Filtros, Ordem e busca da Lista. Valem para todos os Status, e as contagens dos Status
+// saem dos Itens já filtrados. O web usa também o Tipo, a Ordem padrão da Q120 e a direção
+// (ticket 39); o app, as quatro Ordens antigas com a alfabética como padrão.
+import { type EstadoConsumo, TIPOS, type TipoMidia } from './estadoConsumo';
+import { itensDoEstado } from './itemLista';
 import { tituloDaMidia } from './midia';
-import { decrescente } from './ordenacao';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
-/** Alfabética (padrão), Nota pessoal, adicionado recentemente, atualizado recentemente. */
-export type OrdemLista = 'titulo' | 'nota' | 'adicao' | 'atualizacao';
+/**
+ * Padrão da Q120 (anime/mangá pela Nota pessoal, jogo pelas horas), Nota pessoal, horas
+ * (no anime/mangá, o Progresso), alfabética, adicionado e atualizado recentemente.
+ */
+export type OrdemLista = 'padrao' | 'nota' | 'horas' | 'titulo' | 'adicao' | 'atualizacao';
+
+export const ORDENS_DA_LISTA: readonly OrdemLista[] = ['padrao', 'nota', 'horas', 'titulo', 'adicao', 'atualizacao'];
 
 export type FiltrosLista = {
   /** Nome do gênero; null para todos. */
@@ -14,6 +20,8 @@ export type FiltrosLista = {
   /** Status de lançamento ("finalizado", "em_exibicao"...); null para todos. */
   situacao: string | null;
   ordem: OrdemLista;
+  /** Direção contrária à natural da Ordem (o ↑/↓ do web); ausente é a natural. */
+  inversa?: boolean;
 };
 
 export const FILTROS_PADRAO: FiltrosLista = { genero: null, situacao: null, ordem: 'titulo' };
@@ -28,6 +36,8 @@ type ItemFiltravel = {
   status_manga: string | null;
   status_jogo: string | null;
   nota_usuario: number | null;
+  /** Episódios, capítulos ou, em jogo, horas jogadas. */
+  progresso_atual?: number | null;
   /** ISO 8601, como vem de GET /lista. */
   data_adicao?: string | null;
   data_atualizacao?: string | null;
@@ -46,23 +56,56 @@ function momento(data: string | null | undefined): number | null {
   return Number.isNaN(instante) ? null : instante;
 }
 
-const COMPARAR: Record<OrdemLista, (a: ItemFiltravel, b: ItemFiltravel) => number> = {
-  titulo: alfabetica,
-  nota: decrescente<ItemFiltravel>((i) => i.nota_usuario),
-  adicao: decrescente<ItemFiltravel>((i) => momento(i.data_adicao)),
-  atualizacao: decrescente<ItemFiltravel>((i) => momento(i.data_atualizacao)),
+type Comparar = (a: ItemFiltravel, b: ItemFiltravel, inversa: boolean) => number;
+
+/** Do maior para o menor (ou o contrário, se inversa); sem valor fica no fim nas duas direções. */
+function porNumero(chave: (i: ItemFiltravel) => number | null): Comparar {
+  return (a, b, inversa) => {
+    const [va, vb] = [chave(a), chave(b)];
+    if (va === vb) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return inversa ? va - vb : vb - va;
+  };
+}
+
+const porNota = porNumero((i) => i.nota_usuario);
+// 0 h (ou 0 episódios) não é consumo de verdade: vai para o fim junto com os sem valor.
+const porHoras = porNumero((i) => i.progresso_atual || null);
+const ehJogo = (i: ItemFiltravel) => i.tipo === 'jogo';
+
+/** Q120: jogos pelas horas, anime/mangá pela nota; entre Tipos, a nota decide e as horas desempatam. */
+const porPadrao: Comparar = (a, b, inversa) => {
+  if (ehJogo(a) && ehJogo(b)) return porHoras(a, b, inversa);
+  if (!ehJogo(a) && !ehJogo(b)) return porNota(a, b, inversa);
+  return porNota(a, b, inversa) || porHoras(a, b, inversa);
 };
 
-/** Os Itens que passam nos filtros, na Ordem escolhida (alfabética no empate). */
+const COMPARAR: Record<OrdemLista, Comparar> = {
+  padrao: porPadrao,
+  nota: porNota,
+  horas: porHoras,
+  titulo: (a, b, inversa) => (inversa ? -1 : 1) * alfabetica(a, b),
+  adicao: porNumero((i) => momento(i.data_adicao)),
+  atualizacao: porNumero((i) => momento(i.data_atualizacao)),
+};
+
+/** Se a Ordem aponta do menor para o maior: a alfabética sobe, as outras descem; inversa troca. */
+export function crescente(ordem: OrdemLista, inversa = false): boolean {
+  return (ordem === 'titulo') !== inversa;
+}
+
+/** Os Itens que passam nos filtros, na Ordem e direção escolhidas (alfabética no empate). */
 export function organizarLista<T extends ItemFiltravel>(itens: readonly T[], filtros: FiltrosLista): T[] {
   const comparar = COMPARAR[filtros.ordem];
+  const inversa = filtros.inversa ?? false;
   return itens
     .filter(
       (i) =>
         (filtros.genero === null || i.generos_lista.includes(filtros.genero)) &&
         (filtros.situacao === null || situacaoDe(i) === filtros.situacao),
     )
-    .sort((a, b) => comparar(a, b) || alfabetica(a, b));
+    .sort((a, b) => comparar(a, b, inversa) || alfabetica(a, b));
 }
 
 
@@ -134,4 +177,49 @@ export function filtrosEfetivos(filtros: FiltrosLista, opcoes: OpcoesDosFiltros)
 /** Se os filtros tiram Itens (Gênero ou Situação escolhidos); a Ordem só reordena. */
 export function filtrosRestringem(filtros: FiltrosLista): boolean {
   return filtros.genero !== null || filtros.situacao !== null;
+}
+
+
+
+// ---------------------------------------------------------------- Tipo e "Todos" (web, ticket 39)
+
+/** O Tipo escolhido na coluna da Lista do web; "todos" junta os três. */
+export type TipoDaLista = 'todos' | TipoMidia;
+
+export function tiposDoFiltro(tipo: TipoDaLista): readonly TipoMidia[] {
+  return tipo === 'todos' ? TIPOS : [tipo];
+}
+
+/** Os Itens do Tipo escolhido, na ordem recebida. */
+export function doTipo<T extends { tipo: TipoMidia }>(itens: readonly T[], tipo: TipoDaLista): T[] {
+  return tipo === 'todos' ? [...itens] : itens.filter((i) => i.tipo === tipo);
+}
+
+/** Quantos Itens há de cada Tipo e no total (as contagens do seletor de Tipo). */
+export function contagemPorTipo(itens: readonly { tipo: TipoMidia }[]): Record<TipoDaLista, number> {
+  const contagem: Record<TipoDaLista, number> = { todos: itens.length, anime: 0, manga: 0, jogo: 0 };
+  for (const i of itens) contagem[i.tipo] += 1;
+  return contagem;
+}
+
+/**
+ * "Todos" separado por Status: uma seção por Status de `estados`, na ordem dada e sem as
+ * vazias. Como nas contagens, o Concluído inclui os platinados, que por isso não têm seção
+ * própria: cada Item aparece uma vez, e a soma das seções é o total.
+ */
+export function secoesPorStatus<T extends { tipo: TipoMidia; status_consumo: string }>(
+  itens: readonly T[],
+  estados: readonly EstadoConsumo[],
+): { estado: EstadoConsumo; itens: T[] }[] {
+  return estados
+    .filter((estado) => estado !== 'platinado')
+    .map((estado) => ({ estado, itens: itensDoEstado(itens, estado) }))
+    .filter((s) => s.itens.length);
+}
+
+/** Os gêneros dos Itens, os mais frequentes primeiro (alfabética no empate): os chips mostram os primeiros. */
+export function generosPorFrequencia(itens: readonly { generos_lista: string[] }[]): string[] {
+  const contagem = new Map<string, number>();
+  for (const i of itens) for (const g of i.generos_lista) contagem.set(g, (contagem.get(g) ?? 0) + 1);
+  return [...contagem].sort((a, b) => b[1] - a[1] || colacao.compare(a[0], b[0])).map(([g]) => g);
 }

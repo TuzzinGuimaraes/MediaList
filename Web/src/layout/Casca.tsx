@@ -124,6 +124,8 @@ function ItensEmMenu({ sobreDestaque }: { sobreDestaque: boolean }) {
 
 function NavTopo({ sobreDestaque }: { sobreDestaque: boolean }) {
   const larga = useTelaLarga();
+  // Na Minha Lista manda o Tipo da coluna lateral: a pílula do catálogo só confundiria.
+  const semRecorte = useMatches({ select: (ms) => ms.some((m) => m.staticData.semRecorte) });
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 flex items-center gap-3 px-6 transition-colors duration-300 lg:gap-8 lg:px-12 ${
@@ -138,7 +140,7 @@ function NavTopo({ sobreDestaque }: { sobreDestaque: boolean }) {
       </Link>
       {larga ? <ItensEmLinha sobreDestaque={sobreDestaque} /> : null}
       <div className="ml-auto flex items-center gap-2 lg:gap-4">
-        <PilulaCatalogo sobreImagem={sobreDestaque} />
+        {semRecorte ? null : <PilulaCatalogo sobreImagem={sobreDestaque} />}
         <BuscaNav sobreImagem={sobreDestaque} />
         <SinoNotificacoes sobreImagem={sobreDestaque} />
         <MenuConta sobreImagem={sobreDestaque} />
