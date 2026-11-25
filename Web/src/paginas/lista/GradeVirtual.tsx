@@ -1,9 +1,9 @@
 // Virtualização da Lista (ticket 39, tamanho i): os Itens em linhas de grade de altura fixa,
 // e só as linhas perto da janela (± OVERSCAN) ficam no DOM. A página rola a janela, e cada
 // grupo (Status × Tipo) tem a sua grade; o deslocamento dela na página é o `scrollMargin`.
-// Serve à grade de capas (várias colunas) e às linhas do ticket 02 (uma coluna, `minima` 0).
+// Serve à grade de capas (várias colunas) e às linhas compacta e só texto (uma coluna, `minima` 0).
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 const OVERSCAN = 4;
 
@@ -64,11 +64,17 @@ type Props<T> = {
   gap: number;
   /** Altura da linha pela largura da célula. */
   altura(largura: number): number;
-  rotulo: string;
-  render(item: T): ReactNode;
+  /**
+   * `lista`: a grade é uma lista com nome (`rotulo`) e cada célula um item; `linhas`: é o
+   * corpo (rowgroup) de uma tabela, e `render` devolve a linha inteira (role="row", com o
+   * `aria-rowindex` pelo índice).
+   */
+  papel?: 'lista' | 'linhas';
+  rotulo?: string;
+  render(item: T, indice: number): ReactNode;
 };
 
-export function GradeVirtual<T>({ itens, chave, minima, gap, altura, rotulo, render }: Props<T>) {
+export function GradeVirtual<T>({ itens, chave, minima, gap, altura, papel = 'lista', rotulo, render }: Props<T>) {
   const caixa = useRef<HTMLDivElement>(null);
   const largura = useLargura(caixa);
   const topo = useTopoNaPagina(caixa);
@@ -92,7 +98,7 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, rotulo, ren
   return (
     <div
       ref={caixa}
-      role="list"
+      role={papel === 'lista' ? 'list' : 'rowgroup'}
       aria-label={rotulo}
       className="relative"
       style={{ height: Math.max(0, linhas * (alturaLinha + gap) - gap) }}
@@ -110,11 +116,16 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, rotulo, ren
             height: alturaLinha,
           }}
         >
-          {itens.slice(linha.index * colunas, (linha.index + 1) * colunas).map((item, j) => (
-            <div key={chave(item)} role="listitem" aria-setsize={itens.length} aria-posinset={linha.index * colunas + j + 1} className="min-w-0">
-              {render(item)}
-            </div>
-          ))}
+          {itens.slice(linha.index * colunas, (linha.index + 1) * colunas).map((item, j) => {
+            const indice = linha.index * colunas + j;
+            return papel === 'lista' ? (
+              <div key={chave(item)} role="listitem" aria-setsize={itens.length} aria-posinset={indice + 1} className="min-w-0">
+                {render(item, indice)}
+              </div>
+            ) : (
+              <Fragment key={chave(item)}>{render(item, indice)}</Fragment>
+            );
+          })}
         </div>
       ))}
     </div>
