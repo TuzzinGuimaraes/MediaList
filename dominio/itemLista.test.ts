@@ -5,6 +5,7 @@ import {
   formularioDoItem,
   iniciarEdicao,
   itensDoEstado,
+  mudancaDeStatus,
   mudarEdicao,
   passoDeProgresso,
   proporcaoDoFio,
@@ -332,6 +333,32 @@ describe('formulário do editor', () => {
     expect(validarItem({ ...valido, progresso: '' }, { tipo: 'anime', total: 28 })).toMatchObject({
       ok: true,
       dados: { progresso_atual: 0 },
+    });
+  });
+});
+
+
+describe('mudancaDeStatus (o menu de Status da Lista do web)', () => {
+  const item = { ...anime, progresso_total: 28, progresso_atual: 12, status_consumo: 'assistindo' };
+
+  it('outro Status muda só o Status', () => {
+    expect(mudancaDeStatus(item, 'pausado')).toEqual({ status_consumo: 'pausado' });
+  });
+
+  it('Concluído leva o Progresso ao total (ADR 0009)', () => {
+    expect(mudancaDeStatus(item, 'completo')).toEqual({ status_consumo: 'completo', progresso_atual: 28 });
+  });
+
+  it('sair de Concluído com o Progresso no total zera o Progresso, como no editor (ticket 33)', () => {
+    expect(mudancaDeStatus({ ...item, status_consumo: 'completo', progresso_atual: 28 }, 'assistindo')).toEqual({
+      status_consumo: 'assistindo',
+      progresso_atual: 0,
+    });
+  });
+
+  it('jogo: as horas não mudam com o Status', () => {
+    expect(mudancaDeStatus({ ...jogo, progresso_total: null, progresso_atual: 40, status_consumo: 'jogando' }, 'zerado')).toEqual({
+      status_consumo: 'zerado',
     });
   });
 });

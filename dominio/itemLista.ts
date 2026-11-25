@@ -342,3 +342,25 @@ export function proporcaoDoFio(item: ComTotal & { status_consumo: string; progre
   if (!total) return null;
   return Math.min(1, (item.progresso_atual ?? 0) / total);
 }
+
+
+/**
+ * O que gravar ao trocar só o Status de um Item (o menu de Status da Lista do web), pelas
+ * mesmas regras do editor (`mudarEdicao`): Concluído leva o Progresso ao total, e sair de
+ * Concluído com o Progresso no total o zera. O Progresso só vai junto se mudou.
+ */
+export function mudancaDeStatus(
+  item: ComTotal & { status_consumo: string; progresso_atual: number | null },
+  rotulo: string,
+): { status_consumo: string; progresso_atual?: number } {
+  const midia = { tipo: item.tipo, total: totalDoItem(item) };
+  const { form } = mudarEdicao(
+    iniciarEdicao({ ...item, nota_usuario: null }, item.tipo),
+    { status_consumo: rotulo },
+    midia,
+  );
+  const progresso = Number(form.progresso);
+  return progresso === (item.progresso_atual ?? 0)
+    ? { status_consumo: form.status_consumo }
+    : { status_consumo: form.status_consumo, progresso_atual: progresso };
+}
