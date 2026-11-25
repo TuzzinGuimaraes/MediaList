@@ -1,26 +1,27 @@
-// PROTÓTIPO (ticket 39): a Lista do web desenhada do zero, com a barra de variantes dos 4
-// eixos (Q118–Q121). Abre sem login nem backend em /prototipo/lista; dados fixos em
-// dados.json, mudanças só em memória. Descartável: vira a tag prototipo/lista.
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+// PROTÓTIPO (ticket 39, 2ª rodada): a Lista do web com o veredito de 2026-11-25 (navegação
+// C com "Todos", filtros na coluna, tudo com virtualização) e os eixos que restam na barra:
+// Formato (3/2/5) e posição do Tipo. Abre sem login nem backend em /prototipo/lista; dados
+// fixos em dados.json, mudanças só em memória. Descartável: vira a tag prototipo/lista.
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { type EstadoConsumo, ROTULOS_POR_TIPO } from '@dominio/estadoConsumo';
-import { passoDeProgresso } from '@dominio/itemLista';
+import { ROTULOS_POR_TIPO } from '@dominio/estadoConsumo';
 
 import { Icone } from '../componentes/Icone';
+import { COR_DO_ESTADO } from '../componentes/status';
 import { Barra } from './Barra';
+import type { Ordenacao } from './Colecao';
 import { type Acoes, AcoesCtx } from './contexto';
+import { type Base, CorpoStatus, CorpoTodos, Vazio } from './Corpo';
 import {
   contar,
   ehJogo,
-  estado,
   estadosDe,
   type Filtros,
-  filtrarBase,
+  filtrar,
   formatarNumero,
-  inicial,
   type Item,
   ITENS,
-  noEstado,
+  NOMES_ESTADO,
   opcoes as opcoesDe,
   type Ordem,
   ORDENS,
@@ -28,44 +29,21 @@ import {
   type TipoFiltro,
   total,
 } from './dados';
-import { BarraFiltros, ColunaFiltros, FiltrosSheet, IndiceAZ, type PropsFiltros, SegmentadoTipo } from './Filtros';
-import {
-  type Base,
-  CorpoFileiras,
-  CorpoQuadro,
-  CorpoSecoes,
-  CorpoStatus,
-  CorpoUnica,
-  FaixaAbas,
-  FaixaChips,
-  FaixaIndice,
-  LateralStatus,
-  Resultados,
-  Vazio,
-} from './Navegacoes';
-import { ajustar, useVariantes } from './variantes';
+import { CartaoDestaque } from './Destaque';
+import { AlternadorFormato, CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, type PropsFiltros, SegmentadoTipo, type StatusEscolhido, TipoColuna } from './Lateral';
+import { useCartaoDestaque } from './useCartaoDestaque';
+import { useVariantes } from './variantes';
 
 const CHAVE_ORDEM = 'prototipo-lista.ordem';
 const AGORA_ISO = '2026-11-24T20:00:00Z';
 
-function ordemSalva(): Ordem {
-  const o = localStorage.getItem(CHAVE_ORDEM) as Ordem | null;
-  return o && ORDENS.includes(o) ? o : 'padrao';
+/** A Ordem escolhida fica salva (Q120), com a direção. */
+function ordemSalva(): Pick<Filtros, 'ordem' | 'inversa'> {
+  const [o, d] = (localStorage.getItem(CHAVE_ORDEM) ?? '').split(':');
+  return { ordem: ORDENS.includes(o as Ordem) ? (o as Ordem) : 'padrao', inversa: d === 'inversa' };
 }
 
-const consultaToque = () => matchMedia('(hover: none)');
-function useToque() {
-  return useSyncExternalStore(
-    (avisar) => {
-      const q = consultaToque();
-      q.addEventListener('change', avisar);
-      return () => q.removeEventListener('change', avisar);
-    },
-    () => consultaToque().matches,
-  );
-}
-
-/** Altura do topo fixo em --fixo, para cabeçalhos de seção e colunas laterais grudarem abaixo dele. */
+/** Altura do topo fixo em --fixo, para os separadores de Status e a coluna grudarem abaixo dele. */
 function useTopoFixo() {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -104,69 +82,50 @@ function NavFalsa() {
   );
 }
 
-function PreviaCapa({ p }: { p: { url: string; x: number; y: number } | null }) {
-  if (!p) return null;
-  const x = Math.min(p.x + 20, innerWidth - 120);
-  const y = Math.max(64, Math.min(p.y - 72, innerHeight - 160));
-  return (
-    <img
-      src={p.url}
-      alt=""
-      aria-hidden
-      className="pointer-events-none fixed z-50 h-[150px] w-[100px] rounded-md object-cover shadow-[0_8px_30px_rgba(0,0,0,0.6)] ring-1 ring-white/10 motion-safe:animate-[surgir_120ms_ease-out]"
-      style={{ left: x, top: y }}
-    />
-  );
-}
-
 export function PrototipoLista() {
   const [v, mudarV] = useVariantes();
-  const toque = useToque();
-  const ef = ajustar(v, toque);
   const topo = useTopoFixo();
+  const cartao = useCartaoDestaque();
 
-  // ---- Itens em memória
+  // ---- Itens em memória (só o Status muda na Lista)
   const [mudancas, setMudancas] = useState<Record<string, Partial<Item>>>({});
   const itens = useMemo(() => ITENS.map((i) => (mudancas[i.id_lista] ? { ...i, ...mudancas[i.id_lista] } : i)), [mudancas]);
-  const [previa, setPrevia] = useState<{ url: string; x: number; y: number } | null>(null);
-  const acoes = useMemo<Acoes>(() => {
-    const aplicar = (i: Item, p: Partial<Item>) => setMudancas((m) => ({ ...m, [i.id_lista]: { ...m[i.id_lista], ...p, data_atualizacao: AGORA_ISO } }));
-    return {
+  const { destacar, soltar } = cartao;
+  const acoes = useMemo<Acoes>(
+    () => ({
       mudarStatus(i, e) {
         const t = total(i);
-        aplicar(i, { status_consumo: ROTULOS_POR_TIPO[i.tipo][e]!, ...((e === 'concluido' || e === 'platinado') && t !== null ? { progresso_atual: t } : {}) });
+        const p: Partial<Item> = { status_consumo: ROTULOS_POR_TIPO[i.tipo][e]!, data_atualizacao: AGORA_ISO };
+        // ADR-0009: concluir leva o Progresso ao total.
+        if ((e === 'concluido' || e === 'platinado') && t !== null) p.progresso_atual = t;
+        setMudancas((m) => ({ ...m, [i.id_lista]: { ...m[i.id_lista], ...p } }));
       },
-      passo(i, d) {
-        const novo = passoDeProgresso(i, d);
-        if (novo === null) return;
-        const t = total(i);
-        // ADR-0009: atingir o total conclui; baixar dele volta a Em progresso.
-        const e = t !== null && novo === t ? 'concluido' : estado(i) === 'concluido' || estado(i) === 'planejado' ? 'em_progresso' : estado(i);
-        aplicar(i, { progresso_atual: novo, status_consumo: ROTULOS_POR_TIPO[i.tipo][e]! });
-      },
-      previa: setPrevia,
-    };
-  }, []);
+      destacar,
+      soltar,
+    }),
+    [destacar, soltar],
+  );
 
-  // ---- Filtros e Ordem (a Ordem escolhida fica salva, Q120)
-  const [f, setF] = useState<Filtros>(() => ({ busca: '', tipo: 'todos', genero: null, situacao: null, ordem: ordemSalva(), status: [], letra: null }));
+  // ---- Filtros e Ordem
+  const [f, setF] = useState<Filtros>(() => ({ busca: '', tipo: 'todos', genero: null, situacao: null, ...ordemSalva() }));
   const mudarF = useCallback((p: Partial<Filtros>) => {
-    if (p.ordem) localStorage.setItem(CHAVE_ORDEM, p.ordem);
-    setF((x) => ({ ...x, ...p }));
+    setF((x) => {
+      const n = { ...x, ...p };
+      if (p.ordem !== undefined || p.inversa !== undefined) localStorage.setItem(CHAVE_ORDEM, `${n.ordem}:${n.inversa ? 'inversa' : 'natural'}`);
+      return n;
+    });
   }, []);
+  const ordenacao: Ordenacao = { ordem: f.ordem, inversa: f.inversa, mudar: mudarF };
 
-  // ---- Navegação
+  // ---- Status escolhido na coluna ("Todos" ao abrir)
   const estados = estadosDe(f.tipo);
-  const [aba, setAba] = useState<EstadoConsumo>('em_progresso');
-  const ativa = estados.includes(aba) ? aba : estados[0]!;
-  const [recolhidas, setRecolhidas] = useState<Set<EstadoConsumo>>(new Set());
-  const [foco, setFoco] = useState<EstadoConsumo | null>(null);
+  const [status, setStatus] = useState<StatusEscolhido>('todos');
+  const ativo: StatusEscolhido = status === 'todos' || estados.includes(status) ? status : 'todos';
 
   const ops = opcoesDe(itens, f.tipo);
   const organizados = organizar(itens, f);
   const contagem = contar(organizados);
-  const iniciais = new Set(filtrarBase(itens, { ...f, letra: null }).map(inicial));
-  const semTipo = filtrarBase(itens, { ...f, tipo: 'todos', letra: null });
+  const semTipo = filtrar(itens, { ...f, tipo: 'todos' });
   const contagemTipo: Record<TipoFiltro, number> = {
     todos: semTipo.length,
     anime: semTipo.filter((i) => i.tipo === 'anime').length,
@@ -174,7 +133,7 @@ export function PrototipoLista() {
     jogo: semTipo.filter((i) => i.tipo === 'jogo').length,
   };
   const pf: PropsFiltros = { f, mudar: mudarF, opcoes: ops, contagemTipo };
-  const base: Base = { formato: ef.formato, tamanho: ef.tamanho, colunas: ef.colunas, ordem: f.ordem, mudarOrdem: (ordem) => mudarF({ ordem }) };
+  const base: Base = { formato: v.formato, tipo: f.tipo, ordenacao };
   const termo = f.busca.trim();
 
   const doTipo = itens.filter((i) => f.tipo === 'todos' || i.tipo === f.tipo);
@@ -182,61 +141,31 @@ export function PrototipoLista() {
   const notas = doTipo.map((i) => i.nota_usuario).filter((n): n is number => n !== null);
   const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
 
-  // ---- Faixa do topo fixo e corpo, por navegação
-  const comBusca = termo && (ef.nav === 'A' || ef.nav === 'C');
-  let faixa: React.ReactNode = null;
-  let corpo: React.ReactNode;
-  if (comBusca) corpo = <Resultados itens={organizados} tipo={f.tipo} base={base} termo={termo} />;
-  else if (ef.nav === 'A') corpo = <CorpoStatus e={ativa} itens={organizados} tipo={f.tipo} base={base} />;
-  else if (ef.nav === 'B')
-    corpo = (
-      <CorpoSecoes
-        estados={estados}
-        itens={organizados}
-        tipo={f.tipo}
-        base={base}
-        recolhidas={recolhidas}
-        alternar={(e) =>
-          setRecolhidas((r) => {
-            const n = new Set(r);
-            if (n.has(e)) n.delete(e);
-            else n.add(e);
-            return n;
-          })
+  const nAtivo = ativo === 'todos' ? organizados.length : contagem[ativo];
+  const vazio =
+    termo && organizados.length && ativo !== 'todos' ? (
+      <Vazio
+        texto={`Nada em ${NOMES_ESTADO[ativo]} com “${termo}”.`}
+        acao={
+          <button type="button" onClick={() => setStatus('todos')} className="text-[14px] font-semibold text-marca-texto hover:underline">
+            Ver {organizados.length} em Todos
+          </button>
         }
       />
-    );
-  else if (ef.nav === 'C') corpo = <CorpoStatus e={ativa} itens={organizados} tipo={f.tipo} base={base} />;
-  else if (ef.nav === 'D') corpo = <CorpoFileiras estados={estados} itens={organizados} tipo={f.tipo} base={{ ...base, formatoFileira: ef.formatoFileira }} foco={foco && estados.includes(foco) ? foco : null} focar={setFoco} />;
-  else if (ef.nav === 'E') corpo = <CorpoQuadro estados={estados} itens={organizados} base={base} />;
-  else {
-    const filtrados = f.status.length ? organizados.filter((i) => f.status.some((e) => noEstado(i, e))) : organizados;
-    corpo = <CorpoUnica itens={filtrados} tipo={f.tipo} base={base} />;
-  }
-  if (!comBusca && ef.nav === 'A') faixa = <FaixaAbas estados={estados} contagem={contagem} ativa={ativa} escolher={setAba} />;
-  if (ef.nav === 'B')
-    faixa = <FaixaIndice estados={estados} contagem={contagem} recolhidas={recolhidas} alternarTodas={() => setRecolhidas((r) => (r.size ? new Set() : new Set(estados)))} />;
-  if (ef.nav === 'F') faixa = <FaixaChips estados={estados} contagem={contagem} marcados={f.status} mudar={(status) => mudarF({ status })} />;
-
-  if (!organizados.length && !comBusca)
-    corpo = (
+    ) : (
       <Vazio
-        texto="Nada na Lista com esses filtros."
+        texto={termo ? `Nada na Lista com “${termo}”.` : 'Nada na Lista com esses filtros.'}
         acao={
-          <button type="button" onClick={() => mudarF({ busca: '', genero: null, situacao: null, letra: null })} className="text-[14px] font-semibold text-marca-texto hover:underline">
-            Limpar filtros
+          <button type="button" onClick={() => mudarF({ busca: '', genero: null, situacao: null })} className="text-[14px] font-semibold text-marca-texto hover:underline">
+            Limpar busca e filtros
           </button>
         }
       />
     );
 
-  const lateralStatus = ef.nav === 'C' && !comBusca;
-  const colunaFiltros = ef.filtros === 'c';
-  const temLateral = lateralStatus || colunaFiltros;
-
   return (
     <AcoesCtx.Provider value={acoes}>
-      <div className={`min-h-screen pb-[360px] ${v.az ? 'pr-8' : ''}`}>
+      <div className="min-h-screen pb-[260px]">
         <NavFalsa />
         <main className="px-6 lg:px-10">
           <div className="flex flex-wrap items-end gap-x-5 gap-y-1 pt-7 pb-4">
@@ -251,36 +180,46 @@ export function PrototipoLista() {
               ) : null}
               {media !== null ? ` · nota média ${formatarNumero(Math.round(media * 10) / 10)}` : ''}
             </p>
-            {f.letra ? (
-              <button type="button" onClick={() => mudarF({ letra: null })} className="inline-flex items-center gap-1 rounded-full bg-marca/25 px-2.5 py-0.5 text-[13px] font-semibold text-texto-forte">
-                Inicial {f.letra} <Icone nome="fechar" tamanho={12} />
-              </button>
-            ) : null}
           </div>
 
-          <div ref={topo} className="sticky top-14 z-30 -mx-6 border-b border-borda/70 bg-fundo/95 px-6 pt-3 backdrop-blur lg:-mx-10 lg:px-10">
-            <div className="pb-3">
-              {ef.filtros === 'a' ? <FiltrosSheet {...pf} /> : ef.filtros === 'b' ? <BarraFiltros {...pf} /> : <SegmentadoTipo {...pf} />}
+          <div ref={topo} className="sticky top-14 z-30 -mx-6 flex min-h-[60px] flex-wrap items-center gap-3 border-b border-borda/70 bg-fundo/95 px-6 py-2.5 backdrop-blur lg:-mx-10 lg:px-10">
+            <p role="status" className="flex min-w-0 items-baseline gap-2.5">
+              <span className="truncate text-[20px] font-bold" style={{ color: ativo === 'todos' ? undefined : COR_DO_ESTADO[ativo] }}>
+                {ativo === 'todos' ? 'Todos' : NOMES_ESTADO[ativo]}
+              </span>
+              <span className="text-[14px] tabular-nums text-texto-suave">
+                {nAtivo}
+                {termo ? ` com “${termo}”` : ''}
+              </span>
+            </p>
+            <div className="ml-auto flex items-center gap-3">
+              {v.tipo === 'topo' ? <SegmentadoTipo {...pf} /> : null}
+              <AlternadorFormato formato={v.formato} mudar={(formato) => mudarV({ formato })} />
             </div>
-            {faixa}
           </div>
 
-          <div className={`pt-6 ${temLateral ? 'flex flex-col gap-6 lg:flex-row lg:gap-8' : ''}`}>
-            {temLateral ? (
-              <aside className="shrink-0 lg:sticky lg:w-[232px] lg:self-start lg:overflow-y-auto" style={{ top: 'calc(var(--fixo) + 16px)', maxHeight: 'calc(100vh - var(--fixo) - 24px)' }}>
-                <div className="flex flex-col gap-6">
-                  {lateralStatus ? <LateralStatus estados={estados} contagem={contagem} ativa={ativa} escolher={setAba} /> : null}
-                  {lateralStatus && colunaFiltros ? <hr className="border-borda" /> : null}
-                  {colunaFiltros ? <ColunaFiltros {...pf} /> : null}
-                </div>
-              </aside>
-            ) : null}
-            <div className="min-w-0 flex-1">{corpo}</div>
+          <div className="flex flex-col gap-6 pt-5 lg:flex-row lg:gap-8">
+            <aside
+              aria-label="Busca, Status e filtros"
+              className="sem-barra shrink-0 lg:sticky lg:w-[232px] lg:self-start lg:overflow-y-auto lg:pb-4"
+              style={{ top: 'calc(var(--fixo) + 16px)', maxHeight: 'calc(100vh - var(--fixo) - 24px)' }}
+            >
+              <div className="flex flex-col gap-6">
+                <CampoBusca f={f} mudar={mudarF} />
+                {v.tipo === 'lateral' ? <TipoColuna {...pf} /> : null}
+                <ListaStatus estados={estados} contagem={contagem} total={organizados.length} ativa={ativo} escolher={setStatus} />
+                <hr className="border-borda" />
+                <FiltrosColuna {...pf} />
+                <OrdemColuna f={f} mudar={mudarF} />
+              </div>
+            </aside>
+            <div className="min-w-0 flex-1">
+              {ativo === 'todos' ? <CorpoTodos estados={estados} itens={organizados} base={base} vazio={vazio} /> : <CorpoStatus e={ativo} itens={organizados} base={base} vazio={vazio} />}
+            </div>
           </div>
         </main>
-        {v.az ? <IndiceAZ existentes={iniciais} letra={f.letra} mudar={(letra) => mudarF({ letra })} /> : null}
-        <PreviaCapa p={ef.formato === '5' ? previa : null} />
-        <Barra v={v} mudar={mudarV} ef={ef} />
+        {cartao.aberto && v.formato !== '3' ? <CartaoDestaque key={cartao.aberto.item.id_lista} a={cartao.aberto} segurar={cartao.segurar} soltar={() => cartao.soltar()} /> : null}
+        <Barra v={v} mudar={mudarV} />
       </div>
     </AcoesCtx.Provider>
   );

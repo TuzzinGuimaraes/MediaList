@@ -1,39 +1,23 @@
-// PROTÓTIPO (ticket 39, Q119): os 6 formatos do Item. Todos com a identidade do MediaList:
-// fundo escuro, carmesim só na marca e no fio de progresso, Status em tons dessaturados.
+// PROTÓTIPO (ticket 39, 2ª rodada): os formatos que ficaram. 3 (grade de capas, padrão) com
+// tudo dentro do card; 2 (linha compacta) e 5 (só texto) com colunas e cartão de destaque.
+// Sem stepper de Progresso: na Lista só se muda o Status (veredito de 2026-11-25).
 import { useEffect, useRef, useState } from 'react';
 
 import { type EstadoConsumo, NOMES_ESTADO, ROTULOS_POR_TIPO } from '@dominio/estadoConsumo';
-import { passoDeProgresso } from '@dominio/itemLista';
 
 import { FioProgresso } from '../componentes/FioProgresso';
 import { Icone } from '../componentes/Icone';
-import { Selo } from '../componentes/Selo';
 import { COR_DO_ESTADO } from '../componentes/status';
 import { useAcoes } from './contexto';
-import {
-  ano,
-  autoria,
-  ehJogo,
-  estado,
-  fio,
-  formatarHoras,
-  formatarNota,
-  formatarNumero,
-  haQuanto,
-  type Item,
-  textoConsumo,
-  titulo,
-  total,
-  UNIDADE,
-} from './dados';
+import { autoria, ehJogo, estado, fio, formatarHoras, formatarNota, formatarNumero, haQuanto, type Item, textoConsumo, titulo, total, UNIDADE } from './dados';
 
-export type PropsItem = { item: Item; comStatus: boolean; estreito?: boolean };
-
-const FOCO = 'outline-none focus-visible:ring-2 focus-visible:ring-marca-texto';
+export const FOCO = 'outline-none focus-visible:ring-2 focus-visible:ring-marca-texto';
+// Link morto: o detalhe não faz parte do protótipo.
+export const DETALHE = '#detalhe';
 
 // ---------------------------------------------------------------- peças
 
-function Capa({ item, className = '' }: { item: Item; className?: string }) {
+export function Capa({ item, className = '' }: { item: Item; className?: string }) {
   return item.poster_url ? (
     <img src={item.poster_url} alt="" loading="lazy" decoding="async" className={`h-full w-full object-cover ${className}`} />
   ) : (
@@ -41,76 +25,59 @@ function Capa({ item, className = '' }: { item: Item; className?: string }) {
   );
 }
 
-function Nota({ n, tamanho = 13 }: { n: number | null; tamanho?: number }) {
+export function Nota({ n, tamanho = 13 }: { n: number | null; tamanho?: number }) {
   if (n === null) return <span className="text-texto-suave/50">—</span>;
   return (
-    <span aria-label={`Nota pessoal: ${formatarNota(n)}`} className="inline-flex items-center gap-1 font-semibold tabular-nums text-nota" style={{ fontSize: tamanho }}>
+    <span aria-label={`Nota pessoal ${formatarNota(n)}`} className="inline-flex items-center gap-1 font-semibold tabular-nums text-nota" style={{ fontSize: tamanho }}>
       <Icone nome="estrela" tamanho={tamanho - 2} cheio /> {formatarNota(n)}
     </span>
   );
 }
 
-/** Horas de jogo grandes; o "h" menor para o número ler primeiro. */
-function Horas({ h, tamanho = 18 }: { h: number | null; tamanho?: number }) {
-  if (!h) return <span className="text-texto-suave/50" style={{ fontSize: tamanho * 0.8 }}>— h</span>;
-  return (
-    <span aria-label={`${formatarHoras(h)} jogadas`} className="font-bold tabular-nums leading-none text-texto-forte" style={{ fontSize: tamanho }}>
-      {formatarNumero(h)}
-      <span className="ml-0.5 font-semibold text-texto-suave" style={{ fontSize: tamanho * 0.62 }}>
-        h
+/** "148 h" com o "h" menor; "12/24 ep" com o total suave. */
+export function Consumo({ item, tamanho = 14 }: { item: Item; tamanho?: number }) {
+  if (ehJogo(item)) {
+    if (!item.progresso_atual) return <span className="text-texto-suave/50" style={{ fontSize: tamanho * 0.85 }}>— h</span>;
+    return (
+      <span aria-label={`${formatarHoras(item.progresso_atual)} jogadas`} className="font-bold tabular-nums leading-none text-texto-forte" style={{ fontSize: tamanho }}>
+        {formatarNumero(item.progresso_atual)}
+        <span className="ml-0.5 font-semibold text-texto-suave" style={{ fontSize: tamanho * 0.7 }}>
+          h
+        </span>
       </span>
-    </span>
-  );
-}
-
-/** Episódios/capítulos: "12/24" com um fio carmesim curto embaixo. */
-function Progresso({ item, tamanho = 14, largura = 72 }: { item: Item; tamanho?: number; largura?: number }) {
+    );
+  }
   const t = total(item);
-  const atual = item.progresso_atual ?? 0;
   return (
-    <span className="inline-flex flex-col items-end gap-1">
-      <span className="font-semibold tabular-nums leading-none text-texto-forte" style={{ fontSize: tamanho }}>
-        {atual}
-        <span className="font-normal text-texto-suave">{t !== null ? `/${t}` : ''}</span>
-        <span className="ml-1 text-[11px] font-normal text-texto-suave">{UNIDADE[item.tipo]}</span>
-      </span>
-      <span aria-hidden className="relative h-[3px] overflow-hidden rounded-full bg-borda" style={{ width: largura }}>
-        <span className="absolute inset-y-0 left-0 rounded-full bg-marca-forte transition-[width] duration-300" style={{ width: `${(fio(item) ?? 0.08) * 100}%` }} />
+    <span className="font-semibold tabular-nums leading-none text-texto-forte" style={{ fontSize: tamanho }}>
+      {item.progresso_atual ?? 0}
+      <span className="font-normal text-texto-suave">{t !== null ? `/${t}` : ''}</span>
+      <span className="ml-1 font-normal text-texto-suave" style={{ fontSize: tamanho * 0.78 }}>
+        {UNIDADE[item.tipo]}
       </span>
     </span>
   );
 }
 
-function Consumo({ item, tamanho }: { item: Item; tamanho?: number }) {
-  return ehJogo(item) ? <Horas h={item.progresso_atual} tamanho={tamanho} /> : <Progresso item={item} tamanho={tamanho ? tamanho * 0.8 : 14} />;
-}
-
-function Passo({ item, delta }: { item: Item; delta: 1 | -1 }) {
-  const { passo } = useAcoes();
-  const pode = passoDeProgresso(item, delta) !== null;
-  return (
-    <button
-      type="button"
-      aria-label={`${delta > 0 ? 'Mais' : 'Menos'} um em ${titulo(item)}`}
-      disabled={!pode}
-      onClick={(e) => {
-        e.stopPropagation();
-        passo(item, delta);
-      }}
-      className={`flex h-7 w-7 items-center justify-center rounded-full text-texto-forte hover:bg-superficie-alta disabled:opacity-25 ${FOCO}`}
-    >
-      <Icone nome={delta > 0 ? 'mais' : 'menos'} tamanho={14} />
-    </button>
-  );
-}
-
-function PontoStatus({ e, tamanho = 8 }: { e: EstadoConsumo; tamanho?: number }) {
+export function PontoStatus({ e, tamanho = 8 }: { e: EstadoConsumo; tamanho?: number }) {
   return <span aria-hidden className="shrink-0 rounded-full" style={{ width: tamanho, height: tamanho, background: COR_DO_ESTADO[e] }} />;
 }
 
-/** Status do Item como menu: troca na hora, em memória. `fantasma` só aparece no hover. */
-export function MenuStatus({ item, fantasma = false, compacto = false }: { item: Item; fantasma?: boolean; compacto?: boolean }) {
-  const { mudarStatus } = useAcoes();
+function Favorito({ item }: { item: Item }) {
+  if (!item.favorito) return null;
+  return (
+    <span role="img" aria-label="Favorito" className="shrink-0 text-marca-texto">
+      <Icone nome="coracao" tamanho={12} cheio />
+    </span>
+  );
+}
+
+/**
+ * Status como menu discreto: troca na hora, em memória. `capa`: botão ⋯ sobre a capa, que
+ * só aparece no hover/foco; `linha`: ponto + nome sem borda, que ganha fundo no hover.
+ */
+export function MenuStatus({ item, jeito }: { item: Item; jeito: 'capa' | 'linha' }) {
+  const { mudarStatus, soltar } = useAcoes();
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const atual = estado(item);
@@ -125,8 +92,8 @@ export function MenuStatus({ item, fantasma = false, compacto = false }: { item:
       document.removeEventListener('keydown', esc);
     };
   }, [aberto]);
-  const cor = COR_DO_ESTADO[atual];
   const estados = Object.keys(ROTULOS_POR_TIPO[item.tipo]) as EstadoConsumo[];
+  const capa = jeito === 'capa';
   return (
     <div ref={caixa} className="relative">
       <button
@@ -134,21 +101,37 @@ export function MenuStatus({ item, fantasma = false, compacto = false }: { item:
         aria-haspopup="menu"
         aria-expanded={aberto}
         aria-label={`Status de ${titulo(item)}: ${NOMES_ESTADO[atual]}. Mudar`}
+        title={capa ? `Status: ${NOMES_ESTADO[atual]}` : undefined}
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
+          soltar(true);
           setAberto((a) => !a);
         }}
-        className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold whitespace-nowrap transition ${FOCO} ${
-          fantasma && !aberto ? 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100' : ''
-        }`}
-        style={{ borderColor: `color-mix(in srgb, ${cor} 45%, transparent)`, color: cor, background: `color-mix(in srgb, ${cor} 10%, transparent)` }}
+        className={
+          capa
+            ? `flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm transition-opacity hover:bg-black/90 ${FOCO} ${
+                aberto ? '' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100'
+              }`
+            : `inline-flex h-7 max-w-full items-center gap-1.5 rounded-md px-1.5 text-[12px] whitespace-nowrap text-texto transition-colors hover:bg-superficie-alta ${FOCO} ${aberto ? 'bg-superficie-alta' : ''}`
+        }
       >
-        <PontoStatus e={atual} />
-        {compacto ? null : NOMES_ESTADO[atual]}
-        <Icone nome="baixo" tamanho={12} />
+        {capa ? (
+          <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        ) : (
+          <>
+            <PontoStatus e={atual} />
+            <span className="truncate">{NOMES_ESTADO[atual]}</span>
+            <Icone nome="baixo" tamanho={12} className="shrink-0 text-texto-suave opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" />
+          </>
+        )}
       </button>
       {aberto ? (
-        <div role="menu" className="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-lg border border-borda bg-superficie-alta py-1 shadow-2xl motion-safe:animate-[surgir_120ms_ease-out]">
+        <div role="menu" aria-label="Status" className="absolute left-0 z-40 mt-1 w-44 overflow-hidden rounded-lg border border-borda bg-superficie-alta py-1 shadow-2xl motion-safe:animate-[surgir_120ms_ease-out]">
           {estados.map((e) => (
             <button
               key={e}
@@ -157,6 +140,7 @@ export function MenuStatus({ item, fantasma = false, compacto = false }: { item:
               type="button"
               onClick={(ev) => {
                 ev.stopPropagation();
+                ev.preventDefault();
                 mudarStatus(item, e);
                 setAberto(false);
               }}
@@ -173,287 +157,132 @@ export function MenuStatus({ item, fantasma = false, compacto = false }: { item:
   );
 }
 
-function Meta({ item }: { item: Item }) {
-  const partes = [autoria(item), ano(item), item.generos_lista.slice(0, 2).join(', ')].filter(Boolean);
-  return <span className="truncate text-[12px] text-texto-suave">{partes.join(' · ')}</span>;
-}
+// ---------------------------------------------------------------- 3: grade de capas (padrão)
 
-function Marcas({ item }: { item: Item }) {
+// Degradê sólido sob o texto e só esmaecendo nos 48 px de cima: branco sobre ≥ 85% de preto
+// dá contraste > 4,5:1 mesmo sobre uma capa branca.
+const DEGRADE = 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.85) calc(100% - 48px), rgba(0,0,0,0) 100%)';
+
+export function CardCapa({ item }: { item: Item }) {
+  const consumo = ehJogo(item) ? (item.progresso_atual ? `${formatarNumero(item.progresso_atual)} h` : null) : textoConsumo(item);
+  const rotulo = [titulo(item), item.nota_usuario !== null ? `nota ${formatarNota(item.nota_usuario)}` : null, consumo && (ehJogo(item) ? `${consumo} jogadas` : `${consumo} ${UNIDADE[item.tipo]}`)]
+    .filter(Boolean)
+    .join(', ');
   return (
-    <>
-      {item.favorito ? (
-        <span role="img" aria-label="Favorito" className="shrink-0 text-marca-texto">
-          <Icone nome="coracao" tamanho={12} cheio />
-        </span>
-      ) : null}
-      {item.recontagem ? <span className="shrink-0 text-[11px] text-texto-suave">{item.recontagem + 1}×</span> : null}
-    </>
-  );
-}
-
-// Link morto: o detalhe não faz parte do protótipo.
-const DETALHE = '#detalhe';
-
-// ---------------------------------------------------------------- 1: card atual (controle)
-
-export function CardAtual({ item, comStatus }: PropsItem) {
-  const fundo = item.banner_url ?? item.poster_url;
-  return (
-    <article aria-label={titulo(item)} className="group relative flex h-[104px] overflow-hidden rounded-md bg-superficie transition hover:ring-1 hover:ring-borda">
-      {fundo ? <img src={fundo} alt="" loading="lazy" className={`absolute inset-0 h-full w-full object-cover opacity-25 ${item.banner_url ? '' : 'blur-md'}`} /> : null}
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-superficie via-superficie/90 to-superficie/70" />
-      <a href={DETALHE} aria-label={`Abrir ${titulo(item)}`} className={`relative m-2 aspect-[2/3] shrink-0 overflow-hidden rounded bg-superficie-alta ${FOCO}`}>
-        <Capa item={item} />
-      </a>
-      <div className="relative flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-2">
-        <span className="line-clamp-2 text-[14px] font-semibold leading-tight text-texto-forte group-hover:underline">{titulo(item)}</span>
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-          <Selo texto={{ anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' }[item.tipo]} />
-          {comStatus ? <Selo texto={NOMES_ESTADO[estado(item)]} tom={estado(item)} /> : null}
-          {item.nota_usuario !== null ? <Nota n={item.nota_usuario} tamanho={12} /> : null}
-          <Marcas item={item} />
-        </span>
-      </div>
-      <div className="absolute bottom-2 right-2">
-        {ehJogo(item) ? (
-          <span className="text-[12px] text-texto-suave">{`${formatarNumero(item.progresso_atual ?? 0)} h`}</span>
-        ) : (
-          <div className="flex items-center rounded-full border border-borda bg-superficie-alta">
-            <Passo item={item} delta={-1} />
-            <span className="min-w-12 text-center text-[13px] font-semibold tabular-nums text-texto-forte">{textoConsumo(item)}</span>
-            <Passo item={item} delta={1} />
-          </div>
-        )}
-      </div>
-      <FioProgresso proporcao={fio(item)} />
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------- 2: linha compacta
-
-export const COLUNAS_LINHA = 'grid-cols-[minmax(0,1fr)_64px_104px] md:grid-cols-[minmax(0,1fr)_72px_120px_150px_96px]';
-export const COLUNAS_LINHA_ESTREITA = 'grid-cols-[minmax(0,1fr)_76px]';
-
-export function LinhaCompacta({ item, comStatus, estreito }: PropsItem) {
-  return (
-    <article
-      aria-label={titulo(item)}
-      className={`group grid h-16 items-center gap-3 rounded-md px-2 transition-colors hover:bg-superficie ${estreito ? COLUNAS_LINHA_ESTREITA : COLUNAS_LINHA}`}
-    >
-      <a href={DETALHE} className={`flex min-w-0 items-center gap-3 rounded ${FOCO}`}>
-        <span className="relative h-[54px] w-9 shrink-0 overflow-hidden rounded-[3px] bg-superficie-alta">
-          <Capa item={item} />
-          {!ehJogo(item) ? <FioProgresso proporcao={fio(item)} /> : null}
-        </span>
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="flex min-w-0 items-center gap-1.5">
-            {comStatus ? <PontoStatus e={estado(item)} /> : null}
-            <span className="truncate text-[14px] font-semibold text-texto-forte group-hover:text-white">{titulo(item)}</span>
-            <Marcas item={item} />
-          </span>
-          {estreito ? (
-            <Nota n={item.nota_usuario} tamanho={12} />
-          ) : (
-            <Meta item={item} />
-          )}
-        </span>
-      </a>
-      {estreito ? null : (
-        <span className="justify-self-end">
-          <Nota n={item.nota_usuario} tamanho={14} />
-        </span>
-      )}
-      <span className="flex items-center justify-end gap-1">
-        {!ehJogo(item) && !estreito ? (
-          <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <Passo item={item} delta={1} />
-          </span>
-        ) : null}
-        <Consumo item={item} tamanho={estreito ? 16 : 19} />
-      </span>
-      {estreito ? null : (
-        <span className="hidden justify-self-start md:block">
-          <MenuStatus item={item} fantasma={!comStatus} />
-        </span>
-      )}
-      {estreito ? null : <span className="hidden justify-self-end text-[12px] text-texto-suave md:block">{haQuanto(item.data_atualizacao)}</span>}
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------- 3: grade de capas
-
-/** Selo grande: horas no jogo, Nota pessoal no anime e mangá. */
-function SeloGrande({ item }: { item: Item }) {
-  if (ehJogo(item)) {
-    if (!item.progresso_atual) return null;
-    return (
-      <span className="rounded-md bg-black/75 px-2 py-1 text-white backdrop-blur-sm">
-        <span className="text-[20px] font-bold tabular-nums leading-none">{formatarNumero(item.progresso_atual)}</span>
-        <span className="ml-0.5 text-[12px] font-semibold text-white/70">h</span>
-      </span>
-    );
-  }
-  if (item.nota_usuario === null) return null;
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-1 text-[18px] font-bold leading-none tabular-nums text-nota backdrop-blur-sm">
-      <Icone nome="estrela" tamanho={14} cheio /> {formatarNota(item.nota_usuario)}
-    </span>
-  );
-}
-
-export function GradeCapa({ item, comStatus }: PropsItem) {
-  const sub = ehJogo(item)
-    ? item.nota_usuario !== null
-      ? `Nota ${formatarNota(item.nota_usuario)}`
-      : (autoria(item) ?? '')
-    : textoConsumo(item) + ` ${UNIDADE[item.tipo]}`;
-  return (
-    <article aria-label={titulo(item)} className="group flex h-full flex-col gap-1.5">
+    <article className="group relative h-full hover:z-20 focus-within:z-20">
       <a
         href={DETALHE}
-        className={`relative block aspect-[2/3] shrink-0 overflow-hidden rounded-md bg-superficie-alta shadow-[0_2px_10px_rgba(0,0,0,0.35)] transition duration-200 motion-safe:group-hover:-translate-y-0.5 group-hover:ring-1 group-hover:ring-white/15 ${FOCO}`}
+        aria-label={rotulo}
+        className={`absolute inset-0 overflow-hidden rounded-md bg-superficie-alta shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-white/20 transition-shadow group-hover:ring-1 ${FOCO}`}
       >
-        <Capa item={item} className="transition duration-300 motion-safe:group-hover:scale-[1.03]" />
-        <span aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
-        <span className="absolute bottom-2.5 left-2">
-          <SeloGrande item={item} />
+        <Capa item={item} className="transition-transform duration-300 motion-safe:group-hover:scale-[1.03]" />
+        {item.nota_usuario !== null || item.favorito ? (
+          <span aria-hidden className="absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-[3px] text-[11px] font-semibold leading-none tabular-nums text-nota backdrop-blur-sm">
+            {item.favorito ? <Icone nome="coracao" tamanho={10} cheio className="text-marca-texto" /> : null}
+            {item.nota_usuario !== null ? (
+              <>
+                <Icone nome="estrela" tamanho={10} cheio /> {formatarNota(item.nota_usuario)}
+              </>
+            ) : null}
+          </span>
+        ) : null}
+        <span aria-hidden className="absolute inset-x-0 bottom-0 flex items-end gap-2 px-2 pb-2.5 pt-12" style={{ backgroundImage: DEGRADE }}>
+          <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-[1.25] text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">{titulo(item)}</span>
+          {consumo ? <span className="shrink-0 text-[11.5px] font-semibold leading-[1.25] tabular-nums text-white/90">{consumo}</span> : null}
         </span>
-        {comStatus ? (
-          <span className="absolute left-2 top-2">
-            <Selo texto={NOMES_ESTADO[estado(item)]} tom={estado(item)} sobreImagem />
-          </span>
-        ) : null}
-        {item.favorito ? (
-          <span className="absolute right-2 top-2 text-marca-texto drop-shadow">
-            <Icone nome="coracao" tamanho={14} cheio />
-          </span>
-        ) : null}
         {!ehJogo(item) ? <FioProgresso proporcao={fio(item)} /> : null}
       </a>
-      <span className="truncate text-[13px] font-semibold leading-tight text-texto-forte">{titulo(item)}</span>
-      <span className="-mt-1 truncate text-[12px] tabular-nums text-texto-suave">{sub}</span>
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------- 4: card médio
-
-export function CardMedio({ item, comStatus, estreito }: PropsItem) {
-  const jogo = ehJogo(item);
-  const t = total(item);
-  return (
-    <article aria-label={titulo(item)} className="group relative flex h-[132px] overflow-hidden rounded-lg bg-superficie transition hover:bg-superficie-alta/60 hover:ring-1 hover:ring-borda">
-      <a href={DETALHE} className={`relative w-[88px] shrink-0 overflow-hidden bg-superficie-alta ${FOCO}`}>
-        <Capa item={item} />
-      </a>
-      <div className="flex min-w-0 flex-1 flex-col gap-1 px-3.5 py-3">
-        <div className="flex items-start gap-2">
-          <a href={DETALHE} className="line-clamp-2 flex-1 text-[15px] font-semibold leading-snug text-texto-forte hover:underline">
-            {titulo(item)}
-          </a>
-          <MenuStatus item={item} compacto={!comStatus || estreito} />
-        </div>
-        <Meta item={item} />
-        <div className="mt-auto flex items-end justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <Nota n={item.nota_usuario} tamanho={15} />
-            <Marcas item={item} />
-          </span>
-          {jogo ? (
-            <span className="text-right">
-              <Horas h={item.progresso_atual} tamanho={28} />
-              <span className="block text-[11px] text-texto-suave">jogadas</span>
-            </span>
-          ) : (
-            <span className="flex items-center gap-1">
-              <Passo item={item} delta={-1} />
-              <span className="text-right">
-                <span className="text-[22px] font-bold tabular-nums leading-none text-texto-forte">{item.progresso_atual ?? 0}</span>
-                <span className="text-[13px] tabular-nums text-texto-suave">{t !== null ? `/${t}` : ''}</span>
-                <span className="block text-[11px] text-texto-suave">{item.tipo === 'anime' ? 'episódios' : 'capítulos'}</span>
-              </span>
-              <Passo item={item} delta={1} />
-            </span>
-          )}
-        </div>
-      </div>
-      {!jogo ? <FioProgresso proporcao={fio(item)} grosso /> : null}
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------- 5: só texto
-
-export const COLUNAS_TEXTO = 'grid-cols-[minmax(0,1fr)_56px_88px] md:grid-cols-[minmax(0,1fr)_72px_120px_150px_96px]';
-
-export function LinhaTexto({ item, comStatus, estreito }: PropsItem) {
-  const { previa } = useAcoes();
-  const mostrar = (x: number, y: number) => item.poster_url && previa({ url: item.poster_url, x, y });
-  return (
-    <article
-      aria-label={titulo(item)}
-      onMouseMove={(e) => mostrar(e.clientX, e.clientY)}
-      onMouseLeave={() => previa(null)}
-      className={`group grid h-[34px] items-center gap-3 border-b border-borda/40 px-2 text-[13px] transition-colors hover:bg-superficie ${estreito ? 'grid-cols-[minmax(0,1fr)_64px]' : COLUNAS_TEXTO}`}
-    >
-      <a
-        href={DETALHE}
-        onFocus={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          mostrar(r.left + 120, r.top);
-        }}
-        onBlur={() => previa(null)}
-        className={`flex min-w-0 items-center gap-2 rounded ${FOCO}`}
-      >
-        {comStatus ? <PontoStatus e={estado(item)} tamanho={7} /> : null}
-        <span className="truncate font-semibold text-texto-forte">{titulo(item)}</span>
-        <Marcas item={item} />
-        {estreito ? null : <span className="hidden truncate text-[12px] text-texto-suave lg:inline">{autoria(item)}</span>}
-      </a>
-      {estreito ? null : (
-        <span className="justify-self-end">
-          <Nota n={item.nota_usuario} tamanho={13} />
-        </span>
-      )}
-      <span className="justify-self-end tabular-nums">
-        {ehJogo(item) ? <Horas h={item.progresso_atual} tamanho={15} /> : <span className="font-semibold text-texto-forte">{textoConsumo(item)}</span>}
+      <span className="absolute left-1.5 top-1.5 z-10">
+        <MenuStatus item={item} jeito="capa" />
       </span>
-      {estreito ? null : (
-        <span className="hidden md:block">
-          <MenuStatus item={item} fantasma={!comStatus} />
-        </span>
-      )}
-      {estreito ? null : <span className="hidden justify-self-end text-[12px] text-texto-suave md:block">{haQuanto(item.data_atualizacao)}</span>}
     </article>
   );
 }
 
-// ---------------------------------------------------------------- 6: mosaico
+// ---------------------------------------------------------------- 2 e 5: linhas
 
-export function Mosaico({ item, comStatus }: PropsItem) {
-  const e = estado(item);
+/** Título, Nota, Progresso/Horas, Status, Atualizado (os dois últimos só a partir de md). */
+export const COLUNAS = 'grid-cols-[minmax(0,1fr)_64px_96px] md:grid-cols-[minmax(0,1fr)_72px_112px_148px_104px]';
+
+/** Eventos do cartão de destaque: hover parado ~300 ms ou foco no link do título. */
+function useDestaque(item: Item) {
+  const { destacar, soltar } = useAcoes();
+  return {
+    linha: {
+      onMouseEnter: (e: React.MouseEvent<HTMLElement>) => destacar({ item, linha: e.currentTarget.getBoundingClientRect(), x: e.clientX, origem: 'mouse' }),
+      onMouseMove: (e: React.MouseEvent<HTMLElement>) => destacar({ item, linha: e.currentTarget.getBoundingClientRect(), x: e.clientX, origem: 'mouse' }),
+      onMouseLeave: () => soltar(),
+    },
+    link: {
+      onFocus: (e: React.FocusEvent<HTMLElement>) => {
+        // Só foco de teclado (clique também foca o link).
+        if (!e.currentTarget.matches(':focus-visible')) return;
+        const linha = e.currentTarget.closest('[role="row"]')!;
+        destacar({ item, linha: linha.getBoundingClientRect(), x: null, origem: 'foco' });
+      },
+      onBlur: () => soltar(),
+    },
+  };
+}
+
+export function LinhaCompacta({ item }: { item: Item }) {
+  const d = useDestaque(item);
   return (
-    <article aria-label={titulo(item)} className="group relative h-24 w-16 hover:z-30 focus-within:z-30">
-      <a href={DETALHE} className={`relative block h-full w-full overflow-hidden rounded-[4px] bg-superficie-alta transition duration-150 group-hover:ring-2 group-hover:ring-white/70 ${FOCO}`}>
-        <Capa item={item} />
-        {comStatus ? <span aria-hidden className="absolute left-1 top-1 h-2 w-2 rounded-full ring-1 ring-black/60" style={{ background: COR_DO_ESTADO[e] }} /> : null}
-        {!ehJogo(item) ? <FioProgresso proporcao={fio(item)} /> : null}
-      </a>
-      <div
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-borda bg-superficie-alta p-3 shadow-2xl group-hover:block group-focus-within:block motion-safe:animate-[surgir_120ms_ease-out]"
-      >
-        <span className="line-clamp-2 text-[14px] font-semibold leading-tight text-texto-forte">{titulo(item)}</span>
-        <span className="mt-1 flex items-center gap-1.5 text-[12px]" style={{ color: COR_DO_ESTADO[e] }}>
-          <PontoStatus e={e} /> {NOMES_ESTADO[e]}
-        </span>
-        <span className="mt-2 flex items-end justify-between">
-          <Nota n={item.nota_usuario} tamanho={14} />
-          <Consumo item={item} tamanho={22} />
-        </span>
-      </div>
-    </article>
+    <div role="row" {...d.linha} className={`group grid h-16 items-center gap-3 rounded-md px-2 transition-colors hover:bg-superficie focus-within:bg-superficie ${COLUNAS}`}>
+      <span role="cell" className="min-w-0">
+        <a href={DETALHE} {...d.link} className={`flex min-w-0 items-center gap-3 rounded ${FOCO}`}>
+          <span className="relative h-[54px] w-9 shrink-0 overflow-hidden rounded-[3px] bg-superficie-alta">
+            <Capa item={item} />
+            {!ehJogo(item) ? <FioProgresso proporcao={fio(item)} /> : null}
+          </span>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-[14px] font-semibold text-texto-forte">{titulo(item)}</span>
+              <Favorito item={item} />
+            </span>
+            <span className="truncate text-[12px] text-texto-suave">{[autoria(item), item.generos_lista.slice(0, 2).join(', ')].filter(Boolean).join(' · ')}</span>
+          </span>
+        </a>
+      </span>
+      <span role="cell" className="justify-self-end">
+        <Nota n={item.nota_usuario} tamanho={14} />
+      </span>
+      <span role="cell" className="justify-self-end">
+        <Consumo item={item} tamanho={ehJogo(item) ? 17 : 14} />
+      </span>
+      <span role="cell" className="hidden min-w-0 md:block">
+        <MenuStatus item={item} jeito="linha" />
+      </span>
+      <span role="cell" className="hidden justify-self-end text-[12px] text-texto-suave md:block">
+        {haQuanto(item.data_atualizacao)}
+      </span>
+    </div>
+  );
+}
+
+export function LinhaTexto({ item }: { item: Item }) {
+  const d = useDestaque(item);
+  return (
+    <div role="row" {...d.linha} className={`group grid h-[34px] items-center gap-3 border-b border-borda/40 px-2 text-[13px] transition-colors hover:bg-superficie focus-within:bg-superficie ${COLUNAS}`}>
+      <span role="cell" className="min-w-0">
+        <a href={DETALHE} {...d.link} className={`flex min-w-0 items-center gap-2 rounded ${FOCO}`}>
+          <span className="truncate font-semibold text-texto-forte">{titulo(item)}</span>
+          <Favorito item={item} />
+          <span className="hidden truncate text-[12px] text-texto-suave lg:inline">{autoria(item)}</span>
+        </a>
+      </span>
+      <span role="cell" className="justify-self-end">
+        <Nota n={item.nota_usuario} tamanho={13} />
+      </span>
+      <span role="cell" className="justify-self-end">
+        <Consumo item={item} tamanho={13} />
+      </span>
+      <span role="cell" className="hidden min-w-0 md:block">
+        <MenuStatus item={item} jeito="linha" />
+      </span>
+      <span role="cell" className="hidden justify-self-end text-[12px] text-texto-suave md:block">
+        {haQuanto(item.data_atualizacao)}
+      </span>
+    </div>
   );
 }

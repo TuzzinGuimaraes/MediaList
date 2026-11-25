@@ -1,18 +1,20 @@
-// PROTÓTIPO: barra de variantes. Visual de ferramenta (amarelo/preto, monoespaçado, como
-// nos protótipos anteriores): não faz parte do design avaliado. ←→ troca o valor do eixo
-// ativo, ⇧←→ troca o eixo; o estado fica na URL.
+// PROTÓTIPO: barra de variantes, só atalho (o Formato também tem o alternador na tela, e os
+// dois mexem no mesmo estado). Visual de ferramenta (amarelo/preto, monoespaçado): não faz
+// parte do design avaliado. ←→ troca o valor do eixo ativo, ⇧←→ troca o eixo.
 import { useEffect, useState } from 'react';
 
-import { type Efetivo, EIXOS, type Eixo, LIGA, NOMES_EIXOS, NOMES_LIGA, opcaoDe, PADRAO, type Variantes } from './variantes';
+import { EIXOS, type Eixo, NOMES_EIXOS, opcaoDe, PADRAO, type Variantes } from './variantes';
 
 function digitando(alvo: EventTarget | null) {
   const el = alvo as HTMLElement | null;
   return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 }
 
-export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variantes>): void; ef: Efetivo }) {
+const BOTAO = 'rounded border border-black px-1.5 hover:bg-black hover:text-yellow-300';
+
+export function Barra({ v, mudar }: { v: Variantes; mudar(p: Partial<Variantes>): void }) {
   const [aberta, setAberta] = useState(true);
-  const [ativo, setAtivo] = useState<Eixo>('nav');
+  const [ativo, setAtivo] = useState<Eixo>('formato');
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variant
   });
 
   const resumo = NOMES_EIXOS.map((e) => v[e]).join(' · ');
-  const ehPadrao = (Object.keys(PADRAO) as (keyof Variantes)[]).every((k) => PADRAO[k] === v[k]);
+  const ehPadrao = NOMES_EIXOS.every((e) => PADRAO[e] === v[e]);
 
   if (!aberta)
     return (
@@ -49,19 +51,19 @@ export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variant
     );
 
   return (
-    <div className="fixed bottom-4 left-4 z-[1000] w-[min(560px,calc(100vw-2rem))] rounded-xl border-2 border-black bg-yellow-300 p-2 font-mono text-[12px] leading-snug text-black shadow-[0_6px_24px_rgba(0,0,0,0.5)]">
+    <div className="fixed bottom-4 left-4 z-[1000] w-[min(500px,calc(100vw-2rem))] rounded-xl border-2 border-black bg-yellow-300 p-2 font-mono text-[12px] leading-snug text-black shadow-[0_6px_24px_rgba(0,0,0,0.5)]">
       <div className="mb-1.5 flex items-center gap-2">
-        <b>PROTÓTIPO · Lista</b>
-        <span className="opacity-70">←→ valor · ⇧←→ eixo · ★ = padrão</span>
+        <b>PROTÓTIPO · Lista (2ª rodada)</b>
+        <span className="opacity-70">←→ valor · ⇧←→ eixo · ★ padrão</span>
         <span className="ml-auto flex gap-1">
           {ehPadrao ? null : (
-            <button type="button" className="rounded border border-black px-1.5 hover:bg-black hover:text-yellow-300" onClick={() => mudar(PADRAO)}>
+            <button type="button" className={BOTAO} onClick={() => mudar(PADRAO)}>
               padrão
             </button>
           )}
           <button
             type="button"
-            className="rounded border border-black px-1.5 hover:bg-black hover:text-yellow-300"
+            className={BOTAO}
             onClick={() => {
               void navigator.clipboard?.writeText(location.href);
               setCopiado(true);
@@ -70,7 +72,7 @@ export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variant
           >
             {copiado ? 'copiado' : 'link'}
           </button>
-          <button type="button" className="rounded border border-black px-1.5 hover:bg-black hover:text-yellow-300" onClick={() => setAberta(false)}>
+          <button type="button" aria-label="Recolher a barra" className={BOTAO} onClick={() => setAberta(false)}>
             ▾
           </button>
         </span>
@@ -81,7 +83,7 @@ export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variant
           return (
             <div key={e} onClick={() => setAtivo(e)} className={`rounded-md border border-black px-1.5 py-1 ${e === ativo ? 'bg-black text-yellow-300' : 'bg-yellow-100'}`}>
               <div className="flex flex-wrap items-center gap-1">
-                <span className="w-[76px] shrink-0 font-bold">{EIXOS[e].titulo}</span>
+                <span className="w-[64px] shrink-0 font-bold">{EIXOS[e].titulo}</span>
                 {EIXOS[e].opcoes.map((o) => (
                   <button
                     key={o.chave}
@@ -99,34 +101,11 @@ export function Barra({ v, mudar, ef }: { v: Variantes; mudar(p: Partial<Variant
                 ))}
                 <b className="ml-1 truncate">{atual.nome}</b>
               </div>
-              <p className="pl-[80px] text-[11px] opacity-80">{atual.porque}</p>
+              <p className="pl-[68px] text-[11px] opacity-80">{atual.porque}</p>
             </div>
           );
         })}
-        <div className="flex flex-col gap-0.5 rounded-md border border-black bg-yellow-100 px-1.5 py-1">
-          {NOMES_LIGA.map((l) => (
-            <label key={l} className="flex cursor-pointer items-start gap-1.5">
-              <input type="checkbox" checked={v[l]} onChange={(ev) => mudar({ [l]: ev.target.checked })} className="mt-0.5 accent-black" />
-              <span>
-                <b>
-                  {LIGA[l].titulo}
-                  {LIGA[l].padrao ? '★' : ''}
-                </b>{' '}
-                <span className="text-[11px] opacity-80">{LIGA[l].porque}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        {ef.notas.length ? (
-          <div className="rounded-md border border-black bg-orange-300 px-1.5 py-1">
-            <b>Ajustado:</b>
-            <ul className="list-disc pl-4">
-              {ef.notas.map((n) => (
-                <li key={n}>{n}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <p className="px-1 text-[11px] opacity-80">Fixos pelo veredito: navegação C, filtros c, tamanho i (tudo, virtual), sem A–Z.</p>
       </div>
     </div>
   );

@@ -14,6 +14,8 @@ export type Item = {
   titulo_original: string;
   titulo_ingles: string | null;
   titulo_portugues: string | null;
+  /** Sinopse do Catálogo, sem HTML, até ~420 caracteres (cartão de destaque). */
+  sinopse: string | null;
   poster_url: string | null;
   banner_url: string | null;
   generos_lista: string[];
@@ -44,6 +46,10 @@ export const estado = (i: Item) => estadoDe(i.status_consumo, i.tipo) ?? 'planej
 export const total = (i: Item) => totalDoItem(i);
 export const fio = (i: Item) => proporcaoDoFio(i);
 export const situacao = (i: Item) => situacaoDe(i);
+export const nomeSituacao = (i: Item) => {
+  const s = situacaoDe(i);
+  return s ? nomeDaSituacao(s) : null;
+};
 export const ehJogo = (i: Item) => i.tipo === 'jogo';
 export const autoria = (i: Item) => i.desenvolvedor ?? i.estudio ?? i.autor ?? null;
 export const ano = (i: Item) => (i.data_lancamento ? i.data_lancamento.slice(0, 4) : null);
@@ -79,44 +85,48 @@ export type Ordem = 'padrao' | 'nota' | 'consumo' | 'titulo' | 'adicao' | 'atual
 export type TipoFiltro = 'todos' | TipoMidia;
 
 export function nomeDaOrdem(o: Ordem, tipo: TipoFiltro): string {
-  const consumo = tipo === 'jogo' ? 'Mais horas' : tipo === 'todos' ? 'Mais horas / Progresso' : 'Mais Progresso';
+  const consumo = tipo === 'jogo' ? 'Horas' : tipo === 'todos' ? 'Horas / Progresso' : 'Progresso';
   const padrao = tipo === 'jogo' ? 'Padrão (mais horas)' : tipo === 'todos' ? 'Padrão (nota; horas nos jogos)' : 'Padrão (maior nota)';
-  return { padrao, nota: 'Maior nota pessoal', consumo, titulo: 'Título (A–Z)', adicao: 'Adicionado recentemente', atualizacao: 'Atualizado recentemente' }[o];
+  return { padrao, nota: 'Nota pessoal', consumo, titulo: 'Título', adicao: 'Adicionado', atualizacao: 'Atualizado' }[o];
 }
 export const ORDENS: Ordem[] = ['padrao', 'nota', 'consumo', 'titulo', 'adicao', 'atualizacao'];
+/** Direção natural de cada Ordem (a que vem ao escolher); "inversa" vira a outra. */
+export const ASCENDENTE: Record<Ordem, boolean> = { padrao: false, nota: false, consumo: false, titulo: true, adicao: false, atualizacao: false };
 
 const colacao = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
 const alfabetica = (a: Item, b: Item) => colacao.compare(titulo(a), titulo(b));
 
-function decrescente(chave: (i: Item) => number | null) {
-  return (a: Item, b: Item) => {
+/** Decrescente por padrão; sem valor fica no fim nas duas direções (Q120). */
+function porNumero(chave: (i: Item) => number | null) {
+  return (a: Item, b: Item, inversa: boolean) => {
     const [va, vb] = [chave(a), chave(b)];
     if (va === vb) return 0;
     if (va === null) return 1;
     if (vb === null) return -1;
-    return vb - va;
+    return inversa ? va - vb : vb - va;
   };
 }
-const porNota = decrescente((i) => i.nota_usuario);
+const porNota = porNumero((i) => i.nota_usuario);
 // Planejado com 0 h ou 0 episódios não tem horas/Progresso de verdade: vai para o fim.
-const porConsumo = decrescente((i) => (i.progresso_atual ? i.progresso_atual : null));
+const porConsumo = porNumero((i) => (i.progresso_atual ? i.progresso_atual : null));
+const porData = (campo: 'data_adicao' | 'data_atualizacao') => porNumero((i) => Date.parse(i[campo]));
 /**
  * Padrão da Q120: anime e mangá pela maior Nota pessoal, jogos pelas mais horas; empate
  * alfabético; sem nota/horas no fim. Num grupo que mistura Tipos, a nota decide e as horas
  * desempatam entre jogos.
  */
-const porPadrao = (a: Item, b: Item) => {
-  if (ehJogo(a) && ehJogo(b)) return porConsumo(a, b);
-  if (!ehJogo(a) && !ehJogo(b)) return porNota(a, b);
-  return porNota(a, b) || porConsumo(a, b);
+const porPadrao = (a: Item, b: Item, inv: boolean) => {
+  if (ehJogo(a) && ehJogo(b)) return porConsumo(a, b, inv);
+  if (!ehJogo(a) && !ehJogo(b)) return porNota(a, b, inv);
+  return porNota(a, b, inv) || porConsumo(a, b, inv);
 };
-const COMPARAR: Record<Ordem, (a: Item, b: Item) => number> = {
+const COMPARAR: Record<Ordem, (a: Item, b: Item, inversa: boolean) => number> = {
   padrao: porPadrao,
   nota: porNota,
   consumo: porConsumo,
-  titulo: () => 0,
-  adicao: (a, b) => Date.parse(b.data_adicao) - Date.parse(a.data_adicao),
-  atualizacao: (a, b) => Date.parse(b.data_atualizacao) - Date.parse(a.data_atualizacao),
+  titulo: (a, b, inv) => (inv ? -1 : 1) * alfabetica(a, b),
+  adicao: porData('data_adicao'),
+  atualizacao: porData('data_atualizacao'),
 };
 
 // ---------------------------------------------------------------- filtros
@@ -127,27 +137,18 @@ export type Filtros = {
   genero: string | null;
   situacao: string | null;
   ordem: Ordem;
-  /** Variante F: Status marcados nos chips (vazio = todos). */
-  status: EstadoConsumo[];
-  /** Índice A–Z: inicial escolhida. */
-  letra: string | null;
+  /** Direção contrária à natural da Ordem (cabeçalho clicado de novo). */
+  inversa: boolean;
 };
 
-/** Quantos filtros restringem (Gênero, Situação): o contador do botão. */
+/** Quantos filtros restringem (Gênero, Situação). */
 export const ativos = (f: Filtros) => Number(f.genero !== null) + Number(f.situacao !== null);
 
 function normalizar(t: string) {
   return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-/** Inicial para o índice A–Z: letra sem acento ou "#". */
-export function inicial(i: Item): string {
-  const c = normalizar(titulo(i).trim()).charAt(0).toUpperCase();
-  return c >= 'A' && c <= 'Z' ? c : '#';
-}
-
-/** Tudo menos a letra (para o índice saber quais iniciais existem) e menos os chips de Status. */
-export function filtrarBase(itens: readonly Item[], f: Filtros): Item[] {
+export function filtrar(itens: readonly Item[], f: Pick<Filtros, 'busca' | 'tipo' | 'genero' | 'situacao'>): Item[] {
   const busca = normalizar(f.busca.trim());
   return itens.filter(
     (i) =>
@@ -160,9 +161,7 @@ export function filtrarBase(itens: readonly Item[], f: Filtros): Item[] {
 
 export function organizar(itens: readonly Item[], f: Filtros): Item[] {
   const comparar = COMPARAR[f.ordem];
-  return filtrarBase(itens, f)
-    .filter((i) => f.letra === null || inicial(i) === f.letra)
-    .sort((a, b) => comparar(a, b) || alfabetica(a, b) || (a.id_lista < b.id_lista ? -1 : 1));
+  return filtrar(itens, f).sort((a, b) => comparar(a, b, f.inversa) || alfabetica(a, b) || (a.id_lista < b.id_lista ? -1 : 1));
 }
 
 export function opcoes(itens: readonly Item[], tipo: TipoFiltro) {
@@ -182,13 +181,14 @@ export function opcoes(itens: readonly Item[], tipo: TipoFiltro) {
 export const TIPOS_DO_FILTRO = (t: TipoFiltro): TipoMidia[] => (t === 'todos' ? ['anime', 'manga', 'jogo'] : [t]);
 export const estadosDe = (t: TipoFiltro) => estadosDaLista(TIPOS_DO_FILTRO(t));
 
-/** O Item está na seção do Status? Concluído inclui os platinados (regra de hoje). */
+/** O Item está no Status? Concluído inclui os platinados (regra de hoje, ticket 34). */
 export function noEstado(i: Item, e: EstadoConsumo): boolean {
   const doItem = estado(i);
   return doItem === e || (e === 'concluido' && eTerminal(doItem));
 }
 
-export function contar(itens: readonly Item[]): Record<EstadoConsumo, number> {
+export type Contagem = Record<EstadoConsumo, number>;
+export function contar(itens: readonly Item[]): Contagem {
   const c = { planejado: 0, em_progresso: 0, pausado: 0, abandonado: 0, concluido: 0, platinado: 0 };
   for (const i of itens) {
     const e = estado(i);
@@ -198,6 +198,7 @@ export function contar(itens: readonly Item[]): Record<EstadoConsumo, number> {
   return c;
 }
 
+export const NOME_TIPO: Record<TipoMidia, string> = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogo' };
 export const NOME_SUBSECAO: Record<TipoMidia, string> = { anime: 'Anime', manga: 'Mangá', jogo: 'Jogos' };
 
 /** Subseções por Tipo, só com "Todos" (Q120); um Tipo escolhido dá um grupo sem título. */
