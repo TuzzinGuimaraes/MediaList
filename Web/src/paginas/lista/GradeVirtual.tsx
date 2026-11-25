@@ -37,6 +37,25 @@ function useTopoNaPagina(ref: RefObject<HTMLElement | null>): number {
   return topo;
 }
 
+/**
+ * Se o elemento está perto da janela (até uma tela acima ou abaixo). Longe, a grade não
+ * desenha linha nenhuma: o virtualizador sempre devolve as primeiras, mesmo fora da tela, e
+ * o "Todos" tem até 18 grades. Sem IntersectionObserver (jsdom), sempre perto.
+ */
+function usePerto(ref: RefObject<HTMLElement | null>): boolean {
+  const [perto, setPerto] = useState(true);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observador = new IntersectionObserver(([entrada]) => setPerto(entrada?.isIntersecting ?? true), {
+      rootMargin: '100% 0px',
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [ref]);
+  return perto;
+}
+
 type Props<T> = {
   itens: readonly T[];
   chave(item: T): string;
@@ -53,6 +72,7 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, rotulo, ren
   const caixa = useRef<HTMLDivElement>(null);
   const largura = useLargura(caixa);
   const topo = useTopoNaPagina(caixa);
+  const perto = usePerto(caixa);
   const colunas = minima > 0 && largura > 0 ? Math.max(1, Math.floor((largura + gap) / (minima + gap))) : 1;
   // Antes de medir, a célula mínima: dá uma estimativa de linhas visíveis razoável.
   const celula = largura > 0 ? (largura - gap * (colunas - 1)) / colunas : minima;
@@ -64,6 +84,7 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, rotulo, ren
     estimateSize: () => alturaLinha + gap,
     overscan: OVERSCAN,
     scrollMargin: topo,
+    enabled: perto,
   });
   // A estimativa é a medida (linhas de altura fixa): mudou a altura, remede.
   useLayoutEffect(() => virtual.measure(), [virtual, alturaLinha, colunas]);

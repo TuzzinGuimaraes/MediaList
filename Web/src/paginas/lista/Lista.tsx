@@ -160,8 +160,8 @@ export function Lista() {
       <div className="flex flex-col gap-6 pt-5 lg:flex-row lg:gap-8">
         <aside
           aria-label={textos.coluna}
-          className="sem-barra shrink-0 lg:sticky lg:w-[232px] lg:self-start lg:overflow-y-auto lg:pb-4"
-          style={{ top: `calc(${topo}px + 16px)`, maxHeight: `calc(100vh - ${topo}px - 24px)` }}
+          // Fixa e com rolagem própria só ao lado do corpo (lg); empilhada, cresce com o conteúdo.
+          className="sem-barra shrink-0 lg:sticky lg:top-[calc(var(--topo-da-lista)+16px)] lg:max-h-[calc(100vh-var(--topo-da-lista)-24px)] lg:w-[232px] lg:self-start lg:overflow-y-auto lg:pb-4"
         >
           <div className="flex flex-col gap-6">
             <CampoBusca valor={busca} mudar={setBusca} />
