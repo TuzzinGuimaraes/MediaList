@@ -91,6 +91,11 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   o SteamID64; `identificador` guarda o SteamID64. Sem prévia: `POST /integracoes/steam/sincronizar`
   grava direto e devolve as contagens com `pendentes` (jogos que não couberam no orçamento de
   ~60 s e ficam para a sincronização diária).
+- **Notificações de Notícia (spec `noticias-avisos`, Q128):** cada item de `GET /notificacoes`
+  traz `origem` (`atualizacao` | `noticia`) e `id_noticia`; na de Notícia, `id_midia`,
+  `tipo_midia` e `midia_nome` vêm nulos, `tipo` é `noticia` e `titulo` é o da Notícia. O link
+  abre `GET /noticias/<id>` (pública, 404 `nao_encontrado`). A contagem de não lidas segue no
+  cliente, sobre a mesma lista.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
