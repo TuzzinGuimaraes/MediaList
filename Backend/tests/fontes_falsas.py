@@ -22,13 +22,27 @@ class Resposta:
 class SessaoGet:
     """Responde cada GET por `rotas`: {regex do caminho: corpo | Resposta | Exception | callable(params)}.
 
-    Guarda (url, params) de cada chamada em `chamadas`.
+    Guarda (url, params) de cada chamada em `chamadas`. HEAD responde por `cabecas`
+    ({regex da URL: status | Exception}; sem rota, 404) e fica à parte, em `heads`.
     """
 
-    def __init__(self, rotas: dict):
+    def __init__(self, rotas: dict, cabecas: dict | None = None):
         self.rotas = rotas
+        self.cabecas = cabecas or {}
         self.chamadas: list[tuple[str, dict]] = []
         self.timeouts: list[float | None] = []
+        self.heads: list[str] = []
+        self.timeouts_head: list[float | None] = []
+
+    def head(self, url, timeout=None, allow_redirects=False):
+        self.heads.append(url)
+        self.timeouts_head.append(timeout)
+        for padrao, status in self.cabecas.items():
+            if re.search(padrao, url):
+                if isinstance(status, Exception):
+                    raise status
+                return Resposta(status, None)
+        return Resposta(404, None)
 
     def get(self, url, params=None, timeout=None):
         self.chamadas.append((url, dict(params or {})))

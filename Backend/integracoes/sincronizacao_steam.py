@@ -21,10 +21,11 @@ resultado vai para `integracoes.ultimo_resultado`.
 """
 from __future__ import annotations
 
+import enum
 import time
 from dataclasses import replace
 from datetime import date
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from integracoes import catalogo, repositorio, servico, steam_appids, vinculos
 from integracoes.loja_steam import LojaSteam
@@ -34,8 +35,16 @@ from integracoes.rawg import Rawg
 #: Orçamento do "Sincronizar agora", em segundos (a função da Vercel tem 300 s).
 ORCAMENTO_SEGUNDOS = 60
 
-#: O que `_casar` devolve quando a loja diz que a appid não é jogo.
-IGNORADO = object()
+class Ignorado(enum.Enum):
+    """O que `_casar` devolve quando a loja diz que a appid não é jogo."""
+
+    IGNORADO = 'ignorado'
+
+
+IGNORADO = Ignorado.IGNORADO
+
+#: O casamento de uma appid: a Mídia, IGNORADO (não é jogo) ou None (ninguém tem).
+Casamento = catalogo.Localizada | Literal[Ignorado.IGNORADO] | None
 
 
 class _OrcamentoEsgotado(OrigemIndisponivel):
@@ -64,22 +73,27 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
     return midia
 
 
-def _pela_loja(item: ItemDeOrigem, loja: LojaSteam):
-    """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem)."""
+def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> Casamento:
+    """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem).
+
+    A loja já devolve a appid pedida; o nome que não é texto fica o da biblioteca da Steam, e a
+    capa vertical só entra se o CDN a confirmar dentro do orçamento.
+    """
     dados = loja.detalhes(item.origem_id)
     if dados is None:
         return None
     if dados.get('type') != 'game':
         return IGNORADO
-    dados = {**dados, 'name': dados.get('name') or item.titulo,
-             'steam_appid': dados.get('steam_appid') or int(item.origem_id)}
+    nome = dados.get('name')
+    dados = {**dados, 'name': nome if isinstance(nome, str) and nome.strip() else item.titulo,
+             'steam_appid': int(item.origem_id), 'capa_vertical': loja.capa_vertical(item.origem_id)}
     midia = catalogo.importar(replace(item, catalogo=RefCatalogo('steam', item.origem_id, dados)))
     if midia is None:
         raise OrigemIndisponivel(f'não deu para importar a appid {item.origem_id} da loja')
     return midia
 
 
-def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam):
+def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> Casamento:
     """A Mídia do item (RAWG, senão a loja da Steam), IGNORADO ou None (não casa).
 
     Grava o casamento (positivo, ignorado ou negativo). Levanta OrigemIndisponivel sem gravar nada.
