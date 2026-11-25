@@ -34,8 +34,6 @@ export const chaves = {
   lista: {
     /** O RespostaLista inteiro: Lista, Início, detalhe e Perfil leem esta chave. */
     toda: ['lista'] as const,
-    /** Chave de mutação do stepper de Progresso. */
-    progresso: ['lista', 'progresso'] as const,
   },
   usuario: {
     perfil: ['usuario', 'perfil'] as const,

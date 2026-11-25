@@ -5,10 +5,8 @@
 // Cache: chaves.lista.toda (['lista']) guarda o RespostaLista inteiro (GET /api/lista); o
 // Início, o detalhe e o Perfil leem a mesma chave (`useLista`, `useItemDaMidia`).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef } from 'react';
 
-import { diaIso } from '@dominio/datas';
-import { aplicarProgresso, type DadosItem, mudancaDeStatus, totalDoItem } from '@dominio/itemLista';
+import { type DadosItem, mudancaDeStatus } from '@dominio/itemLista';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
@@ -19,7 +17,6 @@ export type ItemLista = Esquemas['ItemLista'];
 type RespostaLista = Esquemas['RespostaLista'];
 
 const CHAVE_LISTA = chaves.lista.toda;
-const CHAVE_PROGRESSO = chaves.lista.progresso;
 
 function useConsultaLista() {
   const api = useApi();
@@ -108,86 +105,5 @@ export function useMudarStatus() {
     },
     onError: (_e, { item }) => trocar(item.id_lista, () => item),
     onSettled: (_r, _e, { item }) => invalidar(item.id_midia),
-  });
-}
-
-/** Estado de uma sequência de toques no stepper de um Item, enquanto houver toque pendente. */
-type Rajada = {
-  /** O Item como estava no cache antes do primeiro toque. */
-  original: ItemLista;
-  /** Soma dos passos que não falharam (pendentes ou confirmados): o que a tela mostra. */
-  aplicado: number;
-  /** Último Progresso que o servidor aceitou: base do próximo envio. */
-  confirmado: number;
-};
-
-function comProgresso(original: ItemLista, progresso: number): ItemLista {
-  return { ...original, ...aplicarProgresso(original, progresso, diaIso()) };
-}
-
-/**
- * − / + do stepper, em passos de ±1, como no app: aplica no cache na hora (inclusive a
- * conclusão no total, ADR 0009) e, se o servidor recusar um toque, desfaz só o passo dele.
- * Os toques vão ao servidor um por vez (mesmo `scope`), cada um sobre o último valor
- * aceito; com toques seguidos, só o último a terminar refaz a Lista.
- */
-export function useMudarProgresso() {
-  const api = useApi();
-  const queryClient = useQueryClient();
-  const invalidar = useInvalidarLista();
-  const rajadas = useRef(new Map<string, Rajada>()).current;
-
-  const mostrar = (idLista: string, rajada: Rajada) =>
-    queryClient.setQueryData<RespostaLista>(CHAVE_LISTA, (r) =>
-      r && {
-        lista: r.lista.map((item) =>
-          item.id_lista === idLista
-            ? comProgresso(rajada.original, (rajada.original.progresso_atual ?? 0) + rajada.aplicado)
-            : item,
-        ),
-      },
-    );
-
-  return useMutation({
-    mutationKey: CHAVE_PROGRESSO,
-    scope: { id: CHAVE_PROGRESSO.join('/') },
-    mutationFn: async ({ idLista, passo }: { idLista: string; idMidia: string; passo: 1 | -1 }) => {
-      const rajada = rajadas.get(idLista);
-      if (!rajada) throw new Error('Item fora da Lista pessoal');
-      const total = totalDoItem(rajada.original);
-      const alvo = rajada.confirmado + passo;
-      const progresso = Math.max(0, total === null ? alvo : Math.min(total, alvo));
-      await exigir(
-        api.PUT('/api/lista/{lista_id}/progresso', {
-          params: { path: { lista_id: idLista } },
-          body: { progresso_atual: progresso },
-        }),
-      );
-      rajada.confirmado = progresso;
-    },
-    onMutate: async ({ idLista, passo }) => {
-      await queryClient.cancelQueries({ queryKey: CHAVE_LISTA, exact: true });
-      let rajada = rajadas.get(idLista);
-      if (!rajada) {
-        const original = queryClient.getQueryData<RespostaLista>(CHAVE_LISTA)?.lista.find((i) => i.id_lista === idLista);
-        if (!original) return;
-        rajada = { original, aplicado: 0, confirmado: original.progresso_atual ?? 0 };
-        rajadas.set(idLista, rajada);
-      }
-      rajada.aplicado += passo;
-      mostrar(idLista, rajada);
-    },
-    onError: (_e, { idLista, passo }) => {
-      const rajada = rajadas.get(idLista);
-      if (!rajada) return;
-      rajada.aplicado -= passo;
-      mostrar(idLista, rajada);
-    },
-    onSettled: (_r, _e, { idMidia }) => {
-      if (queryClient.isMutating({ mutationKey: CHAVE_PROGRESSO }) === 1) {
-        rajadas.clear();
-        return invalidar(idMidia);
-      }
-    },
   });
 }

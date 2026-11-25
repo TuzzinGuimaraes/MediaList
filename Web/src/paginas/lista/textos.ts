@@ -51,18 +51,6 @@ export const textos = {
   destaque: (titulo: string) => `Destaque: ${titulo}`,
   semSinopse: 'Sem sinopse.',
   verDetalhes: 'Ver detalhes',
-  // Lista antiga (abas, sheet, cards), até o ticket 03 removê-la.
-  abas: 'Status da Lista',
-  campoBusca: 'Buscar em todos os Status',
-  fecharBusca: 'Fechar busca',
-  filtros: 'Filtros',
-  filtrosAtivos: (n: number) => `Filtros, ${n} ativo${n === 1 ? '' : 's'}`,
-  resultados: (n: number, termo: string) =>
-    `${n === 1 ? '1 resultado' : `${n} resultados`} para “${termo}” em todos os Status`,
-  semResultado: 'Nada na Lista com esse título.',
-  vazio: (estado: string) => `Nenhum Item em ${estado}.`,
-  vazioFiltrado: (estado: string) => `Nenhum Item em ${estado} com esses filtros.`,
-  sugestoes: 'Sugestões para você',
 };
 
 /** Nome de cada formato no alternador. */
