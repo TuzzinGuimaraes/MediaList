@@ -165,7 +165,8 @@ def test_mesmo_lote_grava_o_mesmo_banco_antes_e_depois(pg, monkeypatch):
         foto_antiga, stats_antigos = _importar(fontes, appid, pg)
     foto_nova, stats_novos = _importar(fontes, appid, pg)
 
-    assert stats_novos == stats_antigos == {'anime': (99, 1, []), 'manga': (100, 0, []), 'jogo': (80, 0, [])}
+    # Jogo: 80 no lote, um por página sem capa ou data (pulado, spec jogos-catalogo).
+    assert stats_novos == stats_antigos == {'anime': (99, 1, []), 'manga': (100, 0, []), 'jogo': (78, 0, [])}
     assert foto_nova['cursor'] == foto_antiga['cursor']
     assert foto_nova['cursor']['jogo']['proxima_pagina'] == 3
     # AniList: a fronteira é a última obra da página 2 gravada (as fixtures não têm popularidade).
@@ -178,7 +179,7 @@ def test_mesmo_lote_grava_o_mesmo_banco_antes_e_depois(pg, monkeypatch):
     assert foto_nova['midias'] == foto_antiga['midias']
     assert foto_nova['totais'] == foto_antiga['totais']
     assert foto_nova['totais']['midias'] == sum(foto_nova['totais'][t] for t in ('animes', 'mangas', 'jogos'))
-    assert len(foto_nova['midias']) == 279
+    assert len(foto_nova['midias']) == 277
     # O jogo da loja virou a Mídia do primeiro jogo do RAWG (ganhou o rawg_slug); o segundo, sem a appid.
     # Um worker só: a ordem de gravação dos jogos é a da página.
     assert sum(1 for m in foto_nova['midias'].values() if m.get('steam_appid') == appid) == 1

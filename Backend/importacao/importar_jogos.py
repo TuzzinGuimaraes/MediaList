@@ -1,15 +1,22 @@
 """
 Importador de jogos via RAWG (e o jogo da loja da Steam, que entra pela mesma gravação).
+
+A listagem vem por popularidade (`ordering=-added`), sem filtro na fonte: o `/games` não filtra
+por capa, então jogo sem capa (`background_image`) ou sem data (`released`) é pulado aqui, antes
+do detalhe, e contado à parte (`pulados`). Jogo do RAWG com o mesmo título normalizado e ano de
+um jogo criado pela loja da Steam (sem `rawg_slug`) tem a appid confirmada em
+`/games/<slug>/stores` e vira a mesma Mídia (ticket 40).
 """
 from __future__ import annotations
 
 import html
 import re
+import unicodedata
 from datetime import date
 from threading import local
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
-from banco import Indisponivel, autocommit
+from banco import Indisponivel, autocommit, consultar
 from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.db import salvar_jogo
@@ -81,6 +88,48 @@ HOSTS_DE_IMAGEM_STEAM = ('.steamstatic.com', '.akamaihd.net')
 TETO_TEXTO_LOJA = 300
 
 
+#: Marcas que a loja põe no nome ("Portal™") e o NFKD viraria letras ("TM").
+_MARCAS = str.maketrans('', '', '™®©℠')
+
+
+def titulo_normalizado(titulo: str | None) -> str:
+    """O título sem caixa, acento, pontuação, espaços nem marcas: 'Pórtal™ 2!' → 'portal2'."""
+    decomposto = unicodedata.normalize('NFKD', (titulo or '').translate(_MARCAS))
+    return ''.join(c for c in decomposto.casefold() if c.isalnum())
+
+
+def _ano(data) -> int | None:
+    if isinstance(data, date):
+        return data.year
+    achado = re.match(r'(\d{4})-', str(data or ''))
+    return int(achado.group(1)) if achado else None
+
+
+def jogos_da_loja() -> dict[tuple[str, int], set[int]]:
+    """As appids dos jogos criados pela loja da Steam (sem `rawg_slug`), por (título normalizado, ano).
+
+    Lidos uma vez por execução: são só os que a sincronização da Steam criou (poucos; 4 em
+    produção em 2026-11-25), e a comparação com cada jogo da listagem fica em memória.
+    """
+    linhas = consultar(
+        'SELECT j.steam_appid, m.titulo_original, m.data_lancamento FROM jogos j JOIN midias m USING (id_midia) '
+        'WHERE j.steam_appid IS NOT NULL AND j.rawg_slug IS NULL AND m.data_lancamento IS NOT NULL'
+    )
+    loja: dict[tuple[str, int], set[int]] = {}
+    for linha in linhas:
+        loja.setdefault((titulo_normalizado(linha['titulo_original']), linha['data_lancamento'].year), set()).add(
+            linha['steam_appid'])
+    return loja
+
+
+def chave_na_loja(basico: dict) -> tuple[str, int | None]:
+    return titulo_normalizado(basico.get('name')), _ano(basico.get('released'))
+
+
+def com_capa_e_data(basico: dict) -> bool:
+    return bool(basico.get('background_image') and basico.get('released'))
+
+
 def normalizar_plataformas(plataformas_rawg: list) -> list[str]:
     nomes = [PLATAFORMAS_MAP.get(p['platform']['name'], p['platform']['name']) for p in plataformas_rawg]
     return nomes[:6]
@@ -105,6 +154,24 @@ def buscar_detalhe_jogo(slug: str, session, rate_limiter: RateLimiter) -> dict |
     return None
 
 
+def buscar_appids_steam(slug: str, session, rate_limiter: RateLimiter) -> set[int]:
+    """As appids da Steam em `GET /games/<slug>/stores` (o detalhe traz as URLs vazias)."""
+    rate_limiter.wait()
+    response = session.get(
+        f"{RAWG_BASE_URL}/games/{quote(str(slug), safe='')}/stores",
+        params={'key': RAWG_API_KEY},
+        timeout=30,
+    )
+    if response.status_code == 404:
+        return set()
+    response.raise_for_status()
+    return {
+        int(achada.group(1))
+        for loja in (response.json() or {}).get('results') or []
+        if (achada := _LOJA_STEAM.search(str((loja or {}).get('url') or '')))
+    }
+
+
 def _obter_sessao_rawg_worker():
     session = getattr(RAWG_THREAD_LOCAL, 'session', None)
     if session is None:
@@ -113,8 +180,11 @@ def _obter_sessao_rawg_worker():
     return session
 
 
-def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None):
-    """Processa um jogo do RAWG e grava no banco (um comando por Mídia; `t`: a conexão da página)."""
+def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None, steam_appid: int | None = None):
+    """Processa um jogo do RAWG e grava no banco (um comando por Mídia; `t`: a conexão da página).
+
+    `steam_appid`: a appid confirmada de um jogo da loja; o upsert acha essa Mídia por ela.
+    """
     tags = [tag['name'].lower().replace('-', '').replace(' ', '') for tag in detalhe.get('tags', [])]
     if 'singleplayer' in tags and 'multiplayer' in tags:
         modo_jogo = 'ambos'
@@ -138,7 +208,7 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None):
         'modo_jogo': modo_jogo,
         'classificacao': f'ESRB: {esrb}' if esrb else None,
         'rawg_slug': basico.get('slug'),
-        'steam_appid': appid_da_steam(detalhe, basico),
+        'steam_appid': steam_appid or appid_da_steam(detalhe, basico),
         'trailer_url': None,
     }
     generos = [GENERO_MAP.get(genero['name'], genero['name']) for genero in basico.get('genres', [])]
@@ -269,6 +339,8 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
 
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.25)
+    loja: dict[tuple[str, int], set[int]] = {}
+    loja_lida = False
 
     def buscar_paginas(inicio: int):
         """Páginas da listagem da RAWG; `next` nulo é o fim da fonte."""
@@ -279,10 +351,9 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
                     f'{RAWG_BASE_URL}/games',
                     params={
                         'key': RAWG_API_KEY,
-                        'ordering': '-rating',
+                        'ordering': '-added',
                         'page': pagina,
                         'page_size': 40,
-                        'metacritic': '60,100',
                     },
                     timeout=30,
                 )
@@ -295,15 +366,28 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
 
     def carregar_detalhe(jogo_basico: dict):
         worker_session = _obter_sessao_rawg_worker()
-        return {'detalhe': buscar_detalhe_jogo(jogo_basico['slug'], worker_session, rate_limiter)}
+        detalhe = buscar_detalhe_jogo(jogo_basico['slug'], worker_session, rate_limiter)
+        candidatas = loja.get(chave_na_loja(jogo_basico))  # lido em importar_pagina; só leitura aqui
+        appid = None
+        if detalhe and candidatas:
+            confirmadas = buscar_appids_steam(jogo_basico['slug'], worker_session, rate_limiter) & candidatas
+            appid = min(confirmadas, default=None)
+        return {'detalhe': detalhe, 'steam_appid': appid}
 
     def importar_pagina(pagina: dict):
-        if not pagina['itens']:
+        nonlocal loja_lida
+        itens = [jogo for jogo in pagina['itens'] if com_capa_e_data(jogo)]
+        stats.registrar_pulados(len(pagina['itens']) - len(itens))
+        if not itens:
             return
+        if not loja_lida:
+            # Uma vez por execução, na primeira página com jogos.
+            loja.update(jogos_da_loja())
+            loja_lida = True
         # Uma conexão por página; cada Mídia é um comando (a sua transação).
         with autocommit() as t:
             for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
-                pagina['itens'],
+                itens,
                 carregar_detalhe,
                 max_workers=workers,
             ):
@@ -316,7 +400,11 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
                     if not detalhe:
                         raise LookupError('Detalhes do jogo não retornados pela API')
 
-                    result = processar_e_inserir_jogo(jogo_basico, detalhe, t)
+                    appid = detalhe_result.get('steam_appid')
+                    result = processar_e_inserir_jogo(jogo_basico, detalhe, t, appid)
+                    if appid:
+                        # O jogo da loja ganhou o `rawg_slug`: não é mais candidato.
+                        loja[chave_na_loja(jogo_basico)].discard(appid)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                 except Indisponivel:
                     # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.

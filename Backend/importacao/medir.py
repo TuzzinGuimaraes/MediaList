@@ -66,6 +66,9 @@ class FontesGravadas:
         return Resposta(self._ciclo(self.anilist[variaveis['tipo']], variaveis['page']))
 
     def get(self, url, params=None, timeout=None):
+        if url.endswith('/stores'):
+            # Só pedida para jogo com par na loja da Steam; as gravadas não têm a appid.
+            return Resposta({'results': []})
         detalhe = re.search(r'/games/([^/?]+)$', url)
         if detalhe:
             achado = self.detalhes.get(detalhe.group(1))
