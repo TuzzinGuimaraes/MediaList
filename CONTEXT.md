@@ -60,7 +60,10 @@ No RAWG (jogos) o cursor é a próxima página. O AniList (anime e mangá) não 
 - **Atualização das populares**: algumas páginas por dia (10 por padrão), em rodízio pelas
   páginas 1–100 por popularidade, para as 5000 mais populares não ficarem paradas.
 
-Se o AniList recusar uma página pelo limite de páginas, é o fim da janela, não uma falha.
+Se o AniList recusar uma página pelo limite de páginas, é o fim da janela, não uma falha. Uma
+obra que muda de popularidade entre execuções e pula a fronteira pode ficar de fora até a volta
+seguinte (meses, nos mangás); as 5000 mais populares não sofrem com isso, porque a atualização
+as cobre.
 
 ## Integração
 
