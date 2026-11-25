@@ -172,6 +172,22 @@ describe('Minha Lista: linhas', () => {
 
     expect(api.para(`PUT /lista/${item.id_lista}`)[0]?.corpo).toMatchObject({ status_consumo: 'pausado' });
   });
+
+  it('nas linhas, o Item que sai do Status leva o foco ao menu de Status do seguinte', async () => {
+    salvar({ formato: 'texto' });
+    const itens = [umItem({ titulo_original: 'Akira', nota_usuario: 9 }), umItem({ titulo_original: 'Berserk', nota_usuario: 8 })];
+    const { user, api } = await abrirLogado('/lista', {
+      rotas: { ...rotasDaLista(itens), [`PUT /lista/${itens[0]!.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } } },
+    });
+    await user.click(await screen.findByRole('button', { name: 'Em progresso 2' }));
+
+    await user.click(screen.getByRole('button', { name: /^Status de Akira/ }));
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [{ ...itens[0]!, status_consumo: 'pausado' }, itens[1]] } };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Status de Berserk/ })).toHaveFocus());
+    expect(screen.getByText('Akira movido para Pausado')).toBeInTheDocument();
+  });
 });
 
 describe('Minha Lista: cartão de destaque', () => {

@@ -7,7 +7,7 @@
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { contarPorEstado, mediaNotasPessoais, NOMES_ESTADO } from '@dominio/estadoConsumo';
+import { contarPorEstado, estadoDe, mediaNotasPessoais, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import {
   buscarNaLista,
   contagemPorTipo,
@@ -20,6 +20,7 @@ import {
   tiposDoFiltro,
 } from '@dominio/filtrosLista';
 import { estadosDaLista } from '@dominio/itemLista';
+import { tituloDaMidia } from '@dominio/midia';
 
 import { FOCO } from '../../componentes/estilos';
 import { mensagemDeErro } from '../../api/erros';
@@ -31,8 +32,10 @@ import { useLista, useMudarStatus } from './api';
 import type { Ordenacao } from './Colecao';
 import { CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, SeletorTipo, type StatusEscolhido } from './ColunaLateral';
 import { ALTURA_SEPARADOR, type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
+import { type AlvoDoFoco, alvoDoFoco, FocoDaLista, ID_CABECALHO, type MudancaPendente, vizinhosNaTela } from './focoDaLista';
 import { ProvedorDestaque } from './Destaque';
 import { type FormatoLista, formatoValido, usePreferenciasDaLista } from './preferencias';
+import { idsNaTela, secoesNaTela } from './secoes';
 import { formatarNumero, textos } from './textos';
 
 const rota = getRouteApi('/autenticado/lista');
@@ -99,6 +102,29 @@ function FolgaDeRolagem({ altura }: { altura: number }) {
   return null;
 }
 
+/** Quanto o foco pedido espera pelo Item (rolando até ele) antes de desistir. */
+const ESPERA_DO_FOCO = 2000;
+
+/**
+ * Foco e anúncio depois de mudar o Status pelo menu ⋯. O `pendente` guarda a mudança; quando
+ * ela chega à Lista (o cache otimista), a Lista escolhe o `alvo` pelo que ficou na tela
+ * (focoDaLista.ts). O Item vai às grades pelo contexto; o cabeçalho, foca-se aqui.
+ */
+function useFocoAposStatus() {
+  const [pendente, setPendente] = useState<MudancaPendente | null>(null);
+  const [alvo, setAlvo] = useState<AlvoDoFoco | null>(null);
+  const [anuncio, setAnuncio] = useState('');
+  useEffect(() => {
+    if (!alvo) return;
+    if ('cabecalho' in alvo) (document.getElementById(alvo.cabecalho) ?? document.getElementById(ID_CABECALHO))?.focus();
+    // O Item pode não aparecer (filtro, erro): o pedido vence e não rouba o foco mais tarde.
+    const desistir = setTimeout(() => setAlvo(null), ESPERA_DO_FOCO);
+    return () => clearTimeout(desistir);
+  }, [alvo]);
+  const focado = useCallback(() => setAlvo(null), []);
+  return { pendente, setPendente, alvo, setAlvo, anuncio, setAnuncio, focado };
+}
+
 type Restricao = { genero: string | null; situacao: string | null };
 const SEM_RESTRICAO: Restricao = { genero: null, situacao: null };
 
@@ -113,6 +139,7 @@ export function Lista() {
   const [refCabecalho, alturaCabecalho] = useAlturaDoCabecalho(lista.data !== undefined);
   const salvarFormato = useCallback((formato: FormatoLista) => mudarPreferencias({ formato }), [mudarPreferencias]);
   const [formato, mudarFormato] = useFormato(preferencias.formato, salvarFormato);
+  const foco = useFocoAposStatus();
 
   if (lista.isError) return <ErroTela erro={lista.error} tentarDeNovo={() => void lista.refetch()} />;
   if (!lista.data) return <Carregando rotulo="Carregando a Lista" />;
@@ -131,6 +158,17 @@ export function Lista() {
   // Trocar de Tipo pode sumir com o Status escolhido (Platinado só existe em jogo).
   const ativo: StatusEscolhido = escolhido === 'todos' || estados.includes(escolhido) ? escolhido : 'todos';
   const noAtivo = ativo === 'todos' ? organizados.length : contagem[ativo];
+  const secoes = secoesNaTela(organizados, ativo, estados, tipo);
+  const naTela = idsNaTela(secoes);
+
+  // A mudança de Status chegou à Lista (o otimista ou o servidor): escolhe o foco pelo que
+  // ficou na tela e anuncia. Estado derivado do render anterior (o padrão do React).
+  const { pendente } = foco;
+  if (pendente && todos.find((i) => i.id_lista === pendente.id)?.status_consumo !== pendente.antes) {
+    foco.setPendente(null);
+    foco.setAlvo(alvoDoFoco(pendente, naTela, ativo === 'todos' ? secoes.map((s) => s.estado) : []));
+    foco.setAnuncio(pendente.anuncio);
+  }
 
   const horas = doTipoEscolhido.filter((i) => i.tipo === 'jogo').reduce((soma, i) => soma + (i.progresso_atual ?? 0), 0);
   const media = mediaNotasPessoais(doTipoEscolhido);
@@ -140,7 +178,17 @@ export function Lista() {
     formato,
     tipo,
     ordenacao,
-    mudarStatus: (item, rotulo) => status.mutate({ item, rotulo }),
+    mudarStatus: (item, rotulo) => {
+      const novo = estadoDe(rotulo, item.tipo);
+      foco.setPendente({
+        id: item.id_lista,
+        antes: item.status_consumo,
+        vizinhos: vizinhosNaTela(naTela, item.id_lista),
+        secao: secoes.find((s) => s.grupos.some((g) => g.itens.includes(item)))?.estado ?? secoes[0]!.estado,
+        anuncio: textos.movido(tituloDaMidia(item), novo ? NOMES_ESTADO[novo] : rotulo),
+      });
+      status.mutate({ item, rotulo });
+    },
   };
 
   const acao = (texto: string, aoClicar: () => void) => (
@@ -192,7 +240,7 @@ export function Lista() {
         style={{ top: ALTURA_NAV }}
         className="sticky z-30 -mx-6 flex min-h-[60px] flex-wrap items-center gap-3 border-b border-borda/70 bg-fundo/95 px-6 py-2.5 backdrop-blur lg:-mx-10 lg:px-10"
       >
-        <p aria-live="polite" className="flex min-w-0 items-baseline gap-2.5">
+        <p id={ID_CABECALHO} tabIndex={-1} aria-live="polite" className="flex min-w-0 items-baseline gap-2.5 outline-none">
           <span className="truncate text-[20px] font-bold text-texto-forte" style={{ color: ativo === 'todos' ? undefined : COR_DO_ESTADO[ativo] }}>
             {ativo === 'todos' ? textos.todos : NOMES_ESTADO[ativo]}
           </span>{' '}
@@ -205,6 +253,10 @@ export function Lista() {
           <AlternadorFormato formato={formato} mudar={mudarFormato} />
         </div>
       </div>
+
+      <p aria-live="polite" className="sr-only">
+        {foco.anuncio}
+      </p>
 
       {status.isError ? (
         <p role="alert" className="pt-4 text-[14px] text-erro">
@@ -241,13 +293,15 @@ export function Lista() {
           </div>
         </aside>
         <div className="min-w-0 flex-1">
-          <ProvedorDestaque>
-            {ativo === 'todos' ? (
-              <CorpoTodos estados={estados} itens={organizados} base={base} vazio={vazio} />
-            ) : (
-              <CorpoStatus estado={ativo} itens={organizados} base={base} vazio={vazio} />
-            )}
-          </ProvedorDestaque>
+          <FocoDaLista.Provider value={{ alvo: foco.alvo && 'item' in foco.alvo ? foco.alvo.item : null, focado: foco.focado }}>
+            <ProvedorDestaque>
+              {ativo === 'todos' ? (
+                <CorpoTodos secoes={secoes} base={base} vazio={vazio} />
+              ) : (
+                <CorpoStatus secao={secoes[0]!} base={base} vazio={vazio} />
+              )}
+            </ProvedorDestaque>
+          </FocoDaLista.Provider>
         </div>
       </div>
     </div>

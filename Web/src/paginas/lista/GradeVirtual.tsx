@@ -5,6 +5,8 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Fragment, type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
+import { ATRIBUTO_FOCO, useFocoDaLista } from './focoDaLista';
+
 const OVERSCAN = 4;
 
 /** Largura do elemento, acompanhando o redimensionamento; 0 antes do layout (e no jsdom). */
@@ -100,6 +102,25 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, papel = 'li
   });
   // A estimativa é a medida (linhas de altura fixa): mudou a altura, remede.
   useLayoutEffect(() => virtual.measure(), [virtual, alturaLinha, colunas]);
+
+  // Foco pedido pela Lista (depois de mudar um Status) num Item desta grade: foca o menu de
+  // Status dele se a linha já está no DOM; senão rola até ela, e o próximo render foca. Sem
+  // dependências: tenta a cada render até conseguir.
+  const { alvo, focado } = useFocoDaLista();
+  useLayoutEffect(() => {
+    if (!alvo) return;
+    const indice = itens.findIndex((item) => chave(item) === alvo);
+    if (indice < 0) return;
+    const botao = [...(caixa.current?.querySelectorAll<HTMLElement>(`[${ATRIBUTO_FOCO}]`) ?? [])].find(
+      (el) => el.getAttribute(ATRIBUTO_FOCO) === alvo,
+    );
+    if (botao) {
+      botao.focus();
+      focado();
+    } else {
+      virtual.scrollToIndex(Math.floor(indice / colunas), { align: 'center' });
+    }
+  });
 
   return (
     <div

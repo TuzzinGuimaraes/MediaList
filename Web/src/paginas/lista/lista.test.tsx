@@ -312,3 +312,66 @@ describe('Minha Lista: menu de Status', () => {
     expect(screen.getByRole('button', { name: 'Pausado 0' })).toBeInTheDocument();
   });
 });
+
+
+describe('Minha Lista: foco depois de mudar o Status', () => {
+  const comPut = (itens: ReturnType<typeof umItem>[]) =>
+    Object.fromEntries([
+      ...Object.entries(rotasDaLista(itens)),
+      ...itens.map((i) => [`PUT /lista/${i.id_lista}`, { status: 200, corpo: { mensagem: 'ok' } }]),
+    ]);
+  const anuncio = () => screen.getByText(/movido para/);
+
+  it('no "Todos", o foco segue o Item na nova posição e o anúncio diz para onde foi', async () => {
+    const frieren = umItem({ titulo_original: 'Frieren', progresso_atual: 5 });
+    const monster = umItem({ titulo_original: 'Monster' });
+    const { user, api } = await abrirLogado('/lista', { rotas: comPut([frieren, monster]) });
+
+    await user.click(await screen.findByRole('button', { name: 'Status de Frieren: Em progresso. Mudar' }));
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [{ ...frieren, status_consumo: 'pausado' }, monster] } };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+
+    const botao = await screen.findByRole('button', { name: 'Status de Frieren: Pausado. Mudar' });
+    await waitFor(() => expect(botao).toHaveFocus());
+    expect(secao('Pausado')).toContainElement(botao);
+    expect(anuncio()).toHaveTextContent('Frieren movido para Pausado');
+    expect(anuncio().closest('[aria-live="polite"]')).not.toBeNull();
+  });
+
+  it('num Status só, o Item que sai leva o foco ao seguinte; sem seguinte, ao anterior', async () => {
+    const itens = [
+      umItem({ titulo_original: 'Akira', nota_usuario: 9 }),
+      umItem({ titulo_original: 'Berserk', nota_usuario: 8 }),
+      umItem({ titulo_original: 'Cowboy Bebop', nota_usuario: 7 }),
+    ];
+    const { user, api } = await abrirLogado('/lista', { rotas: comPut(itens) });
+    await user.click(await screen.findByRole('button', { name: 'Em progresso 3' }));
+
+    await user.click(screen.getByRole('button', { name: /^Status de Berserk/ }));
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [itens[0], { ...itens[1], status_consumo: 'pausado' }, itens[2]] } };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Status de Cowboy Bebop/ })).toHaveFocus());
+    expect(anuncio()).toHaveTextContent('Berserk movido para Pausado');
+
+    await user.click(screen.getByRole('button', { name: /^Status de Cowboy Bebop/ }));
+    api.rotas['GET /lista'] = {
+      status: 200,
+      corpo: { lista: [itens[0], { ...itens[1], status_consumo: 'pausado' }, { ...itens[2], status_consumo: 'pausado' }] },
+    };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Status de Akira/ })).toHaveFocus());
+  });
+
+  it('sem vizinho na vista, o foco vai ao cabeçalho do Status', async () => {
+    const item = umItem({ titulo_original: 'Frieren' });
+    const { user, api } = await abrirLogado('/lista', { rotas: comPut([item]) });
+    await user.click(await screen.findByRole('button', { name: 'Em progresso 1' }));
+
+    await user.click(screen.getByRole('button', { name: /^Status de Frieren/ }));
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [{ ...item, status_consumo: 'pausado' }] } };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+
+    await waitFor(() => expect(screen.getByText('Em progresso', { selector: 'p span' }).closest('p')).toHaveFocus());
+    expect(anuncio()).toHaveTextContent('Frieren movido para Pausado');
+  });
+});

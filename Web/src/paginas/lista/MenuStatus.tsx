@@ -74,6 +74,8 @@ export function MenuStatus({ item, mudar, classeBotao, classeMenu = 'left-0', ch
       <button
         ref={botao}
         type="button"
+        // O alvo do foco depois de mudar o Status (focoDaLista.ts, ATRIBUTO_FOCO).
+        data-foco-item={item.id_lista}
         aria-haspopup="menu"
         aria-expanded={aberto}
         aria-controls={aberto ? idMenu : undefined}

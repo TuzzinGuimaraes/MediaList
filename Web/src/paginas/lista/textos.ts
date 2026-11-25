@@ -31,6 +31,7 @@ export const textos = {
   inverter: 'Inverter a direção',
   com: (termo: string) => ` com “${termo}”`,
   menuStatus: (titulo: string, status: string) => `Status de ${titulo}: ${status}. Mudar`,
+  movido: (titulo: string, status: string) => `${titulo} movido para ${status}`,
   vazia: 'Sua Lista ainda está vazia.',
   explorar: 'Explorar o catálogo',
   nadaNoStatus: (status: string, termo: string) => `Nada em ${status} com “${termo}”.`,
