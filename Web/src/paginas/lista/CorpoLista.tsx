@@ -13,6 +13,9 @@ import { Colecao, type PropsColecao } from './Colecao';
 import type { FormatoLista } from './preferencias';
 import { NOMES_TIPO_DA_LISTA } from './textos';
 
+/** Altura do separador grudento de Status no "Todos" (a folga de rolagem conta com ela). */
+export const ALTURA_SEPARADOR = 48;
+
 /** O que todo grupo recebe igual. */
 export type BaseDoCorpo = Pick<PropsColecao, 'ordenacao' | 'mudarStatus'> & { formato: FormatoLista; tipo: TipoDaLista };
 
@@ -61,8 +64,8 @@ export function CorpoTodos({ estados, itens, base, vazio }: PropsTodos) {
         <section key={estado} aria-labelledby={`secao-${estado}`}>
           <h2
             id={`secao-${estado}`}
-            className="sticky z-20 -mx-2 mb-3 flex items-center gap-3 border-b bg-fundo/95 px-2 py-2.5 backdrop-blur"
-            style={{ top: 'var(--topo-da-lista)', borderColor: `color-mix(in srgb, ${COR_DO_ESTADO[estado]} 35%, transparent)` }}
+            className="sticky z-20 -mx-2 mb-3 flex items-center gap-3 border-b bg-fundo/95 px-2 backdrop-blur"
+            style={{ top: 'var(--topo-da-lista)', height: ALTURA_SEPARADOR, borderColor: `color-mix(in srgb, ${COR_DO_ESTADO[estado]} 35%, transparent)` }}
           >
             <span aria-hidden className="h-5 w-1 rounded-full" style={{ background: COR_DO_ESTADO[estado] }} />
             <span className="text-[17px] font-bold" style={{ color: COR_DO_ESTADO[estado] }}>

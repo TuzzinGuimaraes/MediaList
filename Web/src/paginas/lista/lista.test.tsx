@@ -214,6 +214,20 @@ describe('Minha Lista: busca', () => {
   });
 });
 
+describe('Minha Lista: foco nunca escondido sob o que é fixo', () => {
+  it('o scroll-padding-top soma a nav, o cabeçalho fixo e, no "Todos", o separador grudento', async () => {
+    const itens = [umItem({ titulo_original: 'Frieren' }), umItem({ titulo_original: 'Mushishi', status_consumo: 'planejado' })];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    await screen.findByRole('heading', { level: 2, name: 'Em progresso 1' });
+    // 72 da nav + 60 do cabeçalho + 48 do separador + 8 de folga (sem layout no jsdom, as alturas padrão).
+    expect(document.documentElement.style.scrollPaddingTop).toBe('188px');
+
+    await user.click(screen.getByRole('button', { name: 'Planejado 1' }));
+    expect(document.documentElement.style.scrollPaddingTop).toBe('140px');
+  });
+});
+
 describe('Minha Lista: card da grade', () => {
   it('nome, nota e Progresso/horas no card, que leva ao detalhe', async () => {
     const itens = [

@@ -30,7 +30,7 @@ import { AlternadorFormato } from './AlternadorFormato';
 import { useLista, useMudarStatus } from './api';
 import type { Ordenacao } from './Colecao';
 import { CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, SeletorTipo, type StatusEscolhido } from './ColunaLateral';
-import { type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
+import { ALTURA_SEPARADOR, type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
 import { ProvedorDestaque } from './Destaque';
 import { type FormatoLista, formatoValido, usePreferenciasDaLista } from './preferencias';
 import { formatarNumero, textos } from './textos';
@@ -78,6 +78,25 @@ function useFormato(salvo: FormatoLista, salvar: (f: FormatoLista) => void) {
     void navegar({ search: f === 'grade' ? {} : { formato: f }, replace: true });
   };
   return [daUrl ?? salvo, mudar] as const;
+}
+
+/** Folga entre o que é fixo e o Item focado. */
+const FOLGA = 8;
+
+/**
+ * O `scroll-padding-top` da página: a nav, o cabeçalho fixo e, no "Todos", o separador
+ * grudento de Status. Assim o foco (Tab, ou o que a Lista põe depois de mudar o Status) e a
+ * rolagem até um Item nunca o deixam escondido embaixo deles. Sai com a Lista.
+ */
+function FolgaDeRolagem({ altura }: { altura: number }) {
+  useLayoutEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.scrollPaddingTop = `${altura}px`;
+    return () => {
+      raiz.style.scrollPaddingTop = '';
+    };
+  }, [altura]);
+  return null;
 }
 
 type Restricao = { genero: string | null; situacao: string | null };
@@ -153,6 +172,7 @@ export function Lista() {
   const topo = ALTURA_NAV + alturaCabecalho;
   return (
     <div className="px-6 pb-24 lg:px-10" style={{ '--topo-da-lista': `${topo}px` } as CSSProperties}>
+      <FolgaDeRolagem altura={topo + (ativo === 'todos' ? ALTURA_SEPARADOR : 0) + FOLGA} />
       <div className="flex flex-wrap items-end gap-x-5 gap-y-1 pb-4 pt-7">
         <h1 className="text-[30px] font-bold leading-none text-texto-forte">{textos.titulo}</h1>
         <p className="text-[14px] tabular-nums text-texto-suave">
