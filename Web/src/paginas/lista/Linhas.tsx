@@ -1,7 +1,8 @@
 // Formatos em linha (veredito do ticket 39), as preferências de quem não quer a grade: a
 // linha compacta (capa pequena, título e autoria) e a só texto (a mais densa). Cada grupo é
 // uma tabela (role="table") com os cabeçalhos ordenáveis (aria-sort) e o corpo virtualizado;
-// o título abre o cartão de destaque (Destaque.tsx). Status e Atualizado só a partir de md.
+// o título abre o cartão de destaque (Destaque.tsx). Abaixo de md, o Status vira só o ponto
+// (o menu continua ao lado do Progresso) e a coluna Atualizado some.
 import { Link } from '@tanstack/react-router';
 
 import { estadoDe, NOMES_ESTADO, type TipoMidia } from '@dominio/estadoConsumo';
@@ -9,6 +10,7 @@ import { crescente, type OrdemLista } from '@dominio/filtrosLista';
 import { proporcaoDoFio, temProgresso } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
@@ -16,12 +18,12 @@ import type { ItemLista } from './api';
 import type { Ordenacao, PropsColecao } from './Colecao';
 import { useDestaque } from './destaqueContexto';
 import { GradeVirtual } from './GradeVirtual';
-import { FOCO, MenuStatus } from './MenuStatus';
+import { MenuStatus } from './MenuStatus';
 import { Consumo, Nota, PontoStatus } from './Pecas';
 import { haQuanto, textos } from './textos';
 
-/** Título, Nota, Progresso/Horas, Status, Atualizado (os dois últimos só a partir de md). */
-const COLUNAS = 'grid-cols-[minmax(0,1fr)_64px_96px] md:grid-cols-[minmax(0,1fr)_72px_112px_148px_104px]';
+/** Título, Nota, Progresso/Horas, Status (só o ponto abaixo de md), Atualizado (só a partir de md). */
+const COLUNAS = 'grid-cols-[minmax(0,1fr)_56px_88px_28px] md:grid-cols-[minmax(0,1fr)_72px_112px_148px_104px]';
 
 const ALTURA = { compacta: 64, texto: 34 } as const;
 
@@ -42,7 +44,7 @@ function Cabecalho({ tipo, ordenacao, capa }: { tipo: TipoMidia | null; ordenaca
     if (!o)
       return (
         <span role="columnheader" className={`px-1.5 ${classe}`}>
-          {rotulo}
+          <span className="sr-only md:not-sr-only">{rotulo}</span>
         </span>
       );
     const esta = ativa === o;
@@ -74,7 +76,7 @@ function Cabecalho({ tipo, ordenacao, capa }: { tipo: TipoMidia | null; ordenaca
       {coluna('titulo', textos.colunaTitulo, `justify-self-start ${capa ? 'ml-11' : '-ml-1'}`)}
       {coluna('nota', textos.colunaNota, 'justify-self-end -mr-1')}
       {coluna('horas', tipo === 'jogo' ? textos.colunaHoras : textos.colunaProgresso, 'justify-self-end -mr-1')}
-      {coluna(null, textos.status, 'hidden md:block')}
+      {coluna(null, textos.status)}
       {coluna('atualizacao', textos.colunaAtualizado, 'hidden md:block justify-self-end -mr-1')}
     </div>
   );
@@ -95,11 +97,17 @@ function StatusDaLinha({ item, mudar }: { item: ItemLista; mudar: PropsColecao['
     <MenuStatus
       item={item}
       mudar={mudar}
-      classeBotao="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md px-1.5 text-[12px] whitespace-nowrap text-texto transition-colors hover:bg-superficie-alta aria-expanded:bg-superficie-alta"
+      // Abaixo de md a célula é a última da linha: o menu abre para a esquerda.
+      classeMenu="right-0 md:left-0 md:right-auto"
+      classeBotao="inline-flex h-7 min-w-7 max-w-full items-center justify-center gap-1.5 rounded-md px-1.5 text-[12px] whitespace-nowrap text-texto transition-colors hover:bg-superficie-alta aria-expanded:bg-superficie-alta md:justify-start"
     >
       {estado ? <PontoStatus estado={estado} /> : null}
-      <span className="truncate">{estado ? NOMES_ESTADO[estado] : item.status_consumo}</span>
-      <Icone nome="baixo" tamanho={12} className="shrink-0 text-texto-suave opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" />
+      <span className="hidden truncate md:inline">{estado ? NOMES_ESTADO[estado] : item.status_consumo}</span>
+      <Icone
+        nome="baixo"
+        tamanho={12}
+        className="hidden shrink-0 text-texto-suave opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:block"
+      />
     </MenuStatus>
   );
 }
@@ -151,7 +159,7 @@ function Linha({ item, indice, formato, mudarStatus }: PropsLinha) {
       <span role="cell" className="justify-self-end">
         <Consumo item={item} tamanho={compacta ? (temProgresso(item.tipo) ? 14 : 17) : 13} />
       </span>
-      <span role="cell" className="hidden min-w-0 md:block">
+      <span role="cell" className="min-w-0 justify-self-center md:justify-self-stretch">
         <StatusDaLinha item={item} mudar={mudarStatus} />
       </span>
       <span role="cell" className="hidden justify-self-end text-[12px] text-texto-suave md:block">

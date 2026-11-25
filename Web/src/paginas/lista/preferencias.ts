@@ -1,7 +1,7 @@
 // Preferências da Lista do web (ticket 39): formato, Ordem e direção, salvos no
 // localStorage por Usuário (a chave leva o id). Valor ilegível ou de versão antiga cai no
 // padrão campo a campo.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ORDENS_DA_LISTA, type OrdemLista } from '@dominio/filtrosLista';
 
@@ -51,20 +51,20 @@ function salvarPreferencias(idUsuario: string, preferencias: PreferenciasLista) 
 /** As preferências do Usuário da sessão; `mudar` grava na hora. */
 export function usePreferenciasDaLista(): [PreferenciasLista, (mudanca: Partial<PreferenciasLista>) => void] {
   const { id } = useUsuario();
-  const [estado, setEstado] = useState(() => ({ id, preferencias: lerPreferencias(id) }));
+  const [estado, setEstado] = useState(() => ({ id, mudou: false, preferencias: lerPreferencias(id) }));
   // Outro Usuário na mesma aba (sair e entrar): relê as dele.
   const atual = estado.id === id ? estado.preferencias : lerPreferencias(id);
-  if (estado.id !== id) setEstado({ id, preferencias: atual });
+  if (estado.id !== id) setEstado({ id, mudou: false, preferencias: atual });
 
+  // O updater do setEstado fica puro (o React pode chamá-lo duas vezes); gravar é efeito, e
+  // só depois de uma mudança (o que se leu não volta para o armazenamento).
   const mudar = useCallback(
-    (mudanca: Partial<PreferenciasLista>) =>
-      setEstado((e) => {
-        const preferencias = { ...e.preferencias, ...mudanca };
-        salvarPreferencias(e.id, preferencias);
-        return { ...e, preferencias };
-      }),
+    (mudanca: Partial<PreferenciasLista>) => setEstado((e) => ({ ...e, mudou: true, preferencias: { ...e.preferencias, ...mudanca } })),
     [],
   );
+  useEffect(() => {
+    if (estado.mudou) salvarPreferencias(estado.id, estado.preferencias);
+  }, [estado]);
   return [atual, mudar];
 }
 

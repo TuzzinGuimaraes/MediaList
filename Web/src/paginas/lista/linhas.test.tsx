@@ -86,6 +86,21 @@ describe('Minha Lista: linhas', () => {
     expect(celulas[4]).toHaveTextContent('hoje');
   });
 
+  it('abaixo de md, o menu de Status continua na linha (só some a coluna Atualizado)', async () => {
+    salvar({ formato: 'texto' });
+    await abrirLogado('/lista', { rotas: rotasDaLista([umItem({ titulo_original: 'Frieren' })]) });
+
+    const tabela = await screen.findByRole('table', { name: 'Em progresso, Anime' });
+    const [cabecalho, linha] = within(tabela).getAllByRole('row');
+    const status = within(linha!).getAllByRole('cell')[3]!;
+    // O jsdom não aplica o CSS: a célula do Status não pode ter o `hidden` das telas estreitas.
+    expect(status.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    expect(within(status).getByRole('button', { name: 'Status de Frieren: Em progresso. Mudar' })).toBeInTheDocument();
+    const nomeDaColuna = within(cabecalho!).getAllByRole('columnheader')[3]!;
+    expect(nomeDaColuna).toHaveTextContent('Status');
+    expect(nomeDaColuna.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+  });
+
   it('as linhas são virtualizadas, com a contagem de linhas da tabela inteira', async () => {
     salvar({ formato: 'texto' });
     const itens = Array.from({ length: 300 }, (_, i) => umItem({ titulo_original: `Obra ${String(i).padStart(3, '0')}` }));
@@ -156,6 +171,22 @@ describe('Minha Lista: linhas', () => {
     await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
 
     expect(api.para(`PUT /lista/${item.id_lista}`)[0]?.corpo).toMatchObject({ status_consumo: 'pausado' });
+  });
+
+  it('nas linhas, o Item que sai do Status leva o foco ao menu de Status do seguinte', async () => {
+    salvar({ formato: 'texto' });
+    const itens = [umItem({ titulo_original: 'Akira', nota_usuario: 9 }), umItem({ titulo_original: 'Berserk', nota_usuario: 8 })];
+    const { user, api } = await abrirLogado('/lista', {
+      rotas: { ...rotasDaLista(itens), [`PUT /lista/${itens[0]!.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } } },
+    });
+    await user.click(await screen.findByRole('button', { name: 'Em progresso 2' }));
+
+    await user.click(screen.getByRole('button', { name: /^Status de Akira/ }));
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [{ ...itens[0]!, status_consumo: 'pausado' }, itens[1]] } };
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Status de Berserk/ })).toHaveFocus());
+    expect(screen.getByText('Akira movido para Pausado')).toBeInTheDocument();
   });
 });
 

@@ -32,12 +32,12 @@ import { estadoDe, NOMES_ESTADO, nomeDoTipo } from '@dominio/estadoConsumo';
 import { tituloDaMidia } from '@dominio/midia';
 import { nomeDaSituacao, situacaoDe } from '@dominio/situacao';
 
+import { FOCO } from '../../componentes/estilos';
 import { Monograma } from '../../componentes/Monograma';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { type Ancora, type Destaque, DestaqueCtx } from './destaqueContexto';
 import { Consumo, Nota, PontoStatus } from './Pecas';
-import { FOCO } from './MenuStatus';
 import { textos } from './textos';
 
 const ESPERA = 300;

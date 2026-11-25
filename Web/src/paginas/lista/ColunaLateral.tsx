@@ -5,9 +5,9 @@ import { type ReactNode, useState } from 'react';
 import { type EstadoConsumo, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import { crescente, ORDENS_DA_LISTA, type OrdemLista, type TipoDaLista } from '@dominio/filtrosLista';
 
+import { FOCO } from '../../componentes/estilos';
 import { Icone } from '../../componentes/Icone';
 import { COR_DO_ESTADO } from '../../componentes/status';
-import { FOCO } from './MenuStatus';
 import { nomeDaOrdem, NOMES_TIPO_DA_LISTA, textos } from './textos';
 
 /** O Status escolhido na coluna: um deles ou "todos" (a Lista inteira separada por Status). */

@@ -4,17 +4,20 @@
 // esquerdo, que aparece no hover/foco (sempre visível no toque).
 import { Link } from '@tanstack/react-router';
 
+import { estadoDe, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import { proporcaoDoFio, temProgresso } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
+import { Selo } from '../../componentes/Selo';
 import type { ItemLista } from './api';
 import type { PropsColecao } from './Colecao';
 import { GradeVirtual } from './GradeVirtual';
-import { FOCO, MenuStatus } from './MenuStatus';
-import { formatarNumero, textoDoConsumo } from './textos';
+import { MenuStatus } from './MenuStatus';
+import { formatarNumero, textoDoConsumo, UNIDADE } from './textos';
 
 const LARGURA_MINIMA = 150;
 const GAP = 16;
@@ -23,11 +26,10 @@ const GAP = 16;
 // passa de 4,5:1 (AA) mesmo sobre uma capa branca.
 const DEGRADE = 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.85) calc(100% - 48px), rgba(0,0,0,0) 100%)';
 
-const UNIDADE = { anime: 'ep', manga: 'cap' } as const;
-
 /** O nome do link: título, nota e Progresso/horas, como o leitor de tela deve ouvir. */
-function rotuloDoCard(item: ItemLista, consumo: string | null): string {
+function rotuloDoCard(item: ItemLista, consumo: string | null, platinado: boolean): string {
   const partes = [tituloDaMidia(item)];
+  if (platinado) partes.push('platinado');
   if (item.nota_usuario != null) partes.push(`nota ${formatarNumero(item.nota_usuario)}`);
   if (item.favorito) partes.push('favorito');
   if (consumo) partes.push(item.tipo === 'jogo' ? `${consumo} jogadas` : `${consumo} ${UNIDADE[item.tipo]}`);
@@ -37,12 +39,14 @@ function rotuloDoCard(item: ItemLista, consumo: string | null): string {
 export function CardCapa({ item, mudarStatus }: { item: ItemLista; mudarStatus: PropsColecao['mudarStatus'] }) {
   const titulo = tituloDaMidia(item);
   const consumo = textoDoConsumo(item);
+  // No "Todos" o platinado fica no Concluído: o selo diz que é mais que concluído.
+  const platinado = estadoDe(item.status_consumo, item.tipo) === 'platinado';
   return (
     <article className="group relative h-full">
       <Link
         to="/midia/$id"
         params={{ id: item.id_midia }}
-        aria-label={rotuloDoCard(item, consumo)}
+        aria-label={rotuloDoCard(item, consumo, platinado)}
         className={`absolute inset-0 overflow-hidden rounded-md bg-superficie-alta shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-white/20 transition-shadow group-hover:ring-1 ${FOCO}`}
       >
         {item.poster_url ? (
@@ -72,8 +76,11 @@ export function CardCapa({ item, mudarStatus }: { item: ItemLista; mudarStatus: 
           </span>
         ) : null}
         <span aria-hidden className="absolute inset-x-0 bottom-0 flex items-end gap-2 px-2 pb-2.5 pt-12" style={{ backgroundImage: DEGRADE }}>
-          <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-[1.25] text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
-            {titulo}
+          <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            {platinado ? <Selo texto={NOMES_ESTADO.platinado} tom="platinado" sobreImagem /> : null}
+            <span className="text-[12.5px] font-semibold leading-[1.25] text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+              {titulo}
+            </span>
           </span>
           {consumo ? <span className="shrink-0 text-[11.5px] font-semibold leading-[1.25] tabular-nums text-white/90">{consumo}</span> : null}
         </span>

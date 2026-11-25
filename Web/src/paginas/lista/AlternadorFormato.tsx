@@ -2,7 +2,7 @@
 // texto. Botões de alternância (aria-pressed) num grupo com nome.
 import type { ReactNode } from 'react';
 
-import { FOCO } from './MenuStatus';
+import { FOCO } from '../../componentes/estilos';
 import { FORMATOS, type FormatoLista } from './preferencias';
 import { NOMES_FORMATO, textos } from './textos';
 

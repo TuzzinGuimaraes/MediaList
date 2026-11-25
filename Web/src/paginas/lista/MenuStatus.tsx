@@ -7,21 +7,22 @@ import { estadoDe, NOMES_ESTADO, rotuloPara } from '@dominio/estadoConsumo';
 import { estadosDaLista } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import type { ItemLista } from './api';
 import { textos } from './textos';
-
-export const FOCO = 'outline-none focus-visible:ring-2 focus-visible:ring-marca-texto';
 
 type Props = {
   item: ItemLista;
   mudar(item: ItemLista, rotulo: string): void;
   /** Classes do botão (o ⋯ da capa ou, no ticket 02, o Status da linha). */
   classeBotao: string;
+  /** Onde o menu se ancora no botão (padrão: pela esquerda). */
+  classeMenu?: string;
   children: React.ReactNode;
 };
 
-export function MenuStatus({ item, mudar, classeBotao, children }: Props) {
+export function MenuStatus({ item, mudar, classeBotao, classeMenu = 'left-0', children }: Props) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
@@ -73,6 +74,8 @@ export function MenuStatus({ item, mudar, classeBotao, children }: Props) {
       <button
         ref={botao}
         type="button"
+        // O alvo do foco depois de mudar o Status (focoDaLista.ts, ATRIBUTO_FOCO).
+        data-foco-item={item.id_lista}
         aria-haspopup="menu"
         aria-expanded={aberto}
         aria-controls={aberto ? idMenu : undefined}
@@ -94,7 +97,7 @@ export function MenuStatus({ item, mudar, classeBotao, children }: Props) {
           id={idMenu}
           role="menu"
           aria-label={`${textos.status} de ${titulo}`}
-          className="absolute left-0 z-40 mt-1 w-44 overflow-hidden rounded-lg border border-borda bg-superficie-alta py-1 shadow-2xl motion-safe:animate-[surgir_120ms_ease-out]"
+          className={`absolute ${classeMenu} z-40 mt-1 w-44 overflow-hidden rounded-lg border border-borda bg-superficie-alta py-1 shadow-2xl motion-safe:animate-[surgir_120ms_ease-out]`}
         >
           {estados.map((e) => {
             const rotulo = rotuloPara(e, item.tipo);

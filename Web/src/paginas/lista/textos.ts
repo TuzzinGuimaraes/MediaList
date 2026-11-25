@@ -31,6 +31,7 @@ export const textos = {
   inverter: 'Inverter a direção',
   com: (termo: string) => ` com “${termo}”`,
   menuStatus: (titulo: string, status: string) => `Status de ${titulo}: ${status}. Mudar`,
+  movido: (titulo: string, status: string) => `${titulo} movido para ${status}`,
   vazia: 'Sua Lista ainda está vazia.',
   explorar: 'Explorar o catálogo',
   nadaNoStatus: (status: string, termo: string) => `Nada em ${status} com “${termo}”.`,
@@ -88,6 +89,9 @@ export function nomeDaOrdem(ordem: OrdemLista, tipo: TipoDaLista): string {
       return 'Atualizado';
   }
 }
+
+/** Unidade do Progresso de anime e mangá ("12/24 ep", "40 cap"). */
+export const UNIDADE = { anime: 'ep', manga: 'cap' } as const;
 
 /** "12/24" (ou "12" sem total) no anime/mangá; "148 h" no jogo, null sem horas. */
 export function textoDoConsumo(item: ItemLista): string | null {
