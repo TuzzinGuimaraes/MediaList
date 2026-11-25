@@ -31,6 +31,9 @@ class TipoMidia(NamedTuple):
     coluna_total: str | None  # total contra o qual o Progresso é medido; None: sem Progresso
     unidade_progresso: str
     aplicavel_a: list[str]  # `generos.aplicavel_a` de um gênero novo que a Importação cria
+    # Outras chaves de fonte (UNIQUE, anuláveis), só da Importação: a Mídia sem a chave da fonte
+    # é achada por elas (o jogo criado pela loja da Steam e depois achado no RAWG).
+    chaves_extras: tuple[str, ...] = ()
 
     @property
     def colunas_gravaveis(self) -> tuple[str, ...]:
@@ -61,7 +64,7 @@ TIPOS: dict[str, TipoMidia] = {
                  'classificacao', 'trailer_url'),
         # Jogo não tem Progresso mensurável: horas não medem Progresso (CONTEXT.md).
         coluna_status='status_jogo', coluna_total=None, unidade_progresso='horas',
-        aplicavel_a=['jogo'],
+        aplicavel_a=['jogo'], chaves_extras=('steam_appid',),
     ),
 }
 
