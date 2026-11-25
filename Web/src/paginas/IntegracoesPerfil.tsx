@@ -7,6 +7,7 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 
 import { formatarData } from '@dominio/datas';
 import {
+  chaveDoNaoEncontrado,
   type NomePlataforma,
   naoEncontradosForaDaAmostra,
   PEDIDO_DE_CONTA,
@@ -14,6 +15,7 @@ import {
   SINCRONIZA_SEM_PREVIA,
   temOQueConfirmar,
   textoDePendentes,
+  vinculavel,
 } from '@dominio/integracoes';
 
 import { chaves } from '../api/chaves';
@@ -24,10 +26,12 @@ import { Botao } from '../componentes/Botao';
 import { Campo } from '../componentes/Campo';
 import { Carregando, ErroTela } from '../componentes/Estados';
 import { useApi } from '../sessao/SessaoContext';
+import { VincularNaoEncontrado } from './VincularNaoEncontrado';
 
 type Integracao = Esquemas['Integracao'];
 type Previa = Esquemas['PreviaImportacao'];
 type Resultado = Esquemas['ResultadoImportacao'];
+type NaoEncontrado = Esquemas['NaoEncontrado'];
 
 /** Invalida o que uma importação muda: a Lista, as estatísticas e os contadores das Mídias. */
 function invalidarDepoisDeImportar(queryClient: ReturnType<typeof useQueryClient>) {
@@ -75,26 +79,55 @@ function Alerta({ erro }: { erro: unknown }) {
   );
 }
 
-function NaoEncontrados({ resultado }: { resultado: Resultado }) {
+/**
+ * Os Não encontrados, cada um com Vincular (abre a busca do Catálogo no Tipo do item). O vinculado
+ * fica marcado aqui; o último resultado da API já volta sem ele.
+ */
+function NaoEncontrados({ resultado, plataforma }: { resultado: Resultado; plataforma: NomePlataforma }) {
+  const [vinculando, setVinculando] = useState<NaoEncontrado | null>(null);
+  const [vinculados, setVinculados] = useState<ReadonlySet<string>>(new Set());
   if (!resultado.total_nao_encontrados) return null;
   const fora = naoEncontradosForaDaAmostra(resultado);
   return (
     <details className="text-[14px]">
-      <summary className="cursor-pointer text-texto-suave">Não encontrados: adicione à mão</summary>
+      <summary className="cursor-pointer text-texto-suave">Não encontrados: vincule ao Catálogo</summary>
       <ul aria-label="Não encontrados" className="mt-2 flex flex-col gap-1">
         {resultado.nao_encontrados.map((n, i) => (
-          <li key={`${n.titulo}-${i}`}>
+          <li key={`${n.titulo}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {n.link ? (
               <a href={n.link} target="_blank" rel="noopener noreferrer" className="text-marca-texto underline">
                 {n.titulo}
               </a>
             ) : (
-              n.titulo
+              <span>{n.titulo}</span>
+            )}
+            {!vinculavel(n) ? null : vinculados.has(chaveDoNaoEncontrado(n)) ? (
+              <span className="text-[13px] font-semibold text-texto-suave">Vinculado</span>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Vincular ${n.titulo}`}
+                onClick={() => setVinculando(n)}
+                className="min-h-8 text-[13px] font-semibold text-marca-texto hover:underline"
+              >
+                Vincular
+              </button>
             )}
           </li>
         ))}
       </ul>
       {fora ? <p className="mt-1 text-texto-suave">e mais {fora}</p> : null}
+      {vinculando && vinculavel(vinculando) ? (
+        <VincularNaoEncontrado
+          plataforma={plataforma}
+          item={vinculando}
+          fechar={() => setVinculando(null)}
+          aoVincular={() => {
+            setVinculados((v) => new Set(v).add(chaveDoNaoEncontrado(vinculando)));
+            setVinculando(null);
+          }}
+        />
+      ) : null}
     </details>
   );
 }
@@ -114,10 +147,12 @@ function useConfirmarPrevia(aoConfirmar: (r: Resultado) => void) {
 }
 
 function CaixaDaPrevia({
+  plataforma,
   previa,
   confirmar,
   fechar,
 }: {
+  plataforma: NomePlataforma;
   previa: Previa;
   confirmar: ReturnType<typeof useConfirmarPrevia>;
   fechar: () => void;
@@ -128,7 +163,7 @@ function CaixaDaPrevia({
       <p className="text-[13px] text-texto-suave">
         Nada é apagado: o Progresso fica com o maior valor e suas notas, comentários e Avaliações ficam como estão.
       </p>
-      <NaoEncontrados resultado={previa} />
+      <NaoEncontrados resultado={previa} plataforma={plataforma} />
       <div className="flex flex-wrap gap-2">
         {temOQueConfirmar(previa) ? (
           <Botao carregando={confirmar.isPending} onClick={() => confirmar.mutate(previa.id_previa)}>
@@ -216,7 +251,12 @@ function Conectada({ integracao }: { integracao: Integracao }) {
       </p>
 
       {previa ? (
-        <CaixaDaPrevia previa={previa} confirmar={confirmar} fechar={() => setPrevia(null)} />
+        <CaixaDaPrevia
+          plataforma={integracao.plataforma}
+          previa={previa}
+          confirmar={confirmar}
+          fechar={() => setPrevia(null)}
+        />
       ) : (
         <div className="flex flex-wrap gap-2">
           {semPrevia ? null : (
@@ -233,10 +273,10 @@ function Conectada({ integracao }: { integracao: Integracao }) {
       {importado ? (
         <div role="status" className="flex flex-col gap-2 text-[14px]">
           <p className="text-texto-forte">Importado: {resumoDaImportacao(importado)}</p>
-          <NaoEncontrados resultado={importado} />
+          <NaoEncontrados resultado={importado} plataforma={integracao.plataforma} />
         </div>
       ) : !previa && integracao.ultimo_resultado ? (
-        <NaoEncontrados resultado={integracao.ultimo_resultado} />
+        <NaoEncontrados resultado={integracao.ultimo_resultado} plataforma={integracao.plataforma} />
       ) : null}
       {erro ? <Alerta erro={erro} /> : null}
       {EXTRAS[integracao.plataforma]?.(integracao)}
@@ -284,7 +324,7 @@ function XmlDoMal() {
   return (
     <div className="flex flex-col gap-3 border-t border-borda pt-3">
       {previa ? (
-        <CaixaDaPrevia previa={previa} confirmar={confirmar} fechar={() => setPrevia(null)} />
+        <CaixaDaPrevia plataforma="mal" previa={previa} confirmar={confirmar} fechar={() => setPrevia(null)} />
       ) : (
         <form onSubmit={aoEnviar} className="flex flex-col gap-2" aria-label="Arquivo XML do MyAnimeList">
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-texto-suave">
@@ -309,7 +349,7 @@ function XmlDoMal() {
       {importado ? (
         <div role="status" className="flex flex-col gap-2 text-[14px]">
           <p className="text-texto-forte">Importado: {resumoDaImportacao(importado)}</p>
-          <NaoEncontrados resultado={importado} />
+          <NaoEncontrados resultado={importado} plataforma="mal" />
         </div>
       ) : null}
       {erro ? <Alerta erro={erro} /> : null}

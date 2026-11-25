@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/admin/vinculos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Uma página dos vínculos feitos por Usuários, mais recentes primeiro. */
+        get: operations["get__api_admin_vinculos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/vinculos/{id_vinculo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Desfazer um vínculo: os Itens já gravados ficam; a próxima importação volta a dar Não encontrado. */
+        delete: operations["delete__api_admin_vinculos_{id_vinculo}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/esqueci-senha": {
         parameters: {
             query?: never;
@@ -302,6 +336,26 @@ export interface paths {
          * @description Os que não couberem voltam em `pendentes` e ficam para a sincronização diária.
          */
         post: operations["post__api_integracoes_steam_sincronizar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integracoes/vinculos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vincular um Não encontrado a uma Mídia do mesmo Tipo: vale para todos e já aplica o Item na Lista.
+         * @description Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida). 409 `conflito` com o `id_midia` atual em `detalhes` se o item já está vinculado a outra Mídia ou, na Steam, se o jogo já casou com outra Mídia do Catálogo (entra na próxima sincronização).
+         */
+        post: operations["post__api_integracoes_vinculos"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2052,11 +2106,23 @@ export interface components {
         };
         /**
          * NaoEncontrado
-         * @description Item da origem que não casou com o Catálogo: o Usuário adiciona à mão.
+         * @description Item da origem que não casou com o Catálogo: o Usuário vincula a uma Mídia (`POST /integracoes/vinculos`).
          */
         NaoEncontrado: {
             /** Link */
             link: string | null;
+            /**
+             * Origem Id
+             * @description Id na plataforma; null nos resultados antigos
+             * @default null
+             */
+            origem_id?: string | null;
+            /**
+             * Tipo
+             * @description Tipo do item; null nos resultados antigos
+             * @default null
+             */
+            tipo?: ("anime" | "manga" | "jogo") | null;
             /** Titulo */
             titulo: string;
         };
@@ -2181,6 +2247,21 @@ export interface components {
              */
             total_rewatches?: number | null;
         };
+        /**
+         * NovoVinculo
+         * @description Vincular um Não encontrado (`origem_id` dos Não encontrados da plataforma) a uma Mídia do mesmo Tipo.
+         */
+        NovoVinculo: {
+            /** Id Midia */
+            id_midia: string;
+            /** Origem Id */
+            origem_id: string;
+            /**
+             * Plataforma
+             * @enum {string}
+             */
+            plataforma: "anilist" | "mal" | "steam";
+        };
         /** Pagina[AvaliacaoDaMidia] */
         PaginaAvaliacaoDaMidia: {
             /** Itens */
@@ -2227,6 +2308,20 @@ export interface components {
         PaginaUsuarioModeracao: {
             /** Itens */
             itens: components["schemas"]["UsuarioModeracao"][];
+            /** Pagina */
+            pagina: number;
+            /** Por Pagina */
+            por_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+        };
+        /** Pagina[VinculoAdmin] */
+        PaginaVinculoAdmin: {
+            /** Itens */
+            itens: components["schemas"]["VinculoAdmin"][];
             /** Pagina */
             pagina: number;
             /** Por Pagina */
@@ -2616,6 +2711,63 @@ export interface components {
             /** Ultimo Acesso */
             ultimo_acesso: string | null;
         };
+        /**
+         * VinculoAdmin
+         * @description Um vínculo feito por um Usuário, para o admin conferir e desfazer.
+         */
+        VinculoAdmin: {
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Id Usuario
+             * @description Autor; null se a conta foi apagada
+             */
+            id_usuario: string | null;
+            /** Id Vinculo */
+            id_vinculo: string;
+            /**
+             * Link
+             * @description Página do item na plataforma
+             */
+            link: string | null;
+            /** Nome Completo */
+            nome_completo: string | null;
+            /** Origem Id */
+            origem_id: string;
+            /**
+             * Plataforma
+             * @enum {string}
+             */
+            plataforma: "anilist" | "mal" | "steam";
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
+        };
+        /**
+         * VinculoCriado
+         * @description O vínculo (vale para todos) e o que ele fez na Lista do Usuário.
+         */
+        VinculoCriado: {
+            /** Atualizados */
+            atualizados: number;
+            /** Id Midia */
+            id_midia: string;
+            /** Id Vinculo */
+            id_vinculo: string;
+            /** Novos */
+            novos: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -2625,6 +2777,133 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get__api_admin_vinculos: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                /** @description Acima de 50 vira 50 */
+                por_pagina?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaVinculoAdmin"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_admin_vinculos_{id_vinculo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_vinculo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     "post__api_auth_esqueci-senha": {
         parameters: {
             query?: never;
@@ -3669,6 +3948,84 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    post__api_integracoes_vinculos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoVinculo"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VinculoCriado"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

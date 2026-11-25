@@ -20,4 +20,7 @@ Peças reaproveitáveis:
 - `servico.previa_de_itens(id_usuario, nome, itens)`: prévia de itens já lidos (o XML do MAL).
 - `servico.aplicar_itens(id_usuario, itens)`: importa o que falta e grava sem prévia (Steam).
 - `catalogo.IMPORTADORES`: (fonte, Tipo) -> gravação da obra sob demanda (some `rawg`).
+- `vinculos.aplicar(plataforma, itens)`: o vínculo feito por um Usuário (Vincular), reserva para
+  o item que a fonte não casa; `servico.previa_de_itens`, o confirmar e a sincronização da Steam
+  já chamam.
 """

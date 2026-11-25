@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../../api/tipos';
@@ -189,5 +189,82 @@ describe('Administração: Avaliações', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(api.para('DELETE /avaliacoes/AVA-1')).toHaveLength(0);
+  });
+});
+
+type VinculoAdmin = Esquemas['VinculoAdmin'];
+
+function vinculo(id: string, extra: Partial<VinculoAdmin> = {}): VinculoAdmin {
+  return {
+    id_vinculo: id,
+    plataforma: 'steam',
+    origem_id: '123',
+    tipo: 'jogo',
+    link: 'https://store.steampowered.com/app/123',
+    id_midia: 'MID-9',
+    titulo_original: 'Hollow Knight',
+    titulo_portugues: null,
+    id_usuario: 'USR-ana',
+    nome_completo: 'Ana Souza',
+    criado_em: '2026-11-24T10:00:00+00:00',
+    ...extra,
+  };
+}
+
+const paginaDeVinculos = (itens: VinculoAdmin[]): Esquemas['PaginaVinculoAdmin'] => ({
+  itens,
+  pagina: 1,
+  por_pagina: 20,
+  total: itens.length,
+});
+
+describe('Administração: Vínculos', () => {
+  it('lista os vínculos com a plataforma, o item, a Mídia e o autor', async () => {
+    const { user } = await abrirAdmin({
+      'GET /moderacao/usuarios': { status: 200, corpo: paginaDeUsuarios([]) },
+      'GET /admin/vinculos': { status: 200, corpo: paginaDeVinculos([vinculo('VIN-1')]) },
+    });
+
+    await user.click(await screen.findByRole('tab', { name: 'Vínculos' }));
+
+    const linha = await screen.findByRole('listitem', { name: 'Hollow Knight' });
+    expect(linha).toHaveTextContent('Steam');
+    expect(linha).toHaveTextContent('Ana Souza');
+    expect(within(linha).getByRole('link', { name: 'Steam 123' })).toHaveAttribute('href', 'https://store.steampowered.com/app/123');
+    expect(within(linha).getByRole('link', { name: 'Hollow Knight' })).toHaveAttribute('href', '/midia/MID-9');
+  });
+
+  it('desfaz um vínculo depois de confirmar', async () => {
+    let vinculos = [vinculo('VIN-1'), vinculo('VIN-2', { titulo_original: 'Errado', plataforma: 'mal', tipo: 'anime' })];
+    const { user, api } = await abrirAdmin({
+      'GET /moderacao/usuarios': { status: 200, corpo: paginaDeUsuarios([]) },
+      'GET /admin/vinculos': () => ({ status: 200, corpo: paginaDeVinculos(vinculos) }),
+      'DELETE /admin/vinculos/VIN-2': () => {
+        vinculos = vinculos.filter((v) => v.id_vinculo !== 'VIN-2');
+        return { status: 200, corpo: { mensagem: 'Vínculo desfeito' } };
+      },
+    });
+
+    await user.click(await screen.findByRole('tab', { name: 'Vínculos' }));
+    const linha = await screen.findByRole('listitem', { name: 'Errado' });
+    await user.click(within(linha).getByRole('button', { name: 'Desfazer' }));
+    const dialogo = screen.getByRole('dialog', { name: 'Desfazer vínculo' });
+    expect(dialogo).toHaveTextContent('Os Itens já gravados ficam');
+    await user.click(within(dialogo).getByRole('button', { name: 'Desfazer' }));
+
+    await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Errado' })).not.toBeInTheDocument());
+    expect(screen.getByRole('listitem', { name: 'Hollow Knight' })).toBeInTheDocument();
+    expect(api.para('DELETE /admin/vinculos/VIN-2')).toHaveLength(1);
+  });
+
+  it('sem vínculos, avisa', async () => {
+    const { user } = await abrirAdmin({
+      'GET /moderacao/usuarios': { status: 200, corpo: paginaDeUsuarios([]) },
+      'GET /admin/vinculos': { status: 200, corpo: paginaDeVinculos([]) },
+    });
+
+    await user.click(await screen.findByRole('tab', { name: 'Vínculos' }));
+
+    expect(await screen.findByText('Nenhum vínculo feito por Usuários.')).toBeInTheDocument();
   });
 });

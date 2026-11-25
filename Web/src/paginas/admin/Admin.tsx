@@ -1,19 +1,25 @@
-// Administração (só admin, ADR 0012): moderação de Usuários (ativar/desativar, paginado) e
-// das Avaliações recentes (excluir). Ninguém ativa ou desativa a si mesmo nem outro admin.
+// Administração (só admin, ADR 0012): moderação de Usuários (ativar/desativar, paginado), das
+// Avaliações recentes (excluir) e dos vínculos de Não encontrados (desfazer). Ninguém ativa ou
+// desativa a si mesmo nem outro admin.
 import { useState } from 'react';
 
 import { AvaliacoesAdmin } from './AvaliacoesAdmin';
 import { UsuariosAdmin } from './UsuariosAdmin';
+import { VinculosAdmin } from './VinculosAdmin';
 
-type Aba = 'usuarios' | 'avaliacoes';
+type Aba = 'usuarios' | 'avaliacoes' | 'vinculos';
 
 const ABAS: { valor: Aba; nome: string }[] = [
   { valor: 'usuarios', nome: 'Usuários' },
   { valor: 'avaliacoes', nome: 'Avaliações' },
+  { valor: 'vinculos', nome: 'Vínculos' },
 ];
+
+const PAINEIS = { usuarios: UsuariosAdmin, avaliacoes: AvaliacoesAdmin, vinculos: VinculosAdmin } satisfies Record<Aba, () => unknown>;
 
 export function Admin() {
   const [aba, setAba] = useState<Aba>('usuarios');
+  const Painel = PAINEIS[aba];
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
       <h1 className="text-[28px] font-bold text-texto-forte">Administração</h1>
@@ -36,7 +42,7 @@ export function Admin() {
         ))}
       </div>
       <section role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`} className="flex flex-col gap-4">
-        {aba === 'usuarios' ? <UsuariosAdmin /> : <AvaliacoesAdmin />}
+        <Painel />
       </section>
     </main>
   );

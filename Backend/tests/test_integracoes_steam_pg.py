@@ -14,6 +14,7 @@ import banco
 from importacao import utils
 from importacao.importar_jogos import processar_e_inserir_jogo
 from integracoes import job_steam, repositorio, servico, sincronizacao_steam
+from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta
 from integracoes.rawg import Rawg
 from integracoes.steam import Steam
@@ -24,6 +25,7 @@ from .fontes_falsas import (
     STEAMID,
     Resposta,
     SessaoGet,
+    appdetails,
     detalhe_rawg,
     jogo_steam,
     resultado_rawg,
@@ -45,8 +47,9 @@ def limpar(pg):  # noqa: F811
     yield usados
     banco.executar('DELETE FROM steam_appids WHERE appid = ANY(%s)', (usados['appids'],))
     banco.executar(
-        'DELETE FROM midias WHERE id_midia IN (SELECT id_midia FROM jogos WHERE rawg_slug = ANY(%s))',
-        (usados['slugs'],),
+        'DELETE FROM midias WHERE id_midia IN '
+        '(SELECT id_midia FROM jogos WHERE rawg_slug = ANY(%s) OR steam_appid = ANY(%s))',
+        (usados['slugs'], usados['appids']),
     )
 
 
@@ -71,16 +74,27 @@ def usuario(pg, make_token):  # noqa: F811
 
 @pytest.fixture
 def fontes(monkeypatch):
-    """`fontes(jogos_steam, rotas_rawg)` instala a Steam e o RAWG falsos; devolve a sessão do RAWG."""
-    def instalar(jogos, rawg=None, **steam):
+    """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja, cabecas=heads_do_cdn)` instala a Steam, o RAWG e a loja da
+    Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`). A loja padrão não tem
+    nenhuma appid (`success: false`)."""
+    def instalar(jogos, rawg=None, loja=None, cabecas=None, **steam):
         monkeypatch.setitem(
             servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
         )
         sessao_rawg = SessaoGet(rawg or {})
+        sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}},
+                                     cabecas)
         monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))
+        monkeypatch.setattr(sincronizacao_steam, 'LojaSteam', lambda **kw: LojaSteam(sessao=sessao_rawg.loja, **kw))
         return sessao_rawg
 
     return instalar
+
+
+def loja_com(*apps):
+    """Rotas da loja da Steam com cada `appdetails(...)`; as outras appids voltam `success: false`."""
+    respostas = {k: v for app in apps for k, v in app.items()}
+    return {r'/api/appdetails': lambda p: {str(p['appids']): respostas.get(str(p['appids']), {'success': False})}}
 
 
 def _conectar(id_usuario):
@@ -123,6 +137,22 @@ def _item(id_usuario, slug):
 
 def _casamento(appid):
     return banco.consultar_um('SELECT id_midia, nome FROM steam_appids WHERE appid = %s', (appid,))
+
+
+def _da_loja(appid):
+    return banco.consultar_um(
+        'SELECT m.id_midia, m.titulo_original, m.poster_url, m.banner_url, m.nota_fonte, j.rawg_slug, '
+        'j.steam_appid, j.desenvolvedor '
+        'FROM jogos j JOIN midias m USING (id_midia) WHERE j.steam_appid = %s',
+        (appid,),
+    )
+
+
+def _item_da_midia(id_usuario, id_midia):
+    return banco.consultar_um(
+        'SELECT status_consumo, progresso_atual FROM lista_usuarios WHERE id_usuario = %s AND id_midia = %s',
+        (id_usuario, id_midia),
+    )
 
 
 def _sincronizar(client, headers):
@@ -240,7 +270,9 @@ def test_sem_casamento_no_rawg_grava_negativo_e_nao_busca_de_novo_ate_30_dias(cl
     banco.executar("UPDATE steam_appids SET tentado_em = now() - interval '31 days' WHERE appid = %s", (appid,))
     _sincronizar(client, headers)
 
-    assert primeira['nao_encontrados'] == [{'titulo': nome, 'link': f'https://store.steampowered.com/app/{appid}'}]
+    assert primeira['nao_encontrados'] == [{
+        'titulo': nome, 'link': f'https://store.steampowered.com/app/{appid}', 'origem_id': str(appid), 'tipo': 'jogo',
+    }]
     assert segunda['total_nao_encontrados'] == 1
     assert _casamento(appid) == {'id_midia': None, 'nome': nome}
     assert buscas == 1 and buscas_na_segunda == 0
@@ -413,3 +445,205 @@ def test_job_sem_chave_da_steam_pula_sem_erro(monkeypatch, tmp_path):
         assert job_steam.main() == 0
     finally:
         utils.remover_log()
+
+
+
+# ============================================
+# Fallback pela loja da Steam (spec nao-encontrados)
+# ============================================
+
+def test_jogo_fora_do_rawg_entra_pela_loja_da_steam_e_depois_so_atualiza(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('SoNaSteam')
+    rawg = fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}},
+                  loja=loja_com(appdetails(appid, nome, desenvolvedoras=['Estúdio'])))
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert (corpo['novos'], corpo['total_nao_encontrados'], corpo['pendentes']) == (1, 0, 0)
+    midia = _da_loja(appid)
+    assert midia['titulo_original'] == nome and midia['desenvolvedor'] == 'Estúdio'
+    assert midia['poster_url'].endswith(f'/apps/{appid}/header.jpg')
+    assert (midia['rawg_slug'], midia['nota_fonte']) == (None, None)
+    assert rawg.loja.heads == [f'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{appid}/library_600x900.jpg']
+    assert _casamento(appid)['id_midia'] == midia['id_midia']
+    assert _item_da_midia(id_usuario, midia['id_midia']) == {'status_consumo': 'pausado', 'progresso_atual': 2}
+
+    chamadas = (len(rawg.chamadas), len(rawg.loja.chamadas))
+    fontes([jogo_steam(appid, nome, 600, HORA)], {}, loja={})
+    segunda = _sincronizar(client, headers)
+
+    assert chamadas == (1, 1)
+    assert (segunda['novos'], segunda['atualizados']) == (0, 1)
+    assert _item_da_midia(id_usuario, midia['id_midia'])['progresso_atual'] == 10
+
+
+def test_jogo_da_loja_com_capa_vertical_confirmada_usa_ela_no_poster(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Vertical')
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}},
+           loja=loja_com(appdetails(appid, nome)), cabecas={rf'/{appid}/library_600x900': 200})
+    _conectar(id_usuario)
+
+    _sincronizar(client, headers)
+
+    midia = _da_loja(appid)
+    assert midia['poster_url'].endswith(f'/apps/{appid}/library_600x900.jpg')
+    assert midia['banner_url'].endswith(f'/apps/{appid}/header.jpg')
+
+
+def test_jogo_da_loja_com_nome_estranho_fica_com_o_titulo_da_steam_e_a_appid_pedida(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Estranho')
+    resposta = appdetails(appid, nome)
+    resposta[str(appid)]['data'].update({'name': ['não é texto'], 'steam_appid': appid + 99,
+                                         'header_image': 'https://evil.example/x.jpg'})
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}}, loja=loja_com(resposta))
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert corpo['novos'] == 1
+    midia = _da_loja(appid)
+    assert midia['titulo_original'] == nome and midia['poster_url'] is None
+    assert banco.consultar_um('SELECT 1 AS x FROM jogos WHERE steam_appid = %s', (appid + 99,)) is None
+
+
+def test_outro_usuario_com_o_mesmo_jogo_da_loja_casa_sem_chamar_nada(client, usuario, fontes, jogo, pg, make_token):  # noqa: F811
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Compartilhado')
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}}, loja=loja_com(appdetails(appid, nome)))
+    _conectar(id_usuario)
+    _sincronizar(client, headers)
+    outro = _usuario(pg)
+    _conectar(outro)
+    rawg = fontes([jogo_steam(appid, nome, 60, HORA)], {}, loja={})
+
+    corpo = _sincronizar(client, {'Authorization': f'Bearer {make_token(outro)}'})
+
+    assert corpo['novos'] == 1
+    assert rawg.chamadas == [] and rawg.loja.chamadas == []
+    assert banco.consultar_um('SELECT count(*) AS n FROM jogos WHERE steam_appid = %s', (appid,))['n'] == 1
+
+
+@pytest.mark.parametrize('tipo', ['application', 'dlc', 'music'])
+def test_software_dlc_e_trilha_somem_dos_nao_encontrados_e_nao_sao_buscados_de_novo(
+    client, usuario, fontes, jogo, tipo,
+):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('NaoJogo')
+    rawg = fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}},
+                  loja=loja_com(appdetails(appid, nome, tipo=tipo)))
+    _conectar(id_usuario)
+
+    primeira = _sincronizar(client, headers)
+    banco.executar("UPDATE steam_appids SET tentado_em = now() - interval '31 days' WHERE appid = %s", (appid,))
+    chamadas = (len(rawg.chamadas), len(rawg.loja.chamadas))
+    segunda = _sincronizar(client, headers)
+
+    for corpo in (primeira, segunda):
+        assert (corpo['novos'], corpo['atualizados'], corpo['pendentes']) == (0, 0, 0)
+        assert (corpo['nao_encontrados'], corpo['total_nao_encontrados']) == ([], 0)
+    assert banco.consultar_um('SELECT id_midia, ignorado FROM steam_appids WHERE appid = %s', (appid,)) == {
+        'id_midia': None, 'ignorado': True,
+    }
+    assert _da_loja(appid) is None
+    assert (len(rawg.chamadas), len(rawg.loja.chamadas)) == chamadas == (1, 1)
+    assert repositorio.conta(id_usuario, 'steam')['ultimo_resultado']['total_nao_encontrados'] == 0
+
+
+def test_loja_sem_a_appid_fica_nao_encontrado_ate_30_dias(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Retirado')
+    rawg = fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}})
+    _conectar(id_usuario)
+
+    primeira = _sincronizar(client, headers)
+    segunda = _sincronizar(client, headers)
+
+    assert primeira['total_nao_encontrados'] == segunda['total_nao_encontrados'] == 1
+    assert _casamento(appid) == {'id_midia': None, 'nome': nome}
+    assert len(rawg.loja.chamadas) == 1
+
+
+@pytest.mark.parametrize('falha', [Resposta(429, {}), Resposta(503, {}), ConnectionError('caiu')])
+def test_loja_fora_do_ar_deixa_pendente_sem_gravar_negativo(client, usuario, fontes, jogo, falha):
+    id_usuario, headers = usuario
+    a, b = jogo('A'), jogo('B')
+    fontes([jogo_steam(x[0], x[2], 120, HORA) for x in (a, b)], {r'/games$': {'results': []}},
+           loja={r'appdetails': falha})
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert (corpo['pendentes'], corpo['novos'], corpo['total_nao_encontrados']) == (2, 0, 0)
+    assert _casamento(a[0]) is None and _casamento(b[0]) is None
+
+
+def test_orcamento_tambem_e_conferido_antes_da_loja(usuario, fontes, jogo):
+    id_usuario, _ = usuario
+    appid, _, nome = jogo('Lento')
+    rawg = fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}},
+                  loja=loja_com(appdetails(appid, nome)))
+    _conectar(id_usuario)
+    tempo = iter(range(0, 1000, 10))  # cada leitura do relógio avança 10 s; o início é 0
+
+    # Busca no RAWG em 10 (< 15); a loja em 20 (≥ 15) não sai.
+    corpo = sincronizacao_steam.sincronizar(id_usuario, orcamento=15, relogio=lambda: next(tempo))
+
+    assert (corpo['pendentes'], corpo['novos'], corpo['total_nao_encontrados']) == (1, 0, 0)
+    assert len(rawg.chamadas) == 1 and rawg.loja.chamadas == []
+    assert _casamento(appid) is None
+
+
+def test_jogo_que_ja_tem_a_appid_no_catalogo_casa_sem_rawg_nem_loja(client, usuario, fontes, jogo):
+    """A Importação do RAWG gravou a appid (lojas): a Steam casa direto pelo Catálogo."""
+    id_usuario, headers = usuario
+    appid, slug, nome = jogo('ComAppid')
+    detalhe = {**detalhe_rawg(slug, nome), 'stores': [{'url': f'https://store.steampowered.com/app/{appid}/'}]}
+    id_midia = processar_e_inserir_jogo(detalhe, detalhe)['id_midia']
+    rawg = fontes([jogo_steam(appid, nome, 120, HORA)], {}, loja={})
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert corpo['novos'] == 1
+    assert rawg.chamadas == [] and rawg.loja.chamadas == []
+    assert _casamento(appid)['id_midia'] == id_midia
+
+
+def test_importacao_do_rawg_com_a_appid_atualiza_o_jogo_da_loja_em_vez_de_criar_outro(
+    client, usuario, fontes, jogo,
+):
+    id_usuario, headers = usuario
+    appid, slug, nome = jogo('DepoisNoRawg')
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}}, loja=loja_com(appdetails(appid, nome)))
+    _conectar(id_usuario)
+    _sincronizar(client, headers)
+    da_loja = _da_loja(appid)['id_midia']
+
+    basico = {**detalhe_rawg(slug, f'{nome} (RAWG)'), 'rating': 4.5}
+    detalhe = {**basico, 'stores': [{'id': 1, 'url': f'https://store.steampowered.com/app/{appid}/x/'}]}
+    do_rawg = processar_e_inserir_jogo(basico, detalhe)
+
+    assert do_rawg == {'id_midia': da_loja, 'ja_existia': True}
+    midia = _da_loja(appid)
+    assert (midia['rawg_slug'], midia['titulo_original']) == (slug, f'{nome} (RAWG)')
+    assert midia['nota_fonte'] is not None
+    assert banco.consultar_um('SELECT count(*) AS n FROM jogos WHERE rawg_slug = %s', (slug,))['n'] == 1
+    # A Lista continua no mesmo Item, e a próxima sincronização segue casando.
+    fontes([jogo_steam(appid, nome, 600, HORA)], {}, loja={})
+    assert _sincronizar(client, headers)['atualizados'] == 1
+
+
+def test_casamento_novo_pelo_rawg_grava_a_appid_na_midia(client, usuario, fontes, jogo):
+    """O RAWG casou pelas lojas: a Mídia importada guarda a appid (a loja não cria outra depois)."""
+    id_usuario, headers = usuario
+    j = jogo('PeloRawg')
+    fontes([jogo_steam(j[0], j[2], 120, HORA)], rawg_que_casa(j))
+    _conectar(id_usuario)
+
+    _sincronizar(client, headers)
+
+    assert _da_loja(j[0])['rawg_slug'] == j[1]

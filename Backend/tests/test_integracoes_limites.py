@@ -204,3 +204,16 @@ def test_slug_do_rawg_vai_escapado_no_path():
 
     url = sessao.caminhos()[1]
     assert url.endswith('/games/..%2F..%2Fusers%3Fx%3D1%23/stores')
+
+
+@pytest.mark.parametrize(('texto', 'valido'), [
+    ('0190a3b2-0000-7000-8000-0000000000aa', True),
+    ('nao-e-uuid', False),
+    ('', False),
+    (None, False),
+    (42, False),
+])
+def test_uuid_valido_num_lugar_so(texto, valido):
+    from integracoes.plataforma import uuid_valido
+
+    assert uuid_valido(texto) is valido

@@ -1,9 +1,13 @@
 """
-Importador de jogos via RAWG.
+Importador de jogos via RAWG (e o jogo da loja da Steam, que entra pela mesma gravação).
 """
 from __future__ import annotations
 
+import html
+import re
+from datetime import date
 from threading import local
+from urllib.parse import urlsplit
 
 from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
@@ -47,6 +51,33 @@ GENERO_MAP = {
 }
 
 RAWG_THREAD_LOCAL = local()
+
+#: `store.steampowered.com/app/<appid>` nas lojas do RAWG.
+_LOJA_STEAM = re.compile(r'store\.steampowered\.com/app/(\d+)', re.IGNORECASE)
+
+#: Gêneros da loja da Steam pelo id (o nome muda com o idioma), com o nome que o RAWG dá, para a
+#: Mídia da loja ganhar os mesmos gêneros da Importação. Fora daqui (Grátis para Jogar, Acesso
+#: Antecipado, os de software) não é gênero de jogo.
+GENEROS_STEAM = {
+    '1': 'Action', '2': 'Strategy', '3': 'RPG', '4': 'Casual', '9': 'Racing', '18': 'Sports',
+    '23': 'Indie', '25': 'Adventure', '28': 'Simulation', '29': 'Massively Multiplayer',
+}
+#: Plataformas da loja (`platforms`), com o nome que a Importação do RAWG grava.
+PLATAFORMAS_STEAM = {'windows': 'PC', 'mac': 'macOS', 'linux': 'Linux'}
+#: Categorias da loja: Single-player e as de multijogador (online, local, cooperativo, PvP, MMO).
+CATEGORIA_SINGLE = 2
+CATEGORIAS_MULTI = frozenset({1, 9, 20, 24, 27, 36, 37, 38, 39, 47, 48, 49})
+#: Meses de `release_date.date` (`l=portuguese`; o inglês por garantia).
+MESES = {nome: numero for numero, nomes in enumerate((
+    ('jan',), ('fev', 'feb'), ('mar',), ('abr', 'apr'), ('mai', 'may'), ('jun',), ('jul',),
+    ('ago', 'aug'), ('set', 'sep'), ('out', 'oct'), ('nov',), ('dez', 'dec'),
+), start=1) for nome in nomes}
+_DIA_MES_ANO = re.compile(r'^(\d{1,2})\s+(?:de\s+)?([a-z]+)\.?,?\s+(?:de\s+)?(\d{4})$')
+_MES_DIA_ANO = re.compile(r'^([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$')
+#: Hosts das imagens da loja (CDNs da Steam); capa fora deles fica nula.
+HOSTS_DE_IMAGEM_STEAM = ('.steamstatic.com', '.akamaihd.net')
+#: Teto do nome, da desenvolvedora e da publicadora vindos da loja.
+TETO_TEXTO_LOJA = 300
 
 
 def normalizar_plataformas(plataformas_rawg: list) -> list[str]:
@@ -106,12 +137,124 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict):
         'modo_jogo': modo_jogo,
         'classificacao': f'ESRB: {esrb}' if esrb else None,
         'rawg_slug': basico.get('slug'),
+        'steam_appid': appid_da_steam(detalhe, basico),
         'trailer_url': None,
     }
     generos = [GENERO_MAP.get(genero['name'], genero['name']) for genero in basico.get('genres', [])]
 
     result = salvar_jogo(dados, generos)
     logger.info("Jogo importado: %s (%s)", dados['titulo_original'], result['id_midia'])
+    return result
+
+
+def appid_da_steam(*jogos: dict) -> int | None:
+    """A appid de `store.steampowered.com/app/<appid>` nas lojas (`stores[].url`) do jogo do RAWG.
+
+    O jogo com essa appid que já veio da loja da Steam é atualizado em vez de duplicado.
+    """
+    for jogo in jogos:
+        for loja in (jogo or {}).get('stores') or []:
+            achada = _LOJA_STEAM.search(str((loja or {}).get('url') or ''))
+            if achada:
+                return int(achada.group(1))
+    return None
+
+
+def _data_da_loja(texto: str | None) -> date | None:
+    """`release_date.date` da loja ('21 ago. 2012', '21 Aug, 2012'); só a data completa, senão None."""
+    texto = (texto or '').strip().lower()
+    achada = _DIA_MES_ANO.match(texto)
+    if achada:
+        dia, mes, ano = achada.groups()
+    else:
+        achada = _MES_DIA_ANO.match(texto)
+        if not achada:
+            return None
+        mes, dia, ano = achada.groups()
+    if mes[:3] not in MESES:
+        return None
+    try:
+        return date(int(ano), MESES[mes[:3]], int(dia))
+    except ValueError:
+        return None
+
+
+def _texto_da_loja(texto: str | None) -> str | None:
+    """`short_description` sem as tags e as entidades HTML que a loja às vezes manda."""
+    if not texto or not isinstance(texto, str):
+        return None
+    return truncar(html.unescape(re.sub(r'<[^>]+>', '', texto)).strip(), 1000) or None
+
+
+def _curto_da_loja(valor) -> str | None:
+    """Nome, desenvolvedora ou publicadora da loja: só texto, sem espaços nas pontas, até o teto."""
+    if not isinstance(valor, str):
+        return None
+    return valor.strip()[:TETO_TEXTO_LOJA] or None
+
+
+def _primeiro(lista) -> str | None:
+    return _curto_da_loja(lista[0]) if isinstance(lista, list) and lista else None
+
+
+def imagem_da_steam(url) -> str | None:
+    """A URL, se for `https://` de um host de imagem da Steam; senão None (a loja é dado de fora)."""
+    if not isinstance(url, str):
+        return None
+    try:
+        partes = urlsplit(url.strip())
+    except ValueError:
+        return None
+    host = (partes.hostname or '').lower()
+    if partes.scheme != 'https' or partes.username or partes.password or not host.endswith(HOSTS_DE_IMAGEM_STEAM):
+        return None
+    return url.strip()
+
+
+def dados_do_jogo_steam(loja: dict) -> tuple[dict, list[str]]:
+    """O `data` do `appdetails` no formato de `salvar_jogo`: (dados, gêneros).
+
+    Sem Nota da fonte (a loja não tem) e sem `rawg_slug`: a Mídia é achada pelo `steam_appid`,
+    e a Importação do RAWG que trouxer a mesma appid a atualiza. A capa vertical
+    (`capa_vertical`, que a sincronização só põe depois de confirmar que existe) vira o poster e
+    a `header_image` o banner; sem ela, a `header_image` é as duas. Imagens só dos hosts da Steam.
+    """
+    lancamento = loja.get('release_date') or {}
+    categorias = {c.get('id') for c in loja.get('categories') or [] if isinstance(c, dict)}
+    single, multi = CATEGORIA_SINGLE in categorias, bool(categorias & CATEGORIAS_MULTI)
+    plataformas = loja.get('platforms') or {}
+    nome = _curto_da_loja(loja.get('name'))
+    horizontal = imagem_da_steam(loja.get('header_image'))
+    dados = {
+        'titulo_original': nome,
+        'titulo_portugues': nome,
+        'sinopse': _texto_da_loja(loja.get('short_description')),
+        'data_lancamento': _data_da_loja(lancamento.get('date')),
+        'nota_fonte': None,
+        'poster_url': imagem_da_steam(loja.get('capa_vertical')) or horizontal,
+        'banner_url': horizontal,
+        'desenvolvedor': _primeiro(loja.get('developers')),
+        'publicadora': _primeiro(loja.get('publishers')),
+        'plataformas': [rotulo for chave, rotulo in PLATAFORMAS_STEAM.items() if plataformas.get(chave)],
+        'status_jogo': 'em_desenvolvimento' if lancamento.get('coming_soon') else 'lancado',
+        'modo_jogo': 'ambos' if single and multi else 'multi' if multi else 'single',
+        'classificacao': None,
+        'rawg_slug': None,
+        'steam_appid': int(loja['steam_appid']),
+        'trailer_url': None,
+    }
+    generos = [
+        GENERO_MAP.get(GENEROS_STEAM[str(g.get('id'))], GENEROS_STEAM[str(g.get('id'))])
+        for g in loja.get('genres') or [] if isinstance(g, dict) and str(g.get('id')) in GENEROS_STEAM
+    ]
+    return dados, generos
+
+
+def processar_e_inserir_jogo_steam(loja: dict) -> dict:
+    """Grava o jogo da loja da Steam pela mesma rotina do RAWG (`salvar_jogo`, upsert)."""
+    dados, generos = dados_do_jogo_steam(loja)
+    result = salvar_jogo(dados, generos)
+    logger.info('Jogo importado da loja da Steam: %s (%s)', dados['titulo_original'], result['id_midia'])
     return result
 
 

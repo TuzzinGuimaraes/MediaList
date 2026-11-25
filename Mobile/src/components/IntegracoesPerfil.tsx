@@ -1,5 +1,5 @@
 // Integrações no Perfil (ADR 0015), espelho do web sem o XML do MAL: conectar a conta pública,
-// importar com prévia e confirmação, ver os Não encontrados, desconectar; a Steam sincroniza
+// importar com prévia e confirmação, ver e vincular os Não encontrados, desconectar; a Steam sincroniza
 // direto. Uma linha por plataforma que a API registra (GET /integracoes).
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
@@ -7,12 +7,15 @@ import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 
 import { formatarData } from '@dominio/datas';
 import {
+  chaveDoNaoEncontrado,
+  type NomePlataforma,
   naoEncontradosForaDaAmostra,
   PEDIDO_DE_CONTA,
   resumoDaImportacao,
   SINCRONIZA_SEM_PREVIA,
   temOQueConfirmar,
   textoDePendentes,
+  vinculavel,
 } from '@dominio/integracoes';
 import { mensagemDeErro } from '../api/erros';
 import {
@@ -23,19 +26,22 @@ import {
   useIntegracoes,
   useSincronizarSteam,
 } from '../api/integracoes';
-import type { Integracao, PreviaImportacao, ResultadoImportacao } from '../api/tipos';
+import type { Integracao, NaoEncontrado, PreviaImportacao, ResultadoImportacao } from '../api/tipos';
 import { vibrarConfirmacao } from '../tema/haptics';
 import { useCores } from '../tema/TemaContext';
 import { Botao } from './Botao';
 import { Campo } from './Campo';
 import { FalhaParcial } from './EstadoTela';
+import { VincularNaoEncontrado } from './VincularNaoEncontrado';
 
 const textos = {
   intro: 'Traga sua lista de outras plataformas pelo perfil público, sem senha.',
   indisponivel: 'Indisponível no momento.',
   nadaApagado:
     'Nada é apagado: o Progresso fica com o maior valor e suas notas, comentários e Avaliações ficam como estão.',
-  naoEncontrados: 'Não encontrados: adicione à mão',
+  naoEncontrados: 'Não encontrados: vincule ao Catálogo',
+  vincular: 'Vincular',
+  vinculado: 'Vinculado',
 };
 
 function Alerta({ erro }: { erro: unknown }) {
@@ -55,10 +61,15 @@ function Aviso({ children }: { children: string }) {
   );
 }
 
-/** Fechado por padrão (como o <details> do web); abre sem animação. Os links vão para o navegador. */
-function NaoEncontrados({ resultado }: { resultado: ResultadoImportacao }) {
+/**
+ * Fechado por padrão (como o <details> do web); abre sem animação. Os links vão para o navegador.
+ * Cada item tem Vincular (a busca do Catálogo no Tipo dele); o vinculado fica marcado aqui.
+ */
+function NaoEncontrados({ resultado, plataforma }: { resultado: ResultadoImportacao; plataforma: NomePlataforma }) {
   const cores = useCores();
   const [aberto, setAberto] = useState(false);
+  const [vinculando, setVinculando] = useState<NaoEncontrado | null>(null);
+  const [vinculados, setVinculados] = useState<ReadonlySet<string>>(new Set());
   if (!resultado.total_nao_encontrados) return null;
   const fora = naoEncontradosForaDaAmostra(resultado);
   return (
@@ -75,36 +86,60 @@ function NaoEncontrados({ resultado }: { resultado: ResultadoImportacao }) {
       </Pressable>
       {aberto ? (
         <View accessibilityLabel="Não encontrados" className="gap-1 pl-5">
-          {resultado.nao_encontrados.map((n, i) =>
-            n.link ? (
-              <Pressable
-                key={`${n.titulo}-${i}`}
-                accessibilityRole="link"
-                accessibilityLabel={n.titulo}
-                onPress={() => void Linking.openURL(n.link!).catch(() => {})}
-                className="min-h-[36px] justify-center"
-              >
-                <Text className="text-corpo text-marca-texto underline">{n.titulo}</Text>
-              </Pressable>
-            ) : (
-              <Text key={`${n.titulo}-${i}`} className="text-corpo text-texto">
-                {n.titulo}
-              </Text>
-            ),
-          )}
+          {resultado.nao_encontrados.map((n, i) => (
+            <View key={`${n.titulo}-${i}`} className="flex-row flex-wrap items-center gap-x-3">
+              {n.link ? (
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={n.titulo}
+                  onPress={() => void Linking.openURL(n.link!).catch(() => {})}
+                  className="min-h-[36px] justify-center"
+                >
+                  <Text className="text-corpo text-marca-texto underline">{n.titulo}</Text>
+                </Pressable>
+              ) : (
+                <Text className="text-corpo text-texto">{n.titulo}</Text>
+              )}
+              {!vinculavel(n) ? null : vinculados.has(chaveDoNaoEncontrado(n)) ? (
+                <Text className="text-legenda font-semibold text-texto-suave">{textos.vinculado}</Text>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${textos.vincular} ${n.titulo}`}
+                  onPress={() => setVinculando(n)}
+                  className="min-h-[44px] justify-center"
+                >
+                  <Text className="text-corpo font-semibold text-marca-texto">{textos.vincular}</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
           {fora ? <Text className="text-corpo text-texto-suave">e mais {fora}</Text> : null}
         </View>
+      ) : null}
+      {vinculando && vinculavel(vinculando) ? (
+        <VincularNaoEncontrado
+          plataforma={plataforma}
+          item={vinculando}
+          aoFechar={() => setVinculando(null)}
+          aoVincular={() => {
+            setVinculados((v) => new Set(v).add(chaveDoNaoEncontrado(vinculando)));
+            setVinculando(null);
+          }}
+        />
       ) : null}
     </View>
   );
 }
 
 function CaixaDaPrevia({
+  plataforma,
   previa,
   confirmando,
   confirmar,
   fechar,
 }: {
+  plataforma: NomePlataforma;
   previa: PreviaImportacao;
   confirmando: boolean;
   confirmar: () => void;
@@ -115,7 +150,7 @@ function CaixaDaPrevia({
     <View accessibilityLabel="Prévia da importação" className="gap-3 rounded-md bg-superficie-alta p-4">
       <Text className="text-corpo font-bold text-texto-forte">{resumoDaImportacao(previa)}</Text>
       <Text className="text-legenda text-texto-suave">{textos.nadaApagado}</Text>
-      <NaoEncontrados resultado={previa} />
+      <NaoEncontrados resultado={previa} plataforma={plataforma} />
       <View className="gap-2">
         {podeConfirmar ? <Botao titulo="Confirmar" carregando={confirmando} onPress={confirmar} /> : null}
         {confirmando ? null : (
@@ -143,7 +178,7 @@ function SincronizarSteam() {
           {pendentes ? (
             <Text className="text-corpo text-texto-suave">{`${pendentes}; o resto entra na sincronização diária.`}</Text>
           ) : null}
-          <NaoEncontrados resultado={sincronizar.data} />
+          <NaoEncontrados resultado={sincronizar.data} plataforma="steam" />
         </View>
       ) : null}
       {sincronizar.isError ? <Alerta erro={sincronizar.error} /> : null}
@@ -215,6 +250,7 @@ function Conectada({ integracao }: { integracao: Integracao }) {
 
       {previa ? (
         <CaixaDaPrevia
+          plataforma={integracao.plataforma}
           previa={previa}
           confirmando={confirmar.isPending}
           confirmar={() => confirmarPrevia(previa)}
@@ -235,10 +271,10 @@ function Conectada({ integracao }: { integracao: Integracao }) {
       {importado ? (
         <View className="gap-2">
           <Aviso>{`Importado: ${resumoDaImportacao(importado)}`}</Aviso>
-          <NaoEncontrados resultado={importado} />
+          <NaoEncontrados resultado={importado} plataforma={integracao.plataforma} />
         </View>
       ) : !previa && integracao.ultimo_resultado ? (
-        <NaoEncontrados resultado={integracao.ultimo_resultado} />
+        <NaoEncontrados resultado={integracao.ultimo_resultado} plataforma={integracao.plataforma} />
       ) : null}
       {erro ? <Alerta erro={erro} /> : null}
     </View>

@@ -3,8 +3,9 @@
 Localizar só lê (a prévia não grava nada). Importar passa pela mesma rotina da Importação
 (`processar_e_inserir_*`, upsert pela chave da fonte), então a Mídia entra igual à do lote.
 
-Para outra fonte (ex. `rawg` no ticket da Steam), some uma entrada em `IMPORTADORES` com a
-função `dados -> {'id_midia', ...}`; `localizar` já procura por `rawg_slug`.
+Cada (Tipo, fonte) tem a coluna que acha a Mídia (`_COLUNAS`); a fonte `midia` acha pelo
+próprio `id_midia`, em qualquer Tipo (casamento gravado, vínculo). Para outra fonte, some a
+coluna em `_COLUNAS` e a função `dados -> {'id_midia', ...}` em `IMPORTADORES`.
 """
 from __future__ import annotations
 
@@ -13,9 +14,9 @@ from typing import Any, Callable, Iterable
 
 from banco import consultar
 from importacao.importar_animes import processar_e_inserir_anime
-from importacao.importar_jogos import processar_e_inserir_jogo
+from importacao.importar_jogos import processar_e_inserir_jogo, processar_e_inserir_jogo_steam
 from importacao.importar_mangas import processar_e_inserir_manga
-from integracoes.plataforma import ItemDeOrigem
+from integracoes.plataforma import ItemDeOrigem, uuid_valido
 from tipos_midia import TIPOS
 
 logger = logging.getLogger(__name__)
@@ -26,42 +27,59 @@ IMPORTADORES: dict[tuple[str, str], Callable[[dict], dict]] = {
     ('anilist', 'manga'): processar_e_inserir_manga,
     # O detalhe do RAWG (`GET /games/<slug>`) traz o básico da listagem e o resto.
     ('rawg', 'jogo'): lambda detalhe: processar_e_inserir_jogo(detalhe, detalhe),
+    # O `data` do `appdetails` da loja da Steam (jogo que o RAWG não reconhece).
+    ('steam', 'jogo'): processar_e_inserir_jogo_steam,
 }
 
-#: Fonte de cada Tipo: a chave da fonte na tabela filha (`tipos_midia`).
-_FONTE_DO_TIPO = {'anime': 'anilist', 'manga': 'anilist', 'jogo': 'rawg'}
+#: (Tipo, fonte) -> coluna da tabela filha que acha a Mídia (UNIQUE), e se ela é inteira.
+_COLUNAS: dict[tuple[str, str], tuple[str, bool]] = {
+    ('anime', 'anilist'): ('anilist_id', True),
+    ('manga', 'anilist'): ('anilist_id', True),
+    ('jogo', 'rawg'): ('rawg_slug', False),
+    ('jogo', 'steam'): ('steam_appid', True),
+}
 
 #: Mídia localizada: `{'id_midia', 'tipo', 'total'}` (total do Progresso; None no jogo).
 Localizada = dict[str, Any]
+#: (Tipo, fonte, id na fonte).
+Chave = tuple[str, str, str]
 
 
-def chave(item: ItemDeOrigem) -> tuple[str, str] | None:
-    """(Tipo, id na fonte) do item, ou None se ele não casa."""
-    return (item.tipo, item.catalogo.id_fonte) if item.catalogo else None
+def chave(item: ItemDeOrigem) -> Chave | None:
+    """(Tipo, fonte, id na fonte) do item, ou None se ele não casa."""
+    return (item.tipo, item.catalogo.fonte, item.catalogo.id_fonte) if item.catalogo else None
 
 
-def localizar(itens: Iterable[ItemDeOrigem]) -> dict[tuple[str, str], Localizada]:
-    """As Mídias que já estão no Catálogo, por `chave(item)`. Uma consulta por Tipo."""
-    por_tipo: dict[str, set[str]] = {}
+
+def localizar(itens: Iterable[ItemDeOrigem]) -> dict[Chave, Localizada]:
+    """As Mídias que já estão no Catálogo, por `chave(item)`. Uma consulta por (Tipo, fonte)."""
+    por_fonte: dict[tuple[str, str], set[str]] = {}
     for item in itens:
-        if item.catalogo and _FONTE_DO_TIPO.get(item.tipo) == item.catalogo.fonte:
-            por_tipo.setdefault(item.tipo, set()).add(item.catalogo.id_fonte)
+        if item.catalogo and item.tipo in TIPOS and (
+            item.catalogo.fonte == 'midia' or (item.tipo, item.catalogo.fonte) in _COLUNAS
+        ):
+            por_fonte.setdefault((item.tipo, item.catalogo.fonte), set()).add(item.catalogo.id_fonte)
 
-    achadas: dict[tuple[str, str], Localizada] = {}
-    for tipo, ids in por_tipo.items():
+    achadas: dict[Chave, Localizada] = {}
+    for (tipo, fonte), ids in por_fonte.items():
         config = TIPOS[tipo]
         total = f'{config.coluna_total}' if config.coluna_total else 'NULL::integer'
-        # anilist_id é inteiro: comparar como inteiro usa o índice da UNIQUE.
-        valores: list[Any] = sorted(ids)
-        if config.chave_fonte == 'anilist_id':
-            valores = sorted(int(i) for i in ids if i.isdigit())
+        if fonte == 'midia':
+            coluna, valores, tipo_sql = 'id_midia', sorted(i for i in ids if uuid_valido(i)), '::uuid[]'
+        else:
+            coluna, inteira = _COLUNAS[(tipo, fonte)]
+            # Coluna inteira: comparar como inteiro usa o índice da UNIQUE.
+            valores = sorted(int(i) for i in ids if i.isdigit()) if inteira else sorted(ids)
+            tipo_sql = ''
         linhas = consultar(
-            f'SELECT {config.chave_fonte}::text AS id_fonte, id_midia, {total} AS total '
-            f'FROM {config.tabela} WHERE {config.chave_fonte} = ANY(%s)',
+            f'SELECT {coluna}::text AS id_fonte, id_midia, {total} AS total '
+            f'FROM {config.tabela} WHERE {coluna} = ANY(%s{tipo_sql})',
             (valores,),
         )
         for linha in linhas:
-            achadas[(tipo, linha['id_fonte'])] = {'id_midia': linha['id_midia'], 'tipo': tipo, 'total': linha['total']}
+            achadas[(tipo, fonte, linha['id_fonte'])] = {
+                'id_midia': linha['id_midia'], 'tipo': tipo, 'total': linha['total'],
+            }
     return achadas
 
 

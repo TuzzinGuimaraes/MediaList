@@ -3733,7 +3733,7 @@
         "type": "object"
       },
       "NaoEncontrado": {
-        "description": "Item da origem que não casou com o Catálogo: o Usuário adiciona à mão.",
+        "description": "Item da origem que não casou com o Catálogo: o Usuário vincula a uma Mídia (`POST /integracoes/vinculos`).",
         "properties": {
           "link": {
             "anyOf": [
@@ -3745,6 +3745,37 @@
               }
             ],
             "title": "Link"
+          },
+          "origem_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Id na plataforma; null nos resultados antigos",
+            "title": "Origem Id"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tipo do item; null nos resultados antigos",
+            "title": "Tipo"
           },
           "titulo": {
             "title": "Titulo",
@@ -4015,6 +4046,39 @@
         "title": "NovoItemLista",
         "type": "object"
       },
+      "NovoVinculo": {
+        "description": "Vincular um Não encontrado (`origem_id` dos Não encontrados da plataforma) a uma Mídia do mesmo Tipo.",
+        "properties": {
+          "id_midia": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "origem_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Origem Id",
+            "type": "string"
+          },
+          "plataforma": {
+            "enum": [
+              "anilist",
+              "mal",
+              "steam"
+            ],
+            "title": "Plataforma",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plataforma",
+          "origem_id",
+          "id_midia"
+        ],
+        "title": "NovoVinculo",
+        "type": "object"
+      },
       "PaginaAvaliacaoDaMidia": {
         "properties": {
           "itens": {
@@ -4141,6 +4205,38 @@
           "total"
         ],
         "title": "Pagina[UsuarioModeracao]",
+        "type": "object"
+      },
+      "PaginaVinculoAdmin": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/VinculoAdmin"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
+        ],
+        "title": "Pagina[VinculoAdmin]",
         "type": "object"
       },
       "Perfil": {
@@ -5003,6 +5099,140 @@
         ],
         "title": "UsuarioModeracao",
         "type": "object"
+      },
+      "VinculoAdmin": {
+        "description": "Um vínculo feito por um Usuário, para o admin conferir e desfazer.",
+        "properties": {
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "id_usuario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Autor; null se a conta foi apagada",
+            "title": "Id Usuario"
+          },
+          "id_vinculo": {
+            "title": "Id Vinculo",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Página do item na plataforma",
+            "title": "Link"
+          },
+          "nome_completo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Completo"
+          },
+          "origem_id": {
+            "title": "Origem Id",
+            "type": "string"
+          },
+          "plataforma": {
+            "enum": [
+              "anilist",
+              "mal",
+              "steam"
+            ],
+            "title": "Plataforma",
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          }
+        },
+        "required": [
+          "id_vinculo",
+          "plataforma",
+          "origem_id",
+          "tipo",
+          "link",
+          "id_midia",
+          "titulo_original",
+          "titulo_portugues",
+          "id_usuario",
+          "nome_completo",
+          "criado_em"
+        ],
+        "title": "VinculoAdmin",
+        "type": "object"
+      },
+      "VinculoCriado": {
+        "description": "O vínculo (vale para todos) e o que ele fez na Lista do Usuário.",
+        "properties": {
+          "atualizados": {
+            "title": "Atualizados",
+            "type": "integer"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "id_vinculo": {
+            "title": "Id Vinculo",
+            "type": "string"
+          },
+          "novos": {
+            "title": "Novos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id_vinculo",
+          "id_midia",
+          "novos",
+          "atualizados"
+        ],
+        "title": "VinculoCriado",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -5019,6 +5249,188 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/admin/vinculos": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_admin_vinculos",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "por_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaVinculoAdmin"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Uma página dos vínculos feitos por Usuários, mais recentes primeiro.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/vinculos/{id_vinculo}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_admin_vinculos_{id_vinculo}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_vinculo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Desfazer um vínculo: os Itens já gravados ficam; a próxima importação volta a dar Não encontrado.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/auth/esqueci-senha": {
       "post": {
         "description": "",
@@ -6380,6 +6792,104 @@
           }
         ],
         "summary": "Sincronizar agora: grava as horas dos jogos já casados e casa os novos até o orçamento (~60 s).",
+        "tags": [
+          "integracoes"
+        ]
+      }
+    },
+    "/api/integracoes/vinculos": {
+      "post": {
+        "description": "Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida). 409 `conflito` com o `id_midia` atual em `detalhes` se o item já está vinculado a outra Mídia ou, na Steam, se o jogo já casou com outra Mídia do Catálogo (entra na próxima sincronização).",
+        "operationId": "post__api_integracoes_vinculos",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoVinculo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VinculoCriado"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Vincular um Não encontrado a uma Mídia do mesmo Tipo: vale para todos e já aplica o Item na Lista.",
         "tags": [
           "integracoes"
         ]
@@ -9427,6 +9937,9 @@
     },
     {
       "name": "integracoes"
+    },
+    {
+      "name": "admin"
     },
     {
       "name": "utils"

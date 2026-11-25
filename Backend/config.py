@@ -103,6 +103,8 @@ RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 # Integração com a Steam (ADR 0015): sem a chave, a plataforma aparece indisponível.
 STEAM_API_KEY = os.getenv('STEAM_API_KEY', '')
 STEAM_API_URL = os.getenv('STEAM_API_URL', 'https://api.steampowered.com')
+# Loja da Steam (`appdetails`, público, sem chave): o fallback dos jogos fora do RAWG.
+STEAM_STORE_URL = os.getenv('STEAM_STORE_URL', 'https://store.steampowered.com')
 
 
 def _problema_do_segredo(nome, conhecidos, ausente):

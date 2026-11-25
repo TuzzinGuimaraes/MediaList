@@ -1,6 +1,7 @@
 """
 Blueprints da aplicação.
 """
+from .admin import admin_bp
 from .auth import auth_bp
 from .avaliacoes import avaliacoes_bp
 from .integracoes import integracoes_bp
@@ -23,4 +24,5 @@ __all__ = [
     'moderacao_bp',
     'preferencias_bp',
     'utils_bp',
+    'admin_bp',
 ]

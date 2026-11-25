@@ -52,5 +52,7 @@ export const chaves = {
     usuarios: ['moderacao', 'usuarios'] as const,
     usuariosDaPagina: (pagina: number) => ['moderacao', 'usuarios', pagina] as const,
     avaliacoes: ['moderacao', 'avaliacoes'] as const,
+    vinculos: ['moderacao', 'vinculos'] as const,
+    vinculosDaPagina: (pagina: number) => ['moderacao', 'vinculos', pagina] as const,
   },
 };

@@ -284,7 +284,7 @@ def test_item_sem_casamento_vai_para_nao_encontrados_com_titulo_e_link(client, u
     corpo = client.post('/api/integracoes/anilist/previa', headers=headers).get_json()
     confirmado = client.post(f"/api/integracoes/previas/{corpo['id_previa']}/confirmar", headers=headers).get_json()
 
-    esperado = [{'titulo': 'Obra rara', 'link': 'https://anilist.co/anime/9'}]
+    esperado = [{'titulo': 'Obra rara', 'link': 'https://anilist.co/anime/9', 'origem_id': '9', 'tipo': 'anime'}]
     assert (corpo['novos'], corpo['nao_encontrados'], corpo['total_nao_encontrados']) == (0, esperado, 1)
     assert confirmado['nao_encontrados'] == esperado
 
@@ -476,4 +476,4 @@ def test_link_fora_das_plataformas_sai_sem_link_nos_nao_encontrados(client, usua
         ItemDeOrigem('9', 'anime', 'Obra', 'javascript:alert(1)', status='concluido'),
     ])
 
-    assert corpo['nao_encontrados'] == [{'titulo': 'Obra', 'link': None}]
+    assert corpo['nao_encontrados'] == [{'titulo': 'Obra', 'link': None, 'origem_id': '9', 'tipo': 'anime'}]

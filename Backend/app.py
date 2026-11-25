@@ -22,8 +22,8 @@ from werkzeug.exceptions import HTTPException
 from banco import Conflito, Indisponivel, Integridade
 from config import EM_PRODUCAO, JWT_ACCESS_TOKEN_EXPIRES, JWT_SECRET_KEY
 from contrato import CodigoErro, detalhes_de_validacao, registrar_documentacao, resposta_erro
-from routes import auth as rotas_auth
 from routes import (
+    admin_bp,
     auth_bp,
     avaliacoes_bp,
     integracoes_bp,
@@ -35,6 +35,7 @@ from routes import (
     usuario_bp,
     utils_bp,
 )
+from routes import auth as rotas_auth
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ app.register_blueprint(noticias_bp, url_prefix='/api/noticias')
 app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')
 app.register_blueprint(preferencias_bp, url_prefix='/api/preferencias')
 app.register_blueprint(integracoes_bp, url_prefix='/api/integracoes')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(utils_bp, url_prefix='/api')
 
 # Depois dos blueprints: o OpenAPI é gerado a partir das rotas registradas.

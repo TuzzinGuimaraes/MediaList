@@ -22,13 +22,27 @@ class Resposta:
 class SessaoGet:
     """Responde cada GET por `rotas`: {regex do caminho: corpo | Resposta | Exception | callable(params)}.
 
-    Guarda (url, params) de cada chamada em `chamadas`.
+    Guarda (url, params) de cada chamada em `chamadas`. HEAD responde por `cabecas`
+    ({regex da URL: status | Exception}; sem rota, 404) e fica à parte, em `heads`.
     """
 
-    def __init__(self, rotas: dict):
+    def __init__(self, rotas: dict, cabecas: dict | None = None):
         self.rotas = rotas
+        self.cabecas = cabecas or {}
         self.chamadas: list[tuple[str, dict]] = []
         self.timeouts: list[float | None] = []
+        self.heads: list[str] = []
+        self.timeouts_head: list[float | None] = []
+
+    def head(self, url, timeout=None, allow_redirects=False):
+        self.heads.append(url)
+        self.timeouts_head.append(timeout)
+        for padrao, status in self.cabecas.items():
+            if re.search(padrao, url):
+                if isinstance(status, Exception):
+                    raise status
+                return Resposta(status, None)
+        return Resposta(404, None)
 
     def get(self, url, params=None, timeout=None):
         self.chamadas.append((url, dict(params or {})))
@@ -81,3 +95,20 @@ def detalhe_rawg(slug, nome):
         'genres': [{'name': 'Action'}], 'tags': [], 'developers': [], 'publishers': [],
         'description_raw': 'Um jogo.', 'esrb_rating': None,
     }
+
+
+
+def appdetails(appid, nome, *, tipo='game', data='21 ago. 2012', em_breve=False, desenvolvedoras=('Valve',),
+               publicadoras=('Valve',), generos=(('1', 'Ação'),), plataformas=None, categorias=(2,),
+               descricao='Um jogo.'):
+    """Resposta de `store.steampowered.com/api/appdetails?appids=<appid>&l=portuguese` (a forma real, resumida)."""
+    return {str(appid): {'success': True, 'data': {
+        'type': tipo, 'name': nome, 'steam_appid': int(appid), 'required_age': 0, 'is_free': False,
+        'short_description': descricao,
+        'header_image': f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg',
+        'developers': list(desenvolvedoras), 'publishers': list(publicadoras),
+        'platforms': plataformas or {'windows': True, 'mac': False, 'linux': False},
+        'categories': [{'id': c, 'description': f'categoria {c}'} for c in categorias],
+        'genres': [{'id': i, 'description': d} for i, d in generos],
+        'release_date': {'coming_soon': em_breve, 'date': data},
+    }}}

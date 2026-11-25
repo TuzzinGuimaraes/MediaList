@@ -226,3 +226,74 @@ def test_duas_importacoes_da_mesma_chave_ao_mesmo_tempo_gravam_uma_midia(pg):
         'SELECT 1 FROM animes a WHERE a.id_midia = m.id_midia)'
     )['n'] == 0
     assert _midia(str(id_outra)) == {'titulo_portugues': 'Primeiro título', 'nota_fonte': Decimal('8.7')}
+
+
+
+# ============================================
+# steam_appid (spec nao-encontrados): o jogo da loja da Steam e o do RAWG são a mesma Mídia
+# ============================================
+
+def _appid():
+    return random.randint(10**8, 2 * 10**9)
+
+
+def _jogo_steam(appid, **extra):
+    return {'titulo_original': 'Da Steam', 'status_jogo': 'lancado', 'modo_jogo': 'single',
+            'plataformas': ['PC'], 'rawg_slug': None, 'steam_appid': appid, **extra}
+
+
+def _filha(id_midia):
+    return banco.consultar_um('SELECT rawg_slug, steam_appid FROM jogos WHERE id_midia = %s', (id_midia,))
+
+
+def test_jogo_so_com_steam_appid_grava_e_reimporta_pela_appid(pg):
+    appid = _appid()
+
+    primeira = _salvar(pg, db.salvar_jogo, _jogo_steam(appid))
+    segunda = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, titulo_portugues='Novo'))
+
+    assert primeira['ja_existia'] is False
+    assert segunda == {'id_midia': primeira['id_midia'], 'ja_existia': True}
+    assert _filha(primeira['id_midia']) == {'rawg_slug': None, 'steam_appid': appid}
+
+
+def test_rawg_com_a_mesma_appid_atualiza_o_jogo_da_steam_em_vez_de_criar_outro(pg):
+    appid, slug = _appid(), f'jogo-pg-{uuid.uuid4().hex}'
+    da_steam = _salvar(pg, db.salvar_jogo, _jogo_steam(appid))
+
+    do_rawg = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=slug, titulo_portugues='Do RAWG',
+                                                        nota_fonte=Decimal('8.0')))
+
+    assert do_rawg == {'id_midia': da_steam['id_midia'], 'ja_existia': True}
+    assert _filha(da_steam['id_midia']) == {'rawg_slug': slug, 'steam_appid': appid}
+    assert _midia(da_steam['id_midia']) == {'titulo_portugues': 'Do RAWG', 'nota_fonte': Decimal('8.0')}
+
+
+def test_jogo_do_rawg_ganha_a_appid_e_a_steam_depois_nao_duplica(pg):
+    appid, slug = _appid(), f'jogo-pg-{uuid.uuid4().hex}'
+    do_rawg = _salvar(pg, db.salvar_jogo, _jogo_steam(None, rawg_slug=slug))
+
+    _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=slug))
+    da_steam = _salvar(pg, db.salvar_jogo, _jogo_steam(appid))
+
+    assert da_steam['id_midia'] == do_rawg['id_midia']
+    assert _filha(do_rawg['id_midia']) == {'rawg_slug': slug, 'steam_appid': appid}
+
+
+def test_outro_slug_do_rawg_com_appid_ja_tomada_cria_a_sua_midia_sem_a_appid(pg):
+    """Duas entradas do RAWG na mesma appid: cada slug tem a sua Mídia; a appid fica com a primeira."""
+    appid = _appid()
+    primeiro, segundo = (f'jogo-pg-{uuid.uuid4().hex}' for _ in range(2))
+    um = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=primeiro))
+
+    outro = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=segundo))
+    de_novo = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=segundo))
+
+    assert outro['id_midia'] != um['id_midia'] and de_novo['id_midia'] == outro['id_midia']
+    assert _filha(um['id_midia']) == {'rawg_slug': primeiro, 'steam_appid': appid}
+    assert _filha(outro['id_midia']) == {'rawg_slug': segundo, 'steam_appid': None}
+
+
+def test_jogo_sem_slug_nem_appid_recusa(pg):
+    with pytest.raises(ValueError):
+        db.salvar_jogo(_jogo_steam(None), [])

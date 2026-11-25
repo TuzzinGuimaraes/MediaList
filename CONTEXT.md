@@ -71,7 +71,18 @@ obra também. O link só sai se for `https://` da própria plataforma (AniList, 
 
 Da Steam vêm os jogos já abertos (`playtime_forever` > 0), com as horas arredondadas e no mínimo 1,
 gravadas no `progresso_atual` como em todo jogo. Ela não tem prévia: **sincroniza** todo dia e por "Sincronizar agora"; jogo
-ainda não casado com o Catálogo fica **pendente** para a próxima sincronização.
+ainda não casado com o Catálogo fica **pendente** para a próxima sincronização. Jogo que o RAWG
+não reconhece entra pela loja da Steam (a Mídia guarda a `steam_appid`, e a Importação do RAWG
+que trouxer a mesma appid atualiza essa Mídia em vez de criar outra); o que a loja diz que não é
+jogo (software, DLC, trilha sonora) é ignorado, fora de "Não encontrados".
+
+Um Não encontrado pode ser **vinculado** pelo próprio Usuário a uma Mídia do Catálogo do mesmo
+Tipo (Steam só jogo; AniList e MAL, o anime ou o mangá do item). O **Vínculo** é global: vale na
+hora para todo Usuário com o mesmo item na mesma plataforma, é reserva (só vale quando a fonte
+não casa o item; nunca troca um casamento que a fonte fez) e já leva o Item para a Lista de quem
+vinculou, pelas mesmas regras da importação. O
+admin vê os Vínculos com autor e data e pode desfazer um errado; desfazer não apaga Itens, só faz
+a próxima importação voltar a dar Não encontrado.
 
 ## Recorte de catálogo
 

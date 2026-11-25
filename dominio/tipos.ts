@@ -29,3 +29,6 @@ export type Integracao = Esquemas['Integracao'];
 
 /** Contagens de uma importação por Integração (prévia, confirmação, última sincronização). */
 export type ResultadoImportacao = Esquemas['ResultadoImportacao'];
+
+/** Um item que não casou com o Catálogo; `origem_id` e `tipo` são null nos resultados antigos. */
+export type NaoEncontrado = Esquemas['NaoEncontrado'];

@@ -4,6 +4,7 @@ Ver o docstring do pacote (`integracoes/__init__.py`) para como somar uma plataf
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, Protocol
 from urllib.parse import urlsplit
@@ -51,11 +52,13 @@ class RefCatalogo:
     """Como achar (ou importar) a Mídia de um item no Catálogo.
 
     `fonte` + `id_fonte` é a chave da Importação: `anilist` → `anilist_id` (anime/mangá),
-    `rawg` → `rawg_slug` (jogo). `dados` é a obra no formato da fonte, o que a Importação
-    grava quando a Mídia ainda não está no Catálogo; None quando só dá para localizar.
+    `rawg` → `rawg_slug` (jogo), `steam` → `steam_appid` (jogo criado pela loja da Steam).
+    `midia` → o próprio `id_midia`: a Mídia já é conhecida (casamento gravado, vínculo).
+    `dados` é a obra no formato da fonte, o que a Importação grava quando a Mídia ainda não
+    está no Catálogo; None quando só dá para localizar.
     """
 
-    fonte: Literal['anilist', 'rawg']
+    fonte: Literal['anilist', 'rawg', 'steam', 'midia']
     id_fonte: str
     dados: dict[str, Any] | None = None
 
@@ -153,3 +156,14 @@ def item_de_json(dados: dict[str, Any]) -> ItemDeOrigem:
     """Inverso de `item_para_json`."""
     catalogo = dados.get('catalogo')
     return ItemDeOrigem(**{**dados, 'catalogo': RefCatalogo(**catalogo) if catalogo else None})
+
+
+def uuid_valido(texto: Any) -> bool:
+    """O texto é um UUID (os ids de Mídia, prévia e vínculo): o que não é nem chega ao banco."""
+    if not isinstance(texto, str):
+        return False
+    try:
+        uuid.UUID(texto)
+    except ValueError:
+        return False
+    return True
