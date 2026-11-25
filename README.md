@@ -322,6 +322,17 @@ docker compose run --rm backend python -m importacao.run_import --tipo todos --p
 Cada execução continua, por Tipo de mídia, da página onde a anterior parou (tabela
 `importacao_cursor`); `--do-inicio` ignora o cursor e recomeça da página 1.
 
+No GitHub Actions (workflow `importacao`) os três Tipos rodam em paralelo, um job cada, e a
+sincronização da Steam roda depois.
+
+### Medição
+
+`python -m importacao.medir` (em `Backend/`) roda os importadores com as respostas gravadas do
+AniList e do RAWG (`Backend/tests/fixtures/importacao/`, sem rede) e imprime, por Tipo, itens,
+tempo total, tempo por item e consultas ao banco por item. Apaga antes as Mídias das fixtures e
+reinicia o cursor, por isso recusa a Neon. Para imitar a latência da Neon, aponte
+`DATABASE_URL` para um toxiproxy com um toxic `latency` em cada sentido.
+
 ### Variáveis importantes
 
 As configurações são lidas de [Backend/config.py](Backend/config.py) e [Backend/importacao/config.py](Backend/importacao/config.py).

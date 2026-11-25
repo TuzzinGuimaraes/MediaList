@@ -281,3 +281,30 @@ def test_falha_http_real_com_a_chave_na_url_nao_vaza_no_jsonl_nem_no_log(monkeyp
     assert 'Retrying' in log  # o aviso do urllib3 passou pelo handler da Importação
     for texto in (jsonl, log, capsys.readouterr().err):
         assert CHAVE not in texto
+
+
+
+def test_banco_fora_do_ar_no_meio_da_pagina_encerra_o_tipo_sem_avancar_o_cursor(monkeypatch, cursor_em_memoria):
+    """Indisponível não é falha do item: a página não conta como importada e o cursor fica."""
+    from contextlib import contextmanager
+
+    import banco
+    from importacao import importar_animes
+
+    class _SemBanco:
+        def consultar_um(self, *args):
+            raise banco.Indisponivel('Banco indisponível')
+
+    @contextmanager
+    def autocommit():
+        yield _SemBanco()
+
+    def fonte(tipo, paginas, **kwargs):
+        yield {'pagina': 1, 'itens': [{'id': 1, 'title': {'romaji': 'A'}}], 'erro': None}
+
+    monkeypatch.setattr(importar_animes, 'autocommit', autocommit)
+    monkeypatch.setattr(importar_animes, 'importar_do_anilist', fonte)
+
+    with pytest.raises(banco.Indisponivel):
+        importar_animes.importar_animes(paginas=1)
+    assert 'anime' not in cursor_em_memoria

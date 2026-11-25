@@ -45,8 +45,9 @@ carrega o identificador da fonte de origem, o que torna a Importação repetíve
 atualiza a Mídia existente em vez de duplicá-la.
 
 Cada execução retoma, por Tipo de mídia, da página da fonte onde a anterior parou (o cursor
-da Importação), em vez de recomeçar da página 1. Uma página que falha não avança o cursor e
-encerra aquele Tipo, para não abrir buracos. Ao chegar ao fim da fonte, o cursor volta à
+da Importação), em vez de recomeçar da página 1. Uma página que falha (ou o banco fora do ar
+no meio dela) não avança o cursor e encerra aquele Tipo, para não abrir buracos; um item que
+falha sozinho não derruba a página. Ao chegar ao fim da fonte, o cursor volta à
 página 1 e a Importação passa a atualizar as Mídias já importadas.
 
 ## Integração

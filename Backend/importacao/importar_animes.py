@@ -3,6 +3,7 @@ Importador de animes via AniList.
 """
 from __future__ import annotations
 
+from banco import Indisponivel, autocommit
 from importacao import cursor
 from importacao.anilist import importar_do_anilist
 from importacao.db import salvar_anime
@@ -58,8 +59,8 @@ SOURCE_MAP = {
 }
 
 
-def processar_e_inserir_anime(anime: dict):
-    """Processa um item do AniList e grava no banco (uma transação por Mídia)."""
+def processar_e_inserir_anime(anime: dict, t=None):
+    """Processa um item do AniList e grava no banco (um comando por Mídia; `t`: a conexão da página)."""
     trailer_url = None
     if anime.get('trailer') and anime['trailer'].get('site', '').lower() == 'youtube':
         trailer_url = f"https://www.youtube.com/watch?v={anime['trailer']['id']}"
@@ -84,7 +85,7 @@ def processar_e_inserir_anime(anime: dict):
     }
     generos = [GENERO_MAP.get(genero, genero) for genero in anime.get('genres', [])]
 
-    result = salvar_anime(dados, generos)
+    result = salvar_anime(dados, generos, t)
     logger.info("Anime importado: %s (%s)", dados['titulo_original'], result['id_midia'])
     return result
 
@@ -96,21 +97,28 @@ def importar_animes(paginas: int = 20, do_inicio: bool = False):
     rate_limiter = RateLimiter(0.35)
 
     def importar_pagina(pagina: dict):
-        for item in pagina['itens']:
-            try:
-                result = processar_e_inserir_anime(item)
-                stats.registrar_sucesso(ja_existia=result['ja_existia'])
-            except Exception as exc:
-                stats.registrar_falha()
-                registrar_falha_importacao(
-                    tipo_midia='anime',
-                    origem='AniList',
-                    exc=exc,
-                    identificador=item.get('id'),
-                    titulo=(item.get('title') or {}).get('romaji'),
-                    payload=item,
-                    extra={'pagina': pagina['pagina']},
-                )
+        if not pagina['itens']:
+            return
+        # Uma conexão por página; cada Mídia é um comando (a sua transação).
+        with autocommit() as t:
+            for item in pagina['itens']:
+                try:
+                    result = processar_e_inserir_anime(item, t)
+                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
+                except Indisponivel:
+                    # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.
+                    raise
+                except Exception as exc:
+                    stats.registrar_falha()
+                    registrar_falha_importacao(
+                        tipo_midia='anime',
+                        origem='AniList',
+                        exc=exc,
+                        identificador=item.get('id'),
+                        titulo=(item.get('title') or {}).get('romaji'),
+                        payload=item,
+                        extra={'pagina': pagina['pagina']},
+                    )
 
     try:
         cursor.importar_paginas(

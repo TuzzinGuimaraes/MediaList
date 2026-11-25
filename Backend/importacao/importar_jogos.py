@@ -9,6 +9,7 @@ from datetime import date
 from threading import local
 from urllib.parse import urlsplit
 
+from banco import Indisponivel, autocommit
 from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.db import salvar_jogo
@@ -112,8 +113,8 @@ def _obter_sessao_rawg_worker():
     return session
 
 
-def processar_e_inserir_jogo(basico: dict, detalhe: dict):
-    """Processa um jogo do RAWG e grava no banco (uma transação por Mídia)."""
+def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None):
+    """Processa um jogo do RAWG e grava no banco (um comando por Mídia; `t`: a conexão da página)."""
     tags = [tag['name'].lower().replace('-', '').replace(' ', '') for tag in detalhe.get('tags', [])]
     if 'singleplayer' in tags and 'multiplayer' in tags:
         modo_jogo = 'ambos'
@@ -142,7 +143,7 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict):
     }
     generos = [GENERO_MAP.get(genero['name'], genero['name']) for genero in basico.get('genres', [])]
 
-    result = salvar_jogo(dados, generos)
+    result = salvar_jogo(dados, generos, t)
     logger.info("Jogo importado: %s (%s)", dados['titulo_original'], result['id_midia'])
     return result
 
@@ -297,33 +298,40 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
         return {'detalhe': buscar_detalhe_jogo(jogo_basico['slug'], worker_session, rate_limiter)}
 
     def importar_pagina(pagina: dict):
-        for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
-            pagina['itens'],
-            carregar_detalhe,
-            max_workers=workers,
-        ):
-            detalhe = None
-            try:
-                if detalhe_exc:
-                    raise detalhe_exc
+        if not pagina['itens']:
+            return
+        # Uma conexão por página; cada Mídia é um comando (a sua transação).
+        with autocommit() as t:
+            for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
+                pagina['itens'],
+                carregar_detalhe,
+                max_workers=workers,
+            ):
+                detalhe = None
+                try:
+                    if detalhe_exc:
+                        raise detalhe_exc
 
-                detalhe = (detalhe_result or {}).get('detalhe')
-                if not detalhe:
-                    raise LookupError('Detalhes do jogo não retornados pela API')
+                    detalhe = (detalhe_result or {}).get('detalhe')
+                    if not detalhe:
+                        raise LookupError('Detalhes do jogo não retornados pela API')
 
-                result = processar_e_inserir_jogo(jogo_basico, detalhe)
-                stats.registrar_sucesso(ja_existia=result['ja_existia'])
-            except Exception as exc:
-                stats.registrar_falha()
-                registrar_falha_importacao(
-                    tipo_midia='jogo',
-                    origem='RAWG',
-                    exc=exc,
-                    identificador=jogo_basico.get('slug'),
-                    titulo=jogo_basico.get('name'),
-                    payload={'basico': jogo_basico, 'detalhe': detalhe},
-                    extra={'pagina': pagina['pagina']},
-                )
+                    result = processar_e_inserir_jogo(jogo_basico, detalhe, t)
+                    stats.registrar_sucesso(ja_existia=result['ja_existia'])
+                except Indisponivel:
+                    # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.
+                    raise
+                except Exception as exc:
+                    stats.registrar_falha()
+                    registrar_falha_importacao(
+                        tipo_midia='jogo',
+                        origem='RAWG',
+                        exc=exc,
+                        identificador=jogo_basico.get('slug'),
+                        titulo=jogo_basico.get('name'),
+                        payload={'basico': jogo_basico, 'detalhe': detalhe},
+                        extra={'pagina': pagina['pagina']},
+                    )
 
     try:
         cursor.importar_paginas('jogo', 'RAWG', stats, buscar_paginas, importar_pagina, do_inicio)
