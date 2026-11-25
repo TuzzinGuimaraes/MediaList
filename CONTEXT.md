@@ -50,7 +50,12 @@ avança o cursor e encerra aquele Tipo, para não abrir buracos; um item que fal
 derruba a página. Ao chegar ao fim da fonte, o cursor volta ao início e a Importação passa a
 atualizar as Mídias já importadas.
 
-No RAWG (jogos) o cursor é a próxima página. O AniList (anime e mangá) não dá página acima de
+No RAWG (jogos) o cursor é a próxima página, na ordem de popularidade do RAWG, sem teto: cresce
+até a fonte acabar. Jogo sem capa ou sem data de lançamento é pulado (contado à parte, não é
+falha). Antes de criar um jogo, a Importação procura entre os jogos que vieram da loja da Steam
+(sem identificador do RAWG) um com o mesmo título (sem caixa, acento nem pontuação) e o mesmo
+ano; se o RAWG confirmar a mesma `steam_appid` nas lojas do jogo, os dois são a mesma Mídia, que
+ganha os dados do RAWG. O AniList (anime e mangá) não dá página acima de
 100 (5000 obras por consulta), então tem duas passadas por Tipo, cada uma com o seu cursor:
 
 - **Crescimento**, sem fim: segue a ordem de popularidade a partir da última obra importada
