@@ -204,13 +204,17 @@ export function contagemPorTipo(itens: readonly { tipo: TipoMidia }[]): Record<T
 
 /**
  * "Todos" separado por Status: uma seção por Status de `estados`, na ordem dada e sem as
- * vazias. Como nas contagens, o Concluído inclui os platinados.
+ * vazias. Como nas contagens, o Concluído inclui os platinados, que por isso não têm seção
+ * própria: cada Item aparece uma vez, e a soma das seções é o total.
  */
 export function secoesPorStatus<T extends { tipo: TipoMidia; status_consumo: string }>(
   itens: readonly T[],
   estados: readonly EstadoConsumo[],
 ): { estado: EstadoConsumo; itens: T[] }[] {
-  return estados.map((estado) => ({ estado, itens: itensDoEstado(itens, estado) })).filter((s) => s.itens.length);
+  return estados
+    .filter((estado) => estado !== 'platinado')
+    .map((estado) => ({ estado, itens: itensDoEstado(itens, estado) }))
+    .filter((s) => s.itens.length);
 }
 
 /** Os gêneros dos Itens, os mais frequentes primeiro (alfabética no empate): os chips mostram os primeiros. */

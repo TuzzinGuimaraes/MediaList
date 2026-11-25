@@ -20,7 +20,7 @@ const jogo = (campos: Parameters<typeof umItem>[0]) =>
   umItem({ tipo: 'jogo', status_consumo: 'jogando', progresso_total: null, numero_episodios: null, status_anime: null, ...campos });
 
 describe('Minha Lista: coluna e "Todos"', () => {
-  it('abre em "Todos", separado por Status, com o Concluído incluindo os platinados', async () => {
+  it('abre em "Todos", separado por Status; os platinados só dentro do Concluído, com o selo', async () => {
     const itens = [
       umItem({ titulo_original: 'Frieren' }),
       umItem({ titulo_original: 'Mushishi', status_consumo: 'planejado', progresso_atual: 0 }),
@@ -39,9 +39,29 @@ describe('Minha Lista: coluna e "Todos"', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Planejado 1' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 2, name: /^Pausado/ })).not.toBeInTheDocument();
     expect(cards(secao('Concluído'))).toEqual(['Monster', 'Hades']);
+    // Platinado sem seção própria no "Todos": só dentro do Concluído, com o selo no Item.
+    expect(screen.queryByRole('heading', { level: 2, name: /^Platinado/ })).not.toBeInTheDocument();
+    const hades = within(secao('Concluído')).getByRole('link', { name: /^Hades, platinado/ });
+    expect(within(hades).getByText('Platinado')).toBeInTheDocument();
+    const somaDasSecoes = screen
+      .getAllByRole('heading', { level: 2 })
+      .reduce((n, h) => n + Number(h.textContent?.match(/\d+$/)?.[0] ?? 0), 0);
+    expect(somaDasSecoes).toBe(4);
     // Com o Tipo "Todos", subseções por Tipo dentro de cada Status.
     expect(within(secao('Concluído')).getByRole('heading', { level: 3, name: 'Anime 1' })).toBeInTheDocument();
     expect(within(secao('Concluído')).getByRole('heading', { level: 3, name: 'Jogos 1' })).toBeInTheDocument();
+  });
+
+  it('o Status Platinado da coluna mostra só os platinados', async () => {
+    const itens = [
+      umItem({ titulo_original: 'Monster', status_consumo: 'completo', progresso_atual: 12 }),
+      jogo({ titulo_original: 'Celeste', status_consumo: 'zerado', progresso_atual: 20 }),
+      jogo({ titulo_original: 'Hades', status_consumo: 'platinado', progresso_atual: 80 }),
+    ];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    await user.click(await screen.findByRole('button', { name: 'Platinado 1' }));
+    expect(cards()).toEqual(['Hades']);
   });
 
   it('escolher um Status mostra só ele, e o cabeçalho diz qual é e quantos são', async () => {

@@ -321,7 +321,7 @@ describe('Tipo da Lista', () => {
 });
 
 describe('secoesPorStatus ("Todos")', () => {
-  it('uma seção por Status, na ordem dada, sem as vazias; o Concluído inclui os platinados', () => {
+  it('uma seção por Status, na ordem dada, sem as vazias; os platinados só dentro do Concluído', () => {
     const itens = [
       item('a', { tipo: 'jogo', status_consumo: 'platinado' }),
       item('b', { status_consumo: 'planejado' }),
@@ -333,8 +333,9 @@ describe('secoesPorStatus ("Todos")', () => {
       ['em_progresso', ['d']],
       ['planejado', ['b']],
       ['concluido', ['a', 'c']],
-      ['platinado', ['a']],
     ]);
+    // Sem seção Platinado, cada Item aparece uma vez: a soma das seções é o total.
+    expect(secoes.reduce((n, s) => n + s.itens.length, 0)).toBe(itens.length);
   });
 });
 
