@@ -123,6 +123,7 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     assert response.get_json()['notificacoes_enviadas'] == 2
     [notificacao] = client.get('/api/notificacoes', headers=entrar(assistindo)).get_json()['notificacoes']
     assert {k: v for k, v in notificacao.items() if k != 'data_criacao'} == {
+        'origem': 'atualizacao', 'id_noticia': None,
         'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
         'titulo': 'Episódio 12', 'midia_nome': 'Anime PG',
         'mensagem': 'Novidade em anime da sua lista: Anime PG', 'lida': False,
@@ -192,3 +193,100 @@ def test_preferencias_salvas_sao_lidas_com_os_padroes_no_resto(pg, client, entra
     assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
     assert salvo.get_json()['modificado'] is True
     assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}
+
+
+
+def _notificacoes(client, headers, nao_lidas=False):
+    sufixo = '?nao_lidas=true' if nao_lidas else ''
+    return client.get(f'/api/notificacoes{sufixo}', headers=headers).get_json()['notificacoes']
+
+
+def test_noticia_notifica_os_usuarios_ativos_menos_o_autor(pg, client, entrar):
+    admin = _usuario(pg, 'admin')
+    outro_admin = _usuario(pg, 'admin')
+    ativo = _usuario(pg)
+    inativo = _usuario(pg)
+    banco.executar('UPDATE usuarios SET ativo = false WHERE id_usuario = %s', (inativo,))
+    titulo = f'Temporada nova {uuid.uuid4().hex}'
+
+    criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': titulo, 'conteudo': 'Texto'})
+    id_noticia = criada.get_json()['id_noticia']
+    pg['noticias'].append(id_noticia)
+
+    assert criada.status_code == 201
+    [notificacao] = _notificacoes(client, entrar(ativo))
+    assert {k: v for k, v in notificacao.items() if k != 'data_criacao'} == {
+        'origem': 'noticia', 'id_noticia': id_noticia, 'id_midia': None, 'tipo_midia': None,
+        'tipo': 'noticia', 'titulo': titulo, 'midia_nome': None,
+        'mensagem': 'Nova Notícia no MediaList', 'lida': False,
+    }
+    assert len(_notificacoes(client, entrar(outro_admin))) == 1
+    assert _notificacoes(client, entrar(admin)) == []
+    assert banco.consultar('SELECT 1 FROM notificacoes WHERE id_usuario = %s', (inativo,)) == []
+
+
+def test_noticia_entra_nas_nao_lidas_junto_das_atualizacoes_e_marca_como_lida(pg, client, entrar):
+    admin = _usuario(pg, 'admin')
+    eu = _usuario(pg)
+    id_midia = _anime(pg)
+    _na_lista(eu, id_midia, 'assistindo')
+    client.post(f'/api/midias/{id_midia}/atualizacoes', headers=entrar(admin), json={
+        'tipo': 'episodio', 'titulo': 'Episódio 1',
+    })
+    criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': 'Aviso'})
+    pg['noticias'].append(criada.get_json()['id_noticia'])
+
+    nao_lidas = _notificacoes(client, entrar(eu), nao_lidas=True)
+    marcar = client.put('/api/notificacoes/marcar-todas-lidas', headers=entrar(eu))
+
+    assert [(n['origem'], n['titulo']) for n in nao_lidas] == [('noticia', 'Aviso'), ('atualizacao', 'Episódio 1')]
+    assert nao_lidas[1]['id_noticia'] is None
+    assert marcar.get_json() == {'mensagem': '2 notificações marcadas como lidas'}
+    assert _notificacoes(client, entrar(eu), nao_lidas=True) == []
+
+
+def test_apagar_a_noticia_apaga_as_notificacoes(pg, client, entrar):
+    admin = _usuario(pg, 'admin')
+    eu = _usuario(pg)
+    criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': 'Vai sumir'})
+    id_noticia = criada.get_json()['id_noticia']
+
+    banco.executar('DELETE FROM noticias WHERE id_noticia = %s', (id_noticia,))
+
+    assert _notificacoes(client, entrar(eu)) == []
+
+
+def test_falha_ao_notificar_desfaz_a_noticia(pg, client, entrar, monkeypatch):
+    admin = _usuario(pg, 'admin')
+    _usuario(pg)
+    titulo = f'Nunca gravada {uuid.uuid4().hex}'
+    original = banco.Transacao.executar
+
+    def executar(self, sql, params=None):
+        if 'INSERT INTO notificacoes' in sql:
+            raise RuntimeError('falha depois de gravar a Notícia')
+        return original(self, sql, params)
+
+    monkeypatch.setattr(banco.Transacao, 'executar', executar)
+
+    response = client.post('/api/noticias', headers=entrar(admin), json={'titulo': titulo})
+
+    assert response.status_code == 500
+    assert banco.consultar('SELECT 1 FROM noticias WHERE titulo = %s', (titulo,)) == []
+
+
+def test_uma_noticia_pelo_id(pg, client, entrar):
+    admin = _usuario(pg, 'admin', nome='Ana Admin')
+    criada = client.post('/api/noticias', headers=entrar(admin), json={'titulo': 'Uma só', 'tags': ['x']})
+    id_noticia = criada.get_json()['id_noticia']
+    pg['noticias'].append(id_noticia)
+
+    response = client.get(f'/api/noticias/{id_noticia}')
+    inexistente = client.get(f'/api/noticias/{uuid.uuid4()}')
+
+    assert response.status_code == 200
+    noticia = response.get_json()
+    assert (noticia['id_noticia'], noticia['titulo'], noticia['autor'], noticia['tags']) == (
+        id_noticia, 'Uma só', 'Ana Admin', ['x'],
+    )
+    assert (inexistente.status_code, inexistente.get_json()['codigo']) == (404, 'nao_encontrado')

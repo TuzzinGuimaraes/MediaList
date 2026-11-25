@@ -83,6 +83,28 @@ def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, m
     assert params == ('Nova notícia', 'Texto', 'USR-ADMIN-0001', 'jogo', ['rpg'], 'https://img/x.png')
 
 
+def test_noticia_criada_notifica_os_ativos_menos_o_autor_na_mesma_transacao(client, admin_headers, monkeypatch):
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
+    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
+
+    client.post('/api/noticias', headers=admin_headers, json={'titulo': 'Nova notícia'})
+
+    [(_, sql, params)] = fake.sql('INSERT INTO notificacoes')
+    assert 'ativo' in sql and 'id_usuario <> %s' in sql
+    assert params == ('NOT-1', 'USR-ADMIN-0001')
+    assert fake.transacoes == 1
+
+
+def test_uma_noticia_pelo_id_e_404_sem_ela(client, monkeypatch):
+    FakeBanco({'WHERE n.id_noticia': NOTICIA}).instalar(monkeypatch, noticias_routes)
+    achada = client.get('/api/noticias/NOT-1')
+    FakeBanco().instalar(monkeypatch, noticias_routes)
+    sem = client.get('/api/noticias/NOT-2')
+
+    assert achada.get_json() == {**NOTICIA, 'data_publicacao': '2026-11-13T10:00:00Z'}
+    assert (sem.status_code, sem.get_json()['codigo']) == (404, 'nao_encontrado')
+
+
 def test_noticia_sem_campos_opcionais_usa_os_padroes(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
     fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
@@ -127,6 +149,8 @@ def test_noticia_com_tags_que_nao_sao_lista_de_texto_responde_400(client, admin_
 
 
 NOTIFICACAO = {
+    'origem': 'atualizacao',
+    'id_noticia': None,
     'id_midia': 'MID-1',
     'tipo_midia': 'anime',
     'tipo': 'episodio',

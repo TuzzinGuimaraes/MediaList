@@ -3868,7 +3868,7 @@
         "type": "object"
       },
       "Notificacao": {
-        "description": "A entrega de uma Atualização de mídia a um Usuário.",
+        "description": "A entrega de uma Atualização de mídia ou de uma Notícia a um Usuário.\n\n`origem` diz qual das duas: na de Notícia, `id_noticia` vem preenchido e os campos da\nMídia vêm nulos; na de Atualização, o contrário.",
         "properties": {
           "data_criacao": {
             "format": "date-time",
@@ -3876,8 +3876,28 @@
             "type": "string"
           },
           "id_midia": {
-            "title": "Id Midia",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Mídia, na de origem `atualizacao`",
+            "title": "Id Midia"
+          },
+          "id_noticia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Notícia, na de origem `noticia`",
+            "title": "Id Noticia"
           },
           "lida": {
             "title": "Lida",
@@ -3888,23 +3908,45 @@
             "type": "string"
           },
           "midia_nome": {
-            "description": "Título em português, ou o original",
-            "title": "Midia Nome",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Título em português, ou o original; nulo na de Notícia",
+            "title": "Midia Nome"
+          },
+          "origem": {
+            "enum": [
+              "atualizacao",
+              "noticia"
+            ],
+            "title": "Origem",
             "type": "string"
           },
           "tipo": {
-            "description": "Tipo da Atualização: episodio, capitulo, dlc...",
+            "description": "Tipo da Atualização (episodio, capitulo, dlc...) ou `noticia`",
             "title": "Tipo",
             "type": "string"
           },
           "tipo_midia": {
-            "enum": [
-              "anime",
-              "manga",
-              "jogo"
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Tipo Midia",
-            "type": "string"
+            "title": "Tipo Midia"
           },
           "titulo": {
             "title": "Titulo",
@@ -3912,6 +3954,8 @@
           }
         },
         "required": [
+          "origem",
+          "id_noticia",
           "id_midia",
           "tipo_midia",
           "tipo",
@@ -9352,7 +9396,60 @@
             "bearer": []
           }
         ],
-        "summary": "Criar Notícia; o autor é o Usuário logado.",
+        "summary": "Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação.",
+        "tags": [
+          "noticias"
+        ]
+      }
+    },
+    "/api/noticias/{id_noticia}": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_noticias_{id_noticia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_noticia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Noticia"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Uma Notícia, para o link da Notificação.",
         "tags": [
           "noticias"
         ]

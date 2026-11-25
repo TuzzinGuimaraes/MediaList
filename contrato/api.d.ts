@@ -720,8 +720,25 @@ export interface paths {
         /** Uma página das Notícias, mais recentes primeiro. */
         get: operations["get__api_noticias"];
         put?: never;
-        /** Criar Notícia; o autor é o Usuário logado. */
+        /** Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação. */
         post: operations["post__api_noticias"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/noticias/{id_noticia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Uma Notícia, para o link da Notificação. */
+        get: operations["get__api_noticias_{id_noticia}"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2160,7 +2177,10 @@ export interface components {
         };
         /**
          * Notificacao
-         * @description A entrega de uma Atualização de mídia a um Usuário.
+         * @description A entrega de uma Atualização de mídia ou de uma Notícia a um Usuário.
+         *
+         *     `origem` diz qual das duas: na de Notícia, `id_noticia` vem preenchido e os campos da
+         *     Mídia vêm nulos; na de Atualização, o contrário.
          */
         Notificacao: {
             /**
@@ -2168,27 +2188,37 @@ export interface components {
              * Format: date-time
              */
             data_criacao: string;
-            /** Id Midia */
-            id_midia: string;
+            /**
+             * Id Midia
+             * @description A Mídia, na de origem `atualizacao`
+             */
+            id_midia: string | null;
+            /**
+             * Id Noticia
+             * @description A Notícia, na de origem `noticia`
+             */
+            id_noticia: string | null;
             /** Lida */
             lida: boolean;
             /** Mensagem */
             mensagem: string;
             /**
              * Midia Nome
-             * @description Título em português, ou o original
+             * @description Título em português, ou o original; nulo na de Notícia
              */
-            midia_nome: string;
+            midia_nome: string | null;
             /**
-             * Tipo
-             * @description Tipo da Atualização: episodio, capitulo, dlc...
-             */
-            tipo: string;
-            /**
-             * Tipo Midia
+             * Origem
              * @enum {string}
              */
-            tipo_midia: "anime" | "manga" | "jogo";
+            origem: "atualizacao" | "noticia";
+            /**
+             * Tipo
+             * @description Tipo da Atualização (episodio, capitulo, dlc...) ou `noticia`
+             */
+            tipo: string;
+            /** Tipo Midia */
+            tipo_midia: ("anime" | "manga" | "jogo") | null;
             /** Titulo */
             titulo: string;
         };
@@ -5586,6 +5616,46 @@ export interface operations {
             };
             /** @description Unprocessable Content */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_noticias_{id_noticia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_noticia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Noticia"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
