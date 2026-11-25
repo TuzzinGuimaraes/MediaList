@@ -18,9 +18,15 @@ from tipos_midia import TIPOS
 
 TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
 
-pytestmark = pytest.mark.skipif(
-    not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para a Importação'
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para a Importação'
+    ),
+    # O teste apaga Mídias reais do lote (com cascata nos Itens): nunca contra a produção.
+    pytest.mark.skipif(
+        'neon.tech' in (TEST_DATABASE_URL or ''), reason='TEST_DATABASE_URL aponta para a Neon: recusado'
+    ),
+]
 
 #: Colunas que mudam a cada gravação, mesmo com os mesmos dados.
 _VOLATEIS = {'id_midia', 'codigo_midia', 'data_criacao', 'data_atualizacao'}
@@ -103,7 +109,13 @@ def _foto(fontes):
         c['tipo_midia']: c['proxima_pagina']
         for c in banco.consultar("SELECT tipo_midia, proxima_pagina FROM importacao_cursor")
     }
-    return {'midias': midias, 'ligacoes': ligacoes, 'generos': generos, 'cursor': cursor}
+    # Contagens do banco inteiro: pegam Mídia órfã (sem a tabela do Tipo) ou linha a mais fora do lote.
+    totais = banco.consultar_um(
+        'SELECT (SELECT count(*) FROM midias) AS midias, (SELECT count(*) FROM animes) AS animes, '
+        '(SELECT count(*) FROM mangas) AS mangas, (SELECT count(*) FROM jogos) AS jogos, '
+        '(SELECT count(*) FROM midias_generos) AS midias_generos'
+    )
+    return {'midias': midias, 'ligacoes': ligacoes, 'generos': generos, 'cursor': cursor, 'totais': totais}
 
 
 @pytest.fixture
@@ -161,6 +173,8 @@ def test_mesmo_lote_grava_o_mesmo_banco_antes_e_depois(pg, monkeypatch):
     assert foto_nova['generos'] == foto_antiga['generos']
     assert foto_nova['ligacoes'] == foto_antiga['ligacoes']
     assert foto_nova['midias'] == foto_antiga['midias']
+    assert foto_nova['totais'] == foto_antiga['totais']
+    assert foto_nova['totais']['midias'] == sum(foto_nova['totais'][t] for t in ('animes', 'mangas', 'jogos'))
     assert len(foto_nova['midias']) == 279
     # O jogo da loja virou a Mídia do primeiro jogo do RAWG (ganhou o rawg_slug); o segundo, sem a appid.
     # Um worker só: a ordem de gravação dos jogos é a da página.

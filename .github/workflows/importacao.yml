@@ -84,7 +84,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: importacao-log-${{ github.run_id }}-${{ matrix.tipo }}
+          name: importacao-log-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.tipo }}
           path: Backend/importacao_logs/
           if-no-files-found: warn
           retention-days: 30
@@ -130,7 +130,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: importacao-log-${{ github.run_id }}-steam
+          name: importacao-log-${{ github.run_id }}-${{ github.run_attempt }}-steam
           path: Backend/importacao_logs/
           if-no-files-found: warn
           retention-days: 30
