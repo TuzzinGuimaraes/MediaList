@@ -44,11 +44,23 @@ O processo de trazer Mídias de uma fonte externa para o Catálogo. Uma Mídia i
 carrega o identificador da fonte de origem, o que torna a Importação repetível: reimportar
 atualiza a Mídia existente em vez de duplicá-la.
 
-Cada execução retoma, por Tipo de mídia, da página da fonte onde a anterior parou (o cursor
-da Importação), em vez de recomeçar da página 1. Uma página que falha (ou o banco fora do ar
-no meio dela) não avança o cursor e encerra aquele Tipo, para não abrir buracos; um item que
-falha sozinho não derruba a página. Ao chegar ao fim da fonte, o cursor volta à
-página 1 e a Importação passa a atualizar as Mídias já importadas.
+Cada execução retoma, por Tipo de mídia, de onde a anterior parou (o cursor da Importação),
+em vez de recomeçar do início. Uma página que falha (ou o banco fora do ar no meio dela) não
+avança o cursor e encerra aquele Tipo, para não abrir buracos; um item que falha sozinho não
+derruba a página. Ao chegar ao fim da fonte, o cursor volta ao início e a Importação passa a
+atualizar as Mídias já importadas.
+
+No RAWG (jogos) o cursor é a próxima página. O AniList (anime e mangá) não dá página acima de
+100 (5000 obras por consulta), então tem duas passadas por Tipo, cada uma com o seu cursor:
+
+- **Crescimento**, sem fim: segue a ordem de popularidade a partir da última obra importada
+  (a **fronteira**: popularidade, id e quantas obras com essa popularidade já vieram), em
+  janelas que nunca passam da página 100. As obras empatadas na popularidade da fronteira vêm
+  antes das menos populares. No fim do AniList, recomeça do topo e atualiza as obscuras na volta.
+- **Atualização das populares**: algumas páginas por dia (10 por padrão), em rodízio pelas
+  páginas 1–100 por popularidade, para as 5000 mais populares não ficarem paradas.
+
+Se o AniList recusar uma página pelo limite de páginas, é o fim da janela, não uma falha.
 
 ## Integração
 
