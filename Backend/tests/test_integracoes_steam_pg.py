@@ -74,15 +74,16 @@ def usuario(pg, make_token):  # noqa: F811
 
 @pytest.fixture
 def fontes(monkeypatch):
-    """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja)` instala a Steam, o RAWG e a loja da
+    """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja, cabecas=heads_do_cdn)` instala a Steam, o RAWG e a loja da
     Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`). A loja padrão não tem
     nenhuma appid (`success: false`)."""
-    def instalar(jogos, rawg=None, loja=None, **steam):
+    def instalar(jogos, rawg=None, loja=None, cabecas=None, **steam):
         monkeypatch.setitem(
             servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
         )
         sessao_rawg = SessaoGet(rawg or {})
-        sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}})
+        sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}},
+                                     cabecas)
         monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))
         monkeypatch.setattr(sincronizacao_steam, 'LojaSteam', lambda **kw: LojaSteam(sessao=sessao_rawg.loja, **kw))
         return sessao_rawg
@@ -140,7 +141,8 @@ def _casamento(appid):
 
 def _da_loja(appid):
     return banco.consultar_um(
-        'SELECT m.id_midia, m.titulo_original, m.poster_url, m.nota_fonte, j.rawg_slug, j.steam_appid, j.desenvolvedor '
+        'SELECT m.id_midia, m.titulo_original, m.poster_url, m.banner_url, m.nota_fonte, j.rawg_slug, '
+        'j.steam_appid, j.desenvolvedor '
         'FROM jogos j JOIN midias m USING (id_midia) WHERE j.steam_appid = %s',
         (appid,),
     )
@@ -464,6 +466,7 @@ def test_jogo_fora_do_rawg_entra_pela_loja_da_steam_e_depois_so_atualiza(client,
     assert midia['titulo_original'] == nome and midia['desenvolvedor'] == 'Estúdio'
     assert midia['poster_url'].endswith(f'/apps/{appid}/header.jpg')
     assert (midia['rawg_slug'], midia['nota_fonte']) == (None, None)
+    assert rawg.loja.heads == [f'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{appid}/library_600x900.jpg']
     assert _casamento(appid)['id_midia'] == midia['id_midia']
     assert _item_da_midia(id_usuario, midia['id_midia']) == {'status_consumo': 'pausado', 'progresso_atual': 2}
 
@@ -474,6 +477,37 @@ def test_jogo_fora_do_rawg_entra_pela_loja_da_steam_e_depois_so_atualiza(client,
     assert chamadas == (1, 1)
     assert (segunda['novos'], segunda['atualizados']) == (0, 1)
     assert _item_da_midia(id_usuario, midia['id_midia'])['progresso_atual'] == 10
+
+
+def test_jogo_da_loja_com_capa_vertical_confirmada_usa_ela_no_poster(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Vertical')
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}},
+           loja=loja_com(appdetails(appid, nome)), cabecas={rf'/{appid}/library_600x900': 200})
+    _conectar(id_usuario)
+
+    _sincronizar(client, headers)
+
+    midia = _da_loja(appid)
+    assert midia['poster_url'].endswith(f'/apps/{appid}/library_600x900.jpg')
+    assert midia['banner_url'].endswith(f'/apps/{appid}/header.jpg')
+
+
+def test_jogo_da_loja_com_nome_estranho_fica_com_o_titulo_da_steam_e_a_appid_pedida(client, usuario, fontes, jogo):
+    id_usuario, headers = usuario
+    appid, _, nome = jogo('Estranho')
+    resposta = appdetails(appid, nome)
+    resposta[str(appid)]['data'].update({'name': ['não é texto'], 'steam_appid': appid + 99,
+                                         'header_image': 'https://evil.example/x.jpg'})
+    fontes([jogo_steam(appid, nome, 120, HORA)], {r'/games$': {'results': []}}, loja=loja_com(resposta))
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    assert corpo['novos'] == 1
+    midia = _da_loja(appid)
+    assert midia['titulo_original'] == nome and midia['poster_url'] is None
+    assert banco.consultar_um('SELECT 1 AS x FROM jogos WHERE steam_appid = %s', (appid + 99,)) is None
 
 
 def test_outro_usuario_com_o_mesmo_jogo_da_loja_casa_sem_chamar_nada(client, usuario, fontes, jogo, pg, make_token):  # noqa: F811

@@ -4,6 +4,7 @@ Ver o docstring do pacote (`integracoes/__init__.py`) para como somar uma plataf
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, Protocol
 from urllib.parse import urlsplit
@@ -155,3 +156,14 @@ def item_de_json(dados: dict[str, Any]) -> ItemDeOrigem:
     """Inverso de `item_para_json`."""
     catalogo = dados.get('catalogo')
     return ItemDeOrigem(**{**dados, 'catalogo': RefCatalogo(**catalogo) if catalogo else None})
+
+
+def uuid_valido(texto: Any) -> bool:
+    """O texto é um UUID (os ids de Mídia, prévia e vínculo): o que não é nem chega ao banco."""
+    if not isinstance(texto, str):
+        return False
+    try:
+        uuid.UUID(texto)
+    except ValueError:
+        return False
+    return True

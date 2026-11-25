@@ -6799,7 +6799,7 @@
     },
     "/api/integracoes/vinculos": {
       "post": {
-        "description": "Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida).",
+        "description": "Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida). 409 `conflito` com o `id_midia` atual em `detalhes` se o item já está vinculado a outra Mídia ou, na Steam, se o jogo já casou com outra Mídia do Catálogo (entra na próxima sincronização).",
         "operationId": "post__api_integracoes_vinculos",
         "parameters": [],
         "requestBody": {

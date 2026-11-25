@@ -9,12 +9,12 @@ import io
 import pytest
 
 import banco
-from integracoes import repositorio
+from integracoes import catalogo, repositorio
 from integracoes.plataforma import Conta
 
 from .fontes_falsas import jogo_steam
 from .test_integracoes_anilist import _colecao, _entrada
-from .test_integracoes_mal import XML, _entrada_mal, _page, _pagina
+from .test_integracoes_mal import XML, _entrada_mal, _media_anilist, _page, _pagina
 from .test_integracoes_mal_pg import mal  # noqa: F401 (fixture)
 from .test_integracoes_pg import _anime_no_catalogo, _media_nova, anilist, anilist_ids  # noqa: F401
 from .test_integracoes_steam_pg import (  # noqa: F401 (fixtures)
@@ -26,6 +26,7 @@ from .test_integracoes_steam_pg import (  # noqa: F401 (fixtures)
     fontes,
     jogo,
     limpar,
+    rawg_que_casa,
 )
 from .test_repositorios_pg import TEST_DATABASE_URL, _midia, _usuario, pg  # noqa: F401 (fixture)
 
@@ -55,6 +56,13 @@ def _vinculo(plataforma, origem_id):
         'SELECT id, tipo, id_midia::text AS id_midia, id_usuario::text AS id_usuario FROM vinculos_origem '
         'WHERE plataforma = %s AND origem_id = %s',
         (plataforma, str(origem_id)),
+    )
+
+
+def _vincular_direto(plataforma, origem_id, tipo, id_midia):
+    banco.executar(
+        'INSERT INTO vinculos_origem (plataforma, origem_id, tipo, id_midia) VALUES (%s, %s, %s, %s)',
+        (plataforma, str(origem_id), tipo, id_midia),
     )
 
 
@@ -199,8 +207,92 @@ def test_ja_vinculado_a_outra_midia_responde_409(client, pessoa, fontes, jogo): 
     mesma = _vincular(client, headers_bia, 'steam', appid, midia_a)
 
     assert (outra.status_code, outra.get_json()['codigo']) == (409, 'conflito')
+    assert outra.get_json()['detalhes'] == {'id_midia': str(midia_a)}
     assert mesma.status_code == 201
     assert _item_da_midia(id_bia, midia_a)['progresso_atual'] == 3
+
+
+def test_steam_casa_pelo_rawg_antes_do_vinculo(client, pessoa, fontes, jogo):  # noqa: F811
+    id_usuario, headers = pessoa()
+    appid, slug, nome = jogo('PeloRawg')
+    _, slug_v, nome_v = jogo('PeloVinculo')
+    pelo_vinculo = _no_catalogo(appid + 1, slug_v, nome_v, casado=False)
+    _vincular_direto('steam', appid, 'jogo', pelo_vinculo)
+    fontes([jogo_steam(appid, nome, 150, HORA)], rawg_que_casa((appid, slug, nome)))
+    _conectar(id_usuario)
+
+    corpo = _sincronizar(client, headers)
+
+    pela_fonte = banco.consultar_um('SELECT id_midia::text AS id FROM jogos WHERE rawg_slug = %s', (slug,))['id']
+    assert corpo['novos'] == 1
+    assert _item_da_midia(id_usuario, pela_fonte)['progresso_atual'] == 3
+    assert _item_da_midia(id_usuario, pelo_vinculo) is None
+
+
+def test_steam_casada_em_steam_appids_ignora_o_vinculo(client, pessoa, fontes, jogo):  # noqa: F811
+    id_usuario, headers = pessoa()
+    appid, slug, nome = jogo('Casado')
+    _, slug_v, nome_v = jogo('PeloVinculo')
+    casada = _no_catalogo(appid, slug, nome)
+    pelo_vinculo = _no_catalogo(appid + 1, slug_v, nome_v, casado=False)
+    _vincular_direto('steam', appid, 'jogo', pelo_vinculo)
+    fontes([jogo_steam(appid, nome, 150, HORA)], {})
+    _conectar(id_usuario)
+
+    _sincronizar(client, headers)
+
+    assert _item_da_midia(id_usuario, casada)['progresso_atual'] == 3
+    assert _item_da_midia(id_usuario, pelo_vinculo) is None
+
+
+def test_steam_usa_o_vinculo_quando_a_fonte_nao_casa(client, pessoa, fontes, jogo):  # noqa: F811
+    """Negativo em steam_appids (nem RAWG nem loja) e um vínculo: o vínculo é a reserva."""
+    id_usuario, headers = pessoa()
+    appid, *_ = _steam_nao_encontrado(client, headers, fontes, jogo, id_usuario)
+    _, slug_v, nome_v = jogo('PeloVinculo')
+    pelo_vinculo = _no_catalogo(appid + 1, slug_v, nome_v, casado=False)
+    _vincular_direto('steam', appid, 'jogo', pelo_vinculo)
+
+    corpo = _sincronizar(client, headers)
+
+    assert (corpo['novos'], corpo['total_nao_encontrados']) == (1, 0)
+    assert _item_da_midia(id_usuario, pelo_vinculo)['progresso_atual'] == 3
+
+
+def test_jogo_que_casou_depois_do_nao_encontrado_responde_409_sem_sobrescrever(client, pessoa, fontes, jogo):  # noqa: F811
+    """Entre o Não encontrado e o Vincular a sincronização de alguém casou a appid: o casamento fica."""
+    id_usuario, headers = pessoa()
+    appid, *_ = _steam_nao_encontrado(client, headers, fontes, jogo, id_usuario)
+    _, slug_c, nome_c = jogo('CasouDepois')
+    _, slug_d, nome_d = jogo('Destino')
+    casada = _no_catalogo(appid + 1, slug_c, nome_c, casado=False)
+    destino = _no_catalogo(appid + 2, slug_d, nome_d, casado=False)
+    banco.executar('UPDATE steam_appids SET id_midia = %s WHERE appid = %s', (casada, appid))
+
+    r = _vincular(client, headers, 'steam', appid, destino)
+
+    assert (r.status_code, r.get_json()['codigo']) == (409, 'conflito')
+    assert r.get_json()['detalhes'] == {'id_midia': str(casada)}
+    assert 'já está no Catálogo' in r.get_json()['erro']
+    assert _vinculo('steam', appid) is None
+    assert banco.consultar_um('SELECT id_midia::text AS id FROM steam_appids WHERE appid = %s', (appid,))['id'] == str(
+        casada)
+    assert _item_da_midia(id_usuario, destino) is None
+    assert repositorio.conta(id_usuario, 'steam')['ultimo_resultado']['total_nao_encontrados'] == 1
+
+
+def test_vincular_jogo_ignorado_preenche_e_tira_o_ignorado(client, pessoa, fontes, jogo):  # noqa: F811
+    id_usuario, headers = pessoa()
+    appid, *_ = _steam_nao_encontrado(client, headers, fontes, jogo, id_usuario)
+    _, slug_d, nome_d = jogo('Destino')
+    destino = _no_catalogo(appid + 1, slug_d, nome_d, casado=False)
+    banco.executar('UPDATE steam_appids SET ignorado = true WHERE appid = %s', (appid,))
+
+    assert _vincular(client, headers, 'steam', appid, destino).status_code == 201
+
+    assert banco.consultar_um(
+        'SELECT id_midia::text AS id, ignorado FROM steam_appids WHERE appid = %s', (appid,),
+    ) == {'id': str(destino), 'ignorado': False}
 
 
 # ============================================
@@ -282,22 +374,57 @@ def test_xml_do_mal_casa_pelo_vinculo(client, pessoa, mal, anilist_ids, monkeypa
     assert _item_da_midia(id_usuario, id_anime) is not None
 
 
-def test_anilist_consulta_o_vinculo_antes_do_proprio_id(client, pessoa, anilist, anilist_ids):  # noqa: F811
+def test_anilist_casa_pela_fonte_e_o_vinculo_fica_de_reserva(client, pessoa, anilist, anilist_ids):  # noqa: F811
+    """A fonte casa primeiro: o AniList traz a obra (importável), então o vínculo não é usado."""
     id_usuario, headers = pessoa()
     _, id_anime = _anime_no_catalogo(anilist_ids, episodios=12)
-    media = _media_nova(anilist_ids, 'Sem import')
-    banco.executar(
-        "INSERT INTO vinculos_origem (plataforma, origem_id, tipo, id_midia) VALUES ('anilist', %s, 'anime', %s)",
-        (str(media['id']), id_anime),
-    )
+    media = _media_nova(anilist_ids, 'Com import')
+    _vincular_direto('anilist', media['id'], 'anime', id_anime)
     repositorio.gravar_conta(id_usuario, 'anilist', Conta('fulano', 'fulano'))
     anilist(_colecao((False, [_entrada(media, progress=5)])), _colecao())
 
     previa = client.post('/api/integracoes/anilist/previa', headers=headers).get_json()
     client.post(f"/api/integracoes/previas/{previa['id_previa']}/confirmar", headers=headers)
 
+    importada = banco.consultar_um('SELECT id_midia FROM animes WHERE anilist_id = %s', (media['id'],))
+    assert _item_da_midia(id_usuario, importada['id_midia'])['progresso_atual'] == 5
+    assert _item_da_midia(id_usuario, id_anime) is None
+
+
+def test_anilist_que_falha_ao_importar_cai_no_vinculo(client, pessoa, anilist, anilist_ids, monkeypatch):  # noqa: F811
+    id_usuario, headers = pessoa()
+    _, id_anime = _anime_no_catalogo(anilist_ids, episodios=12)
+    media = _media_nova(anilist_ids, 'Import quebra')
+    _vincular_direto('anilist', media['id'], 'anime', id_anime)
+    repositorio.gravar_conta(id_usuario, 'anilist', Conta('fulano', 'fulano'))
+    anilist(_colecao((False, [_entrada(media, progress=5)])), _colecao())
+    previa = client.post('/api/integracoes/anilist/previa', headers=headers).get_json()
+
+    def quebrar(_dados):
+        raise RuntimeError('fonte com dado ruim')
+
+    monkeypatch.setitem(catalogo.IMPORTADORES, ('anilist', 'anime'), quebrar)
+    corpo = client.post(f"/api/integracoes/previas/{previa['id_previa']}/confirmar", headers=headers).get_json()
+
+    assert (corpo['novos'], corpo['total_nao_encontrados']) == (1, 0), corpo
     assert _item_da_midia(id_usuario, id_anime)['progresso_atual'] == 5
-    assert banco.consultar_um('SELECT 1 AS x FROM animes WHERE anilist_id = %s', (media['id'],)) is None
+
+
+def test_mal_casa_pelo_idmal_do_anilist_antes_do_vinculo(client, pessoa, mal, anilist_ids):  # noqa: F811
+    id_usuario, headers = pessoa()
+    id_anilist, pela_fonte = _anime_no_catalogo(anilist_ids, episodios=12)
+    _, pelo_vinculo = _anime_no_catalogo(anilist_ids, episodios=12)
+    _vincular_direto('mal', 900010, 'anime', pelo_vinculo)
+    mal([_pagina()])
+    client.put('/api/integracoes/mal', json={'identificador': 'Fulano'}, headers=headers)
+    mal([_pagina(_entrada_mal(900010, 'Com par', num_episodes_watched=4)), _pagina()],
+        [_page(_media_anilist(900010, id_anilist))])
+
+    previa = client.post('/api/integracoes/mal/previa', headers=headers).get_json()
+    client.post(f"/api/integracoes/previas/{previa['id_previa']}/confirmar", headers=headers)
+
+    assert _item_da_midia(id_usuario, pela_fonte)['progresso_atual'] == 4
+    assert _item_da_midia(id_usuario, pelo_vinculo) is None
 
 
 # ============================================

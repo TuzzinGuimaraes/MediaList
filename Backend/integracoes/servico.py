@@ -10,8 +10,10 @@ aplicam uma vez só (o DELETE da prévia trava a linha até o commit).
 
 Cada Não encontrado guarda o item inteiro (sem a obra da fonte), para o Vincular aplicá-lo
 depois; a resposta só mostra título, link, `origem_id` e Tipo. Vincular (`vincular`) grava o
-vínculo global e aplica o Item como a sincronização; a prévia consulta os vínculos antes de
-casar pela fonte.
+vínculo global e aplica o Item como a sincronização. O vínculo é reserva: a fonte casa primeiro
+(a Mídia já no Catálogo ou a obra que ela traz para importar) e o vínculo só vale para o item
+que a fonte não casa (nem localiza, nem importa). Assim um vínculo errado nunca tira um item que
+a fonte acerta.
 
 Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
 `SemConta`/`PlataformaDesconhecida` e os do Vincular (`MidiaInexistente`, `ForaDosNaoEncontrados`,
@@ -79,7 +81,12 @@ class TipoIncompativel(ValueError):
 
 
 class VinculoEmConflito(Exception):
-    """O item já está vinculado a outra Mídia."""
+    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a fonte já casou o jogo."""
+
+    def __init__(self, id_midia: str, *, no_catalogo: bool = False):
+        super().__init__(id_midia)
+        self.id_midia = id_midia
+        self.no_catalogo = no_catalogo
 
 
 class _CatalogoLocalizado:
@@ -184,11 +191,24 @@ def _sem_dados_se_localizado(item: ItemDeOrigem, midia) -> ItemDeOrigem:
     return replace(item, catalogo=replace(item.catalogo, dados=None))
 
 
+def _casar_com_reserva(nome: str, itens: list[ItemDeOrigem]):
+    """(itens, Mídias localizadas): a fonte primeiro; o vínculo só no item que ela não casa."""
+    localizadas = catalogo.localizar(itens)
+
+    def casa(item: ItemDeOrigem) -> bool:
+        return catalogo.chave(item) in localizadas or catalogo.importavel(item)
+
+    pela_reserva = iter(vinculos.aplicar(nome, [i for i in itens if not casa(i)]))
+    itens = [item if casa(item) else next(pela_reserva) for item in itens]
+    localizadas.update(catalogo.localizar([i for i in itens if i.catalogo and i.catalogo.fonte == 'midia']))
+    return itens, localizadas
+
+
 def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> dict[str, Any]:
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
     conferir_tamanho(len(itens))
-    itens = vinculos.aplicar(nome, itens)
-    planos, nao_encontrados = _planejar(id_usuario, itens, catalogo.localizar(itens), date.today())
+    itens, localizadas = _casar_com_reserva(nome, itens)
+    planos, nao_encontrados = _planejar(id_usuario, itens, localizadas, date.today())
     novos = sum(1 for *_, m in planos if m.tipo == NOVO)
     conteudo = {
         'itens': [item_para_json(_sem_dados_se_localizado(item, midia)) for item, midia, *_ in planos],
@@ -215,9 +235,13 @@ def previa(id_usuario: str, nome: str) -> dict[str, Any]:
     return previa_de_itens(id_usuario, nome, itens)
 
 
-def _importar_faltantes(itens: list[ItemDeOrigem]) -> dict[tuple[str, str], catalogo.Localizada]:
-    """As Mídias dos itens, importando as que faltam (cada uma no seu commit; o upsert é idempotente)."""
+def _importar_faltantes(itens: list[ItemDeOrigem], nome: str | None = None) -> dict[catalogo.Chave, Any]:
+    """As Mídias dos itens, importando as que faltam (cada uma no seu commit; o upsert é idempotente).
+
+    Com `nome`, a importação que falha cai no vínculo da plataforma (a reserva), na chave do item.
+    """
     localizadas = catalogo.localizar(itens)
+    falharam = []
     for item in itens:
         chave = catalogo.chave(item)
         if chave is not None and chave not in localizadas:
@@ -225,6 +249,15 @@ def _importar_faltantes(itens: list[ItemDeOrigem]) -> dict[tuple[str, str], cata
             importada = catalogo.importar(item)
             if importada:
                 localizadas[chave] = importada
+            else:
+                falharam.append(item)
+    if nome and falharam:
+        pela_reserva = vinculos.aplicar(nome, [replace(i, catalogo=None) for i in falharam])
+        achadas = catalogo.localizar([i for i in pela_reserva if i.catalogo])
+        for original, vinculado in zip(falharam, pela_reserva, strict=True):
+            midia = achadas.get(catalogo.chave(vinculado)) if vinculado.catalogo else None
+            if midia:
+                localizadas[catalogo.chave(original)] = midia
     return localizadas
 
 
@@ -266,7 +299,7 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
     if guardada is None:
         return None
     itens = [item_de_json(d) for d in guardada['conteudo']['itens']]
-    localizadas = _importar_faltantes(itens)
+    localizadas = _importar_faltantes(itens, guardada['plataforma'])
 
     with banco.transacao() as t:
         consumida = repositorio.consumir_previa(id_usuario, id_previa, t)
@@ -293,7 +326,9 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
 
     Só aceita o que apareceu como Não encontrado para ele (no último resultado ou numa prévia
     válida), na Mídia do mesmo Tipo. O item sai dos Não encontrados dele. Vínculo já existente
-    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito.
+    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a fonte já casou a
+    appid com outra Mídia desde o Não encontrado (checado e gravado na mesma transação), também
+    VinculoEmConflito, com `no_catalogo`: o jogo entra na próxima sincronização.
     """
     plataforma(nome)
     destino = vinculos.midia(id_midia)
@@ -308,12 +343,15 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
                                if t in _ARTIGO_DO_TIPO)
         raise TipoIncompativel(f'Escolha {esperado or "uma Mídia do mesmo Tipo"}.')
 
-    with banco.transacao() as t:
-        vinculo = vinculos.gravar(t, nome, origem_id, destino['tipo'], destino['id_midia'], id_usuario,
-                                  entrada.get('titulo') or origem_id)
-        if vinculo['id_midia'] != destino['id_midia']:
-            raise VinculoEmConflito(origem_id)
-        vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+    try:
+        with banco.transacao() as t:
+            vinculo = vinculos.gravar(t, nome, origem_id, destino['tipo'], destino['id_midia'], id_usuario,
+                                      entrada.get('titulo') or origem_id)
+            if vinculo['id_midia'] != destino['id_midia']:
+                raise VinculoEmConflito(vinculo['id_midia'])
+            vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+    except vinculos.JaNoCatalogo as erro:
+        raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
     resultado = aplicar_itens(id_usuario, [_item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],

@@ -2,15 +2,16 @@
 
 O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para todo Usuário com o mesmo
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
-(no MAL, anime 1 e mangá 1 são obras diferentes). Na Steam o casamento também vai para
-`steam_appids`; desfazer deixa ali o negativo, então a próxima sincronização volta a tratar o
-jogo como Não encontrado. Desfazer nunca apaga Itens.
+(no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
+a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
+vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfazer deixa ali o
+negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
+nunca apaga Itens.
 
 Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`.
 """
 from __future__ import annotations
 
-import uuid
 from dataclasses import replace
 from typing import Any
 
@@ -18,7 +19,7 @@ from psycopg.types.json import Jsonb
 
 import banco
 from integracoes import steam_appids
-from integracoes.plataforma import ItemDeOrigem, RefCatalogo
+from integracoes.plataforma import ItemDeOrigem, RefCatalogo, uuid_valido
 from integracoes.steam import link_da_loja
 
 #: Tipos de Mídia a que cada plataforma pode vincular (Q116).
@@ -26,13 +27,6 @@ TIPOS_DA_PLATAFORMA: dict[str, tuple[str, ...]] = {
     'anilist': ('anime', 'manga'), 'mal': ('anime', 'manga'), 'steam': ('jogo',),
 }
 
-
-def _uuid(texto: str) -> bool:
-    try:
-        uuid.UUID(str(texto))
-    except ValueError:
-        return False
-    return True
 
 
 def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
@@ -47,7 +41,10 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 
 
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
-    """Os itens, com `catalogo` na Mídia do vínculo quando há um (o vínculo vem antes da fonte)."""
+    """Os itens, com `catalogo` na Mídia do vínculo quando há um.
+
+    O vínculo é reserva: quem chama só passa os itens que a fonte não casou.
+    """
     if not itens:
         return itens
     linhas = db.consultar(
@@ -65,7 +62,7 @@ def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDe
 
 def midia(id_midia: str) -> dict[str, Any] | None:
     """`{id_midia, tipo}` da Mídia, ou None (inclusive id que não é UUID)."""
-    if not _uuid(id_midia):
+    if not uuid_valido(id_midia):
         return None
     return banco.consultar_um(
         'SELECT m.id_midia::text AS id_midia, tm.nome_tipo AS tipo FROM midias m '
@@ -90,9 +87,21 @@ def nao_encontrados(id_usuario: str, plataforma: str, origem_id: str) -> list[di
     )]
 
 
+class JaNoCatalogo(Exception):
+    """A appid da Steam já casou com outra Mídia (pela fonte): o vínculo não a troca."""
+
+    def __init__(self, id_midia: str):
+        super().__init__(id_midia)
+        self.id_midia = id_midia
+
+
 def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usuario: str,
            titulo: str) -> dict[str, Any]:
-    """Grava o vínculo e devolve `{id, id_midia}`; se já havia um, devolve o que estava (talvez outra Mídia)."""
+    """Grava o vínculo e devolve `{id, id_midia}`; se já havia um, devolve o que estava (talvez outra Mídia).
+
+    Na Steam, preenche o casamento em `steam_appids` só se ele está vazio; casado com outra Mídia,
+    levanta JaNoCatalogo (o chamador desfaz a transação, e o vínculo não fica).
+    """
     vinculo = db.consultar_um(
         'INSERT INTO vinculos_origem (plataforma, origem_id, tipo, id_midia, id_usuario) VALUES (%s, %s, %s, %s, %s) '
         'ON CONFLICT (plataforma, tipo, origem_id) DO NOTHING RETURNING id, id_midia::text AS id_midia',
@@ -105,7 +114,9 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
             (plataforma, tipo, origem_id),
         )
     if plataforma == 'steam':
-        steam_appids.gravar(int(origem_id), id_midia, titulo, db=db)
+        casada = steam_appids.vincular(db, int(origem_id), id_midia, titulo)
+        if casada != id_midia:
+            raise JaNoCatalogo(casada)
     return vinculo
 
 
@@ -163,7 +174,7 @@ def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
 
 def desfazer(id_vinculo: str) -> bool:
     """Apaga o vínculo (os Itens ficam); na Steam, o casamento vira negativo. False se não existe."""
-    if not _uuid(id_vinculo):
+    if not uuid_valido(id_vinculo):
         return False
     with banco.transacao() as t:
         apagado = t.consultar_um(

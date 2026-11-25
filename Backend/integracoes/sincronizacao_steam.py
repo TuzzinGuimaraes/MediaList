@@ -1,9 +1,8 @@
 """Sincronização da Steam (Q111, Q113, Q115): sem prévia, grava direto pela `servico.aplicar_itens`.
 
 1. Lê os jogos já abertos do perfil conectado (`integracoes.steam`).
-2. Os vinculados por um Usuário (`integracoes.vinculos`), os já casados em `steam_appids` e os
-   que o Catálogo já tem pela appid (`jogos.steam_appid`) vão primeiro: atualizar horas é barato
-   e é o que o "Sincronizar agora" mais precisa entregar.
+2. Os já casados em `steam_appids` e os que o Catálogo já tem pela appid (`jogos.steam_appid`)
+   vão primeiro: atualizar horas é barato e é o que o "Sincronizar agora" mais precisa entregar.
    Os ignorados (a loja disse que não são jogo) somem: nem "Não encontrados" nem pendentes.
 3. Os que faltam casar passam, um por vez e enquanto houver orçamento, pelo RAWG
    (`integracoes.rawg`) e, se ele não tem o jogo, pela loja da Steam (`integracoes.loja_steam`):
@@ -13,6 +12,9 @@
    - nenhum dos dois tem: grava o negativo (só é buscado de novo depois de `RETENTAR_NEGATIVO_DIAS`).
    O que não coube no orçamento, ou o RAWG ou a loja fora do ar, fica `pendente` para a próxima
    (o job diário), sem gravar nada.
+4. O vínculo de um Usuário (`integracoes.vinculos`) é reserva: só casa o que ficou sem casamento
+   (negativo); o resto vai para "Não encontrados". O Vincular da Steam também grava o casamento
+   em `steam_appids` (só onde não havia), então em geral o jogo vinculado já casa no passo 2.
 
 O orçamento conta do início (ler a biblioteca e aplicar os já casados entram nele) e é
 conferido antes de cada chamada ao RAWG e à loja, não só entre jogos: um jogo pode pedir a
@@ -21,10 +23,11 @@ resultado vai para `integracoes.ultimo_resultado`.
 """
 from __future__ import annotations
 
+import enum
 import time
 from dataclasses import replace
 from datetime import date
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from integracoes import catalogo, repositorio, servico, steam_appids, vinculos
 from integracoes.loja_steam import LojaSteam
@@ -34,8 +37,16 @@ from integracoes.rawg import Rawg
 #: Orçamento do "Sincronizar agora", em segundos (a função da Vercel tem 300 s).
 ORCAMENTO_SEGUNDOS = 60
 
-#: O que `_casar` devolve quando a loja diz que a appid não é jogo.
-IGNORADO = object()
+class Ignorado(enum.Enum):
+    """O que `_casar` devolve quando a loja diz que a appid não é jogo."""
+
+    IGNORADO = 'ignorado'
+
+
+IGNORADO = Ignorado.IGNORADO
+
+#: O casamento de uma appid: a Mídia, IGNORADO (não é jogo) ou None (ninguém tem).
+Casamento = catalogo.Localizada | Literal[Ignorado.IGNORADO] | None
 
 
 class _OrcamentoEsgotado(OrigemIndisponivel):
@@ -64,22 +75,27 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
     return midia
 
 
-def _pela_loja(item: ItemDeOrigem, loja: LojaSteam):
-    """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem)."""
+def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> Casamento:
+    """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem).
+
+    A loja já devolve a appid pedida; o nome que não é texto fica o da biblioteca da Steam, e a
+    capa vertical só entra se o CDN a confirmar dentro do orçamento.
+    """
     dados = loja.detalhes(item.origem_id)
     if dados is None:
         return None
     if dados.get('type') != 'game':
         return IGNORADO
-    dados = {**dados, 'name': dados.get('name') or item.titulo,
-             'steam_appid': dados.get('steam_appid') or int(item.origem_id)}
+    nome = dados.get('name')
+    dados = {**dados, 'name': nome if isinstance(nome, str) and nome.strip() else item.titulo,
+             'steam_appid': int(item.origem_id), 'capa_vertical': loja.capa_vertical(item.origem_id)}
     midia = catalogo.importar(replace(item, catalogo=RefCatalogo('steam', item.origem_id, dados)))
     if midia is None:
         raise OrigemIndisponivel(f'não deu para importar a appid {item.origem_id} da loja')
     return midia
 
 
-def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam):
+def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> Casamento:
     """A Mídia do item (RAWG, senão a loja da Steam), IGNORADO ou None (não casa).
 
     Grava o casamento (positivo, ignorado ou negativo). Levanta OrigemIndisponivel sem gravar nada.
@@ -108,12 +124,11 @@ def _somar(*resultados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _separar(itens: list[ItemDeOrigem]):
-    """(casados, a casar, sem casamento): pelo vínculo de um Usuário, pelo `steam_appids` e, os que
-    faltam, pela appid no Catálogo."""
-    a_casar, sem_casamento = [], []
-    vinculados = vinculos.aplicar('steam', itens)
-    casados = [i for i in vinculados if i.catalogo]
-    itens = [i for i in vinculados if not i.catalogo]
+    """(casados, a casar, sem casamento): pelo `steam_appids` e, os que faltam, pela appid no Catálogo.
+
+    O vínculo de um Usuário não entra aqui: é reserva (`_pela_reserva`) dos que ficam sem casamento.
+    """
+    a_casar, sem_casamento, casados = [], [], []
     casamentos = steam_appids.ler([int(i.origem_id) for i in itens])
     for item in itens:
         casamento = casamentos.get(int(item.origem_id))
@@ -136,6 +151,13 @@ def _separar(itens: list[ItemDeOrigem]):
         steam_appids.gravar(int(item.origem_id), midia['id_midia'], item.titulo)
         casados.append(_na_midia(item, midia['id_midia']))
     return casados, restantes, sem_casamento
+
+
+def _pela_reserva(sem_casamento: list[ItemDeOrigem]) -> tuple[list[ItemDeOrigem], list[ItemDeOrigem]]:
+    """(vinculados, Não encontrados): os que nem `steam_appids`, nem o Catálogo, nem o RAWG, nem a
+    loja casaram, pelo vínculo de um Usuário (a reserva)."""
+    pelo_vinculo = vinculos.aplicar('steam', sem_casamento)
+    return [i for i in pelo_vinculo if i.catalogo], [i for i in pelo_vinculo if not i.catalogo]
 
 
 def sincronizar(
@@ -183,7 +205,8 @@ def sincronizar(
         rawg.fechar()
         loja.fechar()
 
-    novos_casados = servico.aplicar_itens(id_usuario, recem_casados, hoje=hoje)
+    vinculados, sem_casamento = _pela_reserva(sem_casamento)
+    novos_casados = servico.aplicar_itens(id_usuario, recem_casados + vinculados, hoje=hoje)
     nao_casados = [servico.nao_encontrado(i) for i in sem_casamento]
     resultado = {
         **_somar(ja_casados, novos_casados, {

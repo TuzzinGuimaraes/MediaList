@@ -7,6 +7,7 @@ import html
 import re
 from datetime import date
 from threading import local
+from urllib.parse import urlsplit
 
 from importacao import cursor
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
@@ -73,6 +74,10 @@ MESES = {nome: numero for numero, nomes in enumerate((
 ), start=1) for nome in nomes}
 _DIA_MES_ANO = re.compile(r'^(\d{1,2})\s+(?:de\s+)?([a-z]+)\.?,?\s+(?:de\s+)?(\d{4})$')
 _MES_DIA_ANO = re.compile(r'^([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$')
+#: Hosts das imagens da loja (CDNs da Steam); capa fora deles fica nula.
+HOSTS_DE_IMAGEM_STEAM = ('.steamstatic.com', '.akamaihd.net')
+#: Teto do nome, da desenvolvedora e da publicadora vindos da loja.
+TETO_TEXTO_LOJA = 300
 
 
 def normalizar_plataformas(plataformas_rawg: list) -> list[str]:
@@ -176,31 +181,60 @@ def _data_da_loja(texto: str | None) -> date | None:
 
 def _texto_da_loja(texto: str | None) -> str | None:
     """`short_description` sem as tags e as entidades HTML que a loja às vezes manda."""
-    if not texto:
+    if not texto or not isinstance(texto, str):
         return None
     return truncar(html.unescape(re.sub(r'<[^>]+>', '', texto)).strip(), 1000) or None
+
+
+def _curto_da_loja(valor) -> str | None:
+    """Nome, desenvolvedora ou publicadora da loja: só texto, sem espaços nas pontas, até o teto."""
+    if not isinstance(valor, str):
+        return None
+    return valor.strip()[:TETO_TEXTO_LOJA] or None
+
+
+def _primeiro(lista) -> str | None:
+    return _curto_da_loja(lista[0]) if isinstance(lista, list) and lista else None
+
+
+def imagem_da_steam(url) -> str | None:
+    """A URL, se for `https://` de um host de imagem da Steam; senão None (a loja é dado de fora)."""
+    if not isinstance(url, str):
+        return None
+    try:
+        partes = urlsplit(url.strip())
+    except ValueError:
+        return None
+    host = (partes.hostname or '').lower()
+    if partes.scheme != 'https' or partes.username or partes.password or not host.endswith(HOSTS_DE_IMAGEM_STEAM):
+        return None
+    return url.strip()
 
 
 def dados_do_jogo_steam(loja: dict) -> tuple[dict, list[str]]:
     """O `data` do `appdetails` no formato de `salvar_jogo`: (dados, gêneros).
 
     Sem Nota da fonte (a loja não tem) e sem `rawg_slug`: a Mídia é achada pelo `steam_appid`,
-    e a Importação do RAWG que trouxer a mesma appid a atualiza.
+    e a Importação do RAWG que trouxer a mesma appid a atualiza. A capa vertical
+    (`capa_vertical`, que a sincronização só põe depois de confirmar que existe) vira o poster e
+    a `header_image` o banner; sem ela, a `header_image` é as duas. Imagens só dos hosts da Steam.
     """
     lancamento = loja.get('release_date') or {}
     categorias = {c.get('id') for c in loja.get('categories') or [] if isinstance(c, dict)}
     single, multi = CATEGORIA_SINGLE in categorias, bool(categorias & CATEGORIAS_MULTI)
     plataformas = loja.get('platforms') or {}
-    nome = loja.get('name')
+    nome = _curto_da_loja(loja.get('name'))
+    horizontal = imagem_da_steam(loja.get('header_image'))
     dados = {
         'titulo_original': nome,
         'titulo_portugues': nome,
         'sinopse': _texto_da_loja(loja.get('short_description')),
         'data_lancamento': _data_da_loja(lancamento.get('date')),
         'nota_fonte': None,
-        'poster_url': loja.get('header_image') or None,
-        'desenvolvedor': (loja.get('developers') or [None])[0],
-        'publicadora': (loja.get('publishers') or [None])[0],
+        'poster_url': imagem_da_steam(loja.get('capa_vertical')) or horizontal,
+        'banner_url': horizontal,
+        'desenvolvedor': _primeiro(loja.get('developers')),
+        'publicadora': _primeiro(loja.get('publishers')),
         'plataformas': [rotulo for chave, rotulo in PLATAFORMAS_STEAM.items() if plataformas.get(chave)],
         'status_jogo': 'em_desenvolvimento' if lancamento.get('coming_soon') else 'lancado',
         'modo_jogo': 'ambos' if single and multi else 'multi' if multi else 'single',

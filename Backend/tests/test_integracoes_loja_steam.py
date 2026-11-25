@@ -93,6 +93,7 @@ def test_dados_do_jogo_da_loja():
         'titulo_original': 'Portal', 'titulo_portugues': 'Portal', 'sinopse': 'Um "jogo" de portais.',
         'data_lancamento': date(2012, 8, 21), 'nota_fonte': None,
         'poster_url': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
+        'banner_url': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
         'desenvolvedor': 'Valve', 'publicadora': 'Valve', 'plataformas': ['PC', 'macOS'],
         'status_jogo': 'lancado', 'modo_jogo': 'ambos', 'classificacao': None,
         'rawg_slug': None, 'steam_appid': 400, 'trailer_url': None,
@@ -141,3 +142,96 @@ def test_jogo_da_loja_sem_campos_opcionais():
 ])
 def test_appid_da_steam_nas_lojas_do_rawg(lojas, esperada):
     assert appid_da_steam({'stores': lojas}) == esperada
+
+
+# ============================================
+# Dados da loja validados (revisão)
+# ============================================
+
+def test_steam_appid_diferente_do_pedido_fica_o_pedido():
+    resposta = appdetails(400, 'Portal')
+    resposta['400']['data']['steam_appid'] = 999
+    loja, _ = _loja({r'appdetails': resposta})
+
+    assert loja.detalhes(400)['steam_appid'] == 400
+
+
+@pytest.mark.parametrize('url', [
+    'http://shared.akamai.steamstatic.com/x/header.jpg',
+    'https://evil.example.com/header.jpg',
+    'https://steamstatic.com.evil.example/header.jpg',
+    'javascript:alert(1)',
+    'https://user@evil.example/?.steamstatic.com',
+    42,
+    ['https://cdn.akamai.steamstatic.com/x.jpg'],
+])
+def test_capa_fora_dos_hosts_da_steam_fica_nula(url):
+    dados, _ = dados_do_jogo_steam({**appdetails(400, 'Portal')['400']['data'], 'header_image': url})
+
+    assert (dados['poster_url'], dados['banner_url']) == (None, None)
+
+
+@pytest.mark.parametrize('url', [
+    'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
+    'https://cdn.cloudflare.steamstatic.com/steam/apps/400/header.jpg',
+    'https://steamcdn-a.akamaihd.net/steam/apps/400/header.jpg',
+])
+def test_capa_dos_hosts_da_steam_entra(url):
+    dados, _ = dados_do_jogo_steam({**appdetails(400, 'Portal')['400']['data'], 'header_image': url})
+
+    assert (dados['poster_url'], dados['banner_url']) == (url, url)
+
+
+def test_capa_vertical_confirmada_vira_o_poster_e_a_horizontal_o_banner():
+    data = appdetails(400, 'Portal')['400']['data']
+    vertical = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/400/library_600x900.jpg'
+
+    dados, _ = dados_do_jogo_steam({**data, 'capa_vertical': vertical})
+
+    assert (dados['poster_url'], dados['banner_url']) == (vertical, data['header_image'])
+
+
+def test_textos_da_loja_com_strip_teto_e_so_str():
+    data = {**appdetails(400, 'Portal')['400']['data'], 'name': '  Portal  ',
+            'developers': ['  ' + 'V' * 400], 'publishers': [{'nome': 'Valve'}]}
+
+    dados, _ = dados_do_jogo_steam(data)
+
+    assert dados['titulo_original'] == dados['titulo_portugues'] == 'Portal'
+    assert dados['desenvolvedor'] == 'V' * 300
+    assert dados['publicadora'] is None
+
+
+def test_nome_que_nao_e_texto_fica_nulo():
+    dados, _ = dados_do_jogo_steam({'type': 'game', 'name': ['x'], 'steam_appid': 7})
+
+    assert dados['titulo_original'] is None
+
+
+def test_capa_vertical_so_com_head_200():
+    loja, sessao = _loja({})
+    sessao.cabecas = {r'/400/library_600x900\.jpg$': 200, r'/401/': 404}
+
+    assert loja.capa_vertical(400) == (
+        'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/400/library_600x900.jpg')
+    assert loja.capa_vertical(401) is None
+    assert sessao.chamadas == [] and len(sessao.heads) == 2
+    assert all(t <= 3 for t in sessao.timeouts_head)
+
+
+@pytest.mark.parametrize('falha', [ConnectionError('caiu'), TimeoutError('lento')])
+def test_capa_vertical_que_falha_e_none(falha):
+    loja, sessao = _loja({})
+    sessao.cabecas = {r'library': falha}
+
+    assert loja.capa_vertical(400) is None
+
+
+def test_capa_vertical_sem_orcamento_nao_chama_e_e_none():
+    def barrar():
+        raise OrigemIndisponivel('orçamento')
+
+    loja, sessao = _loja({}, antes_de_chamar=barrar)
+
+    assert loja.capa_vertical(400) is None
+    assert sessao.heads == []
