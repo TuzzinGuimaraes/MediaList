@@ -1,14 +1,21 @@
 """
-Cursor da Importação: a próxima página de cada Tipo de mídia na fonte (`importacao_cursor`).
+Cursor da Importação, por Tipo de mídia (`importacao_cursor`).
 
-A Importação diária continua de onde a anterior parou, em vez de recomeçar da
-página 1. Sem linha para o Tipo, começa da página 1.
+A Importação diária continua de onde a anterior parou, em vez de recomeçar do início.
+
+- RAWG (jogos): `proxima_pagina`, a próxima página da fonte. Sem linha, a página 1.
+- AniList (animes e mangás), uma passada de cada (`importacao.anilist`):
+  - crescimento: a fronteira (`crescimento_popularidade`, `crescimento_id`,
+    `crescimento_empate`); sem ela, o topo, a partir da `proxima_pagina` (o cursor de página de
+    antes da spec `anilist-sem-limite`; o novo a grava sempre em 1);
+  - atualização das populares: `atualizacao_pagina`, de 1 a 100.
 """
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 
 from banco import consultar_um, executar
+from importacao import anilist
 
 
 def ler(tipo_midia: str) -> int:
@@ -36,27 +43,65 @@ def gravar(tipo_midia: str, proxima_pagina: int) -> None:
     )
 
 
-def importar_paginas(
+def ler_anilist(tipo_midia: str) -> dict:
+    """`{'fronteira', 'pagina_topo', 'atualizacao_pagina'}` das duas passadas do AniList."""
+    linha = consultar_um(
+        'SELECT proxima_pagina, crescimento_popularidade, crescimento_id, crescimento_empate, '
+        'atualizacao_pagina FROM importacao_cursor WHERE tipo_midia = %s',
+        (tipo_midia,),
+    )
+    if not linha:
+        return {'fronteira': None, 'pagina_topo': 1, 'atualizacao_pagina': 1}
+    fronteira = None
+    if linha['crescimento_id'] is not None:
+        fronteira = anilist.Fronteira(
+            linha['crescimento_popularidade'], linha['crescimento_id'], linha['crescimento_empate']
+        )
+    return {'fronteira': fronteira, 'pagina_topo': linha['proxima_pagina'],
+            'atualizacao_pagina': linha['atualizacao_pagina']}
+
+
+def gravar_crescimento(tipo_midia: str, fronteira: anilist.Fronteira | None) -> None:
+    """Grava a fronteira do crescimento; `None` volta ao topo (página 1)."""
+    valores = (None, None, None) if fronteira is None else (fronteira.popularidade, fronteira.id, fronteira.empate)
+    executar(
+        'INSERT INTO importacao_cursor (tipo_midia, proxima_pagina, crescimento_popularidade, crescimento_id, '
+        'crescimento_empate) VALUES (%s, 1, %s, %s, %s) '
+        'ON CONFLICT (tipo_midia) DO UPDATE SET proxima_pagina = 1, '
+        'crescimento_popularidade = EXCLUDED.crescimento_popularidade, crescimento_id = EXCLUDED.crescimento_id, '
+        'crescimento_empate = EXCLUDED.crescimento_empate, atualizado_em = now()',
+        (tipo_midia, *valores),
+    )
+
+
+def gravar_atualizacao(tipo_midia: str, pagina: int) -> None:
+    executar(
+        'INSERT INTO importacao_cursor (tipo_midia, atualizacao_pagina) VALUES (%s, %s) '
+        'ON CONFLICT (tipo_midia) DO UPDATE '
+        'SET atualizacao_pagina = EXCLUDED.atualizacao_pagina, atualizado_em = now()',
+        (tipo_midia, pagina),
+    )
+
+
+def importar(
     tipo_midia: str,
     origem: str,
     stats,
-    buscar_paginas: Callable[[int], Iterable[dict]],
+    paginas: Iterable[dict],
     importar_pagina: Callable[[dict], None],
-    do_inicio: bool = False,
-) -> None:
-    """Percorre as páginas da fonte a partir do cursor e o mantém em dia.
+    avancar: Callable[[dict], None],
+) -> bool:
+    """Importa as `paginas` geradas e mantém o cursor em dia; `False` se uma página falhou.
 
-    `buscar_paginas(inicio)` gera páginas `{'pagina', 'itens', 'erro', 'payload', 'fim'}`;
-    `importar_pagina(pagina)` grava os itens de uma página que veio.
+    `paginas` gera `{'pagina', 'itens', 'erro', 'payload', ...}`; `importar_pagina(pagina)` grava
+    os itens de uma página que veio e `avancar(pagina)` grava o cursor depois dela.
 
-    - Depois de cada página que veio, grava a seguinte como próxima.
-    - Uma página com erro não avança o cursor e encerra este Tipo de mídia, para não
-      abrir buracos: a próxima execução tenta a mesma página.
-    - No fim da fonte (`fim`), volta à página 1 e passa a atualizar as Mídias já importadas.
+    Uma página com erro não avança o cursor e encerra a passada, para não abrir buracos: a
+    próxima execução tenta a mesma página.
     """
     from importacao.utils import registrar_falha_importacao
 
-    for pagina in buscar_paginas(iniciar(tipo_midia, do_inicio)):
+    for pagina in paginas:
         numero = pagina['pagina']
         if pagina.get('erro') is not None:
             stats.registrar_falha_pagina(numero)
@@ -68,10 +113,73 @@ def importar_paginas(
                 payload=pagina.get('payload'),
                 extra={'pagina': numero, 'etapa': 'listar_pagina'},
             )
-            return
-
+            return False
         importar_pagina(pagina)
-        fim = bool(pagina.get('fim'))
-        gravar(tipo_midia, 1 if fim else numero + 1)
-        if fim:
+        avancar(pagina)
+    return True
+
+
+def importar_paginas(
+    tipo_midia: str,
+    origem: str,
+    stats,
+    buscar_paginas: Callable[[int], Iterable[dict]],
+    importar_pagina: Callable[[dict], None],
+    do_inicio: bool = False,
+) -> None:
+    """Percorre as páginas da fonte a partir do cursor de página (`proxima_pagina`).
+
+    `buscar_paginas(inicio)` gera páginas `{'pagina', 'itens', 'erro', 'payload', 'fim'}`.
+    Depois de cada página que veio, grava a seguinte como próxima; no fim da fonte (`fim`),
+    volta à página 1 e passa a atualizar as Mídias já importadas.
+    """
+
+    def ate_o_fim(paginas):
+        for pagina in paginas:
+            yield pagina
+            if pagina.get('fim'):
+                return
+
+    def avancar(pagina):
+        gravar(tipo_midia, 1 if pagina.get('fim') else pagina['pagina'] + 1)
+
+    importar(
+        tipo_midia, origem, stats, ate_o_fim(buscar_paginas(iniciar(tipo_midia, do_inicio))),
+        importar_pagina, avancar,
+    )
+
+
+def importar_anilist(
+    tipo_midia: str,
+    stats,
+    buscar,
+    importar_pagina: Callable[[dict], None],
+    paginas: int,
+    paginas_atualizacao: int,
+    do_inicio: bool = False,
+) -> None:
+    """As duas passadas do AniList: o crescimento (`paginas`) e a atualização (`paginas_atualizacao`).
+
+    `buscar(pagina, sort, filtros)` é `anilist.buscar_pagina` com a sessão. `do_inicio` volta as
+    duas ao topo. Página com falha encerra o Tipo (a atualização não roda depois de falha no
+    crescimento).
+    """
+    if do_inicio:
+        gravar_crescimento(tipo_midia, None)
+        gravar_atualizacao(tipo_midia, 1)
+    estado = ler_anilist(tipo_midia)
+
+    if paginas > 0:
+        ok = importar(
+            tipo_midia, 'AniList', stats,
+            anilist.crescimento(buscar, paginas, estado['fronteira'], estado['pagina_topo']),
+            importar_pagina, lambda pagina: gravar_crescimento(tipo_midia, pagina['cursor']),
+        )
+        if not ok:
             return
+    if paginas_atualizacao > 0:
+        importar(
+            tipo_midia, 'AniList', stats,
+            anilist.atualizacao(buscar, paginas_atualizacao, estado['atualizacao_pagina']),
+            importar_pagina, lambda pagina: gravar_atualizacao(tipo_midia, pagina['cursor']),
+        )

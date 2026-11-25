@@ -4,8 +4,7 @@ Importador de animes via AniList.
 from __future__ import annotations
 
 from banco import Indisponivel, autocommit
-from importacao import cursor
-from importacao.anilist import importar_do_anilist
+from importacao import anilist, cursor
 from importacao.db import salvar_anime
 from importacao.utils import (
     ERROR_LOG_PATH,
@@ -90,8 +89,10 @@ def processar_e_inserir_anime(anime: dict, t=None):
     return result
 
 
-def importar_animes(paginas: int = 20, do_inicio: bool = False):
-    """Executa a importação em lote de animes."""
+def importar_animes(
+    paginas: int = 20, do_inicio: bool = False, paginas_atualizacao: int = anilist.PAGINAS_ATUALIZACAO,
+):
+    """Importação de animes: `paginas` do crescimento e `paginas_atualizacao` das populares."""
     stats = ImportStats(tipo_midia='anime', origem='AniList')
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
@@ -121,13 +122,12 @@ def importar_animes(paginas: int = 20, do_inicio: bool = False):
                     )
 
     try:
-        cursor.importar_paginas(
-            'anime', 'AniList', stats,
-            lambda inicio: importar_do_anilist(
-                'ANIME', paginas, session=session, rate_limiter=rate_limiter, pagina_inicial=inicio
+        cursor.importar_anilist(
+            'anime', stats,
+            lambda pagina, sort, filtros: anilist.buscar_pagina(
+                session, rate_limiter, 'ANIME', pagina, sort, filtros
             ),
-            importar_pagina,
-            do_inicio,
+            importar_pagina, paginas, paginas_atualizacao, do_inicio,
         )
 
         logger.info('Importação de animes concluída. %s', stats.to_dict())
