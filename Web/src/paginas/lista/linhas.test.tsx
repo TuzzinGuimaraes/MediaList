@@ -86,6 +86,21 @@ describe('Minha Lista: linhas', () => {
     expect(celulas[4]).toHaveTextContent('hoje');
   });
 
+  it('abaixo de md, o menu de Status continua na linha (só some a coluna Atualizado)', async () => {
+    salvar({ formato: 'texto' });
+    await abrirLogado('/lista', { rotas: rotasDaLista([umItem({ titulo_original: 'Frieren' })]) });
+
+    const tabela = await screen.findByRole('table', { name: 'Em progresso, Anime' });
+    const [cabecalho, linha] = within(tabela).getAllByRole('row');
+    const status = within(linha!).getAllByRole('cell')[3]!;
+    // O jsdom não aplica o CSS: a célula do Status não pode ter o `hidden` das telas estreitas.
+    expect(status.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    expect(within(status).getByRole('button', { name: 'Status de Frieren: Em progresso. Mudar' })).toBeInTheDocument();
+    const nomeDaColuna = within(cabecalho!).getAllByRole('columnheader')[3]!;
+    expect(nomeDaColuna).toHaveTextContent('Status');
+    expect(nomeDaColuna.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+  });
+
   it('as linhas são virtualizadas, com a contagem de linhas da tabela inteira', async () => {
     salvar({ formato: 'texto' });
     const itens = Array.from({ length: 300 }, (_, i) => umItem({ titulo_original: `Obra ${String(i).padStart(3, '0')}` }));
