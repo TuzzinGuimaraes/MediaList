@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { diaIso } from '@dominio/datas';
-import { aplicarProgresso, type DadosItem, totalDoItem } from '@dominio/itemLista';
+import { aplicarProgresso, type DadosItem, mudancaDeStatus, totalDoItem } from '@dominio/itemLista';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
@@ -73,6 +73,41 @@ export function useRemoverItem() {
     mutationFn: ({ idLista }: { idMidia: string; idLista: string }) =>
       exigir(api.DELETE('/api/lista/{lista_id}', { params: { path: { lista_id: idLista } } })),
     onSuccess: (_r, { idMidia }) => invalidar(idMidia),
+  });
+}
+
+/**
+ * Troca só o Status de um Item (o menu ⋯ da Lista) com PUT /lista/<id_lista>, pelas regras
+ * do editor (`mudancaDeStatus`). Aparece no cache na hora; se o servidor recusar, o Item
+ * volta ao que era. A Lista refeita traz o resto (data de conclusão, Recontagem).
+ */
+export function useMudarStatus() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const invalidar = useInvalidarLista();
+
+  const trocar = (idLista: string, novo: (item: ItemLista) => ItemLista) =>
+    queryClient.setQueryData<RespostaLista>(CHAVE_LISTA, (r) =>
+      r && { lista: r.lista.map((item) => (item.id_lista === idLista ? novo(item) : item)) },
+    );
+
+  return useMutation({
+    mutationFn: ({ item, rotulo }: { item: ItemLista; rotulo: string }) =>
+      exigir(
+        api.PUT('/api/lista/{lista_id}', {
+          params: { path: { lista_id: item.id_lista } },
+          body: mudancaDeStatus(item, rotulo),
+        }),
+      ),
+    onMutate: async ({ item, rotulo }) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE_LISTA, exact: true });
+      trocar(item.id_lista, (atual) => {
+        const mudanca = mudancaDeStatus(item, rotulo);
+        return { ...atual, ...mudanca, status_consumo: mudanca.status_consumo as ItemLista['status_consumo'] };
+      });
+    },
+    onError: (_e, { item }) => trocar(item.id_lista, () => item),
+    onSettled: (_r, _e, { item }) => invalidar(item.id_midia),
   });
 }
 
