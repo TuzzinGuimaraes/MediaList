@@ -4,10 +4,13 @@ import { useSessao } from '../auth/SessaoContext';
 import type { NomePlataforma } from '@dominio/integracoes';
 import type {
   Integracao,
+  PaginaMidias,
   PreviaImportacao,
   RespostaIntegracoes,
   ResultadoImportacao,
   ResultadoSincronizacao,
+  TipoMidia,
+  VinculoCriado,
 } from './tipos';
 
 // Integrações no Perfil (ADR 0015), as mesmas rotas do web, sem o XML do MAL.
@@ -85,5 +88,38 @@ export function useSincronizarSteam() {
   return useMutation({
     mutationFn: () => cliente.requisitar<ResultadoSincronizacao>('/integracoes/steam/sincronizar', { metodo: 'POST' }),
     onSuccess: () => invalidarDepoisDeImportar(queryClient),
+  });
+}
+
+/** Quantas Mídias a busca do Vincular mostra. */
+const POR_PAGINA_VINCULAR = 10;
+
+/** A busca do Catálogo do Vincular (GET /midias, a do Explorar), só no Tipo do item; vazia não busca. */
+export function useBuscaDoVincular(tipo: TipoMidia, busca: string) {
+  const { cliente } = useSessao();
+  return useQuery({
+    queryKey: ['midias', 'vincular', tipo, busca],
+    queryFn: () => {
+      const params = new URLSearchParams({ tipo, busca, por_pagina: String(POR_PAGINA_VINCULAR) });
+      return cliente.requisitar<PaginaMidias>(`/midias?${params}`);
+    },
+    enabled: busca.length > 0,
+    select: (r) => r.itens,
+  });
+}
+
+/** Vincula um Não encontrado a uma Mídia (vale para todos) e o Item já entra na Lista. */
+export function useVincular(plataforma: NomePlataforma) {
+  const { cliente } = useSessao();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ origem_id, id_midia }: { origem_id: string; id_midia: string }) =>
+      cliente.requisitar<VinculoCriado>('/integracoes/vinculos', {
+        metodo: 'POST',
+        corpo: { plataforma, origem_id, id_midia },
+      }),
+    // Sem esperar: a lista nova dos Não encontrados já vem sem o item e desmonta quem vinculou,
+    // e o `onSuccess` do `mutate` (fechar, vibrar) tem de rodar antes.
+    onSuccess: () => void invalidarDepoisDeImportar(queryClient),
   });
 }

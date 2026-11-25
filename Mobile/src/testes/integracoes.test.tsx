@@ -146,7 +146,7 @@ describe('Perfil: Integrações', () => {
     const caixa = await within(anilist).findByLabelText('Prévia da importação');
 
     expect(within(caixa).queryByRole('link', { name: 'Obra rara' })).not.toBeOnTheScreen();
-    await fireEvent.press(within(caixa).getByRole('button', { name: 'Não encontrados: adicione à mão' }));
+    await fireEvent.press(within(caixa).getByRole('button', { name: 'Não encontrados: vincule ao Catálogo' }));
 
     await fireEvent.press(within(caixa).getByRole('link', { name: 'Obra rara' }));
     expect(abrir).toHaveBeenCalledWith('https://anilist.co/anime/9');
@@ -275,5 +275,82 @@ describe('Perfil: Integrações', () => {
     falhar = false;
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
     expect(await screen.findByLabelText('AniList')).toBeOnTheScreen();
+  });
+});
+
+describe('Perfil: Vincular Não encontrados', () => {
+  const jogoRaro = { titulo: 'Jogo raro', link: 'https://store.steampowered.com/app/123', origem_id: '123', tipo: 'jogo' as const };
+  const steamComNaoEncontrado = (naoEncontrados: Esquemas['NaoEncontrado'][]) =>
+    steam({
+      conectada: true,
+      identificador: '76561197960287930',
+      nome_exibicao: 'Fulano',
+      ultimo_resultado: { novos: 0, atualizados: 0, nao_encontrados: naoEncontrados, total_nao_encontrados: naoEncontrados.length },
+    });
+  const hollow = { id_midia: 'MID-9', titulo_original: 'Hollow Knight', titulo_portugues: null, tipo: 'jogo', data_lancamento: '2017-02-24' };
+  /** A busca do Catálogo só no Tipo do item. */
+  const BUSCA_HOLLOW = 'GET /midias?tipo=jogo&busca=hollow&por_pagina=10';
+  const paginaDeMidias = (itens: object[]) => ({ status: 200, corpo: { itens, pagina: 1, por_pagina: 10, total: itens.length } });
+
+  async function abrirVincular(rotulo: string, titulo: string) {
+    const linha = await plataforma(rotulo);
+    await fireEvent.press(within(linha).getByRole('button', { name: 'Não encontrados: vincule ao Catálogo' }));
+    await fireEvent.press(within(linha).getByRole('button', { name: `Vincular ${titulo}` }));
+    return { linha, sheet: await screen.findByLabelText(`Vincular “${titulo}”`) };
+  }
+
+  it('busca no Catálogo só no Tipo do item, vincula e o Item vai para a Lista', async () => {
+    let naoEncontrados = [jogoRaro];
+    const api = simularFetch(
+      rotasDoPerfil({
+        'GET /integracoes': () => ({ status: 200, corpo: { integracoes: [steamComNaoEncontrado(naoEncontrados)] } }),
+        [BUSCA_HOLLOW]: paginaDeMidias([hollow]),
+        'POST /integracoes/vinculos': () => {
+          naoEncontrados = [];
+          return { status: 201, corpo: { id_vinculo: 'VIN-1', id_midia: 'MID-9', novos: 1, atualizados: 0 } };
+        },
+      }),
+    );
+    const { linha, sheet } = await abrirVincular('Steam', 'Jogo raro');
+    const listas = api.para('GET /lista').length;
+
+    await fireEvent.changeText(within(sheet).getByLabelText('Buscar no Catálogo'), 'hollow');
+    await fireEvent.press(await within(sheet).findByRole('button', { name: 'Vincular a Hollow Knight' }));
+
+    expect(api.para(BUSCA_HOLLOW).length).toBeGreaterThan(0);
+    expect(api.para('POST /integracoes/vinculos')[0]?.corpo).toEqual({ plataforma: 'steam', origem_id: '123', id_midia: 'MID-9' });
+    await waitFor(() => expect(screen.queryByLabelText('Vincular “Jogo raro”')).not.toBeOnTheScreen());
+    expect(vibrarConfirmacao).toHaveBeenCalled();
+    await waitFor(() => expect(api.para('GET /lista').length).toBeGreaterThan(listas));
+    await waitFor(() => expect(within(linha).queryByText('Jogo raro')).not.toBeOnTheScreen());
+  });
+
+  it('vínculo recusado mostra a mensagem da API', async () => {
+    simularFetch(
+      rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [steamComNaoEncontrado([jogoRaro])] } },
+        [BUSCA_HOLLOW]: paginaDeMidias([hollow]),
+        'POST /integracoes/vinculos': erro(409, 'conflito', 'Este item já está vinculado a outra Mídia'),
+      }),
+    );
+    const { sheet } = await abrirVincular('Steam', 'Jogo raro');
+
+    await fireEvent.changeText(within(sheet).getByLabelText('Buscar no Catálogo'), 'hollow');
+    await fireEvent.press(await within(sheet).findByRole('button', { name: 'Vincular a Hollow Knight' }));
+
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('Este item já está vinculado a outra Mídia');
+  });
+
+  it('resultado antigo, sem origem_id, não oferece Vincular', async () => {
+    simularFetch(
+      rotasDoPerfil({
+        'GET /integracoes': { status: 200, corpo: { integracoes: [steamComNaoEncontrado([{ titulo: 'Antigo', link: null }])] } },
+      }),
+    );
+    const linha = await plataforma('Steam');
+    await fireEvent.press(within(linha).getByRole('button', { name: 'Não encontrados: vincule ao Catálogo' }));
+
+    expect(within(linha).getByText('Antigo')).toBeOnTheScreen();
+    expect(within(linha).queryByRole('button', { name: /^Vincular / })).not.toBeOnTheScreen();
   });
 });
