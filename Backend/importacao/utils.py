@@ -102,6 +102,8 @@ class ImportStats:
     ja_existia: int = 0
     paginas_com_falha: list[int] = field(default_factory=list)
     pulado: str | None = None
+    #: Itens da fonte deixados de fora por um filtro de qualidade (não são falha nem processados).
+    pulados: int = 0
 
     def registrar_sucesso(self, *, ja_existia: bool = False):
         self.processados += 1
@@ -113,6 +115,9 @@ class ImportStats:
         self.processados += 1
         self.falhas += 1
 
+    def registrar_pulados(self, quantos: int):
+        self.pulados += quantos
+
     def registrar_falha_pagina(self, pagina: int):
         """Página da fonte que não veio: os itens dela não entram nas contagens."""
         self.paginas_com_falha.append(pagina)
@@ -122,16 +127,18 @@ class ImportStats:
         self.sucessos += other.sucessos
         self.falhas += other.falhas
         self.ja_existia += other.ja_existia
+        self.pulados += other.pulados
         self.paginas_com_falha.extend(other.paginas_com_falha)
 
     def resumo(self) -> str:
         if self.pulado:
             return f'{self.tipo_midia}: pulado ({self.pulado})'
-        return (
+        resumo = (
             f'{self.tipo_midia}: processados={self.processados} sucessos={self.sucessos} '
             f'falhas={self.falhas} ja_existia={self.ja_existia} '
             f'paginas_com_falha={self.paginas_com_falha}'
         )
+        return f'{resumo} pulados={self.pulados}' if self.pulados else resumo
 
     def to_dict(self) -> dict:
         return asdict(self)
