@@ -91,6 +91,9 @@ export type RespostaIntegracoes = Esquemas['RespostaIntegracoes'];
 export type PreviaImportacao = Esquemas['PreviaImportacao'];
 /** POST /integracoes/steam/sincronizar: grava direto; `pendentes` ficam para a sincronização diária. */
 export type ResultadoSincronizacao = Esquemas['ResultadoSincronizacao'];
+/** Um Não encontrado; `origem_id` e `tipo` são null nos resultados antigos (sem Vincular). */
+export type NaoEncontrado = Esquemas['NaoEncontrado'];
+export type VinculoCriado = Esquemas['VinculoCriado'];
 
 // Notícias e Notificações
 

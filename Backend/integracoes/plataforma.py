@@ -51,11 +51,13 @@ class RefCatalogo:
     """Como achar (ou importar) a Mídia de um item no Catálogo.
 
     `fonte` + `id_fonte` é a chave da Importação: `anilist` → `anilist_id` (anime/mangá),
-    `rawg` → `rawg_slug` (jogo). `dados` é a obra no formato da fonte, o que a Importação
-    grava quando a Mídia ainda não está no Catálogo; None quando só dá para localizar.
+    `rawg` → `rawg_slug` (jogo), `steam` → `steam_appid` (jogo criado pela loja da Steam).
+    `midia` → o próprio `id_midia`: a Mídia já é conhecida (casamento gravado, vínculo).
+    `dados` é a obra no formato da fonte, o que a Importação grava quando a Mídia ainda não
+    está no Catálogo; None quando só dá para localizar.
     """
 
-    fonte: Literal['anilist', 'rawg']
+    fonte: Literal['anilist', 'rawg', 'steam', 'midia']
     id_fonte: str
     dados: dict[str, Any] | None = None
 

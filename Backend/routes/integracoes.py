@@ -23,10 +23,12 @@ from schemas.integracoes import (
     ArquivoXml,
     ConexaoIntegracao,
     Integracao,
+    NovoVinculo,
     PreviaImportacao,
     RespostaIntegracoes,
     ResultadoImportacao,
     ResultadoSincronizacao,
+    VinculoCriado,
 )
 
 integracoes_bp = Blueprint('integracoes', __name__)
@@ -185,3 +187,27 @@ def sincronizar_steam():
     return _executar(lambda: sincronizacao_steam.sincronizar(
         get_jwt_identity(), orcamento=sincronizacao_steam.ORCAMENTO_SEGUNDOS,
     ))
+
+
+@integracoes_bp.route('/vinculos', methods=['POST'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_201=VinculoCriado, HTTP_400=Erro, HTTP_404=Erro, HTTP_409=Erro, **ERROS_AUTENTICADA),
+    tags=['integracoes'], security=AUTENTICADO,
+)
+def vincular(json: NovoVinculo):
+    """Vincular um Não encontrado a uma Mídia do mesmo Tipo: vale para todos e já aplica o Item na Lista.
+
+    Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida).
+    """
+    try:
+        corpo = servico.vincular(get_jwt_identity(), json.plataforma, json.origem_id, json.id_midia)
+    except servico.MidiaInexistente:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Mídia não encontrada')
+    except servico.ForaDosNaoEncontrados:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Este item não está nos seus Não encontrados')
+    except servico.TipoIncompativel as erro:
+        return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro), {'id_midia': str(erro)})
+    except servico.VinculoEmConflito:
+        return resposta_erro(409, CodigoErro.CONFLITO, 'Este item já está vinculado a outra Mídia')
+    return corpo, 201

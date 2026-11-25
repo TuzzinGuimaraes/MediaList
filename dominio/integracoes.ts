@@ -1,6 +1,7 @@
 // Integrações (CONTEXT.md, ADR 0015): os textos que o web e o app mostram na seção
 // Integrações do Perfil. As regras de importar ficam no backend (`Backend/integracoes`).
-import type { Integracao, ResultadoImportacao } from './tipos';
+import type { TipoMidia } from './estadoConsumo';
+import type { Integracao, NaoEncontrado, ResultadoImportacao } from './tipos';
 
 export type NomePlataforma = Integracao['plataforma'];
 
@@ -10,6 +11,9 @@ export const PEDIDO_DE_CONTA: Record<NomePlataforma, { rotulo: string; exemplo: 
   mal: { rotulo: 'Nome de usuário do MyAnimeList', exemplo: 'ex.: Fulano' },
   steam: { rotulo: 'URL do perfil da Steam', exemplo: 'ex.: steamcommunity.com/id/fulano' },
 };
+
+/** Nome da plataforma onde a API não manda o `rotulo` (a lista de vínculos do admin). */
+export const ROTULO_DA_PLATAFORMA: Record<NomePlataforma, string> = { anilist: 'AniList', mal: 'MyAnimeList', steam: 'Steam' };
 
 function contagem(n: number, singular: string, plural: string): string {
   return `${n} ${n === 1 ? singular : plural}`;
@@ -42,4 +46,19 @@ export const SINCRONIZA_SEM_PREVIA: ReadonlySet<NomePlataforma> = new Set<NomePl
 export function textoDePendentes(pendentes: number): string | null {
   if (pendentes <= 0) return null;
   return `${contagem(pendentes, 'jogo', 'jogos')} ainda em processamento`;
+}
+
+/** Não encontrado que dá para vincular a uma Mídia: os resultados antigos não trazem `origem_id` nem Tipo. */
+export function vinculavel(n: NaoEncontrado): n is NaoEncontrado & { origem_id: string; tipo: TipoMidia } {
+  return Boolean(n.origem_id && n.tipo);
+}
+
+/** Identifica o Não encontrado na plataforma (no MAL, o anime 1 e o mangá 1 são obras diferentes). */
+export function chaveDoNaoEncontrado(n: Pick<NaoEncontrado, 'origem_id' | 'tipo'>): string {
+  return `${n.tipo ?? ''}:${n.origem_id ?? ''}`;
+}
+
+/** Título do Vincular: a busca do Catálogo fica no Tipo do item. */
+export function tituloDoVincular(n: Pick<NaoEncontrado, 'titulo'>): string {
+  return `Vincular “${n.titulo}”`;
 }

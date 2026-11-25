@@ -29,34 +29,54 @@ def _atribuicoes(colunas) -> str:
 def _upsert(config: TipoMidia) -> str:
     """Um comando: atualiza a Mídia que já tem a chave da fonte, ou cria base e filha.
 
-    Devolve (id_midia, ja_existia). Duas importações da mesma chave ao mesmo
+    Devolve (id_midia, ja_existia, atualizada). Duas importações da mesma chave ao mesmo
     tempo: as duas criam, e a segunda esbarra na UNIQUE da chave ao inserir a
     filha (Conflito); a transação dela é desfeita inteira, sem Mídia órfã.
+
+    `chaves_extras` (o `steam_appid` do jogo) também acham a Mídia quando um dos lados não tem a
+    chave da fonte: o jogo criado pela loja da Steam e depois importado do RAWG é a mesma Mídia,
+    que ganha o `rawg_slug`. Dado sem a chave da fonte não sobrescreve Mídia que a tem
+    (`atualizada` falso: a fonte do Tipo manda). Extra que já é de outra Mídia não é gravada
+    (duas entradas do RAWG na mesma appid: cada uma tem a sua Mídia, a appid fica com a primeira).
     """
-    tabela, chave, colunas = config.tabela, config.chave_fonte, config.colunas
+    tabela, chave, colunas, extras = config.tabela, config.chave_fonte, config.colunas, config.chaves_extras
+    achar = ' OR '.join([
+        f'{chave} = %({chave})s',
+        *(f'({e} = %({e})s AND ({chave} IS NULL OR %({chave})s::text IS NULL))' for e in extras),
+    ])
+
+    def livre(extra: str, outra_que_nao: str = '') -> str:
+        return (f'CASE WHEN EXISTS (SELECT 1 FROM {tabela} o WHERE o.{extra} = %({extra})s{outra_que_nao}) '
+                f'THEN NULL ELSE %({extra})s END')
+
+    chaves = [f'{chave} = COALESCE({tabela}.{chave}, %({chave})s)'] + [
+        f'{e} = COALESCE({tabela}.{e}, {livre(e, f" AND o.id_midia <> {tabela}.id_midia")})' for e in extras
+    ]
     return f"""
         WITH existente AS (
-            SELECT id_midia FROM {tabela} WHERE {chave} = %({chave})s
+            SELECT id_midia, ({chave} IS NULL OR %({chave})s::text IS NOT NULL) AS atualizar FROM {tabela}
+            WHERE {achar}
+            ORDER BY ({chave} = %({chave})s) IS TRUE DESC
+            LIMIT 1
         ), base_atualizada AS (
             UPDATE midias SET {_atribuicoes(_BASE)}
-            WHERE id_midia = (SELECT id_midia FROM existente)
-            RETURNING id_midia
+            WHERE id_midia = (SELECT id_midia FROM existente WHERE atualizar)
         ), filha_atualizada AS (
-            UPDATE {tabela} SET {_atribuicoes(colunas)}
-            WHERE id_midia = (SELECT id_midia FROM existente)
+            UPDATE {tabela} SET {', '.join([_atribuicoes(colunas), *chaves])}
+            WHERE id_midia = (SELECT id_midia FROM existente WHERE atualizar)
         ), criada AS (
             INSERT INTO midias (id_tipo, {', '.join(_BASE)})
             SELECT id_tipo, {_marcadores(_BASE)} FROM tipo_midia
             WHERE nome_tipo = %(tipo)s AND NOT EXISTS (SELECT 1 FROM existente)
             RETURNING id_midia
         ), filha_criada AS (
-            INSERT INTO {tabela} (id_midia, {', '.join(config.colunas_gravaveis)})
-            SELECT id_midia, {_marcadores(config.colunas_gravaveis)} FROM criada
+            INSERT INTO {tabela} (id_midia, {', '.join((*config.colunas_gravaveis, *extras))})
+            SELECT id_midia, {', '.join([_marcadores(config.colunas_gravaveis), *map(livre, extras)])} FROM criada
             RETURNING id_midia
         )
-        SELECT id_midia, true AS ja_existia FROM base_atualizada
+        SELECT id_midia, true AS ja_existia, atualizar AS atualizada FROM existente
         UNION ALL
-        SELECT id_midia, false AS ja_existia FROM filha_criada
+        SELECT id_midia, false AS ja_existia, true AS atualizada FROM filha_criada
     """
 
 
@@ -65,7 +85,8 @@ def _gravar(tipo: str, valores: dict, generos: list[str]) -> dict:
     with transacao() as t:
         gravada = t.consultar_um(_upsert(config), {**valores, 'tipo': tipo})
 
-        for nome in dict.fromkeys(g.strip() for g in generos if g and g.strip()):
+        # Mídia que não foi atualizada (a fonte do Tipo manda) também não ganha os gêneros.
+        for nome in dict.fromkeys(g.strip() for g in generos if g and g.strip() and gravada['atualizada']):
             # Gênero que já existe ganha este Tipo no aplicavel_a, se ainda não tem.
             t.executar(
                 'INSERT INTO generos (nome_genero, aplicavel_a) VALUES (%s, %s) '
@@ -86,10 +107,12 @@ def _gravar(tipo: str, valores: dict, generos: list[str]) -> dict:
 
 def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
     config = TIPOS[tipo]
-    if not dados.get(config.chave_fonte):
-        raise ValueError(f'{tipo} sem {config.chave_fonte}: não há como reimportar sem duplicar')
+    chaves = (config.chave_fonte, *config.chaves_extras)
+    if not any(dados.get(c) for c in chaves):
+        raise ValueError(f'{tipo} sem {" nem ".join(chaves)}: não há como reimportar sem duplicar')
 
-    valores = {c: valor_de_coluna(c, dados.get(c)) for c in (*_BASE, *config.colunas_gravaveis)}
+    valores = {c: valor_de_coluna(c, dados.get(c))
+               for c in (*_BASE, *config.colunas_gravaveis, *config.chaves_extras)}
     try:
         return _gravar(tipo, valores, generos)
     except Conflito:
@@ -109,5 +132,5 @@ def salvar_manga(dados: dict, generos: list[str]) -> dict:
 
 
 def salvar_jogo(dados: dict, generos: list[str]) -> dict:
-    """Upsert do jogo pelo `rawg_slug`; `plataformas` é uma lista (text[])."""
+    """Upsert do jogo pelo `rawg_slug` ou pelo `steam_appid`; `plataformas` é uma lista (text[])."""
     return _salvar('jogo', dados, generos)

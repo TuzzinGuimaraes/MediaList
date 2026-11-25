@@ -76,6 +76,17 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   `POST /integracoes/mal/xml` (multipart, campo `arquivo`, `.xml` ou `.xml.gz`, só web) devolve a
   mesma prévia sem precisar conectar nem da chave do MAL; XML inválido 400 `dados_invalidos`,
   acima de 5 MB 413.
+- **Vincular (spec `nao-encontrados`, Q115/Q116):** cada Não encontrado traz também `origem_id` e
+  `tipo` (opcionais: null nos resultados gravados antes). `POST /integracoes/vinculos
+  {plataforma, origem_id, id_midia}` liga o item a uma Mídia do Catálogo para todos os Usuários e
+  já aplica o Item na Lista de quem vinculou (as regras da importação); responde 201
+  `{id_vinculo, id_midia, novos, atualizados}`. Só vale para o que apareceu como Não encontrado
+  para o Usuário (último resultado ou prévia válida; senão 404), na Mídia do mesmo Tipo do item
+  (Steam só jogo; AniList e MAL, o anime ou o mangá do item; senão 400 `dados_invalidos` com
+  `detalhes.id_midia`); Mídia inexistente 404; item já vinculado a outra Mídia 409 `conflito`.
+  O item sai dos Não encontrados do Usuário. `GET /admin/vinculos` (paginado, `Pagina[VinculoAdmin]`,
+  com a Mídia, o autor e o link do item na plataforma) e `DELETE /admin/vinculos/<id>` são só do
+  admin; desfazer não apaga Itens, só faz a próxima importação voltar a dar Não encontrado.
 - **Steam (ADR 0015):** conecta pela URL do perfil (`/id/<vanity>`, `/profiles/<SteamID64>`) ou
   o SteamID64; `identificador` guarda o SteamID64. Sem prévia: `POST /integracoes/steam/sincronizar`
   grava direto e devolve as contagens com `pendentes` (jogos que não couberam no orçamento de
