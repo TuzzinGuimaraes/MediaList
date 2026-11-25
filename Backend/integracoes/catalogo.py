@@ -10,14 +10,13 @@ coluna em `_COLUNAS` e a função `dados -> {'id_midia', ...}` em `IMPORTADORES`
 from __future__ import annotations
 
 import logging
-import uuid
 from typing import Any, Callable, Iterable
 
 from banco import consultar
 from importacao.importar_animes import processar_e_inserir_anime
 from importacao.importar_jogos import processar_e_inserir_jogo, processar_e_inserir_jogo_steam
 from importacao.importar_mangas import processar_e_inserir_manga
-from integracoes.plataforma import ItemDeOrigem
+from integracoes.plataforma import ItemDeOrigem, uuid_valido
 from tipos_midia import TIPOS
 
 logger = logging.getLogger(__name__)
@@ -51,13 +50,6 @@ def chave(item: ItemDeOrigem) -> Chave | None:
     return (item.tipo, item.catalogo.fonte, item.catalogo.id_fonte) if item.catalogo else None
 
 
-def _uuid(texto: str) -> bool:
-    try:
-        uuid.UUID(texto)
-    except ValueError:
-        return False
-    return True
-
 
 def localizar(itens: Iterable[ItemDeOrigem]) -> dict[Chave, Localizada]:
     """As Mídias que já estão no Catálogo, por `chave(item)`. Uma consulta por (Tipo, fonte)."""
@@ -73,7 +65,7 @@ def localizar(itens: Iterable[ItemDeOrigem]) -> dict[Chave, Localizada]:
         config = TIPOS[tipo]
         total = f'{config.coluna_total}' if config.coluna_total else 'NULL::integer'
         if fonte == 'midia':
-            coluna, valores, tipo_sql = 'id_midia', sorted(i for i in ids if _uuid(i)), '::uuid[]'
+            coluna, valores, tipo_sql = 'id_midia', sorted(i for i in ids if uuid_valido(i)), '::uuid[]'
         else:
             coluna, inteira = _COLUNAS[(tipo, fonte)]
             # Coluna inteira: comparar como inteiro usa o índice da UNIQUE.

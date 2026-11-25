@@ -5,14 +5,13 @@ dos Itens do Usuário que a aplicação dos itens precisa. Só SQL; as regras fi
 `banco.Transacao` aberta pelo `servico`, para confirmar a prévia numa transação só."""
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from psycopg.types.json import Jsonb
 
 import banco
 from banco import consultar, consultar_um
-from integracoes.plataforma import Conta
+from integracoes.plataforma import Conta, uuid_valido
 
 #: Validade da prévia (Q113).
 VALIDADE_PREVIA = '1 hour'
@@ -82,17 +81,10 @@ def criar_previa(id_usuario: str, plataforma: str, conteudo: dict[str, Any]) -> 
         )
 
 
-def _uuid_valido(texto: str) -> bool:
-    try:
-        uuid.UUID(texto)
-    except ValueError:
-        return False
-    return True
-
 
 def ler_previa(id_usuario: str, id_previa: str) -> dict[str, Any] | None:
     """A prévia válida do Usuário (`plataforma`, `conteudo`), sem consumir. None se não vale."""
-    if not _uuid_valido(id_previa):
+    if not uuid_valido(id_previa):
         return None
     return consultar_um(
         'SELECT plataforma, conteudo FROM importacao_previas '
@@ -108,7 +100,7 @@ def consumir_previa(id_usuario: str, id_previa: str, db=banco) -> dict[str, Any]
     Dentro da transação do confirmar, o DELETE trava a linha até o commit: outro confirmar da
     mesma prévia espera e, com o commit, não acha mais nada; com rollback, a prévia volta.
     """
-    if not _uuid_valido(id_previa):
+    if not uuid_valido(id_previa):
         return None
     return db.consultar_um(
         'DELETE FROM importacao_previas WHERE id_previa = %s AND id_usuario = %s AND expira_em > now() '

@@ -4,14 +4,14 @@ O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para tod
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
 (no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
 a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
-vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa; desfazer deixa ali o negativo, então a próxima sincronização volta a tratar o
-jogo como Não encontrado. Desfazer nunca apaga Itens.
+vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfazer deixa ali o
+negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
+nunca apaga Itens.
 
 Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`.
 """
 from __future__ import annotations
 
-import uuid
 from dataclasses import replace
 from typing import Any
 
@@ -19,7 +19,7 @@ from psycopg.types.json import Jsonb
 
 import banco
 from integracoes import steam_appids
-from integracoes.plataforma import ItemDeOrigem, RefCatalogo
+from integracoes.plataforma import ItemDeOrigem, RefCatalogo, uuid_valido
 from integracoes.steam import link_da_loja
 
 #: Tipos de Mídia a que cada plataforma pode vincular (Q116).
@@ -27,13 +27,6 @@ TIPOS_DA_PLATAFORMA: dict[str, tuple[str, ...]] = {
     'anilist': ('anime', 'manga'), 'mal': ('anime', 'manga'), 'steam': ('jogo',),
 }
 
-
-def _uuid(texto: str) -> bool:
-    try:
-        uuid.UUID(str(texto))
-    except ValueError:
-        return False
-    return True
 
 
 def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
@@ -69,7 +62,7 @@ def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDe
 
 def midia(id_midia: str) -> dict[str, Any] | None:
     """`{id_midia, tipo}` da Mídia, ou None (inclusive id que não é UUID)."""
-    if not _uuid(id_midia):
+    if not uuid_valido(id_midia):
         return None
     return banco.consultar_um(
         'SELECT m.id_midia::text AS id_midia, tm.nome_tipo AS tipo FROM midias m '
@@ -181,7 +174,7 @@ def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
 
 def desfazer(id_vinculo: str) -> bool:
     """Apaga o vínculo (os Itens ficam); na Steam, o casamento vira negativo. False se não existe."""
-    if not _uuid(id_vinculo):
+    if not uuid_valido(id_vinculo):
         return False
     with banco.transacao() as t:
         apagado = t.consultar_um(
