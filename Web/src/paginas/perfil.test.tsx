@@ -96,6 +96,8 @@ const lista: ItemLista[] = [
 
 function notificacao(titulo: string, lida: boolean): Notificacao {
   return {
+    origem: 'atualizacao',
+    id_noticia: null,
     titulo,
     mensagem: `Mensagem de ${titulo}`,
     lida,

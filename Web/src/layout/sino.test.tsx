@@ -9,6 +9,8 @@ type Notificacao = Esquemas['Notificacao'];
 
 function notificacao(titulo: string, lida: boolean, midia = 'Frieren'): Notificacao {
   return {
+    origem: 'atualizacao',
+    id_noticia: null,
     titulo,
     mensagem: `Mensagem de ${titulo}`,
     lida,
@@ -17,6 +19,21 @@ function notificacao(titulo: string, lida: boolean, midia = 'Frieren'): Notifica
     tipo: 'episodio',
     tipo_midia: 'anime',
     data_criacao: '2026-11-04T09:00:00',
+  };
+}
+
+function notificacaoDeNoticia(titulo: string, lida: boolean): Notificacao {
+  return {
+    origem: 'noticia',
+    id_noticia: 'NOT-1',
+    titulo,
+    mensagem: 'Nova Notícia no MediaList',
+    lida,
+    id_midia: null,
+    midia_nome: null,
+    tipo: 'noticia',
+    tipo_midia: null,
+    data_criacao: '2026-11-05T09:00:00',
   };
 }
 
@@ -32,6 +49,19 @@ function rotasDoSino(iniciais: Notificacao[]): Rotas {
     'GET /usuario/perfil': { status: 500 },
     'GET /usuario/estatisticas': { status: 500 },
     'GET /lista': { status: 200, corpo: { lista: [] } },
+    'GET /noticias/NOT-1': {
+      status: 200,
+      corpo: {
+        id_noticia: 'NOT-1',
+        titulo: 'Temporada de inverno',
+        conteudo: 'Texto da Notícia',
+        autor: 'Bia Admin',
+        categoria: 'geral',
+        tags: [],
+        imagem_url: null,
+        data_publicacao: '2026-11-05T09:00:00',
+      },
+    },
   };
 }
 
@@ -105,5 +135,32 @@ describe('sino de Notificações na nav', () => {
     await screen.findByRole('region', { name: 'Notificações' });
 
     expect(api.para('GET /notificacoes')).toHaveLength(1);
+  });
+
+  it('a Notícia não lida conta no sino e o painel a mostra como Notícia', async () => {
+    const { user } = await abrirLogado('/lista', {
+      rotas: rotasDoSino([notificacaoDeNoticia('Temporada de inverno', false), notificacao('Episódio 11', true)]),
+    });
+
+    await user.click(await sino('Notificações, 1 não lida'));
+    const item = within(screen.getByRole('dialog', { name: 'Notificações' })).getByRole('listitem', {
+      name: /Temporada de inverno/,
+    });
+    expect(item).toHaveTextContent('Notícia · 05/11/2026');
+    expect(item).toHaveTextContent('Nova Notícia no MediaList');
+  });
+
+  it('o link da Notícia fecha o painel e abre a Notícia', async () => {
+    const { user, historico } = await abrirLogado('/lista', {
+      rotas: rotasDoSino([notificacaoDeNoticia('Temporada de inverno', false)]),
+    });
+
+    await user.click(await sino(/^Notificações/));
+    await user.click(screen.getByRole('link', { name: /Temporada de inverno/ }));
+
+    await waitFor(() => expect(historico.location.pathname).toBe('/noticias/NOT-1'));
+    expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument();
+    const artigo = await screen.findByRole('article', { name: 'Temporada de inverno' });
+    expect(artigo).toHaveTextContent('Texto da Notícia');
   });
 });

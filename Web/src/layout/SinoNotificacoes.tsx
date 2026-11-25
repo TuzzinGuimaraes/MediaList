@@ -89,7 +89,7 @@ export function SinoNotificacoes({ sobreImagem }: { sobreImagem: boolean }) {
             ) : notificacoes.length ? (
               <ul className="flex flex-col gap-1">
                 {notificacoes.slice(0, RECENTES).map((n, i) => (
-                  <ItemNotificacao key={chaveDaNotificacao(n, i)} notificacao={n} />
+                  <ItemNotificacao key={chaveDaNotificacao(n, i)} notificacao={n} aoAbrir={() => setAberto(false)} />
                 ))}
               </ul>
             ) : (

@@ -18,7 +18,7 @@ import { NovaNoticia } from './NovaNoticia';
 
 export const NOTICIAS_POR_PAGINA = 10;
 
-function CartaoNoticia({ noticia }: { noticia: Esquemas['Noticia'] }) {
+export function CartaoNoticia({ noticia }: { noticia: Esquemas['Noticia'] }) {
   const data = formatarData(noticia.data_publicacao);
   return (
     <article aria-label={noticia.titulo} className="overflow-hidden rounded-xl bg-superficie">

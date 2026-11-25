@@ -1,4 +1,4 @@
-// Notificações do Usuário (Atualizações das Mídias da Lista): o sino da nav e o Perfil leem
+// Notificações do Usuário (Atualizações das Mídias da Lista e Notícias): o sino da nav e o Perfil leem
 // a mesma consulta, as 50 mais recentes da API.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -26,4 +26,4 @@ export function useMarcarTodasLidas() {
 }
 
 /** A chave de uma Notificação na lista: a API não manda id. */
-export const chaveDaNotificacao = (n: Esquemas['Notificacao'], i: number) => `${n.id_midia}-${n.data_criacao}-${i}`;
+export const chaveDaNotificacao = (n: Esquemas['Notificacao'], i: number) => `${n.id_noticia ?? n.id_midia}-${n.data_criacao}-${i}`;
