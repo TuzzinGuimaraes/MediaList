@@ -1,9 +1,11 @@
 """
 Gravação da Importação no PostgreSQL (ticket 23), pelo módulo `banco`.
 
-Cada Mídia é gravada numa transação: um único comando faz o upsert da base em
-`midias` e da tabela filha do Tipo pela chave da fonte (`anilist_id` ou
-`rawg_slug`), e depois vêm os gêneros. Reimportar atualiza a Mídia no lugar;
+Cada Mídia é gravada por um único comando, que é a transação dela (a conexão fica em
+autocommit, `banco.autocommit()`): o upsert da base em `midias` e da tabela filha do Tipo
+pela chave da fonte (`anilist_id` ou `rawg_slug`), os gêneros e as ligações. Uma ida e volta
+ao banco por Mídia; a Importação usa uma conexão por página (`t`), e Mídia que falha não leva
+as outras junto. Reimportar atualiza a Mídia no lugar;
 Avaliações e Itens não são tocados. A Nota média não é gravada: é calculada na
 leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`).
 
@@ -11,7 +13,7 @@ O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo.
 """
 from __future__ import annotations
 
-from banco import Conflito, transacao
+from banco import Conflito, Transacao, autocommit
 from tipos_midia import COLUNAS_BASE, TIPOS, TipoMidia, valor_de_coluna
 
 #: A Importação grava a base que a API grava mais a Nota da fonte.
@@ -26,12 +28,12 @@ def _atribuicoes(colunas) -> str:
     return ', '.join(f'{c} = %({c})s' for c in colunas)
 
 
-def _upsert(config: TipoMidia) -> str:
-    """Um comando: atualiza a Mídia que já tem a chave da fonte, ou cria base e filha.
+def _midia(config: TipoMidia) -> str:
+    """CTEs do upsert da Mídia; `resultado` dá (id_midia, ja_existia, atualizada).
 
-    Devolve (id_midia, ja_existia, atualizada). Duas importações da mesma chave ao mesmo
-    tempo: as duas criam, e a segunda esbarra na UNIQUE da chave ao inserir a
-    filha (Conflito); a transação dela é desfeita inteira, sem Mídia órfã.
+    Atualiza a Mídia que já tem a chave da fonte, ou cria base e filha. Duas importações da
+    mesma chave ao mesmo tempo: as duas criam, e a segunda esbarra na UNIQUE da chave ao inserir
+    a filha (Conflito); o comando dela é desfeito inteiro, sem Mídia órfã.
 
     `chaves_extras` (o `steam_appid` do jogo) também acham a Mídia quando um dos lados não tem a
     chave da fonte: o jogo criado pela loja da Steam e depois importado do RAWG é a mesma Mídia,
@@ -53,7 +55,7 @@ def _upsert(config: TipoMidia) -> str:
         f'{e} = COALESCE({tabela}.{e}, {livre(e, f" AND o.id_midia <> {tabela}.id_midia")})' for e in extras
     ]
     return f"""
-        WITH existente AS (
+        existente AS (
             SELECT id_midia, ({chave} IS NULL OR %({chave})s::text IS NOT NULL) AS atualizar FROM {tabela}
             WHERE {achar}
             ORDER BY ({chave} = %({chave})s) IS TRUE DESC
@@ -73,39 +75,59 @@ def _upsert(config: TipoMidia) -> str:
             INSERT INTO {tabela} (id_midia, {', '.join((*config.colunas_gravaveis, *extras))})
             SELECT id_midia, {', '.join([_marcadores(config.colunas_gravaveis), *map(livre, extras)])} FROM criada
             RETURNING id_midia
+        ), resultado AS (
+            SELECT id_midia, true AS ja_existia, atualizar AS atualizada FROM existente
+            UNION ALL
+            SELECT id_midia, false AS ja_existia, true AS atualizada FROM filha_criada
         )
-        SELECT id_midia, true AS ja_existia, atualizar AS atualizada FROM existente
-        UNION ALL
-        SELECT id_midia, false AS ja_existia, true AS atualizada FROM filha_criada
     """
 
 
-def _gravar(tipo: str, valores: dict, generos: list[str]) -> dict:
+def _upsert(config: TipoMidia) -> str:
+    """Um comando grava a Mídia, os gêneros dela e as ligações: uma ida ao banco por Mídia.
+
+    Mídia que não foi atualizada (a fonte do Tipo manda) também não ganha os gêneros. Gênero que
+    já existe ganha este Tipo no `aplicavel_a`, se ainda não tem. O gênero é achado pelo que o
+    comando inseriu ou atualizou (RETURNING) ou pelo que já estava no banco quando ele começou:
+    o criado por outra importação depois disso, e que já tem este Tipo, fica de fora, e
+    `faltou_genero` avisa para gravar de novo (o comando seguinte já o vê).
+    """
+    return f"""
+        WITH {_midia(config)}, genero_gravado AS (
+            INSERT INTO generos (nome_genero, aplicavel_a)
+            SELECT nome, %(aplicavel_a)s::text[] FROM unnest(%(generos)s::text[]) AS nome
+            WHERE (SELECT atualizada FROM resultado)
+            ORDER BY nome
+            ON CONFLICT (nome_genero) DO UPDATE SET aplicavel_a = ARRAY(
+                SELECT DISTINCT unnest(generos.aplicavel_a || EXCLUDED.aplicavel_a) ORDER BY 1)
+            WHERE NOT generos.aplicavel_a @> EXCLUDED.aplicavel_a
+            RETURNING id_genero
+        ), genero AS (
+            SELECT id_genero FROM genero_gravado
+            UNION
+            SELECT id_genero FROM generos WHERE nome_genero = ANY(%(generos)s::text[])
+        ), ligada AS (
+            INSERT INTO midias_generos (id_midia, id_genero)
+            SELECT r.id_midia, g.id_genero FROM resultado r CROSS JOIN genero g WHERE r.atualizada
+            ON CONFLICT DO NOTHING
+        )
+        SELECT id_midia, ja_existia,
+               atualizada AND (SELECT count(*) FROM genero) < cardinality(%(generos)s::text[]) AS faltou_genero
+        FROM resultado
+    """
+
+
+def _gravar(t: Transacao, tipo: str, valores: dict, generos: list[str]) -> dict:
     config = TIPOS[tipo]
-    with transacao() as t:
-        gravada = t.consultar_um(_upsert(config), {**valores, 'tipo': tipo})
-
-        # Mídia que não foi atualizada (a fonte do Tipo manda) também não ganha os gêneros.
-        for nome in dict.fromkeys(g.strip() for g in generos if g and g.strip() and gravada['atualizada']):
-            # Gênero que já existe ganha este Tipo no aplicavel_a, se ainda não tem.
-            t.executar(
-                'INSERT INTO generos (nome_genero, aplicavel_a) VALUES (%s, %s) '
-                'ON CONFLICT (nome_genero) DO UPDATE SET aplicavel_a = ARRAY('
-                'SELECT DISTINCT unnest(generos.aplicavel_a || EXCLUDED.aplicavel_a) ORDER BY 1) '
-                'WHERE NOT generos.aplicavel_a @> EXCLUDED.aplicavel_a',
-                (nome, config.aplicavel_a),
-            )
-            t.executar(
-                'INSERT INTO midias_generos (id_midia, id_genero) '
-                'SELECT %s, id_genero FROM generos WHERE nome_genero = %s '
-                'ON CONFLICT DO NOTHING',
-                (gravada['id_midia'], nome),
-            )
-
+    nomes = list(dict.fromkeys(g.strip() for g in generos if g and g.strip()))
+    params = {**valores, 'tipo': tipo, 'generos': nomes, 'aplicavel_a': config.aplicavel_a}
+    gravada = t.consultar_um(_upsert(config), params)
+    if gravada['faltou_genero']:
+        gravada = t.consultar_um(_upsert(config), params)
     return {'id_midia': gravada['id_midia'], 'ja_existia': gravada['ja_existia']}
 
 
-def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
+def _salvar(tipo: str, dados: dict, generos: list[str], t: Transacao | None = None) -> dict:
     config = TIPOS[tipo]
     chaves = (config.chave_fonte, *config.chaves_extras)
     if not any(dados.get(c) for c in chaves):
@@ -113,24 +135,31 @@ def _salvar(tipo: str, dados: dict, generos: list[str]) -> dict:
 
     valores = {c: valor_de_coluna(c, dados.get(c))
                for c in (*_BASE, *config.colunas_gravaveis, *config.chaves_extras)}
+    if t is None:
+        with autocommit() as t:
+            return _gravar_ou_de_novo(t, tipo, valores, generos)
+    return _gravar_ou_de_novo(t, tipo, valores, generos)
+
+
+def _gravar_ou_de_novo(t: Transacao, tipo: str, valores: dict, generos: list[str]) -> dict:
     try:
-        return _gravar(tipo, valores, generos)
+        return _gravar(t, tipo, valores, generos)
     except Conflito:
         # Perdeu a corrida para outra importação da mesma chave, que já gravou:
         # de novo, agora ela é a Mídia existente e é atualizada.
-        return _gravar(tipo, valores, generos)
+        return _gravar(t, tipo, valores, generos)
 
 
-def salvar_anime(dados: dict, generos: list[str]) -> dict:
+def salvar_anime(dados: dict, generos: list[str], t: Transacao | None = None) -> dict:
     """Upsert do anime pelo `anilist_id`. Devolve `{'id_midia', 'ja_existia'}`."""
-    return _salvar('anime', dados, generos)
+    return _salvar('anime', dados, generos, t)
 
 
-def salvar_manga(dados: dict, generos: list[str]) -> dict:
+def salvar_manga(dados: dict, generos: list[str], t: Transacao | None = None) -> dict:
     """Upsert do mangá pelo `anilist_id`. Devolve `{'id_midia', 'ja_existia'}`."""
-    return _salvar('manga', dados, generos)
+    return _salvar('manga', dados, generos, t)
 
 
-def salvar_jogo(dados: dict, generos: list[str]) -> dict:
+def salvar_jogo(dados: dict, generos: list[str], t: Transacao | None = None) -> dict:
     """Upsert do jogo pelo `rawg_slug` ou pelo `steam_appid`; `plataformas` é uma lista (text[])."""
-    return _salvar('jogo', dados, generos)
+    return _salvar('jogo', dados, generos, t)

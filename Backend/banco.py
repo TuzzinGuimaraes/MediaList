@@ -6,7 +6,8 @@ Interface:
 - `consultar_um(sql, params)` -> dict ou None;
 - `executar(sql, params)` -> linhas afetadas;
 - `transacao()` -> context manager com os mesmos três métodos, que confirma no
-  fim e desfaz em qualquer exceção.
+  fim e desfaz em qualquer exceção;
+- `autocommit()` -> uma conexão em que cada comando é a sua própria transação.
 
 Fora de uma `transacao()`, cada chamada é a sua própria transação.
 
@@ -170,6 +171,23 @@ def transacao() -> Iterator[Transacao]:
     """Uma conexão do pool numa transação: commit no fim, rollback em exceção."""
     with _traduzir_erros(), _obter_pool().connection() as conn, conn.transaction():
         yield Transacao(conn)
+
+
+@contextmanager
+def autocommit() -> Iterator[Transacao]:
+    """Uma conexão do pool em autocommit: cada comando é a sua própria transação.
+
+    Para lotes de comandos independentes na mesma conexão (a Importação grava uma Mídia por
+    comando): um que falha não desfaz os outros nem aborta a conexão. A conexão volta ao pool
+    como saiu dele.
+    """
+    with _traduzir_erros(), _obter_pool().connection() as conn:
+        conn.autocommit = True
+        try:
+            yield Transacao(conn)
+        finally:
+            if not conn.closed:
+                conn.autocommit = False
 
 
 def consultar(sql: str, params: Params = None) -> list[dict[str, Any]]:
