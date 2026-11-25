@@ -1,195 +1,269 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { abrirLogado } from '../../testes/app';
+import { abrirLogado, usuarioAna } from '../../testes/app';
 import { erro } from '../../testes/fetchSimulado';
-import { rotasDaLista, umaMidia, umItem } from './fixtures';
+import { rotasDaLista, umItem } from './fixtures';
+import { chaveDasPreferencias } from './preferencias';
 
-describe('Minha Lista', () => {
-  it('mostra uma aba por Status com a contagem, e a aba ativa com o título e os Itens dela', async () => {
+const coluna = () => screen.getByRole('complementary', { name: 'Busca, Status e filtros' });
+const statusDaColuna = () => within(coluna()).getByRole('navigation', { name: 'Status' });
+/** Os nomes dos cards, na ordem da tela (o nome do link começa pelo título). */
+const cards = (dentro: HTMLElement = document.body) =>
+  within(dentro)
+    .queryAllByRole('listitem')
+    .filter((li) => li.hasAttribute('aria-posinset'))
+    .map((li) => within(li).getByRole('link').getAttribute('aria-label')?.split(',')[0]);
+const secao = (nome: string) => screen.getByRole('region', { name: new RegExp(`^${nome}`) });
+
+const jogo = (campos: Parameters<typeof umItem>[0]) =>
+  umItem({ tipo: 'jogo', status_consumo: 'jogando', progresso_total: null, numero_episodios: null, status_anime: null, ...campos });
+
+describe('Minha Lista: coluna e "Todos"', () => {
+  it('abre em "Todos", separado por Status, com o Concluído incluindo os platinados', async () => {
     const itens = [
-      umItem({ titulo_original: 'Frieren', status_consumo: 'assistindo' }),
-      umItem({ titulo_original: 'Berserk', tipo: 'manga', status_consumo: 'lendo', numero_episodios: null, numero_capitulos: 380, progresso_total: 380 }),
+      umItem({ titulo_original: 'Frieren' }),
       umItem({ titulo_original: 'Mushishi', status_consumo: 'planejado', progresso_atual: 0 }),
+      umItem({ titulo_original: 'Monster', status_consumo: 'completo', progresso_atual: 12 }),
+      jogo({ titulo_original: 'Hades', status_consumo: 'platinado', progresso_atual: 80 }),
     ];
     await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
 
-    const abas = await screen.findByRole('tablist', { name: 'Status da Lista' });
-    expect(within(abas).getByRole('tab', { name: 'Em progresso 2' })).toHaveAttribute('aria-selected', 'true');
-    expect(within(abas).getByRole('tab', { name: 'Planejado 1' })).toBeInTheDocument();
-    expect(within(abas).getByRole('tab', { name: 'Concluído 0' })).toBeInTheDocument();
-    expect(within(abas).queryByRole('tab', { name: /Platinado/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Todos 4' })).toHaveAttribute('aria-current', 'true');
+    const status = statusDaColuna();
+    expect(within(status).getByRole('button', { name: 'Em progresso 1' })).toBeInTheDocument();
+    expect(within(status).getByRole('button', { name: 'Concluído 2' })).toBeInTheDocument();
+    expect(within(status).getByRole('button', { name: 'Platinado 1' })).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: 'Em progresso · 2' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Anime · 1' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Mangá · 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar Frieren' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar Berserk' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Editar Mushishi' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Em progresso 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Planejado 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: /^Pausado/ })).not.toBeInTheDocument();
+    expect(cards(secao('Concluído'))).toEqual(['Monster', 'Hades']);
+    // Com o Tipo "Todos", subseções por Tipo dentro de cada Status.
+    expect(within(secao('Concluído')).getByRole('heading', { level: 3, name: 'Anime 1' })).toBeInTheDocument();
+    expect(within(secao('Concluído')).getByRole('heading', { level: 3, name: 'Jogos 1' })).toBeInTheDocument();
   });
-});
 
+  it('escolher um Status mostra só ele, e o cabeçalho diz qual é e quantos são', async () => {
+    const itens = [umItem({ titulo_original: 'Frieren' }), umItem({ titulo_original: 'Mushishi', status_consumo: 'planejado' })];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
 
-describe('Minha Lista: abas, filtros e busca', () => {
-  it('trocar de aba mostra os Itens daquele Status; o Concluído inclui os platinados no catálogo Jogos', async () => {
-    localStorage.setItem('medialist.catalogo', 'jogos');
+    await user.click(await screen.findByRole('button', { name: 'Planejado 1' }));
+
+    expect(screen.getByRole('button', { name: 'Planejado 1' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('button', { name: 'Todos 2' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('Planejado', { selector: 'p span' })).toBeInTheDocument();
+    expect(cards()).toEqual(['Mushishi']);
+  });
+
+  it('o Tipo filtra a Lista e as contagens de Status; sem subseções com um Tipo só', async () => {
     const itens = [
-      umItem({ titulo_original: 'Hades', tipo: 'jogo', status_consumo: 'platinado', progresso_total: null, numero_episodios: null }),
-      umItem({ titulo_original: 'Celeste', tipo: 'jogo', status_consumo: 'zerado', progresso_total: null, numero_episodios: null }),
       umItem({ titulo_original: 'Frieren' }),
+      umItem({ titulo_original: 'Berserk', tipo: 'manga', status_consumo: 'lendo', numero_capitulos: 380, progresso_total: 380 }),
+      jogo({ titulo_original: 'Hades', progresso_atual: 80 }),
     ];
     const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
 
-    await user.click(await screen.findByRole('tab', { name: 'Concluído 2' }));
+    const tipo = within(await screen.findByRole('group', { name: 'Tipo' }));
+    expect(tipo.getByRole('radio', { name: 'Todos 3' })).toBeChecked();
+    expect(tipo.getByRole('radio', { name: 'Anime 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Platinado/ })).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: 'Concluído · 2' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar Hades' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar Celeste' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Platinado 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /Anime ·/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Editar Frieren' })).not.toBeInTheDocument();
+    await user.click(tipo.getByRole('radio', { name: 'Jogos 1' }));
+
+    expect(cards()).toEqual(['Hades']);
+    expect(screen.getByRole('button', { name: 'Todos 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Em progresso 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
+
+    await user.click(tipo.getByRole('radio', { name: 'Anime 1' }));
+    // Platinado só existe em jogo.
+    expect(screen.queryByRole('button', { name: /^Platinado/ })).not.toBeInTheDocument();
   });
 
-  it('as setas do teclado movem entre as abas', async () => {
-    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista([umItem()]) });
-
-    await user.click(await screen.findByRole('tab', { name: /Em progresso/ }));
-    await user.keyboard('{ArrowRight}');
-
-    expect(screen.getByRole('tab', { name: /Planejado/ })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: /Planejado/ })).toHaveFocus();
-  });
-
-  it('o filtro de Gênero vale para todas as abas e as contagens o refletem', async () => {
+  it('o Gênero vale para todos os Status e as contagens (de Status e de Tipo) o refletem', async () => {
     const itens = [
       umItem({ titulo_original: 'Frieren', generos_lista: ['Fantasia'] }),
       umItem({ titulo_original: 'Monster', generos_lista: ['Suspense'] }),
       umItem({ titulo_original: 'Mushishi', status_consumo: 'planejado', generos_lista: ['Fantasia'] }),
-      umItem({ titulo_original: 'Perfect Blue', status_consumo: 'planejado', generos_lista: ['Suspense'] }),
     ];
     const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
 
-    await user.click(await screen.findByRole('button', { name: 'Filtros' }));
-    const sheet = screen.getByRole('dialog', { name: 'Filtros da Lista' });
-    await user.click(within(sheet).getByRole('radio', { name: 'Fantasia' }));
-    await user.click(within(sheet).getByRole('button', { name: 'Ver Itens' }));
+    await screen.findByRole('complementary', { name: 'Busca, Status e filtros' });
+    await user.click(within(coluna()).getByRole('button', { name: 'Fantasia' }));
 
-    expect(screen.getByRole('tab', { name: 'Em progresso 1' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Planejado 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Editar Frieren' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Editar Monster' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Filtros, 1 ativo' })).toBeInTheDocument();
+    expect(within(coluna()).getByRole('button', { name: 'Fantasia' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Em progresso 1' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Anime 2' })).toBeInTheDocument();
+    expect(cards()).toEqual(['Frieren', 'Mushishi']);
 
-    await user.click(screen.getByRole('tab', { name: 'Pausado 0' }));
-    expect(screen.getByText('Nenhum Item em Pausado com esses filtros.')).toBeInTheDocument();
-  });
-
-  it('a Ordem por Nota pessoal reordena os cards', async () => {
-    const itens = [
-      umItem({ titulo_original: 'Akira', nota_usuario: 6 }),
-      umItem({ titulo_original: 'Berserk', nota_usuario: 9 }),
-      umItem({ titulo_original: 'Cowboy Bebop', nota_usuario: null }),
-    ];
-    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
-
-    await user.click(await screen.findByRole('button', { name: 'Filtros' }));
-    await user.click(screen.getByRole('radio', { name: 'Nota pessoal' }));
-
-    const titulos = screen.getAllByRole('button', { name: /^Editar / }).map((b) => b.getAttribute('aria-label'));
-    expect(titulos).toEqual(['Editar Berserk', 'Editar Akira', 'Editar Cowboy Bebop']);
-  });
-
-  it('a busca procura em todos os Status e mostra o Status em cada resultado', async () => {
-    const itens = [
-      umItem({ titulo_original: 'Shingeki no Kyojin', titulo_portugues: 'Ataque dos Titãs', status_consumo: 'completo', progresso_atual: 12 }),
-      umItem({ titulo_original: 'Frieren' }),
-    ];
-    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
-
-    await user.click(await screen.findByRole('button', { name: 'Buscar na Lista' }));
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar na Lista' }), 'titas');
-
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    expect(screen.getByText('1 resultado para “titas” em todos os Status')).toBeInTheDocument();
-    const resultados = screen.getByRole('region', { name: 'Resultados da busca' });
-    expect(within(resultados).getByRole('button', { name: 'Editar Ataque dos Titãs' })).toBeInTheDocument();
-    expect(within(resultados).getByText('Concluído')).toBeInTheDocument();
-
-    await user.keyboard('{Escape}');
-    expect(screen.getByRole('tablist', { name: 'Status da Lista' })).toBeInTheDocument();
-  });
-
-  it('"Sugestões para você" mostra o Em alta que não está na Lista', async () => {
-    const naLista = umItem({ titulo_original: 'Frieren' });
-    const emAlta = [umaMidia({ id_midia: naLista.id_midia, titulo_original: 'Frieren' }), umaMidia({ titulo_original: 'Dandadan' })];
-    await abrirLogado('/lista', { rotas: rotasDaLista([naLista], emAlta) });
-
-    const sugestoes = await screen.findByRole('region', { name: 'Sugestões para você' });
-    expect(within(sugestoes).getByRole('link', { name: /Dandadan/ })).toBeInTheDocument();
-    expect(within(sugestoes).queryByRole('link', { name: /Frieren/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+    expect(cards()).toHaveLength(3);
   });
 });
 
-
-describe('Minha Lista: stepper do Progresso', () => {
-  it('+1 aparece na hora e vai ao servidor como PUT /progresso', async () => {
-    let liberar: () => void = () => {};
-    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 3 });
-    const { user, api } = await abrirLogado('/lista', {
-      rotas: {
-        ...rotasDaLista([item]),
-        [`PUT /lista/${item.id_lista}/progresso`]: () =>
-          new Promise((r) => {
-            liberar = () => r({ status: 200, corpo: { mensagem: 'ok' } });
-          }),
-      },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
-
-    expect(screen.getByLabelText('Progresso: 4 de 12')).toBeInTheDocument();
-    expect(api.para(`PUT /lista/${item.id_lista}/progresso`)[0]?.corpo).toEqual({ progresso_atual: 4 });
-    liberar();
-  });
-
-  it('chegar ao total leva o Item a Concluído antes da resposta (ADR 0009)', async () => {
-    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 11 });
-    const { user } = await abrirLogado('/lista', {
-      rotas: {
-        ...rotasDaLista([item]),
-        [`PUT /lista/${item.id_lista}/progresso`]: () => new Promise(() => {}),
-      },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
-
-    expect(screen.getByRole('tab', { name: 'Concluído 1' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Em progresso 0' })).toBeInTheDocument();
-  });
-
-  it('um toque recusado é desfeito e o erro aparece', async () => {
-    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 3 });
-    const { user } = await abrirLogado('/lista', {
-      rotas: {
-        ...rotasDaLista([item]),
-        [`PUT /lista/${item.id_lista}/progresso`]: erro(400, 'dados_invalidos', 'Progresso acima do total.'),
-      },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Mais um em Frieren' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Progresso acima do total.');
-    expect(screen.getByLabelText('Progresso: 3 de 12')).toBeInTheDocument();
-  });
-
-  it('o − fica desativado no 0 e o + no total', async () => {
+describe('Minha Lista: Ordem', () => {
+  it('padrão: anime/mangá pela maior nota e jogos pelas mais horas, sem nota/horas no fim', async () => {
     const itens = [
-      umItem({ titulo_original: 'Novo', progresso_atual: 0, status_consumo: 'assistindo' }),
-      umItem({ titulo_original: 'Quase', progresso_atual: 12, status_consumo: 'assistindo' }),
+      umItem({ titulo_original: 'Akira', nota_usuario: null }),
+      umItem({ titulo_original: 'Monster', nota_usuario: 9 }),
+      umItem({ titulo_original: 'Frieren', nota_usuario: 10 }),
+      jogo({ titulo_original: 'Celeste', progresso_atual: 0 }),
+      jogo({ titulo_original: 'Hades', progresso_atual: 80 }),
+      jogo({ titulo_original: 'Elden Ring', progresso_atual: 140 }),
     ];
     await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
 
-    expect(await screen.findByRole('button', { name: 'Menos um em Novo' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Mais um em Quase' })).toBeDisabled();
+    const emProgresso = await screen.findByRole('region', { name: /^Em progresso/ });
+    expect(cards(within(emProgresso).getByRole('list', { name: 'Em progresso, Anime' }))).toEqual(['Frieren', 'Monster', 'Akira']);
+    expect(cards(within(emProgresso).getByRole('list', { name: 'Em progresso, Jogos' }))).toEqual(['Elden Ring', 'Hades', 'Celeste']);
+  });
+
+  it('Ordem e direção ficam salvas por Usuário e valem ao voltar', async () => {
+    const itens = [umItem({ titulo_original: 'Berserk' }), umItem({ titulo_original: 'Akira' }), umItem({ titulo_original: 'Cowboy Bebop' })];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Ordem' }), 'Título');
+    expect(cards()).toEqual(['Akira', 'Berserk', 'Cowboy Bebop']);
+    await user.click(screen.getByRole('button', { name: 'Direção: crescente. Inverter' }));
+    expect(cards()).toEqual(['Cowboy Bebop', 'Berserk', 'Akira']);
+    expect(screen.getByRole('button', { name: 'Direção: decrescente. Inverter' })).toBeInTheDocument();
+
+    expect(JSON.parse(localStorage.getItem(chaveDasPreferencias(usuarioAna.id)) ?? '{}')).toEqual({
+      formato: 'grade',
+      ordem: 'titulo',
+      inversa: true,
+    });
+  });
+
+  it('lê a Ordem salva; valor estranho cai no padrão', async () => {
+    localStorage.setItem(chaveDasPreferencias(usuarioAna.id), JSON.stringify({ ordem: 'titulo', inversa: 'sim', formato: 'mosaico' }));
+    const itens = [umItem({ titulo_original: 'Berserk' }), umItem({ titulo_original: 'Akira' })];
+    await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    expect(await screen.findByRole('combobox', { name: 'Ordem' })).toHaveValue('titulo');
+    expect(cards()).toEqual(['Akira', 'Berserk']);
+  });
+});
+
+describe('Minha Lista: busca', () => {
+  it('filtra todos os Status e as contagens; sem resultado no Status atual, oferece "Ver N em Todos"', async () => {
+    const itens = [
+      umItem({ titulo_original: 'Frieren' }),
+      umItem({ titulo_original: 'Fruits Basket', status_consumo: 'planejado' }),
+      umItem({ titulo_original: 'Monster', status_consumo: 'pausado' }),
+    ];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    await user.click(await screen.findByRole('button', { name: 'Pausado 1' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar na Lista' }), 'fr');
+
+    expect(screen.getByRole('button', { name: 'Pausado 0' })).toBeInTheDocument();
+    expect(screen.getByText('Nada em Pausado com “fr”.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ver 2 em Todos' }));
+
+    expect(screen.getByRole('button', { name: 'Todos 2' })).toHaveAttribute('aria-current', 'true');
+    expect(cards()).toEqual(['Frieren', 'Fruits Basket']);
+  });
+
+  it('sem resultado em lugar nenhum: limpar a busca volta tudo', async () => {
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista([umItem({ titulo_original: 'Frieren' })]) });
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Buscar na Lista' }), 'zelda');
+    expect(screen.getByText('Nada na Lista com “zelda”.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Limpar busca e filtros' }));
+
+    expect(cards()).toEqual(['Frieren']);
+  });
+
+  it('Lista vazia leva ao Explorar', async () => {
+    await abrirLogado('/lista', { rotas: rotasDaLista([]) });
+    expect(await screen.findByText('Sua Lista ainda está vazia.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Explorar o catálogo' })).toHaveAttribute('href', '/explorar');
+  });
+});
+
+describe('Minha Lista: card da grade', () => {
+  it('nome, nota e Progresso/horas no card, que leva ao detalhe', async () => {
+    const itens = [
+      umItem({ id_midia: 'MID-frieren', titulo_original: 'Frieren', nota_usuario: 9.5, progresso_atual: 12, progresso_total: 28 }),
+      jogo({ titulo_original: 'Hades', progresso_atual: 1020, favorito: true }),
+    ];
+    await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    const frieren = await screen.findByRole('link', { name: 'Frieren, nota 9,5, 12/28 ep' });
+    expect(frieren).toHaveAttribute('href', '/midia/MID-frieren');
+    expect(within(frieren).getByText('12/28')).toBeInTheDocument();
+    expect(within(frieren).getByText('9,5')).toBeInTheDocument();
+    const hades = screen.getByRole('link', { name: 'Hades, favorito, 1.020 h jogadas' });
+    expect(within(hades).getByText('1.020 h')).toBeInTheDocument();
+    expect(screen.getByText('1.020 h', { selector: 'p span' })).toBeInTheDocument();
+  });
+
+  it('a Lista é virtualizada: só as linhas perto da tela ficam no DOM', async () => {
+    const itens = Array.from({ length: 300 }, (_, i) => umItem({ titulo_original: `Obra ${String(i).padStart(3, '0')}` }));
+    await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    const grade = await screen.findByRole('list', { name: 'Em progresso, Anime' });
+    const visiveis = within(grade).getAllByRole('listitem');
+    expect(visiveis.length).toBeGreaterThan(0);
+    expect(visiveis.length).toBeLessThan(50);
+    expect(visiveis[0]).toHaveAttribute('aria-setsize', '300');
+    expect(visiveis[0]).toHaveAttribute('aria-posinset', '1');
+  });
+});
+
+describe('Minha Lista: menu de Status', () => {
+  it('muda o Status na hora com PUT /lista/<id> e o Item vai para o outro Status', async () => {
+    const item = umItem({ titulo_original: 'Frieren', progresso_atual: 5 });
+    const { user, api } = await abrirLogado('/lista', {
+      rotas: { ...rotasDaLista([item]), [`PUT /lista/${item.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } } },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Status de Frieren: Em progresso. Mudar' }));
+    const menu = screen.getByRole('menu', { name: 'Status de Frieren' });
+    expect(within(menu).getByRole('menuitemradio', { name: 'Em progresso' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(menu).getByRole('menuitemradio', { name: 'Em progresso' })).toHaveFocus();
+    expect(within(menu).queryByRole('menuitemradio', { name: 'Platinado' })).not.toBeInTheDocument();
+
+    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [{ ...item, status_consumo: 'completo', progresso_atual: 12 }] } };
+    await user.click(within(menu).getByRole('menuitemradio', { name: 'Concluído' }));
+
+    expect(api.para(`PUT /lista/${item.id_lista}`)[0]?.corpo).toEqual({ status_consumo: 'completo', progresso_atual: 12 });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Concluído 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Em progresso 0' })).toBeInTheDocument();
+    expect(cards(secao('Concluído'))).toEqual(['Frieren']);
+  });
+
+  it('teclado: setas movem, Esc fecha e devolve o foco', async () => {
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista([umItem({ titulo_original: 'Frieren' })]) });
+
+    const botao = await screen.findByRole('button', { name: /^Status de Frieren/ });
+    botao.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('menuitemradio', { name: 'Em progresso' })).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('menuitemradio', { name: 'Planejado' })).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(screen.getByRole('menuitemradio', { name: 'Concluído' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(botao).toHaveFocus();
+  });
+
+  it('recusado pelo servidor, o Item volta ao Status de antes e o erro aparece', async () => {
+    const item = umItem({ titulo_original: 'Frieren' });
+    const { user } = await abrirLogado('/lista', {
+      rotas: { ...rotasDaLista([item]), [`PUT /lista/${item.id_lista}`]: erro(400, 'dados_invalidos', 'Status inválido para o Tipo.') },
+    });
+
+    await user.click(await screen.findByRole('button', { name: /^Status de Frieren/ }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Pausado' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Status inválido para o Tipo.');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Em progresso 1' })).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Pausado 0' })).toBeInTheDocument();
   });
 });

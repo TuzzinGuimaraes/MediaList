@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SessaoProvider } from '../../sessao/SessaoContext';
-import { abrirLogado, rotasDaSessao } from '../../testes/app';
+import { rotasDaSessao } from '../../testes/app';
 import { erro, simularFetch } from '../../testes/fetchSimulado';
 import { EditorItemProvider, useEditorItem } from './EditorItemContext';
 import { type ItemLista, rotasDaLista, umaMidia, umItem } from './fixtures';
@@ -13,21 +13,37 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Abre a Lista com `item` (na `aba`, se não for Em progresso) e o editor dele; PUT e DELETE respondem ok. */
-async function editar(item: ItemLista, extra = {}, aba?: RegExp) {
-  const aberto = await abrirLogado('/lista', {
-    rotas: {
-      ...rotasDaLista([item]),
-      [`PUT /lista/${item.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } },
-      [`DELETE /lista/${item.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } },
-      ...extra,
-    },
+/** Abre o editor de `item` (como o detalhe faz); PUT e DELETE respondem ok. */
+async function editar(item: ItemLista, extra = {}) {
+  const api = simularFetch({
+    ...rotasDaSessao(),
+    ...rotasDaLista([item]),
+    [`PUT /lista/${item.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } },
+    [`DELETE /lista/${item.id_lista}`]: { status: 200, corpo: { mensagem: 'ok' } },
+    ...extra,
   });
+  const user = userEvent.setup();
   const titulo = item.titulo_portugues ?? item.titulo_original;
-  if (aba) await aberto.user.click(await screen.findByRole('tab', { name: aba }));
-  await aberto.user.click(await screen.findByRole('button', { name: `Editar ${titulo}` }));
+  function Abrir() {
+    const { abrirEditor } = useEditorItem();
+    return (
+      <button type="button" onClick={() => abrirEditor(item, item)}>
+        {`Editar ${titulo}`}
+      </button>
+    );
+  }
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <SessaoProvider>
+        <EditorItemProvider>
+          <Abrir />
+        </EditorItemProvider>
+      </SessaoProvider>
+    </QueryClientProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: `Editar ${titulo}` }));
   const dialogo = screen.getByRole('dialog', { name: titulo });
-  return { ...aberto, dialogo, put: () => aberto.api.para(`PUT /lista/${item.id_lista}`) };
+  return { api, user, dialogo, put: () => api.para(`PUT /lista/${item.id_lista}`) };
 }
 
 describe('editor do Item', () => {
@@ -71,7 +87,7 @@ describe('editor do Item', () => {
   });
 
   it('Item que abriu concluído zera o Progresso ao escolher outro Status', async () => {
-    const { user, dialogo } = await editar(umItem({ titulo_original: 'Frieren', status_consumo: 'completo', progresso_atual: 12 }), {}, /Concluído/);
+    const { user, dialogo } = await editar(umItem({ titulo_original: 'Frieren', status_consumo: 'completo', progresso_atual: 12 }));
 
     await user.click(within(dialogo).getByRole('radio', { name: 'Em progresso' }));
 
@@ -139,7 +155,6 @@ describe('editor do Item', () => {
   it('remover pede confirmação e tira o Item da Lista', async () => {
     const item = umItem({ titulo_original: 'Frieren' });
     const { user, dialogo, api } = await editar(item);
-    api.rotas['GET /lista'] = { status: 200, corpo: { lista: [] } };
 
     await user.click(within(dialogo).getByRole('button', { name: 'Remover' }));
     expect(within(dialogo).getByText(/Remover esta Mídia da sua Lista\?/)).toBeInTheDocument();
@@ -147,7 +162,6 @@ describe('editor do Item', () => {
 
     expect(api.para(`DELETE /lista/${item.id_lista}`)).toHaveLength(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: 'Em progresso 0' })).toBeInTheDocument();
   });
 });
 
