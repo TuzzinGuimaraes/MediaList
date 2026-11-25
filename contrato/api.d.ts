@@ -353,7 +353,7 @@ export interface paths {
         put?: never;
         /**
          * Vincular um Não encontrado a uma Mídia do mesmo Tipo: vale para todos e já aplica o Item na Lista.
-         * @description Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida).
+         * @description Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida). 409 `conflito` com o `id_midia` atual em `detalhes` se o item já está vinculado a outra Mídia ou, na Steam, se o jogo já casou com outra Mídia do Catálogo (entra na próxima sincronização).
          */
         post: operations["post__api_integracoes_vinculos"];
         delete?: never;
