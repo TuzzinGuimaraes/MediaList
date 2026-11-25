@@ -76,6 +76,13 @@ não reconhece entra pela loja da Steam (a Mídia guarda a `steam_appid`, e a Im
 que trouxer a mesma appid atualiza essa Mídia em vez de criar outra); o que a loja diz que não é
 jogo (software, DLC, trilha sonora) é ignorado, fora de "Não encontrados".
 
+Um Não encontrado pode ser **vinculado** pelo próprio Usuário a uma Mídia do Catálogo do mesmo
+Tipo (Steam só jogo; AniList e MAL, o anime ou o mangá do item). O **Vínculo** é global: vale na
+hora para todo Usuário com o mesmo item na mesma plataforma, é consultado antes de dar "não
+encontrado" e já leva o Item para a Lista de quem vinculou, pelas mesmas regras da importação. O
+admin vê os Vínculos com autor e data e pode desfazer um errado; desfazer não apaga Itens, só faz
+a próxima importação voltar a dar Não encontrado.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`

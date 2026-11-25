@@ -268,7 +268,9 @@ def test_sem_casamento_no_rawg_grava_negativo_e_nao_busca_de_novo_ate_30_dias(cl
     banco.executar("UPDATE steam_appids SET tentado_em = now() - interval '31 days' WHERE appid = %s", (appid,))
     _sincronizar(client, headers)
 
-    assert primeira['nao_encontrados'] == [{'titulo': nome, 'link': f'https://store.steampowered.com/app/{appid}'}]
+    assert primeira['nao_encontrados'] == [{
+        'titulo': nome, 'link': f'https://store.steampowered.com/app/{appid}', 'origem_id': str(appid), 'tipo': 'jogo',
+    }]
     assert segunda['total_nao_encontrados'] == 1
     assert _casamento(appid) == {'id_midia': None, 'nome': nome}
     assert buscas == 1 and buscas_na_segunda == 0

@@ -8,18 +8,24 @@ agora, grava pela `ListaPessoal` (a mesma validação da rota da Lista) e regist
 Falha no meio desfaz tudo e a prévia continua valendo; dois confirmar da mesma prévia
 aplicam uma vez só (o DELETE da prévia trava a linha até o commit).
 
+Cada Não encontrado guarda o item inteiro (sem a obra da fonte), para o Vincular aplicá-lo
+depois; a resposta só mostra título, link, `origem_id` e Tipo. Vincular (`vincular`) grava o
+vínculo global e aplica o Item como a sincronização; a prévia consulta os vínculos antes de
+casar pela fonte.
+
 Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
-`SemConta`/`PlataformaDesconhecida`.
+`SemConta`/`PlataformaDesconhecida` e os do Vincular (`MidiaInexistente`, `ForaDosNaoEncontrados`,
+`TipoIncompativel`, `VinculoEmConflito`).
 """
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import fields, replace
 from datetime import date
 from typing import Any
 
 import banco
 from dominio.lista_pessoal import ListaPessoal
-from integracoes import catalogo, prazo, repositorio
+from integracoes import catalogo, prazo, repositorio, vinculos
 from integracoes.anilist import AniList
 from integracoes.aplicar import NOVO, aplicar
 from integracoes.mal import MAL
@@ -29,6 +35,7 @@ from integracoes.plataforma import (
     ItemDeOrigem,
     Plataforma,
     PlataformaIndisponivel,
+    RefCatalogo,
     conferir_tamanho,
     item_de_json,
     item_para_json,
@@ -57,6 +64,22 @@ class SemConta(LookupError):
 
 class SemPrevia(ErroDaIntegracao):
     """A plataforma não tem prévia (a Steam só sincroniza)."""
+
+
+class MidiaInexistente(LookupError):
+    """Vincular a uma Mídia que não está no Catálogo."""
+
+
+class ForaDosNaoEncontrados(LookupError):
+    """O item não aparece nos Não encontrados do Usuário (último resultado ou prévia válida)."""
+
+
+class TipoIncompativel(ValueError):
+    """A Mídia não é do Tipo do item (Steam só jogo; AniList e MAL, o anime ou o mangá do item)."""
+
+
+class VinculoEmConflito(Exception):
+    """O item já está vinculado a outra Mídia."""
 
 
 class _CatalogoLocalizado:
@@ -115,8 +138,15 @@ def desconectar(id_usuario: str, nome: str) -> None:
     repositorio.remover_conta(id_usuario, nome)
 
 
-def _nao_encontrado(item: ItemDeOrigem) -> dict[str, Any]:
-    return {'titulo': item.titulo, 'link': item.link}
+def nao_encontrado(item: ItemDeOrigem) -> dict[str, Any]:
+    """O Não encontrado como fica guardado: o item inteiro, sem a obra da fonte (o Vincular o aplica)."""
+    return item_para_json(replace(item, catalogo=None))
+
+
+def _item_do_nao_encontrado(entrada: dict[str, Any], id_midia: str) -> ItemDeOrigem:
+    campos = {f.name for f in fields(ItemDeOrigem)} - {'catalogo'}
+    return replace(item_de_json({k: v for k, v in entrada.items() if k in campos}),
+                   catalogo=RefCatalogo('midia', id_midia))
 
 
 def _contagens(novos: int, atualizados: int, nao_encontrados: list[dict[str, Any]]) -> dict[str, Any]:
@@ -138,7 +168,7 @@ def _planejar(id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: dat
     for item in itens:
         midia = localizadas.get(catalogo.chave(item)) if item.catalogo else None
         if midia is None and not catalogo.importavel(item):
-            nao_encontrados.append(_nao_encontrado(item))
+            nao_encontrados.append(nao_encontrado(item))
             continue
         atual = atuais.get(midia['id_midia']) if midia else None
         mudanca = aplicar(atual, item, total=midia['total'] if midia else None, hoje=hoje)
@@ -157,6 +187,7 @@ def _sem_dados_se_localizado(item: ItemDeOrigem, midia) -> ItemDeOrigem:
 def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> dict[str, Any]:
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
     conferir_tamanho(len(itens))
+    itens = vinculos.aplicar(nome, itens)
     planos, nao_encontrados = _planejar(id_usuario, itens, catalogo.localizar(itens), date.today())
     novos = sum(1 for *_, m in planos if m.tipo == NOVO)
     conteudo = {
@@ -202,7 +233,7 @@ def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: d
     lista = ListaPessoal(ItensLista(db), _CatalogoLocalizado(localizadas))
     planos, faltando = _planejar(id_usuario, [i for i in itens if localizadas.get(catalogo.chave(i))],
                                  localizadas, hoje, db)
-    nao_encontrados = [_nao_encontrado(i) for i in itens if not localizadas.get(catalogo.chave(i))]
+    nao_encontrados = [nao_encontrado(i) for i in itens if not localizadas.get(catalogo.chave(i))]
     nao_encontrados.extend(faltando)
 
     novos = atualizados = 0
@@ -215,7 +246,7 @@ def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: d
             resultado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False)
             atualizados += resultado.bem_sucedido
         if not resultado.bem_sucedido:
-            nao_encontrados.append(_nao_encontrado(item))
+            nao_encontrados.append(nao_encontrado(item))
     return _contagens(novos, atualizados, nao_encontrados)
 
 
@@ -252,3 +283,38 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
         }
         repositorio.registrar_resultado(id_usuario, consumida['plataforma'], resultado, t)
     return resultado
+
+
+_ARTIGO_DO_TIPO = {'anime': 'um anime', 'manga': 'um mangá', 'jogo': 'um jogo'}
+
+
+def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje: date | None = None) -> dict[str, Any]:
+    """Vincula um Não encontrado do Usuário a uma Mídia (vale para todos) e aplica o Item na Lista.
+
+    Só aceita o que apareceu como Não encontrado para ele (no último resultado ou numa prévia
+    válida), na Mídia do mesmo Tipo. O item sai dos Não encontrados dele. Vínculo já existente
+    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito.
+    """
+    plataforma(nome)
+    destino = vinculos.midia(id_midia)
+    if destino is None:
+        raise MidiaInexistente(id_midia)
+    entradas = vinculos.nao_encontrados(id_usuario, nome, origem_id)
+    if not entradas:
+        raise ForaDosNaoEncontrados(origem_id)
+    entrada = next((e for e in entradas if e.get('tipo') == destino['tipo']), None)
+    if entrada is None or destino['tipo'] not in vinculos.TIPOS_DA_PLATAFORMA[nome]:
+        esperado = ' ou '.join(_ARTIGO_DO_TIPO[t] for t in dict.fromkeys(e.get('tipo') for e in entradas)
+                               if t in _ARTIGO_DO_TIPO)
+        raise TipoIncompativel(f'Escolha {esperado or "uma Mídia do mesmo Tipo"}.')
+
+    with banco.transacao() as t:
+        vinculo = vinculos.gravar(t, nome, origem_id, destino['tipo'], destino['id_midia'], id_usuario,
+                                  entrada.get('titulo') or origem_id)
+        if vinculo['id_midia'] != destino['id_midia']:
+            raise VinculoEmConflito(origem_id)
+        vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+
+    resultado = aplicar_itens(id_usuario, [_item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
+    return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],
+            'novos': resultado['novos'], 'atualizados': resultado['atualizados']}

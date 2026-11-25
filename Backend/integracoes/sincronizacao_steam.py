@@ -1,8 +1,9 @@
 """Sincronização da Steam (Q111, Q113, Q115): sem prévia, grava direto pela `servico.aplicar_itens`.
 
 1. Lê os jogos já abertos do perfil conectado (`integracoes.steam`).
-2. Os já casados em `steam_appids`, e os que o Catálogo já tem pela appid (`jogos.steam_appid`),
-   vão primeiro: atualizar horas é barato e é o que o "Sincronizar agora" mais precisa entregar.
+2. Os vinculados por um Usuário (`integracoes.vinculos`), os já casados em `steam_appids` e os
+   que o Catálogo já tem pela appid (`jogos.steam_appid`) vão primeiro: atualizar horas é barato
+   e é o que o "Sincronizar agora" mais precisa entregar.
    Os ignorados (a loja disse que não são jogo) somem: nem "Não encontrados" nem pendentes.
 3. Os que faltam casar passam, um por vez e enquanto houver orçamento, pelo RAWG
    (`integracoes.rawg`) e, se ele não tem o jogo, pela loja da Steam (`integracoes.loja_steam`):
@@ -25,7 +26,7 @@ from dataclasses import replace
 from datetime import date
 from typing import Any, Callable
 
-from integracoes import catalogo, repositorio, servico, steam_appids
+from integracoes import catalogo, repositorio, servico, steam_appids, vinculos
 from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
 from integracoes.rawg import Rawg
@@ -107,9 +108,13 @@ def _somar(*resultados: dict[str, Any]) -> dict[str, Any]:
 
 
 def _separar(itens: list[ItemDeOrigem]):
-    """(casados, a casar, sem casamento): pelo `steam_appids` e, os que faltam, pela appid no Catálogo."""
+    """(casados, a casar, sem casamento): pelo vínculo de um Usuário, pelo `steam_appids` e, os que
+    faltam, pela appid no Catálogo."""
+    a_casar, sem_casamento = [], []
+    vinculados = vinculos.aplicar('steam', itens)
+    casados = [i for i in vinculados if i.catalogo]
+    itens = [i for i in vinculados if not i.catalogo]
     casamentos = steam_appids.ler([int(i.origem_id) for i in itens])
-    casados, a_casar, sem_casamento = [], [], []
     for item in itens:
         casamento = casamentos.get(int(item.origem_id))
         if casamento and casamento['ignorado']:
@@ -179,7 +184,7 @@ def sincronizar(
         loja.fechar()
 
     novos_casados = servico.aplicar_itens(id_usuario, recem_casados, hoje=hoje)
-    nao_casados = [{'titulo': i.titulo, 'link': i.link} for i in sem_casamento]
+    nao_casados = [servico.nao_encontrado(i) for i in sem_casamento]
     resultado = {
         **_somar(ja_casados, novos_casados, {
             'novos': 0, 'atualizados': 0, 'nao_encontrados': nao_casados, 'total_nao_encontrados': len(nao_casados),

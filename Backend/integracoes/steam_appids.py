@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import banco
 from banco import consultar, executar
 
 #: Dias até um negativo ser buscado de novo (o RAWG e a loja ganham jogos com o tempo).
@@ -30,8 +31,9 @@ def ler(appids: list[int]) -> dict[int, dict[str, Any]]:
     return {linha['appid']: linha for linha in linhas}
 
 
-def gravar(appid: int, id_midia: str | None, nome: str, *, ignorado: bool = False) -> None:
-    executar(
+def gravar(appid: int, id_midia: str | None, nome: str, *, ignorado: bool = False, db=banco) -> None:
+    """Grava (ou troca) o casamento; `db` é o módulo `banco` ou uma transação aberta (o vínculo)."""
+    db.executar(
         """
         INSERT INTO steam_appids (appid, id_midia, nome, ignorado) VALUES (%s, %s, %s, %s)
         ON CONFLICT (appid) DO UPDATE SET id_midia = EXCLUDED.id_midia, nome = EXCLUDED.nome,

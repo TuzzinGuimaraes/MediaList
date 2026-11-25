@@ -81,7 +81,9 @@ def test_conecta_e_importa_pela_api_casando_pelo_idmal(client, usuario, mal, ani
     corpo = client.post('/api/integracoes/mal/previa', headers=headers).get_json()
 
     assert (corpo['novos'], corpo['atualizados'], corpo['total_nao_encontrados']) == (2, 0, 1), corpo
-    assert corpo['nao_encontrados'] == [{'titulo': 'Sem par no AniList', 'link': 'https://myanimelist.net/anime/9'}]
+    assert corpo['nao_encontrados'] == [{
+        'titulo': 'Sem par no AniList', 'link': 'https://myanimelist.net/anime/9', 'origem_id': '9', 'tipo': 'anime',
+    }]
     confirmado = client.post(f"/api/integracoes/previas/{corpo['id_previa']}/confirmar", headers=headers)
     assert confirmado.status_code == 200, confirmado.get_json()
     assert _item(id_usuario, midia_existente)['progresso_atual'] == 3
