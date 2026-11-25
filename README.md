@@ -319,8 +319,11 @@ docker compose run --rm backend python -m importacao.run_import --tipo jogo --pa
 docker compose run --rm backend python -m importacao.run_import --tipo todos --paginas 10
 ```
 
-Cada execução continua, por Tipo de mídia, da página onde a anterior parou (tabela
-`importacao_cursor`); `--do-inicio` ignora o cursor e recomeça da página 1.
+Cada execução continua, por Tipo de mídia, de onde a anterior parou (tabela
+`importacao_cursor`); `--do-inicio` ignora o cursor e recomeça do início. Jogos (RAWG) seguem
+por página. Animes e mangás (AniList, que não dá página acima de 100) têm duas passadas: o
+crescimento por popularidade (`--paginas`) e a atualização das populares em rodízio pelas
+páginas 1–100 (`--paginas-atualizacao`, padrão 10; 0 desliga). Ver `importacao/anilist.py`.
 
 No GitHub Actions (workflow `importacao`) os três Tipos rodam em paralelo, um job cada, e a
 sincronização da Steam roda depois.

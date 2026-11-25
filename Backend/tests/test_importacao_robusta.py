@@ -53,21 +53,64 @@ def cursor_em_memoria(monkeypatch):
     paginas = {}
     monkeypatch.setattr(cursor, 'ler', lambda tipo: paginas.get(tipo, 1))
     monkeypatch.setattr(cursor, 'gravar', lambda tipo, pagina: paginas.__setitem__(tipo, pagina))
+    monkeypatch.setattr(cursor, 'ler_anilist', lambda tipo: {
+        'fronteira': paginas.get(tipo), 'pagina_topo': 1, 'atualizacao_pagina': paginas.get((tipo, 'atualizacao'), 1),
+    })
+    monkeypatch.setattr(cursor, 'gravar_crescimento', lambda tipo, fronteira: paginas.__setitem__(tipo, fronteira))
+    monkeypatch.setattr(
+        cursor, 'gravar_atualizacao', lambda tipo, pagina: paginas.__setitem__((tipo, 'atualizacao'), pagina)
+    )
     return paginas
 
 
-def test_anilist_429_persistente_vira_pagina_com_falha_sem_laco():
-    """O Retry da sessão já trata 429; esgotado, a página falha e o laço segue."""
+class _AniListPaginas:
+    """AniList que responde, chamada a chamada, as `respostas` (página com `media`, ou um status de erro)."""
+
+    def __init__(self, *respostas):
+        self.respostas = list(respostas)
+
+    def post(self, url, json=None, timeout=None):
+        resposta = self.respostas.pop(0) if self.respostas else []
+        if isinstance(resposta, int):
+            return _Resposta(resposta)
+        corpo = {'data': {'Page': {'pageInfo': {'hasNextPage': bool(self.respostas)}, 'media': resposta}}}
+        return _Resposta(200, corpo)
+
+    def close(self):
+        pass
+
+
+def _anilist(monkeypatch, sessao):
+    from importacao import importar_animes, importar_mangas
+
+    for modulo in (importar_animes, importar_mangas):
+        monkeypatch.setattr(modulo, 'criar_sessao_http', lambda **kw: sessao)
+        monkeypatch.setattr(modulo, 'RateLimiter', lambda *a: _SemEspera())
+
+
+@pytest.mark.parametrize('passada', ['crescimento', 'atualizacao'])
+def test_anilist_429_persistente_vira_pagina_com_falha_e_encerra_a_passada(passada):
+    """O Retry da sessão já trata 429; esgotado, a página falha e a passada para nela."""
     sessao = _SessaoFixa(_Resposta(429, headers={'Retry-After': '60'}))
 
+    def buscar(pagina, sort, filtros):
+        return anilist.buscar_pagina(sessao, _SemEspera(), 'ANIME', pagina, sort, filtros)
+
+    gerador = anilist.crescimento(buscar, 2, None) if passada == 'crescimento' else anilist.atualizacao(buscar, 2)
     try:
-        paginas = list(anilist.importar_do_anilist('ANIME', paginas=2, session=sessao, rate_limiter=_SemEspera()))
+        paginas = list(gerador)
     except KeyboardInterrupt as exc:
         raise AssertionError(str(exc)) from None
 
-    assert [p['pagina'] for p in paginas] == [1, 2]
-    assert all(p['erro'] is not None for p in paginas)
-    assert sessao.chamadas == 2
+    assert [p['pagina'] for p in paginas] == [1]
+    assert paginas[0]['erro'] is not None
+    assert 'cursor' not in paginas[0]
+    assert sessao.chamadas == 1
+
+
+def test_anilist_nunca_pede_pagina_acima_da_100():
+    with pytest.raises(ValueError):
+        anilist.buscar_pagina(_SessaoFixa(None), _SemEspera(), 'ANIME', 101, anilist.POR_POPULARIDADE, {})
 
 
 def test_sessao_http_desiste_do_429_apos_limite_de_tentativas():
@@ -114,19 +157,13 @@ def _rodar_main(monkeypatch, *argv):
 
 
 def test_pagina_com_falha_aparece_no_resumo(monkeypatch, capsys, tmp_path):
-    from importacao import importar_animes, importar_mangas, utils
+    from importacao import utils
 
     monkeypatch.setattr(utils, 'ERROR_LOG_PATH', tmp_path / 'erros.jsonl')
 
-    def fonte(tipo, paginas, **kwargs):
-        yield {'pagina': 1, 'itens': [], 'erro': None}
-        yield {'pagina': 2, 'itens': [], 'erro': RuntimeError('timeout'), 'payload': {}}
-
-    for modulo in (importar_animes, importar_mangas):
-        monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
-
     # Página com falha (fonte fora do ar) sai com erro: o workflow importacao fica vermelho.
     for tipo in ('anime', 'manga'):
+        _anilist(monkeypatch, _AniListPaginas([], 504))
         with pytest.raises(SystemExit) as saiu:
             _rodar_main(monkeypatch, '--tipo', tipo)
         assert saiu.value.code == 1
@@ -163,19 +200,13 @@ def test_pagina_de_jogos_com_falha_aparece_no_resumo_e_encerra_os_jogos(monkeypa
 
 
 def test_sem_chave_rawg_jogos_sao_pulados_e_import_all_nao_sai_com_erro(monkeypatch, capsys, tmp_path, caplog):
-    from importacao import importar_animes, importar_mangas
-
     def sem_banco(*args):
         raise AssertionError('jogos sem chave não devem gravar no banco')
 
     importar_jogos = _preparar_jogos(monkeypatch, tmp_path, _SessaoFixa(None), chave='')
     monkeypatch.setattr(importar_jogos, 'salvar_jogo', sem_banco)
 
-    def fonte(tipo, paginas, **kwargs):
-        yield {'pagina': 1, 'itens': [], 'erro': None}
-
-    for modulo in (importar_animes, importar_mangas):
-        monkeypatch.setattr(modulo, 'importar_do_anilist', fonte)
+    _anilist(monkeypatch, _AniListPaginas([]))
 
     with caplog.at_level('WARNING'):
         _rodar_main(monkeypatch, '--tipo', 'todos')  # SystemExit(1) aqui falha o teste
@@ -299,11 +330,8 @@ def test_banco_fora_do_ar_no_meio_da_pagina_encerra_o_tipo_sem_avancar_o_cursor(
     def autocommit():
         yield _SemBanco()
 
-    def fonte(tipo, paginas, **kwargs):
-        yield {'pagina': 1, 'itens': [{'id': 1, 'title': {'romaji': 'A'}}], 'erro': None}
-
     monkeypatch.setattr(importar_animes, 'autocommit', autocommit)
-    monkeypatch.setattr(importar_animes, 'importar_do_anilist', fonte)
+    _anilist(monkeypatch, _AniListPaginas([{'id': 1, 'popularity': 10, 'title': {'romaji': 'A'}}]))
 
     with pytest.raises(banco.Indisponivel):
         importar_animes.importar_animes(paginas=1)

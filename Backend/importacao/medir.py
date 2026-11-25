@@ -8,7 +8,7 @@ os rate limiters), mas com as fontes gravadas: respostas reais do AniList e do R
 toxiproxy com um toxic `latency` em cada sentido.
 
 Cada rodada parte do mesmo estado: apaga antes as Mídias das fixtures (pela chave da fonte) e
-recomeça o cursor da página 1 (`do_inicio`). Por isso recusa URL da Neon.
+recomeça o cursor do início (`do_inicio`). Por isso recusa URL da Neon.
 
     DATABASE_URL=postgresql://...@127.0.0.1:5662/medialist_db python -m importacao.medir --paginas 2
 
@@ -155,8 +155,9 @@ def importadores(paginas: int, workers: int) -> dict:
     from importacao.importar_mangas import importar_mangas
 
     return {
-        'anime': lambda: importar_animes(paginas=paginas, do_inicio=True),
-        'manga': lambda: importar_mangas(paginas=paginas, do_inicio=True),
+        # Só o crescimento, do topo: as páginas gravadas, sem a atualização das populares.
+        'anime': lambda: importar_animes(paginas=paginas, paginas_atualizacao=0, do_inicio=True),
+        'manga': lambda: importar_mangas(paginas=paginas, paginas_atualizacao=0, do_inicio=True),
         'jogo': lambda: importar_jogos(paginas=paginas, workers=workers, do_inicio=True),
     }
 

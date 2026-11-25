@@ -18,6 +18,10 @@ class Resposta:
             raise self._corpo
         return self._corpo
 
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
 
 class SessaoGet:
     """Responde cada GET por `rotas`: {regex do caminho: corpo | Resposta | Exception | callable(params)}.
@@ -112,3 +116,58 @@ def appdetails(appid, nome, *, tipo='game', data='21 ago. 2012', em_breve=False,
         'genres': [{'id': i, 'description': d} for i, d in generos],
         'release_date': {'coming_soon': em_breve, 'date': data},
     }}}
+
+
+
+class AniListFalso:
+    """`Page.media` do AniList em memória para a Importação: `post` como o GraphQL público.
+
+    `obras` é [(id, popularidade)] por Tipo (`ANIME`/`MANGA`). Entende os argumentos que a
+    Importação manda (`sort` [POPULARITY_DESC, ID] ou [ID], `popularity`, `popularity_lesser`) e
+    recusa com o 400 de limite a página acima de `limite`, como a API pública acima de 100.
+    `falha_em`: chamadas (contadas de 1) que respondem 502. Guarda as variáveis em `pedidos`.
+    """
+
+    def __init__(self, obras, limite=100, falha_em=()):
+        self.obras = {tipo: list(lista) for tipo, lista in obras.items()}
+        self.limite = limite
+        self.falha_em = set(falha_em)
+        self.pedidos: list[dict] = []
+
+    @staticmethod
+    def media(id_anilist, popularidade):
+        return {'id': id_anilist, 'popularity': popularidade, 'title': {'romaji': f'Obra {id_anilist}'},
+                'genres': []}
+
+    def post(self, url, json=None, timeout=None):
+        variaveis = dict(json['variables'])
+        self.pedidos.append(variaveis)
+        if len(self.pedidos) > 200:
+            raise KeyboardInterrupt('AniList chamado demais: laço sem limite')
+        if len(self.pedidos) in self.falha_em:
+            return Resposta(502, {'errors': [{'message': 'Bad Gateway', 'status': 502}], 'data': None})
+        pagina, por_pagina = variaveis['page'], variaveis['perPage']
+        if pagina > self.limite:
+            return Resposta(400, {'errors': [{
+                'message': 'Page exceeds maximum allowed for public API requests', 'status': 400,
+            }], 'data': None})
+        obras = self.obras[variaveis['tipo']]
+        if 'popularity' in variaveis:
+            obras = [o for o in obras if o[1] == variaveis['popularity']]
+        if 'popularityLesser' in variaveis:
+            obras = [o for o in obras if o[1] < variaveis['popularityLesser']]
+        if variaveis['sort'] == ['POPULARITY_DESC', 'ID']:
+            obras = sorted(obras, key=lambda o: (-o[1], o[0]))
+        elif variaveis['sort'] == ['ID']:
+            obras = sorted(obras)
+        else:
+            raise AssertionError(f'sort inesperado: {variaveis["sort"]}')
+        inicio = (pagina - 1) * por_pagina
+        fatia = obras[inicio:inicio + por_pagina]
+        return Resposta(200, {'data': {'Page': {
+            'pageInfo': {'hasNextPage': inicio + por_pagina < len(obras)},
+            'media': [self.media(*o) for o in fatia],
+        }}})
+
+    def close(self):
+        pass

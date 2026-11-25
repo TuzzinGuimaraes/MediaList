@@ -2,6 +2,9 @@ name: importacao
 
 # Importação diária no runner (ADR-0013): não cabe nos 300 s de uma função da
 # Vercel. Cada execução retoma, por Tipo de mídia, do cursor guardado no banco.
+# Anime e mangá (AniList) têm duas passadas: o crescimento, por popularidade
+# (`paginas`), e a atualização das populares, em rodízio pelas páginas 1–100
+# (`paginas_atualizacao`).
 # Os Tipos rodam em paralelo, um job cada. Uma falha deixa o workflow vermelho,
 # e o GitHub avisa por email.
 on:
@@ -15,11 +18,15 @@ on:
         options: [todos, anime, manga, jogo]
         default: todos
       paginas:
-        description: Páginas por Tipo de mídia, a partir do cursor
+        description: Páginas por Tipo de mídia, a partir do cursor (AniList, as do crescimento)
         type: number
         default: 20
+      paginas_atualizacao:
+        description: "AniList: páginas da atualização das populares (0 desliga)"
+        type: number
+        default: 10
       do_inicio:
-        description: Ignorar o cursor e recomeçar da página 1
+        description: Ignorar o cursor e recomeçar do início
         type: boolean
         default: false
 
@@ -33,6 +40,7 @@ jobs:
     # Medido com 120 ms de ida e volta ao banco (proxy com latência, importacao/medir.py):
     # 0,14 s por anime ou mangá e 0,27 s por jogo (o piso é o rate limit da RAWG). 60 páginas:
     # ~7 min (3000 animes ou mangás) e ~11 min (2400 jogos). Folga para a rede das fontes.
+    # No AniList, as páginas da atualização somam às do crescimento.
     timeout-minutes: 45
     # Uma Importação de cada Tipo por vez; a nova espera a anterior em vez de
     # cancelá-la no meio de uma página.
@@ -70,13 +78,15 @@ jobs:
           RAWG_API_KEY: ${{ matrix.tipo == 'jogo' && secrets.RAWG_API_KEY || '' }}
           TIPO: ${{ matrix.tipo }}
           PAGINAS: ${{ inputs.paginas || 20 }}
+          # Vazio no agendamento; 0 é valor (desliga), por isso o padrão vem no script.
+          PAGINAS_ATUALIZACAO: ${{ inputs.paginas_atualizacao }}
           DO_INICIO: ${{ inputs.do_inicio || false }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL ausente"
             exit 1
           fi
-          args=(--tipo "$TIPO" --paginas "$PAGINAS")
+          args=(--tipo "$TIPO" --paginas "$PAGINAS" --paginas-atualizacao "${PAGINAS_ATUALIZACAO:-10}")
           if [ "$DO_INICIO" = "true" ]; then args+=(--do-inicio); fi
           python -m importacao.run_import "${args[@]}"
 

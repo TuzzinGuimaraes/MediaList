@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from importacao.anilist import PAGINAS_ATUALIZACAO
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
 from importacao.importar_mangas import importar_mangas
@@ -37,11 +38,15 @@ def main():
     parser.add_argument('--tipo', choices=['anime', 'manga', 'jogo', 'todos'], default='todos')
     parser.add_argument(
         '--paginas', type=int, default=20,
-        help='Número de páginas a importar, a partir do cursor de cada Tipo de mídia',
+        help='Páginas a importar a partir do cursor de cada Tipo de mídia (no AniList, as do crescimento)',
+    )
+    parser.add_argument(
+        '--paginas-atualizacao', type=int, default=PAGINAS_ATUALIZACAO,
+        help='AniList: páginas da atualização das populares (rodízio pelas páginas 1–100)',
     )
     parser.add_argument(
         '--do-inicio', action='store_true',
-        help='Ignora o cursor da Importação e recomeça da página 1',
+        help='Ignora o cursor da Importação e recomeça do início (no AniList, as duas passadas)',
     )
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
     args = parser.parse_args()
@@ -53,7 +58,8 @@ def main():
     if args.tipo in ('anime', 'todos'):
         print('=== Importando Animes (AniList) ===')
         stats, erro_fatal = executar_importacao(
-            'anime', 'AniList', importar_animes, paginas=args.paginas, do_inicio=args.do_inicio
+            'anime', 'AniList', importar_animes, paginas=args.paginas,
+            paginas_atualizacao=args.paginas_atualizacao, do_inicio=args.do_inicio,
         )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
@@ -61,7 +67,8 @@ def main():
     if args.tipo in ('manga', 'todos'):
         print('=== Importando Mangás (AniList) ===')
         stats, erro_fatal = executar_importacao(
-            'manga', 'AniList', importar_mangas, paginas=args.paginas, do_inicio=args.do_inicio
+            'manga', 'AniList', importar_mangas, paginas=args.paginas,
+            paginas_atualizacao=args.paginas_atualizacao, do_inicio=args.do_inicio,
         )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
