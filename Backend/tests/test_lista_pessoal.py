@@ -324,6 +324,20 @@ def test_reentrar_em_concluido_soma_recontagem_e_renova_a_data():
     assert repo.itens['LST-1']['data_conclusao'] == date.today().isoformat()
 
 
+@pytest.mark.parametrize('payload', [
+    {'progresso_atual': 24},
+    {'progresso_atual': 24, 'status_consumo': 'completo', 'data_conclusao': '2025-05-05'},
+])
+def test_sem_contar_recontagem_reentrar_em_concluido_nao_soma(payload):
+    """Integrações (Q114b): a origem chegar ao total nunca mexe na Recontagem."""
+    modulo, repo = _com_item(progresso_atual=23, data_conclusao='2020-01-01', total_rewatches=1)
+
+    modulo.atualizar(DONO, 'LST-1', payload, contar_recontagem=False)
+
+    assert repo.itens['LST-1']['status_consumo'] == 'completo'
+    assert repo.itens['LST-1']['total_rewatches'] == 1
+
+
 def test_reentrar_em_concluido_no_mesmo_dia_nao_soma_recontagem():
     """− e + no stepper no mesmo dia desfazem um toque errado, não são nova passagem."""
     hoje = date.today().isoformat()

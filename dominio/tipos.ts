@@ -23,3 +23,9 @@ export type NotasDaMidia = Pick<Midia, 'nota_media' | 'nota_fonte' | 'origem_not
 export type DadosAvaliacao = Required<Pick<Esquemas['CorpoNovaAvaliacao'], 'titulo_avaliacao' | 'texto_avaliacao'>> & {
   nota: number;
 };
+
+/** Uma plataforma de Integração e a conta do Usuário nela (GET /integracoes). */
+export type Integracao = Esquemas['Integracao'];
+
+/** Contagens de uma importação por Integração (prévia, confirmação, última sincronização). */
+export type ResultadoImportacao = Esquemas['ResultadoImportacao'];

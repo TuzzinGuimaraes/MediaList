@@ -6,6 +6,8 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { EstatisticasPerfil } from '@/components/EstatisticasPerfil';
+import { IntegracoesPerfil } from '@/components/IntegracoesPerfil';
+import { Secao } from '@/components/Secao';
 import { VersaoDoApp } from '@/components/VersaoDoApp';
 import { rotuloNivelAcesso } from '@dominio/conta';
 import type { PreferenciaTema } from '@/tema/tema';
@@ -112,6 +114,9 @@ export default function Perfil() {
       </View>
       <SeletorTema />
       <EstatisticasPerfil />
+      <Secao titulo="Integrações">
+        <IntegracoesPerfil />
+      </Secao>
       <VersaoDoApp />
       {botaoSair}
     </ScrollView>

@@ -74,6 +74,7 @@ describe('estatísticas no Perfil', () => {
       'GET /usuario/permissoes': permissoes,
       'GET /usuario/estatisticas': estatisticas,
       'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
     });
   });
 
@@ -119,6 +120,7 @@ describe('estatísticas sem itens', () => {
       'GET /usuario/permissoes': permissoes,
       'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [], resumo: { total_midias: 0, concluidos: 0, em_andamento: 0, favoritos: 0 } } },
       'GET /lista': { status: 200, corpo: { lista: [] } },
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
     });
     await abrirPerfil();
 
@@ -137,6 +139,7 @@ describe('estatísticas com erro', () => {
       'GET /usuario/permissoes': permissoes,
       'GET /usuario/estatisticas': () => (falhar ? erro(500, 'erro_interno', 'Erro ao buscar estatísticas') : estatisticas),
       'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
     });
     await abrirPerfil();
 
@@ -160,6 +163,7 @@ describe('versão do app no Perfil', () => {
       'GET /usuario/permissoes': permissoes,
       'GET /usuario/estatisticas': estatisticas,
       'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
     });
   });
 

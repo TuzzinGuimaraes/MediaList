@@ -6,17 +6,9 @@ from __future__ import annotations
 from importacao.config import ANILIST_URL
 from importacao.utils import RateLimiter, criar_sessao_http, logger
 
-QUERY_ANILIST = """
-query ($page: Int, $perPage: Int, $tipo: MediaType) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo {
-      total
-      currentPage
-      lastPage
-      hasNextPage
-      perPage
-    }
-    media(type: $tipo, sort: POPULARITY_DESC) {
+#: Campos de `Media` que `processar_e_inserir_anime`/`_manga` gravam. As Integrações
+#: (`integracoes.anilist`) pedem os mesmos, para importar sob demanda pela mesma rotina.
+CAMPOS_MEDIA = """
       id
       title {
         romaji
@@ -44,7 +36,19 @@ query ($page: Int, $perPage: Int, $tipo: MediaType) {
       source
       trailer { id site }
       isAdult
+"""
+
+QUERY_ANILIST = """
+query ($page: Int, $perPage: Int, $tipo: MediaType) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+      currentPage
+      lastPage
+      hasNextPage
+      perPage
     }
+    media(type: $tipo, sort: POPULARITY_DESC) {""" + CAMPOS_MEDIA + """    }
   }
 }
 """

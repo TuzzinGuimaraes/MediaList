@@ -58,6 +58,28 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
 - **Ping:** `GET /ping` é público e responde 200 `{status: 'ok'}` sem tocar no banco, para o
   monitor externo não manter a Neon acordada (ADR-0013). O `GET /health` segue medindo o
   PostgreSQL (503 sem ele).
+- **Integrações (ADR 0015):** `GET /integracoes` lista as plataformas registradas
+  (`disponivel` é false sem a chave no servidor) com a conta do Usuário, a última sincronização
+  e o último resultado. `PUT /integracoes/<plataforma> {identificador}` conecta validando o
+  perfil público; `DELETE` desconecta (a Lista fica). `POST /integracoes/<plataforma>/previa`
+  devolve `{id_previa, novos, atualizados, nao_encontrados: [{titulo, link}],
+  total_nao_encontrados, expira_em}` sem gravar (a amostra traz até 100); a prévia vale 1 h e
+  só para o dono. `POST /integracoes/previas/<id>/confirmar` aplica uma vez só e devolve as
+  mesmas contagens; prévia vencida, de outro ou já usada responde 404. Erros próprios:
+  400 `perfil_privado` e 404 `perfil_nao_encontrado` (mensagem com o passo para a tela),
+  413 `lista_grande_demais` (a origem passa de 5000 itens por importação),
+  502 `origem_indisponivel` (também quando o prazo de 240 s da requisição acaba) e 503
+  `plataforma_indisponivel`; plataforma fora do registro, 404. A Steam não tem prévia:
+  `POST /integracoes/steam/previa` responde 400 `requisicao_invalida`. Confirmar é tudo ou
+  nada: 502 por prazo deixa a prévia valendo. Os links dos Não encontrados só saem quando são
+  `https://` de anilist.co, myanimelist.net, store.steampowered.com ou rawg.io; senão, `null`.
+  `POST /integracoes/mal/xml` (multipart, campo `arquivo`, `.xml` ou `.xml.gz`, só web) devolve a
+  mesma prévia sem precisar conectar nem da chave do MAL; XML inválido 400 `dados_invalidos`,
+  acima de 5 MB 413.
+- **Steam (ADR 0015):** conecta pela URL do perfil (`/id/<vanity>`, `/profiles/<SteamID64>`) ou
+  o SteamID64; `identificador` guarda o SteamID64. Sem prévia: `POST /integracoes/steam/sincronizar`
+  grava direto e devolve as contagens com `pendentes` (jogos que não couberam no orçamento de
+  ~60 s e ficam para a sincronização diária).
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no

@@ -49,6 +49,30 @@ da Importação), em vez de recomeçar da página 1. Uma página que falha não 
 encerra aquele Tipo, para não abrir buracos. Ao chegar ao fim da fonte, o cursor volta à
 página 1 e a Importação passa a atualizar as Mídias já importadas.
 
+## Integração
+
+A conta pública do Usuário numa plataforma externa (AniList, MyAnimeList, Steam), conectada
+pelo nome de usuário ou pela URL do perfil, sem senha nem OAuth (ADR-0015). Importar por uma
+Integração traz os itens da lista dele na plataforma para a **Lista pessoal**: primeiro uma
+**prévia** (novos, atualizados e "Não encontrados"), que só grava ao confirmar. Confirmar é
+tudo ou nada: falhou no meio, nenhum Item muda e a prévia continua valendo. Uma importação lê
+no máximo 5000 itens da plataforma; lista maior é recusada (`lista_grande_demais`).
+
+A Integração **nunca apaga trabalho do Usuário**: o Progresso fica com o maior valor, o Estado
+de consumo só muda se o Progresso subiu, a nota da plataforma só entra onde não há Nota
+pessoal, e comentário, favorito, Recontagem e Avaliações não são tocados (nem quando a
+plataforma leva ao total um Item que já tinha conclusão: vira Concluído sem somar Recontagem). Em jogos, só as horas
+(a maior) e `na_fila` → `jogando`; Zerado e Platinado nunca vêm da plataforma.
+
+Obra da lista que falta no Catálogo entra por **Importação** sob demanda, da mesma fonte do
+Catálogo (AniList para anime e mangá, RAWG para jogo). O que não casa com segurança fica em
+**Não encontrados** (título e link), sem palpite; `idMal` que o AniList dá para mais de uma
+obra também. O link só sai se for `https://` da própria plataforma (AniList, MyAnimeList, Steam, RAWG).
+
+Da Steam vêm os jogos já abertos (`playtime_forever` > 0), com as horas arredondadas e no mínimo 1,
+gravadas no `progresso_atual` como em todo jogo. Ela não tem prévia: **sincroniza** todo dia e por "Sincronizar agora"; jogo
+ainda não casado com o Catálogo fica **pendente** para a próxima sincronização.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`

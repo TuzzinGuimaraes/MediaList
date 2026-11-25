@@ -145,8 +145,10 @@ def _decidido(campos: dict[str, Any], item: dict[str, Any], nome: str) -> bool:
     return campos.get(nome) is not None and campos.get(nome) != item.get(nome)
 
 
-def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any]) -> None:
+def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any], contar_recontagem: bool = True) -> None:
     """Entrada em Concluído: data de hoje e, se já houve passagem, +1 na Recontagem.
+
+    `contar_recontagem=False` (Integrações, Q114b) nunca mexe na Recontagem.
 
     As datas do Item descrevem a passagem mais recente (ADR 0003), então a nova
     conclusão sobrescreve a anterior, salvo data escolhida pelo Usuário.
@@ -159,12 +161,13 @@ def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any]) -> None:
     # errado (− e + no stepper), não uma nova passagem: não conta Recontagem.
     anterior = item.get('data_conclusao')
     mesmo_dia = anterior is not None and str(anterior)[:10] == hoje
-    if anterior and not mesmo_dia and not _decidido(campos, item, 'total_rewatches'):
+    if contar_recontagem and anterior and not mesmo_dia and not _decidido(campos, item, 'total_rewatches'):
         campos['total_rewatches'] = (item.get('total_rewatches') or 0) + 1
 
 
 def _concluido_segue_o_progresso(
     campos: dict[str, Any], tipo: str | None, total: int | None, item: dict[str, Any] | None = None,
+    contar_recontagem: bool = True,
 ) -> None:
     """Concluído ⇔ Progresso = total (ADR 0009), escrito direto em `campos`.
 
@@ -194,7 +197,7 @@ def _concluido_segue_o_progresso(
         return
 
     if not ja_concluido:
-        _registrar_conclusao(campos, item)
+        _registrar_conclusao(campos, item, contar_recontagem)
 
 
 class ListaPessoal:
@@ -241,8 +244,14 @@ class ListaPessoal:
 
         return Resultado(OK, id_lista=id_lista)
 
-    def atualizar(self, id_usuario: str, id_lista: str, payload: dict[str, Any] | None) -> Resultado:
-        """Grava os campos enviados num Item do Usuário, numa escrita só."""
+    def atualizar(
+        self, id_usuario: str, id_lista: str, payload: dict[str, Any] | None, *, contar_recontagem: bool = True,
+    ) -> Resultado:
+        """Grava os campos enviados num Item do Usuário, numa escrita só.
+
+        `contar_recontagem=False` é o das Integrações (Q114b): chegar ao total pela origem
+        não soma Recontagem, nem num Item que já tinha `data_conclusao`.
+        """
         item = self._lista.obter_item_por_id(id_lista)
         if not item:
             return Resultado(NAO_ENCONTRADO)
@@ -266,7 +275,7 @@ class ListaPessoal:
 
         # Sem status no payload, o estado atual do Item é o que vale: atualizar
         # o progresso não é uma decisão sobre o estado de consumo.
-        _concluido_segue_o_progresso(campos, tipo, total, item)
+        _concluido_segue_o_progresso(campos, tipo, total, item, contar_recontagem)
 
         if campos:
             self._lista.atualizar_campos(id_lista, campos)
