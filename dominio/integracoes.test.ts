@@ -1,5 +1,7 @@
 import {
+  chaveDoNaoEncontrado,
   naoEncontradosForaDaAmostra,
+  vinculavel,
   resumoDaImportacao,
   SINCRONIZA_SEM_PREVIA,
   temOQueConfirmar,
@@ -49,5 +51,19 @@ describe('textoDePendentes', () => {
 describe('SINCRONIZA_SEM_PREVIA', () => {
   it('só a Steam sincroniza sem prévia', () => {
     expect([...SINCRONIZA_SEM_PREVIA]).toEqual(['steam']);
+  });
+});
+
+describe('vinculavel', () => {
+  it('só com origem_id e Tipo (os resultados antigos não têm)', () => {
+    expect(vinculavel({ titulo: 'A', link: null, origem_id: '9', tipo: 'anime' })).toBe(true);
+    expect(vinculavel({ titulo: 'A', link: null })).toBe(false);
+    expect(vinculavel({ titulo: 'A', link: null, origem_id: '9', tipo: null })).toBe(false);
+  });
+
+  it('a chave distingue o anime e o mangá de mesmo id', () => {
+    expect(chaveDoNaoEncontrado({ origem_id: '1', tipo: 'anime' })).not.toBe(
+      chaveDoNaoEncontrado({ origem_id: '1', tipo: 'manga' }),
+    );
   });
 });
