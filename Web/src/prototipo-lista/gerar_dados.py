@@ -5,6 +5,7 @@
 import json
 import math
 import random
+import re
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -14,7 +15,7 @@ API = "https://medialist-five.vercel.app/api/midias"
 QUANTOS = {"jogo": 120, "anime": 80, "manga": 30}
 DESTINO = Path(__file__).with_name("dados.json")
 CAMPOS = [
-    "id_midia", "tipo", "titulo_original", "titulo_ingles", "titulo_portugues", "poster_url",
+    "id_midia", "tipo", "titulo_original", "titulo_ingles", "titulo_portugues", "sinopse", "poster_url",
     "banner_url", "generos_lista", "status_anime", "status_manga", "status_jogo",
     "numero_episodios", "numero_capitulos", "data_lancamento", "nota_fonte",
     "estudio", "autor", "desenvolvedor",
@@ -32,6 +33,14 @@ PESOS = {
 }
 
 
+def sinopse_curta(texto: str | None) -> str | None:
+    """Sinopse sem HTML, cortada em ~420 caracteres (o cartão de destaque mostra 2–3 linhas)."""
+    if not texto:
+        return None
+    texto = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", texto)).strip()
+    return texto if len(texto) <= 420 else texto[:420].rsplit(" ", 1)[0] + "…"
+
+
 def baixar(tipo: str) -> list[dict]:
     midias: list[dict] = []
     pagina = 1
@@ -44,7 +53,7 @@ def baixar(tipo: str) -> list[dict]:
             break
         midias += [m for m in itens if m.get("poster_url")]
         pagina += 1
-    return [{c: m.get(c) for c in CAMPOS} for m in midias[: QUANTOS[tipo]]]
+    return [{**{c: m.get(c) for c in CAMPOS}, "sinopse": sinopse_curta(m.get("sinopse"))} for m in midias[: QUANTOS[tipo]]]
 
 
 def escolher(rng: random.Random, pesos: dict[str, int]) -> str:
