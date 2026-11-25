@@ -78,8 +78,9 @@ jogo (software, DLC, trilha sonora) é ignorado, fora de "Não encontrados".
 
 Um Não encontrado pode ser **vinculado** pelo próprio Usuário a uma Mídia do Catálogo do mesmo
 Tipo (Steam só jogo; AniList e MAL, o anime ou o mangá do item). O **Vínculo** é global: vale na
-hora para todo Usuário com o mesmo item na mesma plataforma, é consultado antes de dar "não
-encontrado" e já leva o Item para a Lista de quem vinculou, pelas mesmas regras da importação. O
+hora para todo Usuário com o mesmo item na mesma plataforma, é reserva (só vale quando a fonte
+não casa o item; nunca troca um casamento que a fonte fez) e já leva o Item para a Lista de quem
+vinculou, pelas mesmas regras da importação. O
 admin vê os Vínculos com autor e data e pode desfazer um errado; desfazer não apaga Itens, só faz
 a próxima importação voltar a dar Não encontrado.
 
