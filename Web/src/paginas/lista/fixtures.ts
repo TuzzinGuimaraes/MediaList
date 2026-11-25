@@ -57,7 +57,7 @@ export function umItem(campos: Partial<ItemLista> = {}): ItemLista {
   } as ItemLista;
 }
 
-/** Uma Mídia de listagem (Em alta). */
+/** Uma Mídia de listagem. */
 export function umaMidia(campos: Partial<Midia> = {}): Midia {
   seq += 1;
   return {
@@ -73,13 +73,10 @@ export function umaMidia(campos: Partial<Midia> = {}): Midia {
   } as Midia;
 }
 
-/** GET /lista com `itens` e Em alta vazio (ou `emAlta`) nos dois Tipos do catálogo. */
-export function rotasDaLista(itens: ItemLista[], emAlta: Midia[] = []): Rotas {
+/** GET /lista com `itens` e Em alta vazio (o detalhe da Mídia o pede). */
+export function rotasDaLista(itens: ItemLista[]): Rotas {
   return {
     'GET /lista': { status: 200, corpo: { lista: itens } },
-    'GET /midias/trending': (req) => ({
-      status: 200,
-      corpo: { midias: emAlta.filter((m) => m.tipo === req.query.get('tipo')) },
-    }),
+    'GET /midias/trending': { status: 200, corpo: { midias: [] } },
   };
 }

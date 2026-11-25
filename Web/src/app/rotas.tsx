@@ -19,6 +19,7 @@ import { Noticias } from '../paginas/Noticias';
 import { Perfil } from '../paginas/Perfil';
 import { Detalhe } from '../paginas/detalhe/Detalhe';
 import { Lista } from '../paginas/lista/Lista';
+import { validarBuscaLista } from '../paginas/lista/preferencias';
 import { NaoEncontrada } from '../paginas/NaoEncontrada';
 import { Registro } from '../paginas/Registro';
 import { ehAdmin, type EstadoSessao } from '../sessao/sessao';
@@ -95,7 +96,12 @@ const explorar = createRoute({
   component: Explorar,
 });
 
-const lista = createRoute({ getParentRoute: () => autenticado, path: '/lista', component: Lista });
+const lista = createRoute({
+  getParentRoute: () => autenticado,
+  path: '/lista',
+  validateSearch: validarBuscaLista,
+  component: Lista,
+});
 
 const midia = createRoute({
   getParentRoute: () => autenticado,
