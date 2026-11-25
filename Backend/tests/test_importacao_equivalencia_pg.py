@@ -30,6 +30,8 @@ pytestmark = [
 
 #: Colunas que mudam a cada gravação, mesmo com os mesmos dados.
 _VOLATEIS = {'id_midia', 'codigo_midia', 'data_criacao', 'data_atualizacao'}
+_CURSOR = ('tipo_midia, proxima_pagina, crescimento_popularidade, crescimento_id, crescimento_empate, '
+           'atualizacao_pagina')
 _CHAVES = {'anime': ('animes', 'anilist_id'), 'manga': ('mangas', 'anilist_id'), 'jogo': ('jogos', 'rawg_slug')}
 
 
@@ -105,10 +107,7 @@ def _foto(fontes):
         g['nome_genero']: (g['descricao'], sorted(g['aplicavel_a']))
         for g in banco.consultar('SELECT nome_genero, descricao, aplicavel_a FROM generos')
     }
-    cursor = {
-        c['tipo_midia']: c['proxima_pagina']
-        for c in banco.consultar("SELECT tipo_midia, proxima_pagina FROM importacao_cursor")
-    }
+    cursor = {c.pop('tipo_midia'): c for c in banco.consultar(f'SELECT {_CURSOR} FROM importacao_cursor')}
     # Contagens do banco inteiro: pegam Mídia órfã (sem a tabela do Tipo) ou linha a mais fora do lote.
     totais = banco.consultar_um(
         'SELECT (SELECT count(*) FROM midias) AS midias, (SELECT count(*) FROM animes) AS animes, '
@@ -124,7 +123,7 @@ def pg(monkeypatch, tmp_path):
     monkeypatch.setattr(banco, 'database_url', lambda: TEST_DATABASE_URL)
     monkeypatch.setattr(utils.RateLimiter, 'wait', lambda self: None)
     generos = banco.consultar('SELECT id_genero, aplicavel_a FROM generos')
-    cursor = banco.consultar('SELECT tipo_midia, proxima_pagina FROM importacao_cursor')
+    cursor = banco.consultar(f'SELECT {_CURSOR} FROM importacao_cursor')
 
     def restaurar():
         banco.executar('DELETE FROM generos WHERE NOT id_genero = ANY(%s)', ([g['id_genero'] for g in generos],))
@@ -135,8 +134,7 @@ def pg(monkeypatch, tmp_path):
         banco.executar('DELETE FROM importacao_cursor')
         for c in cursor:
             banco.executar(
-                'INSERT INTO importacao_cursor (tipo_midia, proxima_pagina) VALUES (%s, %s)',
-                (c['tipo_midia'], c['proxima_pagina']),
+                f'INSERT INTO importacao_cursor ({_CURSOR}) VALUES (%s, %s, %s, %s, %s, %s)', tuple(c.values())
             )
 
     yield restaurar
@@ -169,7 +167,12 @@ def test_mesmo_lote_grava_o_mesmo_banco_antes_e_depois(pg, monkeypatch):
 
     assert stats_novos == stats_antigos == {'anime': (99, 1, []), 'manga': (100, 0, []), 'jogo': (80, 0, [])}
     assert foto_nova['cursor'] == foto_antiga['cursor']
-    assert {foto_nova['cursor'][t] for t in ('anime', 'manga', 'jogo')} == {3}
+    assert foto_nova['cursor']['jogo']['proxima_pagina'] == 3
+    # AniList: a fronteira é a última obra da página 2 gravada (as fixtures não têm popularidade).
+    for tipo, fonte in (('anime', 'ANIME'), ('manga', 'MANGA')):
+        ultima = fontes.anilist[fonte][1]['data']['Page']['media'][-1]['id']
+        assert foto_nova['cursor'][tipo]['crescimento_id'] == ultima
+        assert foto_nova['cursor'][tipo]['atualizacao_pagina'] == 1
     assert foto_nova['generos'] == foto_antiga['generos']
     assert foto_nova['ligacoes'] == foto_antiga['ligacoes']
     assert foto_nova['midias'] == foto_antiga['midias']
