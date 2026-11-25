@@ -88,6 +88,12 @@ export function GradeVirtual<T>({ itens, chave, minima, gap, altura, papel = 'li
   const virtual = useWindowVirtualizer({
     count: linhas,
     estimateSize: () => alturaLinha + gap,
+    // A linha leva a chave do primeiro Item dela: mudar a ordem move as linhas no DOM em vez
+    // de remontar as células (e o foco, o menu aberto e as imagens ficam onde estão).
+    getItemKey: (i) => {
+      const primeiro = itens[i * colunas];
+      return primeiro ? chave(primeiro) : i;
+    },
     overscan: OVERSCAN,
     scrollMargin: topo,
     enabled: perto,

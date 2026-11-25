@@ -156,6 +156,17 @@ describe('Minha Lista: Ordem', () => {
     });
   });
 
+  it('mudar a Ordem move as células sem remontá-las (chave do virtualizador pelo Item)', async () => {
+    const itens = [umItem({ titulo_original: 'Berserk', nota_usuario: 9 }), umItem({ titulo_original: 'Akira', nota_usuario: 7 })];
+    const { user } = await abrirLogado('/lista', { rotas: rotasDaLista(itens) });
+
+    const antes = (await screen.findByRole('link', { name: /^Akira/ })).closest('[role="listitem"]');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ordem' }), 'Título');
+
+    expect(cards()).toEqual(['Akira', 'Berserk']);
+    expect(screen.getByRole('link', { name: /^Akira/ }).closest('[role="listitem"]')).toBe(antes);
+  });
+
   it('lê a Ordem salva; valor estranho cai no padrão', async () => {
     localStorage.setItem(chaveDasPreferencias(usuarioAna.id), JSON.stringify({ ordem: 'titulo', inversa: 'sim', formato: 'mosaico' }));
     const itens = [umItem({ titulo_original: 'Berserk' }), umItem({ titulo_original: 'Akira' })];
