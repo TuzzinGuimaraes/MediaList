@@ -37,6 +37,8 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     /** A tela abre com um destaque no topo: a nav fica translúcida sobre ele. */
     destaque?: boolean;
+    /** A tela tem o próprio seletor de Tipo (a Minha Lista): a nav esconde a pílula do catálogo. */
+    semRecorte?: boolean;
   }
 }
 
@@ -99,6 +101,7 @@ const explorar = createRoute({
 const lista = createRoute({
   getParentRoute: () => autenticado,
   path: '/lista',
+  staticData: { semRecorte: true },
   validateSearch: validarBuscaLista,
   component: Lista,
 });
