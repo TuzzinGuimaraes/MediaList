@@ -3,6 +3,7 @@ import type { OrdemLista, TipoDaLista } from '@dominio/filtrosLista';
 import { temProgresso, totalDoItem } from '@dominio/itemLista';
 
 import type { ItemLista } from './api';
+import type { FormatoLista } from './preferencias';
 
 const numero = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
@@ -37,6 +38,19 @@ export const textos = {
   nadaComBusca: (termo: string) => `Nada na Lista com “${termo}”.`,
   nadaComFiltros: 'Nada na Lista com esses filtros.',
   limparBuscaEFiltros: 'Limpar busca e filtros',
+  formato: 'Formato da Lista',
+  colunaTitulo: 'Título',
+  colunaNota: 'Nota',
+  colunaHoras: 'Horas',
+  colunaProgresso: 'Progresso',
+  colunaAtualizado: 'Atualizado',
+  ordemPadrao: 'padrão',
+  favorito: 'Favorito',
+  notaPessoal: (nota: string) => `Nota pessoal ${nota}`,
+  horasJogadas: (horas: string) => `${horas} h jogadas`,
+  destaque: (titulo: string) => `Destaque: ${titulo}`,
+  semSinopse: 'Sem sinopse.',
+  verDetalhes: 'Ver detalhes',
   // Lista antiga (abas, sheet, cards), até o ticket 03 removê-la.
   abas: 'Status da Lista',
   campoBusca: 'Buscar em todos os Status',
@@ -50,6 +64,21 @@ export const textos = {
   vazioFiltrado: (estado: string) => `Nenhum Item em ${estado} com esses filtros.`,
   sugestoes: 'Sugestões para você',
 };
+
+/** Nome de cada formato no alternador. */
+export const NOMES_FORMATO: Record<FormatoLista, string> = { grade: 'Grade de capas', compacta: 'Linhas compactas', texto: 'Só texto' };
+
+const relativo = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto', style: 'short' });
+
+/** "hoje", "há 3 dias", "há 2 meses", "há 1 ano" (coluna Atualizado). */
+export function haQuanto(iso: string, agora: number = Date.now()): string {
+  const dias = Math.round((Date.parse(iso) - agora) / 86_400_000);
+  if (Number.isNaN(dias)) return '';
+  if (dias > -1) return 'hoje';
+  if (dias > -30) return relativo.format(dias, 'day');
+  if (dias > -365) return relativo.format(Math.round(dias / 30), 'month');
+  return relativo.format(Math.round(dias / 365), 'year');
+}
 
 /** O Tipo na coluna e nas subseções do "Todos". */
 export const NOMES_TIPO_DA_LISTA: Record<TipoDaLista, string> = { todos: 'Todos', anime: 'Anime', manga: 'Mangá', jogo: 'Jogos' };

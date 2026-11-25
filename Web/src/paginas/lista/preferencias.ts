@@ -8,10 +8,11 @@ import { ORDENS_DA_LISTA, type OrdemLista } from '@dominio/filtrosLista';
 import { useUsuario } from '../../sessao/SessaoContext';
 
 /**
- * Formatos da Lista. Hoje só a grade de capas; o ticket 02 acrescenta as linhas ("compacta",
- * "texto"), o componente de cada uma em `COLECOES` (Colecao.tsx) e o alternador com `?formato=`.
+ * Formatos da Lista: a grade de capas (o padrão) e as linhas compacta e só texto, as
+ * preferências de quem as escolhe (veredito do ticket 39). O componente de cada um fica em
+ * `COLECOES` (Colecao.tsx).
  */
-export const FORMATOS = ['grade'] as const;
+export const FORMATOS = ['grade', 'compacta', 'texto'] as const;
 export type FormatoLista = (typeof FORMATOS)[number];
 
 export type PreferenciasLista = { formato: FormatoLista; ordem: OrdemLista; inversa: boolean };
@@ -65,4 +66,11 @@ export function usePreferenciasDaLista(): [PreferenciasLista, (mudanca: Partial<
     [],
   );
   return [atual, mudar];
+}
+
+/** Busca da rota /lista: só `?formato=`, que vence o salvo e passa a ser o salvo. */
+export type BuscaLista = { formato?: FormatoLista };
+
+export function validarBuscaLista(s: Record<string, unknown>): BuscaLista {
+  return formatoValido(s.formato) ? { formato: s.formato } : {};
 }

@@ -1,10 +1,11 @@
 // Minha Lista (ticket 39, veredito e Resolution): coluna lateral com busca, Tipo, Status com
-// "Todos", Gênero, Situação e Ordem; cabeçalho fixo com o Status ativo e a contagem; o corpo
-// virtualizado no formato salvo (grade de capas por padrão). Dados de GET /lista; busca,
-// filtros e Ordem no cliente (`@dominio/filtrosLista`). Abre em "Todos", na Ordem salva (a
+// "Todos", Gênero, Situação e Ordem; cabeçalho fixo com o Status ativo, a contagem e o
+// alternador de formato; o corpo virtualizado no formato da URL ou no salvo (grade de capas
+// por padrão), com o cartão de destaque nas linhas. Dados de GET /lista; busca, filtros e
+// Ordem no cliente (`@dominio/filtrosLista`). Abre em "Todos", na Ordem salva (a
 // padrão da Q120: nota no anime/mangá, horas no jogo).
-import { Link } from '@tanstack/react-router';
-import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
+import { getRouteApi, Link } from '@tanstack/react-router';
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { contarPorEstado, mediaNotasPessoais, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import {
@@ -24,13 +25,17 @@ import { mensagemDeErro } from '../../api/erros';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import { ALTURA_NAV } from '../../layout/Casca';
+import { AlternadorFormato } from './AlternadorFormato';
 import { useLista, useMudarStatus } from './api';
 import type { Ordenacao } from './Colecao';
 import { CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, SeletorTipo, type StatusEscolhido } from './ColunaLateral';
 import { type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
+import { ProvedorDestaque } from './Destaque';
 import { FOCO } from './MenuStatus';
-import { usePreferenciasDaLista } from './preferencias';
+import { type FormatoLista, formatoValido, usePreferenciasDaLista } from './preferencias';
 import { formatarNumero, textos } from './textos';
+
+const rota = getRouteApi('/autenticado/lista');
 
 /** Altura do cabeçalho fixo antes de medir (e no jsdom, sem ResizeObserver). */
 const ALTURA_CABECALHO = 60;
@@ -49,6 +54,32 @@ function useAlturaDoCabecalho(pronto: boolean) {
   return [ref, altura] as const;
 }
 
+/**
+ * O formato em vigor: o da URL (`?formato=`) vence e passa a ser o salvo; sem ele, o salvo.
+ * Trocar pelo alternador grava e põe na URL (a grade, o padrão, sai dela).
+ */
+function useFormato(salvo: FormatoLista, salvar: (f: FormatoLista) => void) {
+  // A raiz não valida a busca e repassa os parâmetros crus: valor desconhecido é ignorado aqui.
+  const bruto = rota.useSearch().formato;
+  const daUrl = formatoValido(bruto) ? bruto : undefined;
+  const navegar = rota.useNavigate();
+  // Grava quando a URL traz um formato novo; o alternador grava e muda a URL (que chega
+  // depois), e esse valor já está gravado.
+  const gravado = useRef<FormatoLista | undefined>(undefined);
+  useEffect(() => {
+    if (daUrl && daUrl !== gravado.current) {
+      gravado.current = daUrl;
+      salvar(daUrl);
+    }
+  }, [daUrl, salvar]);
+  const mudar = (f: FormatoLista) => {
+    gravado.current = f;
+    salvar(f);
+    void navegar({ search: f === 'grade' ? {} : { formato: f }, replace: true });
+  };
+  return [daUrl ?? salvo, mudar] as const;
+}
+
 type Restricao = { genero: string | null; situacao: string | null };
 const SEM_RESTRICAO: Restricao = { genero: null, situacao: null };
 
@@ -61,12 +92,14 @@ export function Lista() {
   const [restricao, setRestricao] = useState<Restricao>(SEM_RESTRICAO);
   const [escolhido, setEscolhido] = useState<StatusEscolhido>('todos');
   const [refCabecalho, alturaCabecalho] = useAlturaDoCabecalho(lista.data !== undefined);
+  const salvarFormato = useCallback((formato: FormatoLista) => mudarPreferencias({ formato }), [mudarPreferencias]);
+  const [formato, mudarFormato] = useFormato(preferencias.formato, salvarFormato);
 
   if (lista.isError) return <ErroTela erro={lista.error} tentarDeNovo={() => void lista.refetch()} />;
   if (!lista.data) return <Carregando rotulo="Carregando a Lista" />;
 
   const todos = lista.data;
-  const { formato, ordem, inversa } = preferencias;
+  const { ordem, inversa } = preferencias;
   const doTipoEscolhido = doTipo(todos, tipo);
   // Gênero ou Situação que não existem no Tipo escolhido voltam a "todos".
   const filtros = filtrosEfetivos({ ...restricao, ordem, inversa }, opcoesDosFiltros(doTipoEscolhido));
@@ -148,7 +181,9 @@ export function Lista() {
             {termo ? textos.com(termo) : ''}
           </span>
         </p>
-        {/* Ticket 02: o alternador de formato entra aqui, à direita (ml-auto). */}
+        <div className="ml-auto">
+          <AlternadorFormato formato={formato} mudar={mudarFormato} />
+        </div>
       </div>
 
       {status.isError ? (
@@ -186,11 +221,13 @@ export function Lista() {
           </div>
         </aside>
         <div className="min-w-0 flex-1">
-          {ativo === 'todos' ? (
-            <CorpoTodos estados={estados} itens={organizados} base={base} vazio={vazio} />
-          ) : (
-            <CorpoStatus estado={ativo} itens={organizados} base={base} vazio={vazio} />
-          )}
+          <ProvedorDestaque>
+            {ativo === 'todos' ? (
+              <CorpoTodos estados={estados} itens={organizados} base={base} vazio={vazio} />
+            ) : (
+              <CorpoStatus estado={ativo} itens={organizados} base={base} vazio={vazio} />
+            )}
+          </ProvedorDestaque>
         </div>
       </div>
     </div>

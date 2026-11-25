@@ -1,6 +1,5 @@
-// Um grupo de Itens (Status × Tipo) no formato escolhido. Ponto de encaixe do ticket 02: as
-// linhas (compacta e só texto) entram em FORMATOS (preferencias.ts) e aqui, com os
-// cabeçalhos ordenáveis pela `ordenacao`, e o cartão de destaque por cima delas.
+// Um grupo de Itens (Status × Tipo) no formato escolhido: a grade de capas ou as linhas
+// (compacta e só texto), com os cabeçalhos ordenáveis pela `ordenacao`.
 import type { ComponentType } from 'react';
 
 import type { OrdemLista } from '@dominio/filtrosLista';
@@ -8,6 +7,7 @@ import type { TipoMidia } from '@dominio/estadoConsumo';
 
 import type { ItemLista } from './api';
 import { GradeCapas } from './GradeCapas';
+import { LinhasCompactas, LinhasTexto } from './Linhas';
 import type { FormatoLista } from './preferencias';
 
 /** A Ordem em vigor e como mudá-la (os cabeçalhos de coluna das linhas). */
@@ -25,6 +25,8 @@ export type PropsColecao = {
 
 const COLECOES: Record<FormatoLista, ComponentType<PropsColecao>> = {
   grade: GradeCapas,
+  compacta: LinhasCompactas,
+  texto: LinhasTexto,
 };
 
 export function Colecao({ formato, ...props }: PropsColecao & { formato: FormatoLista }) {
