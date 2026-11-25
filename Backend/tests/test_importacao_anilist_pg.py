@@ -166,8 +166,10 @@ def test_empate_maior_que_uma_pagina_retoma_na_posicao_da_faixa(importar, tipo):
     assert _importadas(tipo) == {BASE + 90, BASE + 91, *por_id[:6]}
     assert 'sucessos=2 falhas=0 ja_existia=0' in resumo
 
+    # Seis já vieram (página 2 cheia): relê a página 2, onde está a sexta, para não perder obra se
+    # a faixa tiver encolhido desde a última execução; as dela são puladas.
     _, janelas, resumo = importar(tipo, fonte, '--paginas', '5', '--paginas-atualizacao', '0')
-    assert janelas == [('empate', 300, 3), ('abaixo', 300, 1)]
+    assert janelas == [('empate', 300, 2), ('empate', 300, 3), ('abaixo', 300, 1)]
     assert _importadas(tipo) == _ids(obras)
     assert 'sucessos=5 falhas=0 ja_existia=0' in resumo
 

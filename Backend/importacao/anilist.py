@@ -145,7 +145,10 @@ def crescimento(buscar: Buscar, paginas: int, fronteira: Fronteira | None, pagin
     def janela_de(f: Fronteira | None, topo: int = 1) -> dict:
         if f is None:
             return {'nome': 'topo', 'sort': POR_POPULARIDADE, 'filtros': {}, 'pagina': min(topo, ULTIMA_PAGINA)}
-        pagina = f.empate // POR_PAGINA + 1
+        # Página da obra `empate` (a última que veio), não da seguinte: se uma obra da faixa mudou
+        # de popularidade desde a última execução, a próxima recua para a página anterior. Os ids
+        # até a fronteira são pulados, então reler a página só custa a consulta.
+        pagina = max(f.empate - 1, 0) // POR_PAGINA + 1
         if pagina > ULTIMA_PAGINA:
             logger.warning('Faixa de popularidade %s passa de %s páginas: o resto fica para a volta seguinte',
                            f.popularidade, ULTIMA_PAGINA)
