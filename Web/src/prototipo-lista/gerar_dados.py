@@ -62,7 +62,8 @@ def nota(rng: random.Random, estado: str) -> float | None:
 
 def horas(rng: random.Random, estado: str) -> float | None:
     if estado == "planejado":
-        return None if rng.random() < 0.7 else 0.5
+        rng.random()  # mantém a sequência da semente
+        return None
     # Log-uniforme de 0,5 h a 900 h, puxado para cima em Concluído e Platinado.
     minimo, maximo = {"platinado": (40, 900), "concluido": (6, 320), "abandonado": (0.5, 30)}.get(estado, (1, 160))
     valor = math.exp(rng.uniform(math.log(minimo), math.log(maximo)))
