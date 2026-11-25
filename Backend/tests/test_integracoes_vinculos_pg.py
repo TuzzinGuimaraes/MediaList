@@ -207,6 +207,7 @@ def test_ja_vinculado_a_outra_midia_responde_409(client, pessoa, fontes, jogo): 
     mesma = _vincular(client, headers_bia, 'steam', appid, midia_a)
 
     assert (outra.status_code, outra.get_json()['codigo']) == (409, 'conflito')
+    assert outra.get_json()['detalhes'] == {'id_midia': str(midia_a)}
     assert mesma.status_code == 201
     assert _item_da_midia(id_bia, midia_a)['progresso_atual'] == 3
 
@@ -256,6 +257,42 @@ def test_steam_usa_o_vinculo_quando_a_fonte_nao_casa(client, pessoa, fontes, jog
 
     assert (corpo['novos'], corpo['total_nao_encontrados']) == (1, 0)
     assert _item_da_midia(id_usuario, pelo_vinculo)['progresso_atual'] == 3
+
+
+def test_jogo_que_casou_depois_do_nao_encontrado_responde_409_sem_sobrescrever(client, pessoa, fontes, jogo):  # noqa: F811
+    """Entre o Não encontrado e o Vincular a sincronização de alguém casou a appid: o casamento fica."""
+    id_usuario, headers = pessoa()
+    appid, *_ = _steam_nao_encontrado(client, headers, fontes, jogo, id_usuario)
+    _, slug_c, nome_c = jogo('CasouDepois')
+    _, slug_d, nome_d = jogo('Destino')
+    casada = _no_catalogo(appid + 1, slug_c, nome_c, casado=False)
+    destino = _no_catalogo(appid + 2, slug_d, nome_d, casado=False)
+    banco.executar('UPDATE steam_appids SET id_midia = %s WHERE appid = %s', (casada, appid))
+
+    r = _vincular(client, headers, 'steam', appid, destino)
+
+    assert (r.status_code, r.get_json()['codigo']) == (409, 'conflito')
+    assert r.get_json()['detalhes'] == {'id_midia': str(casada)}
+    assert 'já está no Catálogo' in r.get_json()['erro']
+    assert _vinculo('steam', appid) is None
+    assert banco.consultar_um('SELECT id_midia::text AS id FROM steam_appids WHERE appid = %s', (appid,))['id'] == str(
+        casada)
+    assert _item_da_midia(id_usuario, destino) is None
+    assert repositorio.conta(id_usuario, 'steam')['ultimo_resultado']['total_nao_encontrados'] == 1
+
+
+def test_vincular_jogo_ignorado_preenche_e_tira_o_ignorado(client, pessoa, fontes, jogo):  # noqa: F811
+    id_usuario, headers = pessoa()
+    appid, *_ = _steam_nao_encontrado(client, headers, fontes, jogo, id_usuario)
+    _, slug_d, nome_d = jogo('Destino')
+    destino = _no_catalogo(appid + 1, slug_d, nome_d, casado=False)
+    banco.executar('UPDATE steam_appids SET ignorado = true WHERE appid = %s', (appid,))
+
+    assert _vincular(client, headers, 'steam', appid, destino).status_code == 201
+
+    assert banco.consultar_um(
+        'SELECT id_midia::text AS id, ignorado FROM steam_appids WHERE appid = %s', (appid,),
+    ) == {'id': str(destino), 'ignorado': False}
 
 
 # ============================================

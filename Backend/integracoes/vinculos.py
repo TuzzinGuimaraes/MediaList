@@ -2,8 +2,9 @@
 
 O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para todo Usuário com o mesmo
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
-(no MAL, anime 1 e mangá 1 são obras diferentes). Na Steam o casamento também vai para
-`steam_appids`; desfazer deixa ali o negativo, então a próxima sincronização volta a tratar o
+(no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
+a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
+vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa; desfazer deixa ali o negativo, então a próxima sincronização volta a tratar o
 jogo como Não encontrado. Desfazer nunca apaga Itens.
 
 Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`.
@@ -93,9 +94,21 @@ def nao_encontrados(id_usuario: str, plataforma: str, origem_id: str) -> list[di
     )]
 
 
+class JaNoCatalogo(Exception):
+    """A appid da Steam já casou com outra Mídia (pela fonte): o vínculo não a troca."""
+
+    def __init__(self, id_midia: str):
+        super().__init__(id_midia)
+        self.id_midia = id_midia
+
+
 def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usuario: str,
            titulo: str) -> dict[str, Any]:
-    """Grava o vínculo e devolve `{id, id_midia}`; se já havia um, devolve o que estava (talvez outra Mídia)."""
+    """Grava o vínculo e devolve `{id, id_midia}`; se já havia um, devolve o que estava (talvez outra Mídia).
+
+    Na Steam, preenche o casamento em `steam_appids` só se ele está vazio; casado com outra Mídia,
+    levanta JaNoCatalogo (o chamador desfaz a transação, e o vínculo não fica).
+    """
     vinculo = db.consultar_um(
         'INSERT INTO vinculos_origem (plataforma, origem_id, tipo, id_midia, id_usuario) VALUES (%s, %s, %s, %s, %s) '
         'ON CONFLICT (plataforma, tipo, origem_id) DO NOTHING RETURNING id, id_midia::text AS id_midia',
@@ -108,7 +121,9 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
             (plataforma, tipo, origem_id),
         )
     if plataforma == 'steam':
-        steam_appids.gravar(int(origem_id), id_midia, titulo, db=db)
+        casada = steam_appids.vincular(db, int(origem_id), id_midia, titulo)
+        if casada != id_midia:
+            raise JaNoCatalogo(casada)
     return vinculo
 
 

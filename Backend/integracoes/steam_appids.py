@@ -43,6 +43,28 @@ def gravar(appid: int, id_midia: str | None, nome: str, *, ignorado: bool = Fals
     )
 
 
+def vincular(db, appid: int, id_midia: str, nome: str) -> str:
+    """O vínculo de um Usuário só preenche o casamento vazio (negativo, ignorado ou sem linha).
+
+    Na transação `db` do Vincular; devolve o `id_midia` que ficou. Casamento com outra Mídia não
+    é trocado (a fonte vem antes do vínculo): o chamador recusa. O `ON CONFLICT ... WHERE` trava a
+    linha mesmo sem atualizar, então a leitura seguinte é a que vale até o commit.
+    """
+    gravado = db.consultar_um(
+        """
+        INSERT INTO steam_appids (appid, id_midia, nome, ignorado) VALUES (%s, %s, %s, false)
+        ON CONFLICT (appid) DO UPDATE SET id_midia = EXCLUDED.id_midia, nome = EXCLUDED.nome,
+            ignorado = false, tentado_em = now()
+        WHERE steam_appids.id_midia IS NULL
+        RETURNING id_midia::text AS id_midia
+        """,
+        (appid, id_midia, nome),
+    )
+    if gravado is not None:
+        return gravado['id_midia']
+    return db.consultar_um('SELECT id_midia::text AS id_midia FROM steam_appids WHERE appid = %s', (appid,))['id_midia']
+
+
 def ignorar(appid: int, nome: str) -> None:
     """A appid não é jogo: fora de "Não encontrados" de vez."""
     gravar(appid, None, nome, ignorado=True)

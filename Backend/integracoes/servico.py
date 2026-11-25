@@ -81,7 +81,12 @@ class TipoIncompativel(ValueError):
 
 
 class VinculoEmConflito(Exception):
-    """O item já está vinculado a outra Mídia."""
+    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a fonte já casou o jogo."""
+
+    def __init__(self, id_midia: str, *, no_catalogo: bool = False):
+        super().__init__(id_midia)
+        self.id_midia = id_midia
+        self.no_catalogo = no_catalogo
 
 
 class _CatalogoLocalizado:
@@ -321,7 +326,9 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
 
     Só aceita o que apareceu como Não encontrado para ele (no último resultado ou numa prévia
     válida), na Mídia do mesmo Tipo. O item sai dos Não encontrados dele. Vínculo já existente
-    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito.
+    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a fonte já casou a
+    appid com outra Mídia desde o Não encontrado (checado e gravado na mesma transação), também
+    VinculoEmConflito, com `no_catalogo`: o jogo entra na próxima sincronização.
     """
     plataforma(nome)
     destino = vinculos.midia(id_midia)
@@ -336,12 +343,15 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
                                if t in _ARTIGO_DO_TIPO)
         raise TipoIncompativel(f'Escolha {esperado or "uma Mídia do mesmo Tipo"}.')
 
-    with banco.transacao() as t:
-        vinculo = vinculos.gravar(t, nome, origem_id, destino['tipo'], destino['id_midia'], id_usuario,
-                                  entrada.get('titulo') or origem_id)
-        if vinculo['id_midia'] != destino['id_midia']:
-            raise VinculoEmConflito(origem_id)
-        vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+    try:
+        with banco.transacao() as t:
+            vinculo = vinculos.gravar(t, nome, origem_id, destino['tipo'], destino['id_midia'], id_usuario,
+                                      entrada.get('titulo') or origem_id)
+            if vinculo['id_midia'] != destino['id_midia']:
+                raise VinculoEmConflito(vinculo['id_midia'])
+            vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+    except vinculos.JaNoCatalogo as erro:
+        raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
     resultado = aplicar_itens(id_usuario, [_item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],

@@ -199,6 +199,8 @@ def vincular(json: NovoVinculo):
     """Vincular um Não encontrado a uma Mídia do mesmo Tipo: vale para todos e já aplica o Item na Lista.
 
     Só aceita o que apareceu como Não encontrado para o Usuário (último resultado ou prévia válida).
+    409 `conflito` com o `id_midia` atual em `detalhes` se o item já está vinculado a outra Mídia
+    ou, na Steam, se o jogo já casou com outra Mídia do Catálogo (entra na próxima sincronização).
     """
     try:
         corpo = servico.vincular(get_jwt_identity(), json.plataforma, json.origem_id, json.id_midia)
@@ -208,6 +210,8 @@ def vincular(json: NovoVinculo):
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Este item não está nos seus Não encontrados')
     except servico.TipoIncompativel as erro:
         return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, str(erro), {'id_midia': str(erro)})
-    except servico.VinculoEmConflito:
-        return resposta_erro(409, CodigoErro.CONFLITO, 'Este item já está vinculado a outra Mídia')
+    except servico.VinculoEmConflito as erro:
+        mensagem = ('Este jogo já está no Catálogo: ele entra na sua Lista na próxima sincronização'
+                    if erro.no_catalogo else 'Este item já está vinculado a outra Mídia')
+        return resposta_erro(409, CodigoErro.CONFLITO, mensagem, {'id_midia': erro.id_midia})
     return corpo, 201
