@@ -47,7 +47,10 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 
 
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
-    """Os itens, com `catalogo` na Mídia do vínculo quando há um (o vínculo vem antes da fonte)."""
+    """Os itens, com `catalogo` na Mídia do vínculo quando há um.
+
+    O vínculo é reserva: quem chama só passa os itens que a fonte não casou.
+    """
     if not itens:
         return itens
     linhas = db.consultar(
