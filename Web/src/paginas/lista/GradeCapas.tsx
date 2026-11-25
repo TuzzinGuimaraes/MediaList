@@ -8,6 +8,7 @@ import { estadoDe, NOMES_ESTADO } from '@dominio/estadoConsumo';
 import { proporcaoDoFio, temProgresso } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
@@ -15,8 +16,8 @@ import { Selo } from '../../componentes/Selo';
 import type { ItemLista } from './api';
 import type { PropsColecao } from './Colecao';
 import { GradeVirtual } from './GradeVirtual';
-import { FOCO, MenuStatus } from './MenuStatus';
-import { formatarNumero, textoDoConsumo } from './textos';
+import { MenuStatus } from './MenuStatus';
+import { formatarNumero, textoDoConsumo, UNIDADE } from './textos';
 
 const LARGURA_MINIMA = 150;
 const GAP = 16;
@@ -24,8 +25,6 @@ const GAP = 16;
 // Degradê sólido sob o texto, esmaecendo só nos 48 px de cima: branco sobre ≥ 85% de preto
 // passa de 4,5:1 (AA) mesmo sobre uma capa branca.
 const DEGRADE = 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.85) calc(100% - 48px), rgba(0,0,0,0) 100%)';
-
-const UNIDADE = { anime: 'ep', manga: 'cap' } as const;
 
 /** O nome do link: título, nota e Progresso/horas, como o leitor de tela deve ouvir. */
 function rotuloDoCard(item: ItemLista, consumo: string | null, platinado: boolean): string {

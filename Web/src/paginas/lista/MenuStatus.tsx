@@ -7,11 +7,10 @@ import { estadoDe, NOMES_ESTADO, rotuloPara } from '@dominio/estadoConsumo';
 import { estadosDaLista } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import type { ItemLista } from './api';
 import { textos } from './textos';
-
-export const FOCO = 'outline-none focus-visible:ring-2 focus-visible:ring-marca-texto';
 
 type Props = {
   item: ItemLista;

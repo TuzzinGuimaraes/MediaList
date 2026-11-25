@@ -9,6 +9,7 @@ import { crescente, type OrdemLista } from '@dominio/filtrosLista';
 import { proporcaoDoFio, temProgresso } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
 
+import { FOCO } from '../../componentes/estilos';
 import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
@@ -16,7 +17,7 @@ import type { ItemLista } from './api';
 import type { Ordenacao, PropsColecao } from './Colecao';
 import { useDestaque } from './destaqueContexto';
 import { GradeVirtual } from './GradeVirtual';
-import { FOCO, MenuStatus } from './MenuStatus';
+import { MenuStatus } from './MenuStatus';
 import { Consumo, Nota, PontoStatus } from './Pecas';
 import { haQuanto, textos } from './textos';
 

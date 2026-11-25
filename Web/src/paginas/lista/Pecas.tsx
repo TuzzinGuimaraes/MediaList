@@ -5,9 +5,7 @@ import { totalDoItem } from '@dominio/itemLista';
 import { Icone } from '../../componentes/Icone';
 import { COR_DO_ESTADO } from '../../componentes/status';
 import type { ItemLista } from './api';
-import { formatarNumero, textos } from './textos';
-
-const UNIDADE = { anime: 'ep', manga: 'cap' } as const;
+import { formatarNumero, textos, UNIDADE } from './textos';
 
 export function Nota({ nota, tamanho = 13 }: { nota: number | null; tamanho?: number }) {
   if (nota == null)

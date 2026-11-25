@@ -89,6 +89,9 @@ export function nomeDaOrdem(ordem: OrdemLista, tipo: TipoDaLista): string {
   }
 }
 
+/** Unidade do Progresso de anime e mangá ("12/24 ep", "40 cap"). */
+export const UNIDADE = { anime: 'ep', manga: 'cap' } as const;
+
 /** "12/24" (ou "12" sem total) no anime/mangá; "148 h" no jogo, null sem horas. */
 export function textoDoConsumo(item: ItemLista): string | null {
   if (!temProgresso(item.tipo)) return item.progresso_atual ? `${formatarNumero(item.progresso_atual)} h` : null;

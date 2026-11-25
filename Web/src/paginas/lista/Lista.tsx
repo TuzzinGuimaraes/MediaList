@@ -21,6 +21,7 @@ import {
 } from '@dominio/filtrosLista';
 import { estadosDaLista } from '@dominio/itemLista';
 
+import { FOCO } from '../../componentes/estilos';
 import { mensagemDeErro } from '../../api/erros';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { COR_DO_ESTADO } from '../../componentes/status';
@@ -31,7 +32,6 @@ import type { Ordenacao } from './Colecao';
 import { CampoBusca, FiltrosColuna, ListaStatus, OrdemColuna, SeletorTipo, type StatusEscolhido } from './ColunaLateral';
 import { type BaseDoCorpo, CorpoStatus, CorpoTodos } from './CorpoLista';
 import { ProvedorDestaque } from './Destaque';
-import { FOCO } from './MenuStatus';
 import { type FormatoLista, formatoValido, usePreferenciasDaLista } from './preferencias';
 import { formatarNumero, textos } from './textos';
 
