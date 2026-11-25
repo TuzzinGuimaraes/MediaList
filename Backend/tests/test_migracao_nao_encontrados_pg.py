@@ -41,7 +41,7 @@ def _jogo(nome, titulo, **filha):
     return id_midia
 
 
-def test_upgrade_cria_o_schema_retenta_os_negativos_e_o_downgrade_desfaz(banco_descartavel):
+def test_upgrade_cria_o_schema_retenta_os_negativos_e_o_downgrade_desfaz(banco_descartavel):  # noqa: F811
     nome = banco_descartavel
     _alembic(nome, 'upgrade', ANTERIOR)
     casado = _jogo(nome, 'Casado', rawg_slug='casado')

@@ -71,7 +71,10 @@ obra também. O link só sai se for `https://` da própria plataforma (AniList, 
 
 Da Steam vêm os jogos já abertos (`playtime_forever` > 0), com as horas arredondadas e no mínimo 1,
 gravadas no `progresso_atual` como em todo jogo. Ela não tem prévia: **sincroniza** todo dia e por "Sincronizar agora"; jogo
-ainda não casado com o Catálogo fica **pendente** para a próxima sincronização.
+ainda não casado com o Catálogo fica **pendente** para a próxima sincronização. Jogo que o RAWG
+não reconhece entra pela loja da Steam (a Mídia guarda a `steam_appid`, e a Importação do RAWG
+que trouxer a mesma appid atualiza essa Mídia em vez de criar outra); o que a loja diz que não é
+jogo (software, DLC, trilha sonora) é ignorado, fora de "Não encontrados".
 
 ## Recorte de catálogo
 
