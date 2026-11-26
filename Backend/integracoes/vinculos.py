@@ -8,7 +8,8 @@ vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfaz
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
 
-Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`.
+Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular` e o formato do
+resultado guardado, no `integracoes.resultado`.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from psycopg.types.json import Jsonb
 import banco
 from integracoes import steam_appids
 from integracoes.plataforma import ItemDeOrigem, RefCatalogo, uuid_valido
+from integracoes.resultado import Resultado
 from integracoes.steam import link_da_loja
 
 #: Tipos de Mídia a que cada plataforma pode vincular (Q116).
@@ -120,38 +122,33 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
     return vinculo
 
 
-def _sem_o_item(entradas: list[dict] | None, origem_id: str, tipo: str) -> tuple[list[dict], int]:
-    restantes = [e for e in entradas or [] if (e.get('origem_id'), e.get('tipo')) != (origem_id, tipo)]
-    return restantes, len(entradas or []) - len(restantes)
-
-
-def tirar_dos_nao_encontrados(db, id_usuario: str, plataforma: str, origem_id: str, tipo: str) -> None:
-    """O item sai do último resultado e das prévias do Usuário: o confirmar não o repete."""
+def ultimo_resultado_travado(db, id_usuario: str, plataforma: str) -> dict[str, Any] | None:
+    """O último resultado guardado da conta, travado até o fim da transação `db`."""
     conta = db.consultar_um(
         'SELECT ultimo_resultado FROM integracoes WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
         (id_usuario, plataforma),
     )
-    resultado = (conta or {}).get('ultimo_resultado')
-    if resultado:
-        restantes, tirados = _sem_o_item(resultado.get('nao_encontrados'), origem_id, tipo)
-        if tirados:
-            resultado = {**resultado, 'nao_encontrados': restantes,
-                         'total_nao_encontrados': max(int(resultado.get('total_nao_encontrados') or 0) - tirados, 0)}
-            db.executar(
-                'UPDATE integracoes SET ultimo_resultado = %s WHERE id_usuario = %s AND plataforma = %s',
-                (Jsonb(resultado), id_usuario, plataforma),
-            )
-    previas = db.consultar(
+    return (conta or {}).get('ultimo_resultado')
+
+
+def trocar_ultimo_resultado(db, id_usuario: str, plataforma: str, resultado: Resultado) -> None:
+    """Regrava o último resultado (sem mexer na hora da sincronização)."""
+    db.executar(
+        'UPDATE integracoes SET ultimo_resultado = %s WHERE id_usuario = %s AND plataforma = %s',
+        (Jsonb(resultado.guardado()), id_usuario, plataforma),
+    )
+
+
+def previas_travadas(db, id_usuario: str, plataforma: str) -> list[dict[str, Any]]:
+    """As prévias do Usuário na plataforma (`id_previa`, `conteudo`), travadas até o fim da transação."""
+    return db.consultar(
         'SELECT id_previa, conteudo FROM importacao_previas WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
         (id_usuario, plataforma),
     )
-    for previa in previas:
-        restantes, tirados = _sem_o_item(previa['conteudo'].get('nao_encontrados'), origem_id, tipo)
-        if tirados:
-            db.executar(
-                'UPDATE importacao_previas SET conteudo = %s WHERE id_previa = %s',
-                (Jsonb({**previa['conteudo'], 'nao_encontrados': restantes}), previa['id_previa']),
-            )
+
+
+def trocar_conteudo_da_previa(db, id_previa: str, conteudo: dict[str, Any]) -> None:
+    db.executar('UPDATE importacao_previas SET conteudo = %s WHERE id_previa = %s', (Jsonb(conteudo), id_previa))
 
 
 def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:

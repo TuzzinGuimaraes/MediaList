@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 import banco
 from banco import consultar, consultar_um
 from integracoes.plataforma import Conta, uuid_valido
+from integracoes.resultado import Resultado
 
 #: Validade da prévia (Q113).
 VALIDADE_PREVIA = '1 hour'
@@ -58,11 +59,12 @@ def remover_conta(id_usuario: str, plataforma: str) -> None:
         t.executar('DELETE FROM integracoes WHERE id_usuario = %s AND plataforma = %s', (id_usuario, plataforma))
 
 
-def registrar_resultado(id_usuario: str, plataforma: str, resultado: dict[str, Any], db=banco) -> None:
+def registrar_resultado(id_usuario: str, plataforma: str, resultado: Resultado, db=banco) -> None:
+    """Guarda o Resultado da integração (todos os Não encontrados) e a hora da sincronização."""
     db.executar(
         'UPDATE integracoes SET ultima_sincronizacao = now(), ultimo_resultado = %s '
         'WHERE id_usuario = %s AND plataforma = %s',
-        (Jsonb(resultado), id_usuario, plataforma),
+        (Jsonb(resultado.guardado()), id_usuario, plataforma),
     )
 
 

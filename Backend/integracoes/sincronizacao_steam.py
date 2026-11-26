@@ -29,7 +29,7 @@ from dataclasses import replace
 from datetime import date
 from typing import Any, Callable, Literal
 
-from integracoes import catalogo, repositorio, servico, steam_appids, vinculos
+from integracoes import catalogo, repositorio, resultado, servico, steam_appids, vinculos
 from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
 from integracoes.rawg import Rawg
@@ -111,16 +111,6 @@ def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> Casamento:
         return IGNORADO
     steam_appids.gravar(appid, midia['id_midia'] if midia else None, item.titulo)
     return midia
-
-
-def _somar(*resultados: dict[str, Any]) -> dict[str, Any]:
-    nao_encontrados = [n for r in resultados for n in r['nao_encontrados']]
-    return {
-        'novos': sum(r['novos'] for r in resultados),
-        'atualizados': sum(r['atualizados'] for r in resultados),
-        'nao_encontrados': nao_encontrados[:servico.AMOSTRA_NAO_ENCONTRADOS],
-        'total_nao_encontrados': sum(r['total_nao_encontrados'] for r in resultados),
-    }
 
 
 def _separar(itens: list[ItemDeOrigem]):
@@ -207,12 +197,8 @@ def sincronizar(
 
     vinculados, sem_casamento = _pela_reserva(sem_casamento)
     novos_casados = servico.aplicar_itens(id_usuario, recem_casados + vinculados, hoje=hoje)
-    nao_casados = [servico.nao_encontrado(i) for i in sem_casamento]
-    resultado = {
-        **_somar(ja_casados, novos_casados, {
-            'novos': 0, 'atualizados': 0, 'nao_encontrados': nao_casados, 'total_nao_encontrados': len(nao_casados),
-        }),
-        'pendentes': pendentes,
-    }
-    repositorio.registrar_resultado(id_usuario, 'steam', resultado)
-    return resultado
+    nao_casados = resultado.criar(nao_encontrados=[resultado.nao_encontrado(i) for i in sem_casamento],
+                                  pendentes=pendentes)
+    final = resultado.somar(ja_casados, novos_casados, nao_casados)
+    repositorio.registrar_resultado(id_usuario, 'steam', final)
+    return final.resposta()

@@ -105,6 +105,12 @@ vinculou, pelas mesmas regras da importação. O
 admin vê os Vínculos com autor e data e pode desfazer um errado; desfazer não apaga Itens, só faz
 a próxima importação voltar a dar Não encontrado.
 
+O **Resultado da integração** é o que uma prévia, um confirmar ou uma sincronização deixa para o
+Usuário: novos, atualizados, os Não encontrados e o total deles (na Steam, também os pendentes).
+O último fica guardado na conta com **todos** os Não encontrados (até 5000), e qualquer um deles
+pode ser vinculado; a tela recebe só os 100 primeiros e o total ("e mais N"). Vincular tira o
+item do Resultado e baixa o total.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`
