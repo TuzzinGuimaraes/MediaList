@@ -1,8 +1,10 @@
 // Os cards do Início montados da Mídia e do Item, com as regras do dominio/.
-import { nomeDoProgresso, textoDoProgresso } from '@dominio/itemLista';
+import type { CartaoAssistirAgora as CartaoDaFaixa } from '@dominio/assistirAgora';
+import { nomeDoProgresso, passoDeProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { type ComSituacao, emLancamento } from '@dominio/situacao';
 
 import type { Esquemas } from '../../api/tipos';
+import { Botao } from '../../componentes/Botao';
 import { CardA, CardC, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
 import { Selo, SeloStatus } from '../../componentes/Selo';
@@ -67,5 +69,43 @@ export function CartaoContinuar({ item, posicaoTop }: Contexto & { item: ItemLis
       largura={LARGURA_C}
       altura={ALTURA_C}
     />
+  );
+}
+
+
+/**
+ * Card C do Para assistir agora: o atraso ou a contagem até o próximo episódio e, se atrasado,
+ * o +1 (fora do link do card: botão não vai dentro de link).
+ */
+export function CartaoAssistirAgora({
+  cartao: { item, atraso, texto },
+  posicaoTop,
+  maisUm,
+}: Omit<Contexto, 'item'> & { cartao: CartaoDaFaixa<ItemLista>; maisUm: (item: ItemLista, progresso: number) => void }) {
+  const proximo = atraso > 0 ? passoDeProgresso(item, 1) : null;
+  const dados = cartaoDaMidia(item, item);
+  return (
+    <div className="relative shrink-0">
+      <CardC
+        {...dados}
+        bannerUrl={item.banner_url}
+        notas={<NotasCartao midia={item} />}
+        status={<Selo texto={texto} tom={atraso > 0 ? 'marca' : undefined} />}
+        detalhe={`${nomeDoProgresso(item.tipo)}: ${textoDoProgresso(item)}`}
+        posicaoTop={posicaoTop}
+        largura={LARGURA_C}
+        altura={ALTURA_C}
+      />
+      {proximo !== null ? (
+        <Botao
+          variante="secundario"
+          aria-label={`+1 episódio: ${dados.titulo}`}
+          className="absolute bottom-2.5 right-2.5 bg-superficie/90"
+          onClick={() => maisUm(item, proximo)}
+        >
+          +1
+        </Botao>
+      ) : null}
+    </div>
   );
 }

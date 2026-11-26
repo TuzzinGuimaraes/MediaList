@@ -233,3 +233,116 @@ describe('Início: estados', () => {
     expect(await screen.findByRole('region', { name: 'Destaques' })).toBeInTheDocument();
   });
 });
+
+
+describe('Início: Para assistir agora', () => {
+  const HORA = 3_600_000;
+  const daquiA = (ms: number) => new Date(Date.now() + ms).toISOString();
+  const emExibicao = (id: string, titulo: string, campos: Parameters<typeof midia>[2] = {}) =>
+    midia(id, titulo, { status_anime: 'em_exibicao', numero_episodios: 12, ...campos });
+
+  const dandadan = emExibicao('ANI-10', 'Dandadan', { episodios_lancados: 7 });
+  const apothecary = emExibicao('ANI-11', 'Apothecary', { episodios_lancados: 4 });
+  const emDia = emExibicao('ANI-12', 'Em Dia', { episodios_lancados: 3, proximo_episodio_em: daquiA(49 * HORA) });
+  const finalizado = midia('ANI-13', 'Finalizado', { status_anime: 'finalizado', episodios_lancados: 12, numero_episodios: 12 });
+
+  const cartoesDaFaixa = () =>
+    within(screen.getByRole('region', { name: 'Para assistir agora' }))
+      .getAllByRole('link')
+      .map((l) => l.textContent);
+
+  it('acima da Continuar: atrasados do mais atrasado ao menos, depois os em dia; finalizado só na Continuar', async () => {
+    await abrirLogado('/', {
+      rotas: rotasDoInicio({
+        emAlta: [frieren],
+        lista: [
+          item(apothecary, { progresso_atual: 3 }),
+          item(dandadan, { progresso_atual: 4 }),
+          item(emDia, { progresso_atual: 3 }),
+          item(finalizado, { progresso_atual: 5 }),
+        ],
+      }),
+    });
+
+    await screen.findByRole('region', { name: 'Para assistir agora' });
+    expect(await fileiras()).toEqual(['Para assistir agora', 'Continuar', 'Em alta']);
+    expect(cartoesDaFaixa()).toEqual([
+      expect.stringContaining('Dandadan'),
+      expect.stringContaining('Apothecary'),
+      expect.stringContaining('Em Dia'),
+    ]);
+    const faixa = screen.getByRole('region', { name: 'Para assistir agora' });
+    expect(within(faixa).getByText('3 episódios atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('próximo em 2 d')).toBeInTheDocument();
+    expect(within(faixa).queryByText(/Finalizado/)).not.toBeInTheDocument();
+    expect(titulosDe('Continuar')).toContainEqual(expect.stringContaining('Finalizado'));
+  });
+
+  it('some sem anime em exibição que o Usuário esteja assistindo', async () => {
+    await abrirLogado('/', {
+      rotas: rotasDoInicio({
+        emAlta: [frieren],
+        lista: [item(finalizado, { progresso_atual: 5 }), item(dandadan, { status_consumo: 'planejado', progresso_atual: 0 })],
+      }),
+    });
+
+    expect(await fileiras()).toEqual(['Continuar', 'Em alta']);
+  });
+
+  it('não aparece no catálogo Jogos', async () => {
+    localStorage.setItem('medialist.catalogo', 'jogos');
+    const hades = midia('JOG-1', 'Hades', { tipo: 'jogo', nota_media: 9 });
+    await abrirLogado('/', {
+      rotas: rotasDoInicio({
+        emAlta: [hades],
+        lista: [item(hades, { status_consumo: 'jogando' }), item(dandadan, { progresso_atual: 4 })],
+      }),
+    });
+
+    expect(await fileiras()).toEqual(['Continuar', 'Em alta']);
+  });
+
+  it('+1 grava o Progresso na hora; ao alcançar o último lançado, o cartão sai dos atrasados', async () => {
+    const quase = emExibicao('ANI-14', 'Quase', { episodios_lancados: 5, proximo_episodio_em: daquiA(3 * HORA + 60_000) });
+    let progresso = 4;
+    const { user, api } = await abrirLogado('/', {
+      rotas: {
+        ...rotasDoInicio({ emAlta: [frieren] }),
+        'GET /lista': () => ({ status: 200, corpo: { lista: [item(quase, { progresso_atual: progresso })] } }),
+        'PUT /lista/L-ANI-14/progresso': (req) => {
+          progresso = req.corpo.progresso_atual;
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+      },
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
+    expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
+    await user.click(within(faixa).getByRole('button', { name: '+1 episódio: Quase' }));
+
+    expect(await within(faixa).findByText('próximo em 3 h')).toBeInTheDocument();
+    expect(api.para('PUT /lista/L-ANI-14/progresso')[0]?.corpo).toEqual({ progresso_atual: 5 });
+    expect(within(faixa).queryByRole('button', { name: '+1 episódio: Quase' })).not.toBeInTheDocument();
+  });
+
+  it('+1 recusado volta o cartão ao que era', async () => {
+    let recusar = () => {};
+    const { user } = await abrirLogado('/', {
+      rotas: {
+        ...rotasDoInicio({ emAlta: [frieren], lista: [item(dandadan, { progresso_atual: 4 })] }),
+        'PUT /lista/L-ANI-10/progresso': () =>
+          new Promise((resolver) => {
+            recusar = () => resolver(erro(400, 'dados_invalidos', 'Progresso inválido.'));
+          }),
+      },
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
+    await user.click(within(faixa).getByRole('button', { name: '+1 episódio: Dandadan' }));
+    expect(await within(faixa).findByText('2 episódios atrás')).toBeInTheDocument();
+
+    act(() => recusar());
+    expect(await within(faixa).findByText('3 episódios atrás')).toBeInTheDocument();
+  });
+});

@@ -1,6 +1,7 @@
 // Detalhe da Mídia (Resolution do 19 e do 29): banner largo com o pôster sobreposto; à
 // esquerda, o botão carmesim da Lista e a ficha; à direita, título, sinopse, Atualizações,
-// distribuição das notas, mapa de atividade e Avaliações.
+// distribuição das notas, mapa de atividade e Avaliações. Anime atrasado (Resolution do 48):
+// o destaque do episódio novo com +1, acima da sinopse.
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -12,12 +13,13 @@ import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
 import { Selo, SeloStatus } from '../../componentes/Selo';
+import { destaqueDoItem, textoDoAtraso } from '@dominio/assistirAgora';
 import { formatarData } from '@dominio/datas';
 import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
-import { proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
+import { passoDeProgresso, proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { atributosDoTipo, notasDaMidia, ROTULO_NOTA_MEDIA, tituloAlternativo, tituloDaMidia } from '@dominio/midia';
 import { emLancamento } from '@dominio/situacao';
-import { useItemDaMidia } from '../lista/api';
+import { useItemDaMidia, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
 import { Avaliacoes } from './Avaliacoes';
 import { useMidia } from './consultas';
@@ -146,6 +148,33 @@ function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
   );
 }
 
+/** "Você parou no ep. 5; saiu o 7" com +1, para o anime em exibição em que o Usuário está atrasado. */
+function EpisodioNovo({ item }: { item: Item | null | undefined }) {
+  const progresso = useMudarProgresso();
+  const destaque = destaqueDoItem(item);
+  if (!item || !destaque) return null;
+  const proximo = passoDeProgresso(item, 1);
+  return (
+    <section
+      aria-labelledby="titulo-episodio-novo"
+      className="flex items-center justify-between gap-4 rounded-lg border border-marca/40 bg-superficie px-4 py-3"
+    >
+      <div className="flex flex-col gap-0.5">
+        <h2 id="titulo-episodio-novo" className="sr-only">
+          Episódio novo
+        </h2>
+        <p className="font-semibold text-texto-forte">{destaque.texto}</p>
+        <p className="text-[13px] text-texto-suave">{textoDoAtraso(destaque.atraso)}</p>
+      </div>
+      {proximo !== null ? (
+        <Botao aria-label="+1 episódio" onClick={() => progresso.mutate({ item, progresso: proximo })}>
+          +1
+        </Botao>
+      ) : null}
+    </section>
+  );
+}
+
 function Sinopse({ texto }: { texto: string | null }) {
   const [inteira, setInteira] = useState(false);
   if (!texto) return null;
@@ -208,6 +237,7 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
         </div>
         <div className="flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
+          <EpisodioNovo item={item.data} />
           <Sinopse texto={midia.sinopse} />
           <Atualizacoes atualizacoes={midia.atualizacoes} />
           <DistribuicaoNotas idMidia={midia.id_midia} />

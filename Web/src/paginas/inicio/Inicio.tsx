@@ -1,8 +1,10 @@
-// Início (Resolution do 29): destaques de Em alta e, abaixo, nesta ordem: Continuar, Em alta,
+// Início (Resolution do 29 e do 48): destaques de Em alta e, abaixo, nesta ordem: Para assistir
+// agora (só com anime em exibição sendo assistido), Continuar, Em alta,
 // Top 10, Maiores notas, Lançamentos recentes, até 2 "Porque você curte <gênero>", Mais
 // adicionados e Mais concluídos. Fileira vazia some; tudo segue o catálogo escolhido.
 import type { ReactNode } from 'react';
 
+import { paraAssistirAgora } from '@dominio/assistirAgora';
 import { estadoDe } from '@dominio/estadoConsumo';
 import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
 
@@ -12,9 +14,9 @@ import { useEmAlta } from '../../catalogo/consultas';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
 import { Fileira } from '../../componentes/Fileira';
 import { ALTURA_NAV } from '../../layout/Casca';
-import { useLista } from '../lista/api';
+import { useLista, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
-import { CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
+import { CartaoAssistirAgora, CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
 import { useCarrosseisPorGenero, useCarrossel, usePopulares } from './consultas';
 import { Destaques } from './Destaques';
 
@@ -28,6 +30,7 @@ const MAX_DESTAQUES = 5;
 
 const textos = {
   vazio: 'Nenhuma Mídia neste catálogo ainda.',
+  paraAssistirAgora: 'Para assistir agora',
   continuar: 'Continuar',
   emAlta: 'Em alta',
   // Populares é acumulado (Usuários com a Mídia na Lista), não do dia: sem o "de hoje".
@@ -53,6 +56,7 @@ export function Inicio() {
   const maisAdicionados = useCarrossel(recorte, 'mais_adicionados');
   const maisConcluidos = useCarrossel(recorte, 'mais_concluidos');
   const { abrirEditor } = useEditorItem();
+  const progresso = useMudarProgresso();
 
   // Sem a Lista (ainda carregando), os gêneros esperam: senão sairiam os das populares e trocariam.
   const itens: ItemLista[] | undefined = lista.data ?? (lista.isError ? [] : undefined);
@@ -85,6 +89,7 @@ export function Inicio() {
     return i >= 0 ? i + 1 : null;
   };
   const itemDe = (id: string) => itens?.find((i) => i.id_midia === id);
+  const faixa = paraAssistirAgora(itensDoCatalogo ?? [], new Date());
   const continuar = (itensDoCatalogo ?? []).filter((i) => estadoDe(i.status_consumo, i.tipo) === 'em_progresso');
   const carrosseis = [
     { titulo: textos.maioresNotas, midias: foraDe(maioresNotas.data, emAlta.data) },
@@ -117,8 +122,18 @@ export function Inicio() {
     <div className="pb-24">
       <h1 className="sr-only">Início</h1>
       <Destaques midias={emAlta.data.slice(0, MAX_DESTAQUES)} itens={itens} posicaoTop={posicaoTop} abrirEditor={abrirEditor} />
-      {/* Sobe um pouco sobre o destaque: o Continuar fica visível sem rolar num 1080p. */}
+      {/* Sobe um pouco sobre o destaque: a primeira fileira fica visível sem rolar num 1080p. */}
       <div className="relative z-10 -mt-4 flex flex-col gap-9">
+        <Fileira titulo={textos.paraAssistirAgora} vazia={!faixa.length}>
+          {faixa.map((c) => (
+            <CartaoAssistirAgora
+              key={c.item.id_lista}
+              cartao={c}
+              posicaoTop={posicaoTop(c.item.id_midia)}
+              maisUm={(item, novo) => progresso.mutate({ item, progresso: novo })}
+            />
+          ))}
+        </Fileira>
         <Fileira titulo={textos.continuar} vazia={!continuar.length}>
           {continuar.map((i) => (
             <CartaoContinuar key={i.id_lista} item={i} posicaoTop={posicaoTop(i.id_midia)} />

@@ -321,3 +321,59 @@ describe('Detalhe da Mídia', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Mídia não encontrada.');
   });
 });
+
+
+describe('Detalhe: episódio novo', () => {
+  const atrasado = { ...itemAssistindo, status_anime: 'em_exibicao', progresso_atual: 5, episodios_lancados: 7, proximo_episodio_em: null };
+
+  it('anime atrasado mostra onde o Usuário parou e o último lançado; +1 grava o Progresso', async () => {
+    let progresso = 5;
+    const { user, api } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas(),
+        'GET /lista': () => ({ status: 200, corpo: { lista: [{ ...atrasado, progresso_atual: progresso }] } }),
+        'PUT /lista/LST-1/progresso': (req) => {
+          progresso = req.corpo.progresso_atual;
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+      },
+    });
+
+    const destaque = await screen.findByRole('region', { name: 'Episódio novo' });
+    expect(within(destaque).getByText('Você parou no ep. 5; saiu o 7')).toBeInTheDocument();
+    expect(within(destaque).getByText('2 episódios atrás')).toBeInTheDocument();
+
+    await user.click(within(destaque).getByRole('button', { name: '+1 episódio' }));
+
+    expect(await within(destaque).findByText('Você parou no ep. 6; saiu o 7')).toBeInTheDocument();
+    expect(api.para('PUT /lista/LST-1/progresso')[0]?.corpo).toEqual({ progresso_atual: 6 });
+    expect(within(screen.getByLabelText('Ficha')).getByText('Progresso').nextSibling).toHaveTextContent('6 de 28');
+  });
+
+  it('ao alcançar o último lançado, o destaque some', async () => {
+    let progresso = 6;
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas(),
+        'GET /lista': () => ({ status: 200, corpo: { lista: [{ ...atrasado, progresso_atual: progresso }] } }),
+        'PUT /lista/LST-1/progresso': (req) => {
+          progresso = req.corpo.progresso_atual;
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+      },
+    });
+
+    const destaque = await screen.findByRole('region', { name: 'Episódio novo' });
+    await user.click(within(destaque).getByRole('button', { name: '+1 episódio' }));
+
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Episódio novo' })).not.toBeInTheDocument());
+  });
+
+  it('sem atraso (em dia, ou fora de Em progresso), sem destaque', async () => {
+    const pausado = { ...atrasado, status_consumo: 'pausado' } as Esquemas['ItemLista'];
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ lista: [pausado] }) });
+
+    expect(await screen.findByRole('button', { name: 'Editar na Lista' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Episódio novo' })).not.toBeInTheDocument();
+  });
+});
