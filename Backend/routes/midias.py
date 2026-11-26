@@ -56,7 +56,7 @@ avaliacoes = AvaliacaoRepository()
 #: Filtros de GET /midias, repassados ao Catálogo com o mesmo nome.
 FILTROS = (
     'busca', 'genero', 'status', 'autor', 'estudio', 'demografia', 'plataforma', 'desenvolvedor', 'modo_jogo',
-    'artista', 'ano_min', 'ano_max',
+    'artista', 'ano_min', 'ano_max', 'temporada_estacao', 'temporada_ano',
 )
 
 ERROS_DE_ESCRITA = {**ERROS_AUTENTICADA, 'HTTP_404': Erro}
@@ -95,7 +95,7 @@ def midias_populares(query: ConsultaPopulares):
 @midias_bp.route('/facetas', methods=['GET'])
 @contrato.validate(resp=Response(HTTP_200=RespostaFacetas), tags=['midias'])
 def facetas_midias(query: ConsultaFacetas):
-    """Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`."""
+    """Plataformas e estúdios distintos e a Temporada mais antiga, para as opções dos filtros de `GET /midias`."""
     return catalogo.facetas(query.tipo)
 
 

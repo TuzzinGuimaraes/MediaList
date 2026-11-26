@@ -8,17 +8,21 @@ ficam com o JSONProvider do app.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, get_args
 
 from banco import consultar, consultar_um, executar, transacao
 from repositories.rotulos import sql_rotulos
 from schemas.estado_consumo import ESTADOS_TERMINAIS
+from schemas.midias import Estacao
 from tipos_midia import COLUNAS_BASE, TIPOS, joins_das_filhas, origem_nota, por_tipo, valor_de_coluna
 
 #: Rótulos de Concluído e Platinado de todos os Tipos, como lista SQL ('completo', 'lido', ...).
 #: Entra no SELECT_MIDIA como literal, igual aos outros pedaços gerados aqui, para que quem usa
 #: o SELECT (aqui e em itens_lista.py) não precise repassar um parâmetro.
 SQL_ROTULOS_TERMINAIS = sql_rotulos(*ESTADOS_TERMINAIS)
+
+#: Estações na ordem do ano, como lista SQL, para ordenar Temporadas.
+SQL_ESTACOES = ', '.join(f"'{e}'" for e in get_args(Estacao))
 
 #: Colunas de uma Mídia nas respostas da API. Os nomes duplicados (`id_anime`,
 #: `codigo_anime`) e prefixados (`anime_trailer_url`) são contrato com os clientes.
@@ -51,6 +55,10 @@ SELECT_MIDIA = f"""
         a.estudio,
         a.fonte_original,
         a.anilist_id AS anime_anilist_id,
+        a.temporada_estacao,
+        a.temporada_ano,
+        a.temporada_estimada,
+        a.formato,
         ma.status_manga,
         ma.numero_capitulos,
         ma.numero_volumes,
@@ -111,6 +119,8 @@ ORDENS = {
     'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
     # Itens em Concluído ou Platinado (o Platinado também conta como Concluído).
     'mais_concluidos': f'total_concluidos DESC, {NOTA_DE_RANKING}',
+    # Os mais esperados: a Popularidade da fonte (a do AniList), não a do MediaList.
+    'popularidade_fonte': f'a.popularidade_fonte DESC NULLS LAST, {NOTA_DE_RANKING}',
 }
 
 #: Filtros de texto parcial, sem caixa: filtro -> coluna.
@@ -190,6 +200,11 @@ def _filtros(tipo: str | None, filtros: dict[str, Any]) -> tuple[str, list[Any]]
         clausulas.append('m.data_lancamento < make_date(%s + 1, 1, 1)')
         params.append(filtros['ano_max'])
 
+    # Temporada: só animes; a estação e o ano vão juntos (o schema da rota cobra).
+    if filtros.get('temporada_estacao') and filtros.get('temporada_ano') is not None:
+        clausulas.append('a.temporada_estacao = %s AND a.temporada_ano = %s')
+        params.extend([filtros['temporada_estacao'], filtros['temporada_ano']])
+
     if filtros.get('plataforma'):
         # Elemento inteiro do text[] (índice GIN), não substring.
         clausulas.append('j.plataformas @> ARRAY[%s]::text[]')
@@ -217,7 +232,8 @@ class Catalogo:
         self, tipo: str | None = None, pagina: int = 1, limite: int = 20, filtros: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Uma página de Mídias. `filtros`: busca, genero, status, autor, estudio,
-        demografia, plataforma, desenvolvedor, modo_jogo, artista, ano_min, ano_max e ordem (ver ORDENS;
+        demografia, plataforma, desenvolvedor, modo_jogo, artista, ano_min, ano_max, temporada_estacao com
+        temporada_ano e ordem (ver ORDENS;
         desconhecida ou ausente vale 'nota_media')."""
         filtros = filtros or {}
         where, params = _filtros(tipo, filtros)
@@ -278,9 +294,11 @@ class Catalogo:
         )
         return {**janela, 'dias': dias}
 
-    def facetas(self, tipo: str | None = None) -> dict[str, list[str]]:
-        """Plataformas (jogos) e estúdios (animes) distintos, em ordem; vazios fora do Tipo."""
+    def facetas(self, tipo: str | None = None) -> dict[str, Any]:
+        """Plataformas (jogos) e estúdios (animes) distintos, em ordem, e a Temporada mais antiga
+        dos animes; vazios (ou nula) fora do Tipo."""
         plataformas = estudios = []
+        temporada_mais_antiga = None
         if tipo in (None, 'jogo'):
             plataformas = [
                 linha['valor'] for linha in consultar(
@@ -293,7 +311,12 @@ class Catalogo:
                     "SELECT DISTINCT estudio AS valor FROM animes WHERE estudio <> '' ORDER BY estudio"
                 )
             ]
-        return {'plataformas': plataformas, 'estudios': estudios}
+            temporada_mais_antiga = consultar_um(
+                f'SELECT temporada_estacao AS estacao, temporada_ano AS ano FROM animes '
+                f'WHERE temporada_ano = (SELECT min(temporada_ano) FROM animes) '
+                f'ORDER BY array_position(ARRAY[{SQL_ESTACOES}], temporada_estacao) LIMIT 1'
+            )
+        return {'plataformas': plataformas, 'estudios': estudios, 'temporada_mais_antiga': temporada_mais_antiga}
 
     def generos(self, tipo: str | None = None) -> list[dict[str, Any]]:
         """Gêneros, todos ou os que se aplicam ao Tipo (elemento inteiro de `aplicavel_a`)."""
