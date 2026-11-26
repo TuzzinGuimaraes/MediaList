@@ -410,3 +410,51 @@ class FakeAvaliacaoRepository:
 
     def apagar(self, id_avaliacao):
         return self.avaliacoes.pop(id_avaliacao, None) is not None
+
+
+
+class FakeRespostaExpo:
+    def __init__(self, status_code, corpo):
+        self.status_code = status_code
+        self._corpo = corpo
+
+    def json(self):
+        if isinstance(self._corpo, BaseException):
+            raise self._corpo
+        return self._corpo
+
+
+class FakeExpo:
+    """Cliente HTTP do Expo Push Service em memória (a costura de `avisos_push.criar_cliente`).
+
+    Responde `ok` a cada mensagem, salvo os tokens em `nao_registrados` (`DeviceNotRegistered`).
+    `falha` é uma exceção levantada no `post` ou um `(status, corpo)` devolvido no lugar dos tickets.
+    """
+
+    def __init__(self, nao_registrados=(), falha=None):
+        self.nao_registrados = set(nao_registrados)
+        self.falha = falha
+        #: (url, mensagens, headers, timeout) de cada requisição.
+        self.requisicoes = []
+        self.fechado = False
+
+    def post(self, url, json=None, headers=None, timeout=None):
+        self.requisicoes.append((url, json, headers, timeout))
+        if isinstance(self.falha, BaseException):
+            raise self.falha
+        if self.falha is not None:
+            return FakeRespostaExpo(*self.falha)
+        tickets = [
+            {'status': 'error', 'message': 'não registrado', 'details': {'error': 'DeviceNotRegistered'}}
+            if mensagem['to'] in self.nao_registrados else {'status': 'ok', 'id': f'tk-{i}'}
+            for i, mensagem in enumerate(json)
+        ]
+        return FakeRespostaExpo(200, {'data': tickets})
+
+    def close(self):
+        self.fechado = True
+
+    @property
+    def tokens(self):
+        """Os tokens enviados, na ordem."""
+        return [mensagem['to'] for _, lote, _, _ in self.requisicoes for mensagem in lote]
