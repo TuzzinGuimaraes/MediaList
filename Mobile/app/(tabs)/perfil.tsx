@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { usePermissoes, useUsuarioAtual } from '@/api/usuario';
 import { useSessao } from '@/auth/SessaoContext';
+import { AvisosPerfil } from '@/components/AvisosPerfil';
 import { Botao } from '@/components/Botao';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { EstatisticasPerfil } from '@/components/EstatisticasPerfil';
@@ -113,6 +114,7 @@ export default function Perfil() {
         <Linha rotulo={textos.nivel} valor={rotuloNivelAcesso(permissoes.data.nivel_acesso)} />
       </View>
       <SeletorTema />
+      <AvisosPerfil />
       <EstatisticasPerfil />
       <Secao titulo="Integrações">
         <IntegracoesPerfil />
