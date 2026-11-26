@@ -6,7 +6,8 @@
 // Início, o detalhe e o Perfil leem a mesma chave (`useLista`, `useItemDaMidia`).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type DadosItem, mudancaDeStatus } from '@dominio/itemLista';
+import { diaIso } from '@dominio/datas';
+import { aplicarProgresso, type DadosItem, mudancaDeStatus } from '@dominio/itemLista';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
@@ -102,6 +103,39 @@ export function useMudarStatus() {
         const mudanca = mudancaDeStatus(item, rotulo);
         return { ...atual, ...mudanca, status_consumo: mudanca.status_consumo as ItemLista['status_consumo'] };
       });
+    },
+    onError: (_e, { item }) => trocar(item.id_lista, () => item),
+    onSettled: (_r, _e, { item }) => invalidar(item.id_midia),
+  });
+}
+
+/**
+ * Grava o Progresso de um Item (o +1 do Para assistir agora) com PUT /lista/<id_lista>/progresso.
+ * Como o `useMudarStatus`: aparece no cache na hora, inclusive a conclusão no total
+ * (`aplicarProgresso`); se o servidor recusar, o Item volta ao que era. Os toques vão um por vez.
+ */
+export function useMudarProgresso() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const invalidar = useInvalidarLista();
+
+  const trocar = (idLista: string, novo: (item: ItemLista) => ItemLista) =>
+    queryClient.setQueryData<RespostaLista>(CHAVE_LISTA, (r) =>
+      r && { lista: r.lista.map((item) => (item.id_lista === idLista ? novo(item) : item)) },
+    );
+
+  return useMutation({
+    scope: { id: 'lista-progresso' },
+    mutationFn: ({ item, progresso }: { item: ItemLista; progresso: number }) =>
+      exigir(
+        api.PUT('/api/lista/{lista_id}/progresso', {
+          params: { path: { lista_id: item.id_lista } },
+          body: { progresso_atual: progresso },
+        }),
+      ),
+    onMutate: async ({ item, progresso }) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE_LISTA, exact: true });
+      trocar(item.id_lista, (atual) => aplicarProgresso(atual, progresso, diaIso()));
     },
     onError: (_e, { item }) => trocar(item.id_lista, () => item),
     onSettled: (_r, _e, { item }) => invalidar(item.id_midia),
