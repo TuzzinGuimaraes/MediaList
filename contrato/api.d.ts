@@ -504,6 +504,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/calendario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calendário: os episódios de anime da janela (até 8 dias), os já exibidos e os próximos. */
+        get: operations["get__api_midias_calendario"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/midias/facetas": {
         parameters: {
             query?: never;
@@ -1050,6 +1067,24 @@ export interface components {
         ConexaoIntegracao: {
             /** Identificador */
             identificador: string;
+        };
+        /**
+         * ConsultaCalendario
+         * @description `GET /midias/calendario?de=&ate=`: instantes com fuso; `ate` depois de `de`, até 8 dias.
+         */
+        ConsultaCalendario: {
+            /**
+             * Ate
+             * Format: date-time
+             * @description Fim da janela, exclusive
+             */
+            ate: string;
+            /**
+             * De
+             * Format: date-time
+             * @description Início da janela, inclusive
+             */
+            de: string;
         };
         /** ConsultaFacetas */
         ConsultaFacetas: {
@@ -1673,6 +1708,40 @@ export interface components {
              * @default null
              */
             total_rewatches?: number | null;
+        };
+        /**
+         * EpisodioDoCalendario
+         * @description Um episódio do Calendário, com o anime resumido.
+         */
+        EpisodioDoCalendario: {
+            /** Episodio */
+            episodio: number;
+            /**
+             * Exibido
+             * @description Já foi ao ar: vem de uma Atualização `episodio`
+             */
+            exibido: boolean;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Instante
+             * Format: date-time
+             * @description Quando foi ao ar (exibido) ou quando sai (próximo)
+             */
+            instante: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Tipo
+             * @constant
+             */
+            tipo: "anime";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Portugues */
+            titulo_portugues: string | null;
         };
         /**
          * Erro
@@ -2638,6 +2707,14 @@ export interface components {
              * @description As 50 mais recentes
              */
             avaliacoes: components["schemas"]["AvaliacaoModeracao"][];
+        };
+        /** RespostaCalendario */
+        RespostaCalendario: {
+            /**
+             * Episodios
+             * @description Exibidos e próximos da janela, pelo instante; o mesmo episódio sai uma vez só (o exibido)
+             */
+            episodios: components["schemas"]["EpisodioDoCalendario"][];
         };
         /** RespostaDistribuicao */
         RespostaDistribuicao: {
@@ -4945,6 +5022,67 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_midias_calendario: {
+        parameters: {
+            query: {
+                /** @description Início da janela, inclusive */
+                de: string;
+                /** @description Fim da janela, exclusive */
+                ate: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaCalendario"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

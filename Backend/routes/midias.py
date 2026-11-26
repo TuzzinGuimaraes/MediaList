@@ -31,6 +31,7 @@ from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
 from schemas.midias import (
     AtualizacaoPublicada,
+    ConsultaCalendario,
     ConsultaFacetas,
     ConsultaMidias,
     ConsultaPopulares,
@@ -40,6 +41,7 @@ from schemas.midias import (
     Midia,
     MidiaDetalhe,
     RespostaAtividade,
+    RespostaCalendario,
     RespostaDistribuicao,
     RespostaFacetas,
     RespostaNotas,
@@ -97,6 +99,16 @@ def midias_populares(query: ConsultaPopulares):
 def facetas_midias(query: ConsultaFacetas):
     """Plataformas e estúdios distintos e a Temporada mais antiga, para as opções dos filtros de `GET /midias`."""
     return catalogo.facetas(query.tipo)
+
+
+@midias_bp.route('/calendario', methods=['GET'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaCalendario, **ERROS_AUTENTICADA), tags=['midias'], security=AUTENTICADO,
+)
+def calendario_midias(query: ConsultaCalendario):
+    """Calendário: os episódios de anime da janela (até 8 dias), os já exibidos e os próximos."""
+    return {'episodios': catalogo.calendario(query.de, query.ate)}
 
 
 @midias_bp.route('/<string:id_midia>', methods=['GET'])
