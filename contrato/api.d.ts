@@ -1525,6 +1525,11 @@ export interface components {
          */
         CorpoPreferencias: {
             /**
+             * Avisar Episodios
+             * @default null
+             */
+            avisar_episodios?: boolean | null;
+            /**
              * Avisar Noticias
              * @default null
              */
@@ -2473,6 +2478,11 @@ export interface components {
          * @description As preferências completas: o que o Usuário mudou, e os padrões no resto.
          */
         Preferencias: {
+            /**
+             * Avisar Episodios
+             * @description "Avisar sobre episódios novos" (push no app); ligado por padrão
+             */
+            avisar_episodios: boolean;
             /**
              * Avisar Noticias
              * @description "Avisar sobre Notícias" (push no app); ligado por padrão
