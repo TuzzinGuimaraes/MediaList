@@ -720,7 +720,7 @@ export interface paths {
         /** Uma página das Notícias, mais recentes primeiro. */
         get: operations["get__api_noticias"];
         put?: never;
-        /** Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação. */
+        /** Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação e, se tiver "Avisar sobre Notícias", o push. */
         post: operations["post__api_noticias"];
         delete?: never;
         options?: never;
@@ -809,6 +809,24 @@ export interface paths {
         put: operations["put__api_preferencias"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Registrar ou renovar o token do aparelho; um token de outro Usuário muda de dono. */
+        put: operations["put__api_push_token"];
+        post?: never;
+        /** Remover o token do aparelho (logout). Só apaga o token do próprio Usuário; sem ele, nada muda. */
+        delete: operations["delete__api_push_token"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1504,6 +1522,11 @@ export interface components {
          */
         CorpoPreferencias: {
             /**
+             * Avisar Noticias
+             * @default null
+             */
+            avisar_noticias?: boolean | null;
+            /**
              * Idioma
              * @default null
              */
@@ -1535,6 +1558,16 @@ export interface components {
              */
             refresh_token?: string | null;
         };
+        /** CorpoRegistrarToken */
+        CorpoRegistrarToken: {
+            /**
+             * Plataforma
+             * @enum {string}
+             */
+            plataforma: "android" | "ios";
+            /** Token */
+            token: string;
+        };
         /** CorpoRegistro */
         CorpoRegistro: {
             /**
@@ -1553,6 +1586,11 @@ export interface components {
             nome_completo: string;
             /** Senha */
             senha: string;
+        };
+        /** CorpoRemoverToken */
+        CorpoRemoverToken: {
+            /** Token */
+            token: string;
         };
         /** CorpoTrocarSenha */
         CorpoTrocarSenha: {
@@ -2427,6 +2465,11 @@ export interface components {
          * @description As preferências completas: o que o Usuário mudou, e os padrões no resto.
          */
         Preferencias: {
+            /**
+             * Avisar Noticias
+             * @description "Avisar sobre Notícias" (push no app); ligado por padrão
+             */
+            avisar_noticias: boolean;
             /** Idioma */
             idioma: string;
             /** Notificacoes Ativas */
@@ -5894,6 +5937,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreferenciasAtualizadas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    put__api_push_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoRegistrarToken"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    delete__api_push_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoRemoverToken"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
                 };
             };
             /** @description Bad Request */

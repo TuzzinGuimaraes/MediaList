@@ -1506,6 +1506,18 @@
       "CorpoPreferencias": {
         "description": "Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `\"true\"` não é booleano.",
         "properties": {
+          "avisar_noticias": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avisar Noticias"
+          },
           "idioma": {
             "anyOf": [
               {
@@ -1579,6 +1591,30 @@
         "title": "CorpoRefresh",
         "type": "object"
       },
+      "CorpoRegistrarToken": {
+        "properties": {
+          "plataforma": {
+            "enum": [
+              "android",
+              "ios"
+            ],
+            "title": "Plataforma",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 255,
+            "pattern": "^(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "plataforma"
+        ],
+        "title": "CorpoRegistrarToken",
+        "type": "object"
+      },
       "CorpoRegistro": {
         "properties": {
           "biografia": {
@@ -1628,6 +1664,21 @@
           "senha"
         ],
         "title": "CorpoRegistro",
+        "type": "object"
+      },
+      "CorpoRemoverToken": {
+        "properties": {
+          "token": {
+            "maxLength": 255,
+            "pattern": "^(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "CorpoRemoverToken",
         "type": "object"
       },
       "CorpoTrocarSenha": {
@@ -4421,6 +4472,11 @@
       "Preferencias": {
         "description": "As preferências completas: o que o Usuário mudou, e os padrões no resto.",
         "properties": {
+          "avisar_noticias": {
+            "description": "\"Avisar sobre Notícias\" (push no app); ligado por padrão",
+            "title": "Avisar Noticias",
+            "type": "boolean"
+          },
           "idioma": {
             "title": "Idioma",
             "type": "string"
@@ -4437,7 +4493,8 @@
         "required": [
           "tema",
           "idioma",
-          "notificacoes_ativas"
+          "notificacoes_ativas",
+          "avisar_noticias"
         ],
         "title": "Preferencias",
         "type": "object"
@@ -9396,7 +9453,7 @@
             "bearer": []
           }
         ],
-        "summary": "Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação.",
+        "summary": "Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação e, se tiver \"Avisar sobre Notícias\", o push.",
         "tags": [
           "noticias"
         ]
@@ -9791,6 +9848,160 @@
         ]
       }
     },
+    "/api/push/token": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_push_token",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoRemoverToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remover o token do aparelho (logout). Só apaga o token do próprio Usuário; sem ele, nada muda.",
+        "tags": [
+          "push"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_push_token",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoRegistrarToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar ou renovar o token do aparelho; um token de outro Usuário muda de dono.",
+        "tags": [
+          "push"
+        ]
+      }
+    },
     "/api/usuario/estatisticas": {
       "get": {
         "description": "",
@@ -10031,6 +10242,9 @@
     },
     {
       "name": "preferencias"
+    },
+    {
+      "name": "push"
     },
     {
       "name": "integracoes"
