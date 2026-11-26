@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "726664389987",
+    "project_id": "medialist-ce8c9",
+    "storage_bucket": "medialist-ce8c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:726664389987:android:1ffa3b46786cf911125f56",
+        "android_client_info": {
+          "package_name": "dev.medialist.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsScPap8Q4msCNM0vtD8GXnc6o3bmd628"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
