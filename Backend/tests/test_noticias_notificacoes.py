@@ -237,7 +237,7 @@ def _instalar_preferencias(monkeypatch, respostas=None):
 
 
 def test_preferencias_sem_nada_salvo_saem_com_os_padroes(client, auth_headers, monkeypatch):
-    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {}, 'avisar_noticias': True}})
+    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {}, 'avisar_noticias': True, 'avisar_episodios': True}})
 
     response = client.get('/api/preferencias', headers=auth_headers)
 
@@ -245,12 +245,15 @@ def test_preferencias_sem_nada_salvo_saem_com_os_padroes(client, auth_headers, m
     # `id_usuario` saiu: é o próprio Usuário logado, e nenhum cliente lia.
     assert response.get_json() == {'preferencias': {
         'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True, 'avisar_noticias': True,
+        'avisar_episodios': True,
     }}
     assert fake.sql('FROM usuarios')[0][2] == ('USR-TEST-0001',)
 
 
 def test_preferencias_salvas_vencem_os_padroes(client, auth_headers, monkeypatch):
-    _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {'tema': 'dark'}, 'avisar_noticias': False}})
+    _instalar_preferencias(monkeypatch, {'FROM usuarios': {
+        'preferencias': {'tema': 'dark'}, 'avisar_noticias': False, 'avisar_episodios': True,
+    }})
 
     response = client.get('/api/preferencias', headers=auth_headers)
 
@@ -278,7 +281,7 @@ def test_preferencias_put_grava_so_os_campos_permitidos(client, auth_headers, mo
     assert response.status_code == 200
     assert response.get_json() == {'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': True}
     _, _, params = fake.sql('UPDATE usuarios')[0]
-    assert params == ('{"tema": "dark", "notificacoes_ativas": false}', None, 'USR-TEST-0001')
+    assert params == ('{"tema": "dark", "notificacoes_ativas": false}', None, None, 'USR-TEST-0001')
 
 
 def test_preferencias_put_avisar_noticias_vai_para_a_coluna_e_nao_para_o_jsonb(client, auth_headers, monkeypatch):
@@ -289,7 +292,7 @@ def test_preferencias_put_avisar_noticias_vai_para_a_coluna_e_nao_para_o_jsonb(c
     assert response.status_code == 200
     [(_, sql, params)] = fake.sql('UPDATE usuarios')
     assert 'avisar_noticias = COALESCE' in sql
-    assert params == ('{}', False, 'USR-TEST-0001')
+    assert params == ('{}', False, None, 'USR-TEST-0001')
 
 
 def test_preferencias_put_sem_campo_valido_responde_400(client, auth_headers, monkeypatch):

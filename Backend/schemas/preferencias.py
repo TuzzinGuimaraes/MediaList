@@ -11,6 +11,7 @@ class Preferencias(BaseModel):
     idioma: str
     notificacoes_ativas: bool
     avisar_noticias: bool = Field(description='"Avisar sobre Notícias" (push no app); ligado por padrão')
+    avisar_episodios: bool = Field(description='"Avisar sobre episódios novos" (push no app); ligado por padrão')
 
 
 class RespostaPreferencias(BaseModel):
@@ -24,6 +25,7 @@ class CorpoPreferencias(BaseModel):
     idioma: StrictStr | None = None
     notificacoes_ativas: StrictBool | None = None
     avisar_noticias: StrictBool | None = None
+    avisar_episodios: StrictBool | None = None
 
 
 class PreferenciasAtualizadas(BaseModel):

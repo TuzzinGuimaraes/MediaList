@@ -153,6 +153,31 @@ def test_avisar_noticias_sai_nas_preferencias_e_o_usuario_desliga(pg, client, en
     assert 'avisar_noticias' not in linha['preferencias']
 
 
+def test_avisar_episodios_sai_nas_preferencias_e_desliga_sem_mexer_no_de_noticias(pg, client, entrar):
+    usuario = _usuario(pg)
+
+    antes = client.get('/api/preferencias', headers=entrar(usuario)).get_json()['preferencias']
+    gravado = client.put('/api/preferencias', headers=entrar(usuario), json={'avisar_episodios': False})
+    depois = client.get('/api/preferencias', headers=entrar(usuario)).get_json()['preferencias']
+
+    assert antes['avisar_episodios'] is True
+    assert gravado.status_code == 200
+    assert (depois['avisar_episodios'], depois['avisar_noticias']) == (False, True)
+    linha = banco.consultar_um('SELECT avisar_episodios, preferencias FROM usuarios WHERE id_usuario = %s', (usuario,))
+    assert linha['avisar_episodios'] is False
+    assert 'avisar_episodios' not in linha['preferencias']
+
+    client.put('/api/preferencias', headers=entrar(usuario), json={'avisar_noticias': False})
+    final = client.get('/api/preferencias', headers=entrar(usuario)).get_json()['preferencias']
+    assert (final['avisar_episodios'], final['avisar_noticias']) == (False, False)
+
+
+def test_avisar_episodios_recusa_texto(pg, client, entrar):
+    response = client.put('/api/preferencias', headers=entrar(_usuario(pg)), json={'avisar_episodios': 'false'})
+
+    assert (response.status_code, response.get_json()['codigo']) == (400, 'dados_invalidos')
+
+
 def test_outras_preferencias_nao_mexem_no_avisar_noticias(pg, client, entrar):
     usuario = _usuario(pg, avisar=False)
 

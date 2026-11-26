@@ -2,8 +2,9 @@
 Blueprint de Preferências: `usuarios.preferencias` (jsonb).
 
 O jsonb guarda só o que o Usuário mudou; a leitura completa com os padrões.
-`avisar_noticias` ("Avisar sobre Notícias", push no app) é coluna própria de `usuarios`, porque o
-envio filtra por ela; sai e entra junto com as outras.
+`avisar_noticias` ("Avisar sobre Notícias") e `avisar_episodios` ("Avisar sobre episódios novos"),
+os push do app, são colunas próprias de `usuarios`, porque o envio filtra por elas; saem e entram
+junto com as outras.
 """
 import json as jsonlib
 
@@ -29,13 +30,17 @@ PADROES = {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
 def obter_preferencias():
     """Preferências do Usuário, com os padrões no que ele não mudou."""
     linha = consultar_um(
-        'SELECT preferencias, avisar_noticias FROM usuarios WHERE id_usuario = %s', (get_jwt_identity(),),
+        'SELECT preferencias, avisar_noticias, avisar_episodios FROM usuarios WHERE id_usuario = %s',
+        (get_jwt_identity(),),
     )
     if linha is None:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
     salvas = {campo: valor for campo, valor in linha['preferencias'].items() if campo in PADROES}
-    return {'preferencias': {**PADROES, **salvas, 'avisar_noticias': linha['avisar_noticias']}}
+    return {'preferencias': {
+        **PADROES, **salvas,
+        'avisar_noticias': linha['avisar_noticias'], 'avisar_episodios': linha['avisar_episodios'],
+    }}
 
 
 @preferencias_bp.route('', methods=['PUT'])
@@ -50,12 +55,15 @@ def atualizar_preferencias(json: CorpoPreferencias):
         return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Nenhuma preferência válida fornecida')
 
     avisar_noticias = mudancas.pop('avisar_noticias', None)
+    avisar_episodios = mudancas.pop('avisar_episodios', None)
     linhas = executar(
         """
         UPDATE usuarios
-        SET preferencias = preferencias || %s::jsonb, avisar_noticias = COALESCE(%s::boolean, avisar_noticias)
+        SET preferencias = preferencias || %s::jsonb,
+            avisar_noticias = COALESCE(%s::boolean, avisar_noticias),
+            avisar_episodios = COALESCE(%s::boolean, avisar_episodios)
         WHERE id_usuario = %s
         """,
-        (jsonlib.dumps(mudancas), avisar_noticias, get_jwt_identity()),
+        (jsonlib.dumps(mudancas), avisar_noticias, avisar_episodios, get_jwt_identity()),
     )
     return {'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': linhas > 0}
