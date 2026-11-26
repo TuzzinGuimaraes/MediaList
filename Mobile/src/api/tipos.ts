@@ -52,6 +52,8 @@ export type PaginaMidias = Esquemas['PaginaMidia'];
 export type RespostaDistribuicao = Esquemas['RespostaDistribuicao'];
 export type Genero = Esquemas['Genero'];
 export type RespostaGeneros = Esquemas['RespostaGeneros'];
+/** GET /midias/facetas: os valores dos filtros e a Temporada mais antiga do Catálogo. */
+export type RespostaFacetas = Esquemas['RespostaFacetas'];
 export type OrigemNota = NonNullable<Midia['origem_nota']>;
 
 /**
