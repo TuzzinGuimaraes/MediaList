@@ -19,6 +19,9 @@ export type ConsultaMidias = Esquemas['ConsultaMidias'];
 /** Um Item de GET /lista: a parte da Mídia mais os campos do Item. */
 export type ItemLista = Esquemas['ItemLista'];
 
+/** Um episódio de GET /midias/calendario (exibido ou próximo), com o anime resumido. */
+export type EpisodioDoCalendario = Esquemas['EpisodioDoCalendario'];
+
 /** As notas de uma Mídia (CONTEXT.md: Nota média, Nota da fonte), em qualquer listagem. */
 export type NotasDaMidia = Pick<Midia, 'nota_media' | 'nota_fonte' | 'origem_nota'>;
 
