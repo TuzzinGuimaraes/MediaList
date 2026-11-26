@@ -31,7 +31,6 @@ import type { Midia } from '@dominio/tipos';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
-import { mensagemDeErro } from '../../api/erros';
 import { Botao } from '../../componentes/Botao';
 import { CardA, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
@@ -40,9 +39,10 @@ import { Icone } from '../../componentes/Icone';
 import { Opcoes } from '../../componentes/Opcoes';
 import { TituloSecao } from '../../componentes/Fileira';
 import { useApi } from '../../sessao/SessaoContext';
-import { useLista, useAdicionarComoPlanejado } from '../lista/api';
+import { useLista } from '../lista/api';
 import type { AbaTemporada } from './busca';
 import { Calendario } from './Calendario';
+import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
 
 const rota = getRouteApi('/autenticado/temporada');
 
@@ -227,7 +227,6 @@ function Linha({ children }: { children: ReactNode }) {
  * do cartão: a mesma altura em toda a linha da grade, qualquer que seja o tamanho do texto.
  */
 function CartaoDaTemporada({ anime, naLista }: { anime: Midia; naLista: boolean }) {
-  const planejar = useAdicionarComoPlanejado();
   const estreia = formatarData(anime.data_lancamento);
   const selo = seloDeEstimativa(anime);
   const episodios = anime.numero_episodios;
@@ -247,25 +246,7 @@ function CartaoDaTemporada({ anime, naLista }: { anime: Midia; naLista: boolean 
   return (
     <div className="flex w-full flex-col gap-2">
       <CardA {...cartaoDaMidia(anime)} notas={detalhes} />
-      {naLista ? (
-        <span className="mt-auto inline-flex min-h-11 items-center text-[13px] font-semibold text-texto-suave">Na Lista</span>
-      ) : (
-        <Botao
-          variante="secundario"
-          className="mt-auto w-full"
-          aria-label={`Pôr ${tituloDaMidia(anime)} em Planejado`}
-          carregando={planejar.isPending}
-          onClick={() => planejar.mutate({ idMidia: anime.id_midia, tipo: anime.tipo })}
-          icone={<Icone nome="mais" tamanho={14} />}
-        >
-          Planejado
-        </Botao>
-      )}
-      {planejar.isError ? (
-        <p role="alert" className="text-[12px] text-erro">
-          {mensagemDeErro(planejar.error)}
-        </p>
-      ) : null}
+      <PlanejadoOuNaLista idMidia={anime.id_midia} tipo={anime.tipo} titulo={tituloDaMidia(anime)} naLista={naLista} className="mt-auto" />
     </div>
   );
 }

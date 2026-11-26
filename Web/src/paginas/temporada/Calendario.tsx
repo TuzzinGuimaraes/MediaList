@@ -6,14 +6,13 @@
 // dele, "foi ao ar" e "A seguir dos seus" vêm de `@dominio/calendario`, os mesmos do app.
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 
 import {
   aSeguirDosSeus,
   type ASeguir,
   avisoDaSemanaVazia,
   avisoDoDiaVazio,
-  CHAVE_DA_VISTA,
   consultaDoCalendario,
   type DiaDoCalendario,
   diasDoCalendario,
@@ -28,60 +27,26 @@ import {
   TRAVA_DA_ROLAGEM_MS,
   type VistaDoCalendario as Vista,
   VISTAS_DO_CALENDARIO,
-  vistaGuardada,
 } from '@dominio/calendario';
 import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
 import type { EpisodioDoCalendario } from '@dominio/tipos';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
-import { mensagemDeErro } from '../../api/erros';
 import { Botao } from '../../componentes/Botao';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
-import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { useTelaLarga } from '../../layout/telaLarga';
 import { useApi } from '../../sessao/SessaoContext';
-import { useAdicionarComoPlanejado, useLista } from '../lista/api';
+import { useLista } from '../lista/api';
+import { useAgora } from './agora';
+import { FUSO } from './fuso';
+import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
+import { useVista } from './vista';
 
 type Dia = DiaDoCalendario<EpisodioDoCalendario>;
 type NoDia = EpisodioNoDia<EpisodioDoCalendario>;
-
-const MINUTO = 60_000;
-
-function lerVista(): Vista {
-  try {
-    return vistaGuardada(localStorage.getItem(CHAVE_DA_VISTA));
-  } catch {
-    return 'agenda';
-  }
-}
-
-function useVista(): [Vista, (vista: Vista) => void] {
-  const [vista, setVista] = useState(lerVista);
-  const mudar = useCallback((nova: Vista) => {
-    setVista(nova);
-    try {
-      localStorage.setItem(CHAVE_DA_VISTA, nova);
-    } catch {
-      // Sem armazenamento, vale até recarregar.
-    }
-  }, []);
-  return [vista, mudar];
-}
-
-/** O instante de agora, renovado a cada minuto ("foi ao ar", o marcador "agora", a virada do dia). */
-function useAgora(): Date {
-  const [agora, setAgora] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setAgora(new Date()), MINUTO);
-    return () => clearInterval(id);
-  }, []);
-  return agora;
-}
-
-const FUSO = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function Calendario() {
   const agora = useAgora();
@@ -97,12 +62,12 @@ export function Calendario() {
   if (episodios.isPending || lista.isPending) return <Carregando rotulo={textos.carregando} />;
   if (episodios.isError) return <ErroTela erro={episodios.error} tentarDeNovo={() => void episodios.refetch()} />;
   // Sem a Lista, o Calendário ainda mostra todos os episódios (nenhum é "dos meus").
-  return <Semana7 episodios={episodios.data} itens={lista.data ?? []} agora={agora} />;
+  return <CorpoDoCalendario episodios={episodios.data} itens={lista.data ?? []} agora={agora} />;
 }
 
-type PropsSemana7 = { episodios: EpisodioDoCalendario[]; itens: readonly ItemDoCalendario[]; agora: Date };
+type PropsCorpoDoCalendario = { episodios: EpisodioDoCalendario[]; itens: readonly ItemDoCalendario[]; agora: Date };
 
-function Semana7({ episodios, itens, agora }: PropsSemana7) {
+function CorpoDoCalendario({ episodios, itens, agora }: PropsCorpoDoCalendario) {
   // O padrão é lido uma vez: pôr um anime em Planejado não liga o filtro sozinho.
   const [soOsMeus, setSoOsMeus] = useState(() => soOsMeusPorPadrao(episodios, itens));
   const [vista, mudarVista] = useVista();
@@ -369,7 +334,7 @@ function LinhaDaAgenda({ noDia, naLista }: { noDia: NoDia; naLista: boolean }) {
             </span>
           </span>
         </Link>
-        <AcaoLista episodio={episodio} naLista={naLista} />
+        <PlanejadoOuNaLista idMidia={episodio.id_midia} tipo={episodio.tipo} titulo={titulo} naLista={naLista} compacto />
       </div>
     </li>
   );
@@ -456,7 +421,7 @@ function BlocoDaSemana({ noDia, naLista }: { noDia: NoDia; naLista: boolean }) {
           {titulo}
         </span>
       </Link>
-      <AcaoLista episodio={episodio} naLista={naLista} />
+      <PlanejadoOuNaLista idMidia={episodio.id_midia} tipo={episodio.tipo} titulo={titulo} naLista={naLista} compacto />
     </li>
   );
 }
@@ -469,30 +434,6 @@ function Capa({ url, className }: { url: string | null; className: string }) {
   ) : (
     <span aria-hidden className={`flex shrink-0 items-center justify-center bg-superficie-alta ${className}`}>
       <Monograma tamanho={20} rotulo={null} />
-    </span>
-  );
-}
-
-/** "Na Lista" para quem tem Item; para o resto, o botão que põe o anime em Planejado. */
-function AcaoLista({ episodio, naLista }: { episodio: EpisodioDoCalendario; naLista: boolean }) {
-  const planejar = useAdicionarComoPlanejado();
-  if (naLista) return <span className="inline-flex min-h-8 shrink-0 items-center text-[12px] font-semibold text-texto-suave">Na Lista</span>;
-  return (
-    <span className="flex shrink-0 flex-col gap-1">
-      <button
-        type="button"
-        aria-label={`Pôr ${tituloDaMidia(episodio)} em Planejado`}
-        disabled={planejar.isPending}
-        onClick={() => planejar.mutate({ idMidia: episodio.id_midia, tipo: episodio.tipo })}
-        className="inline-flex min-h-8 w-fit items-center gap-1 rounded-md border border-borda px-2 text-[12px] font-bold text-texto-forte outline-none hover:bg-superficie-alta focus-visible:ring-2 focus-visible:ring-marca-texto disabled:opacity-60"
-      >
-        <Icone nome="mais" tamanho={12} /> Planejado
-      </button>
-      {planejar.isError ? (
-        <span role="alert" className="text-[12px] text-erro">
-          {mensagemDeErro(planejar.error)}
-        </span>
-      ) : null}
     </span>
   );
 }
