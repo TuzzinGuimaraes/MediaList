@@ -23,6 +23,8 @@ import { Lista } from '../paginas/lista/Lista';
 import { validarBuscaLista } from '../paginas/lista/preferencias';
 import { NaoEncontrada } from '../paginas/NaoEncontrada';
 import { Registro } from '../paginas/Registro';
+import { validarBuscaTemporada } from '../paginas/temporada/busca';
+import { Temporada } from '../paginas/temporada/Temporada';
 import { ehAdmin, type EstadoSessao } from '../sessao/sessao';
 
 export type ContextoRotas = {
@@ -38,7 +40,7 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     /** A tela abre com um destaque no topo: a nav fica translúcida sobre ele. */
     destaque?: boolean;
-    /** A tela tem o próprio seletor de Tipo (a Minha Lista): a nav esconde a pílula do catálogo. */
+    /** A tela tem o próprio seletor de Tipo (a Minha Lista) ou é de um Tipo só (a Temporada): a nav esconde a pílula do catálogo. */
     semRecorte?: boolean;
   }
 }
@@ -107,6 +109,14 @@ const lista = createRoute({
   component: Lista,
 });
 
+const temporada = createRoute({
+  getParentRoute: () => autenticado,
+  path: '/temporada',
+  staticData: { semRecorte: true },
+  validateSearch: validarBuscaTemporada,
+  component: Temporada,
+});
+
 const midia = createRoute({
   getParentRoute: () => autenticado,
   path: '/midia/$id',
@@ -132,7 +142,7 @@ const admin = createRoute({
 const arvore = raiz.addChildren([
   entrar,
   registro,
-  autenticado.addChildren([inicio, explorar, lista, midia, noticias, noticia, perfil, admin]),
+  autenticado.addChildren([inicio, explorar, temporada, lista, midia, noticias, noticia, perfil, admin]),
 ]);
 
 export function criarRoteador(contexto: ContextoRotas, historico?: RouterHistory) {

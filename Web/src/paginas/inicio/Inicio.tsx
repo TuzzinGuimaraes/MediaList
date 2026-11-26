@@ -17,6 +17,7 @@ import { Fileira } from '../../componentes/Fileira';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { useLista, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
+import { LinkTemporada } from '../temporada/Temporada';
 import { CartaoAssistirAgora, CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
 import { useCarrosseisPorGenero, useCarrossel, usePopulares } from './consultas';
 import { Destaques } from './Destaques';
@@ -125,6 +126,11 @@ export function Inicio() {
       <Destaques midias={emAlta.data.slice(0, MAX_DESTAQUES)} itens={itens} posicaoTop={posicaoTop} abrirEditor={abrirEditor} />
       {/* Sobe um pouco sobre o destaque: a primeira fileira fica visível sem rolar num 1080p. */}
       <div className="relative z-10 -mt-4 flex flex-col gap-9">
+        {tipos.includes('anime') ? (
+          <div className="px-6 lg:px-12">
+            <LinkTemporada />
+          </div>
+        ) : null}
         <Fileira titulo={textos.paraAssistirAgora} vazia={!faixa.length}>
           {faixa.map((c) => (
             <CartaoAssistirAgora

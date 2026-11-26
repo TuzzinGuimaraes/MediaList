@@ -8,7 +8,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { diaIso } from '@dominio/datas';
-import { aplicarProgresso, type DadosItem, mudancaDeStatus, totalDoItem } from '@dominio/itemLista';
+import type { TipoMidia } from '@dominio/estadoConsumo';
+import { aplicarProgresso, type DadosItem, mudancaDeStatus, rotuloInicial, totalDoItem } from '@dominio/itemLista';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
@@ -61,6 +62,20 @@ export function useSalvarItem() {
       idLista
         ? exigir(api.PUT('/api/lista/{lista_id}', { params: { path: { lista_id: idLista } }, body: dados }))
         : exigir(api.POST('/api/lista/adicionar', { body: { id_midia: idMidia, ...dados } })),
+    onSuccess: (_r, { idMidia }) => invalidar(idMidia),
+  });
+}
+
+/**
+ * Põe a Mídia na Lista em Planejado num toque (o botão da Temporada): POST /lista/adicionar só
+ * com o rótulo de Planejado do Tipo; o resto do Item fica com os padrões do servidor.
+ */
+export function usePorEmPlanejado() {
+  const api = useApi();
+  const invalidar = useInvalidarLista();
+  return useMutation({
+    mutationFn: ({ idMidia, tipo }: { idMidia: string; tipo: TipoMidia }) =>
+      exigir(api.POST('/api/lista/adicionar', { body: { id_midia: idMidia, status_consumo: rotuloInicial(tipo) } })),
     onSuccess: (_r, { idMidia }) => invalidar(idMidia),
   });
 }
