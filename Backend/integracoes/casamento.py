@@ -55,9 +55,8 @@ class Casados:
 def casar(plataforma: str, itens: list[ItemDeOrigem], fonte: Fonte) -> Casados:
     """A fonte primeiro; o vínculo da plataforma só nos itens que ela não casa."""
     desfechos = list(fonte(itens))
-    if len(desfechos) != len(itens):
-        raise ValueError('a fonte deve devolver um desfecho por item')
-    sem_fonte = [i for i, d in zip(itens, desfechos) if d is NAO_CASA]
+    # strict: a fonte devolve um desfecho por item.
+    sem_fonte = [i for i, d in zip(itens, desfechos, strict=True) if d is NAO_CASA]
     pela_reserva = iter(_pelo_vinculo(plataforma, sem_fonte))
 
     pela_fonte, pelo_vinculo, nao_encontrados, em_ordem = [], [], [], []
