@@ -1,7 +1,8 @@
 // Temporada de anime (ticket 49 da revisão): os animes de uma Temporada, abrindo na atual, com
 // atalhos para a anterior e a próxima, o seletor (da mais antiga do Catálogo até 4 à frente) e a
 // ordem, tudo na URL (busca.ts). Séries na grade principal; filmes e especiais numa seção no fim.
-// O cartão põe o anime em Planejado num toque, e a estreia chega como push.
+// O cartão põe o anime em Planejado num toque, e a estreia chega como push. Na Temporada atual,
+// a aba Calendário (na URL) mostra os episódios dos próximos 7 dias (Calendario.tsx).
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -40,6 +41,8 @@ import { Opcoes } from '../../componentes/Opcoes';
 import { TituloSecao } from '../../componentes/Fileira';
 import { useApi } from '../../sessao/SessaoContext';
 import { useLista, useAdicionarComoPlanejado } from '../lista/api';
+import type { AbaTemporada } from './busca';
+import { Calendario } from './Calendario';
 
 const rota = getRouteApi('/autenticado/temporada');
 
@@ -49,7 +52,7 @@ const chave = (t: TemporadaDoDominio) => `${t.estacao}-${t.ano}`;
 const ORDENS = ORDENS_DA_TEMPORADA.map((o) => ({ valor: o.valor, nome: o.rotulo }));
 
 /** Todos os animes da Temporada, página por página, na ordem pedida. */
-function useAnimesDaTemporada(temporada: TemporadaDoDominio, ordem: OrdemTemporada) {
+function useAnimesDaTemporada(temporada: TemporadaDoDominio, ordem: OrdemTemporada, ligada: boolean) {
   const api = useApi();
   return useQuery({
     queryKey: chaves.midias.temporada(temporada.estacao, temporada.ano, ordem),
@@ -58,6 +61,7 @@ function useAnimesDaTemporada(temporada: TemporadaDoDominio, ordem: OrdemTempora
         exigir(api.GET('/api/midias', { params: { query: consultaDaTemporada(temporada, ordem, pagina) } })),
       ),
     placeholderData: keepPreviousData,
+    enabled: ligada,
   });
 }
 
@@ -68,6 +72,8 @@ export function Temporada() {
   const atual = temporadaDe(agora);
   const temporada = temporadaDosParametros(busca, agora);
   const ordem = busca.ordem ?? ORDEM_PADRAO_DA_TEMPORADA;
+  const naAtual = mesmaTemporada(temporada, atual);
+  const aba: AbaTemporada = naAtual && busca.aba === 'calendario' ? 'calendario' : 'animes';
 
   const api = useApi();
   const facetas = useQuery({
@@ -75,7 +81,7 @@ export function Temporada() {
     queryFn: () => exigir(api.GET('/api/midias/facetas', { params: { query: { tipo: 'anime' } } })),
     staleTime: Infinity,
   });
-  const animes = useAnimesDaTemporada(temporada, ordem);
+  const animes = useAnimesDaTemporada(temporada, ordem, aba === 'animes');
   const lista = useLista();
 
   const seletor = temporadasDoSeletor(facetas.data?.temporada_mais_antiga ?? null, agora);
@@ -88,6 +94,7 @@ export function Temporada() {
     void navigate({ search: { ...(mesmaTemporada(t, atual) ? {} : { estacao: t.estacao, ano: t.ano }), ...(busca.ordem ? { ordem: busca.ordem } : {}) } });
   const mudarOrdem = (nova: OrdemTemporada) =>
     void navigate({ search: { ...busca, ordem: nova === ORDEM_PADRAO_DA_TEMPORADA ? undefined : nova }, replace: true });
+  const mudarAba = (nova: AbaTemporada) => void navigate({ search: { ...busca, aba: nova === 'calendario' ? nova : undefined } });
 
   const rotulo = rotuloDaTemporada(temporada);
   const naLista = new Set((lista.data ?? []).map((i) => i.id_midia));
@@ -110,7 +117,7 @@ export function Temporada() {
             >
               Anterior
             </Botao>
-            <Botao variante="secundario" disabled={mesmaTemporada(temporada, atual)} onClick={() => irPara(atual)}>
+            <Botao variante="secundario" disabled={naAtual} onClick={() => irPara(atual)}>
               Atual
             </Botao>
             <Botao
@@ -141,9 +148,40 @@ export function Temporada() {
             </label>
           </div>
         </div>
-        <Opcoes rotulo="Ordem" semLegenda opcoes={ORDENS} valor={ordem} mudar={mudarOrdem} />
+        {naAtual ? <Abas aba={aba} mudar={mudarAba} /> : null}
+        {aba === 'animes' ? <Opcoes rotulo="Ordem" semLegenda opcoes={ORDENS} valor={ordem} mudar={mudarOrdem} /> : null}
       </header>
-      <Conteudo animes={animes} rotulo={rotulo} naLista={naLista} />
+      <div role={naAtual ? 'tabpanel' : undefined} id={`painel-${aba}`} aria-labelledby={naAtual ? `aba-${aba}` : undefined}>
+        {aba === 'calendario' ? <Calendario /> : <Conteudo animes={animes} rotulo={rotulo} naLista={naLista} />}
+      </div>
+    </div>
+  );
+}
+
+const ABAS: { valor: AbaTemporada; nome: string }[] = [
+  { valor: 'animes', nome: 'Animes' },
+  { valor: 'calendario', nome: 'Calendário' },
+];
+
+function Abas({ aba, mudar }: { aba: AbaTemporada; mudar(aba: AbaTemporada): void }) {
+  return (
+    <div role="tablist" aria-label="Temporada" className="flex gap-1 border-b border-borda">
+      {ABAS.map((a) => (
+        <button
+          key={a.valor}
+          type="button"
+          role="tab"
+          id={`aba-${a.valor}`}
+          aria-selected={aba === a.valor}
+          aria-controls={`painel-${a.valor}`}
+          onClick={() => mudar(a.valor)}
+          className={`-mb-px min-h-11 border-b-2 px-4 text-[16px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-marca-texto ${
+            aba === a.valor ? 'border-marca text-texto-forte' : 'border-transparent text-texto-suave hover:text-texto-forte'
+          }`}
+        >
+          {a.nome}
+        </button>
+      ))}
     </div>
   );
 }
