@@ -27,13 +27,19 @@ class ConsultaNotificacoes(BaseModel):
 
 
 class Notificacao(BaseModel):
-    """A entrega de uma Atualização de mídia a um Usuário."""
+    """A entrega de uma Atualização de mídia ou de uma Notícia a um Usuário.
 
-    id_midia: Id
-    tipo_midia: TipoDeMidia
-    tipo: str = Field(description='Tipo da Atualização: episodio, capitulo, dlc...')
+    `origem` diz qual das duas: na de Notícia, `id_noticia` vem preenchido e os campos da
+    Mídia vêm nulos; na de Atualização, o contrário.
+    """
+
+    origem: Literal['atualizacao', 'noticia']
+    id_noticia: Id | None = Field(description='A Notícia, na de origem `noticia`')
+    id_midia: Id | None = Field(description='A Mídia, na de origem `atualizacao`')
+    tipo_midia: TipoDeMidia | None
+    tipo: str = Field(description='Tipo da Atualização (episodio, capitulo, dlc...) ou `noticia`')
     titulo: str
-    midia_nome: str = Field(description='Título em português, ou o original')
+    midia_nome: str | None = Field(description='Título em português, ou o original; nulo na de Notícia')
     mensagem: str
     lida: bool
     data_criacao: Instante

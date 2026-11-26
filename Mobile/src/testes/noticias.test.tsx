@@ -5,7 +5,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import type { Noticia, Notificacao } from '../api/tipos';
 import { pagina } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
-import { aba, entrarPeloLogin as entrar } from './sessao';
+import { aba, abrirLogado, entrarPeloLogin as entrar } from './sessao';
 
 afterEach(() => focusManager.setFocused(undefined));
 
@@ -33,6 +33,8 @@ function badgeNoticias() {
 /** Item de GET /notificacoes. */
 function notificacao(titulo: string, lida: boolean): Notificacao {
   return {
+    origem: 'atualizacao',
+    id_noticia: null,
     id_midia: 'ANI-0001',
     tipo_midia: 'anime',
     tipo: 'episodio',
@@ -45,6 +47,33 @@ function notificacao(titulo: string, lida: boolean): Notificacao {
 }
 
 const semNoticias = pagina<Noticia>([]);
+
+const inverno: Noticia = {
+  id_noticia: 'NOT-0001',
+  titulo: 'Temporada de inverno',
+  conteudo: 'Os lançamentos de janeiro.',
+  autor: 'Admin',
+  categoria: 'geral',
+  tags: ['anime'],
+  imagem_url: null,
+  data_publicacao: '2026-11-06T10:00:00Z',
+};
+
+/** Item de GET /notificacoes que entrega uma Notícia. */
+function notificacaoDeNoticia(lida: boolean): Notificacao {
+  return {
+    origem: 'noticia',
+    id_noticia: inverno.id_noticia,
+    id_midia: null,
+    tipo_midia: null,
+    tipo: 'noticia',
+    titulo: inverno.titulo,
+    midia_nome: null,
+    mensagem: 'Nova Notícia no MediaList',
+    lida,
+    data_criacao: '2026-11-06T11:00:00Z',
+  };
+}
 
 describe('badge de Notificações não lidas', () => {
   it('a aba Notícias mostra quantas Notificações estão não lidas', async () => {
@@ -161,5 +190,43 @@ describe('Notícias', () => {
     expect(await screen.findByText('Temporada de inverno')).toBeOnTheScreen();
     expect(screen.getByText('Por Admin · 06/11/2026')).toBeOnTheScreen();
     expect(badgeNoticias()).toBeNull();
+  });
+});
+
+describe('Notificação de Notícia', () => {
+  it('conta no badge, aparece como Notícia e tocar abre a Notícia', async () => {
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /noticias?por_pagina=20': semNoticias,
+      'GET /notificacoes': {
+        status: 200,
+        corpo: { notificacoes: [notificacaoDeNoticia(false), notificacao('Episódio 11', true)] },
+      },
+      'GET /noticias/NOT-0001': { status: 200, corpo: inverno },
+    });
+    const app = await entrar();
+    await waitFor(() => expect(badgeNoticias()).toBe(1));
+
+    await fireEvent.press(await aba('Notícias'));
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Notificações' }));
+    const item = await screen.findByRole('link', { name: /Temporada de inverno/ });
+    expect(within(item).getByText('Notícia · 06/11/2026')).toBeOnTheScreen();
+    await fireEvent.press(item);
+
+    expect(await screen.findByText('Os lançamentos de janeiro.')).toBeOnTheScreen();
+    expect(app.getPathname()).toBe('/noticia/NOT-0001');
+  });
+
+  it('a Notícia que não existe mostra o erro', async () => {
+    simularFetch({
+      'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
+      'GET /noticias/NOT-0009': {
+        status: 404,
+        corpo: { erro: 'Notícia não encontrada', codigo: 'nao_encontrado' },
+      },
+    });
+    await abrirLogado('/noticia/NOT-0009');
+
+    expect(await screen.findByText('Notícia não encontrada')).toBeOnTheScreen();
   });
 });

@@ -2,7 +2,9 @@
 Atualizações de mídia e as Notificações que as entregam aos Usuários.
 
 Publicar uma Atualização grava, na mesma transação, a Notificação de cada
-Usuário que tem a Mídia na Lista pessoal num Rótulo ativo ou como favorita.
+Usuário que tem a Mídia na Lista pessoal num Rótulo ativo ou como favorita. A
+Notificação de Notícia nasce em `routes/noticias.py`; a lista e o "marcar todas"
+daqui cobrem as duas.
 """
 from __future__ import annotations
 
@@ -62,22 +64,28 @@ class Atualizacoes:
             )
 
     def notificacoes(self, id_usuario: str, apenas_nao_lidas: bool = False) -> list[dict[str, Any]]:
-        """As 50 Notificações mais recentes do Usuário.
+        """As 50 Notificações mais recentes do Usuário, de Atualização e de Notícia.
 
-        Título, tipo e Mídia vêm da Atualização que a Notificação entrega.
+        Título, tipo e Mídia vêm da Atualização que a Notificação entrega; na de Notícia, o
+        título é o da Notícia e os campos da Mídia saem nulos.
         """
         return consultar(
             """
-            SELECT a.id_midia, t.nome_tipo AS tipo_midia,
-                   a.tipo_atualizacao AS tipo, a.titulo,
+            SELECT CASE WHEN n.id_noticia IS NULL THEN 'atualizacao' ELSE 'noticia' END AS origem,
+                   n.id_noticia, a.id_midia, t.nome_tipo AS tipo_midia,
+                   COALESCE(a.tipo_atualizacao, 'noticia') AS tipo,
+                   COALESCE(a.titulo, nt.titulo) AS titulo,
                    COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS midia_nome,
-                   'Novidade em ' || t.nome_tipo || ' da sua lista: '
-                       || COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS mensagem,
+                   CASE WHEN n.id_noticia IS NULL
+                        THEN 'Novidade em ' || t.nome_tipo || ' da sua lista: '
+                             || COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original)
+                        ELSE 'Nova Notícia no MediaList' END AS mensagem,
                    n.lida, n.data_criacao
             FROM notificacoes n
-            JOIN atualizacoes_midia a ON a.id_atualizacao = n.id_atualizacao
-            JOIN midias m ON m.id_midia = a.id_midia
-            JOIN tipo_midia t ON t.id_tipo = m.id_tipo
+            LEFT JOIN noticias nt ON nt.id_noticia = n.id_noticia
+            LEFT JOIN atualizacoes_midia a ON a.id_atualizacao = n.id_atualizacao
+            LEFT JOIN midias m ON m.id_midia = a.id_midia
+            LEFT JOIN tipo_midia t ON t.id_tipo = m.id_tipo
             WHERE n.id_usuario = %s AND (NOT %s OR NOT n.lida)
             ORDER BY n.data_criacao DESC, n.id_notificacao DESC
             LIMIT 50

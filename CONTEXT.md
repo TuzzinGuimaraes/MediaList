@@ -320,5 +320,6 @@ da obra. Diferente da **Notícia**, que é geral.
 
 ## Notificação
 
-A entrega de uma **Atualização de mídia** a um Usuário, com a marca de lida ou não lida. A
-Atualização é o fato; a Notificação é o fato chegando a alguém.
+A entrega de uma **Atualização de mídia** ou de uma **Notícia** a um Usuário, com a marca de
+lida ou não lida. A Atualização (ou a Notícia) é o fato; a Notificação é o fato chegando a
+alguém. A de Notícia vai a todo Usuário ativo, menos o autor.

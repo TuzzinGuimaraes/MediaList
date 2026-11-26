@@ -45,6 +45,8 @@ export const chaves = {
   noticias: {
     todas: ['noticias'] as const,
     pagina: (pagina: number) => ['noticias', pagina] as const,
+    /** Uma Notícia, aberta pelo link da Notificação. */
+    uma: (id: string) => ['noticias', 'uma', id] as const,
   },
   moderacao: {
     usuarios: ['moderacao', 'usuarios'] as const,

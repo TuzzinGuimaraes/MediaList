@@ -15,6 +15,7 @@ import { Admin } from '../paginas/admin/Admin';
 import { Explorar } from '../paginas/explorar/Explorar';
 import { validarBuscaExplorar } from '../paginas/explorar/busca';
 import { Inicio } from '../paginas/inicio/Inicio';
+import { NoticiaUnica } from '../paginas/NoticiaUnica';
 import { Noticias } from '../paginas/Noticias';
 import { Perfil } from '../paginas/Perfil';
 import { Detalhe } from '../paginas/detalhe/Detalhe';
@@ -114,6 +115,7 @@ const midia = createRoute({
 });
 
 const noticias = createRoute({ getParentRoute: () => autenticado, path: '/noticias', component: Noticias });
+const noticia = createRoute({ getParentRoute: () => autenticado, path: '/noticias/$id', component: NoticiaUnica });
 const perfil = createRoute({ getParentRoute: () => autenticado, path: '/perfil', component: Perfil });
 
 /** Guarda de admin (`nivel_acesso`, ADR 0012): quem não é admin volta ao Início. */
@@ -130,7 +132,7 @@ const admin = createRoute({
 const arvore = raiz.addChildren([
   entrar,
   registro,
-  autenticado.addChildren([inicio, explorar, lista, midia, noticias, perfil, admin]),
+  autenticado.addChildren([inicio, explorar, lista, midia, noticias, noticia, perfil, admin]),
 ]);
 
 export function criarRoteador(contexto: ContextoRotas, historico?: RouterHistory) {

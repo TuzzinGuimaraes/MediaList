@@ -2,6 +2,8 @@
 Blueprint de Preferências: `usuarios.preferencias` (jsonb).
 
 O jsonb guarda só o que o Usuário mudou; a leitura completa com os padrões.
+`avisar_noticias` ("Avisar sobre Notícias", push no app) é coluna própria de `usuarios`, porque o
+envio filtra por ela; sai e entra junto com as outras.
 """
 import json as jsonlib
 
@@ -26,12 +28,14 @@ PADROES = {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
 )
 def obter_preferencias():
     """Preferências do Usuário, com os padrões no que ele não mudou."""
-    linha = consultar_um('SELECT preferencias FROM usuarios WHERE id_usuario = %s', (get_jwt_identity(),))
+    linha = consultar_um(
+        'SELECT preferencias, avisar_noticias FROM usuarios WHERE id_usuario = %s', (get_jwt_identity(),),
+    )
     if linha is None:
         return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Usuário não encontrado')
 
     salvas = {campo: valor for campo, valor in linha['preferencias'].items() if campo in PADROES}
-    return {'preferencias': {**PADROES, **salvas}}
+    return {'preferencias': {**PADROES, **salvas, 'avisar_noticias': linha['avisar_noticias']}}
 
 
 @preferencias_bp.route('', methods=['PUT'])
@@ -45,8 +49,13 @@ def atualizar_preferencias(json: CorpoPreferencias):
     if not mudancas:
         return resposta_erro(400, CodigoErro.DADOS_INVALIDOS, 'Nenhuma preferência válida fornecida')
 
+    avisar_noticias = mudancas.pop('avisar_noticias', None)
     linhas = executar(
-        'UPDATE usuarios SET preferencias = preferencias || %s::jsonb WHERE id_usuario = %s',
-        (jsonlib.dumps(mudancas), get_jwt_identity()),
+        """
+        UPDATE usuarios
+        SET preferencias = preferencias || %s::jsonb, avisar_noticias = COALESCE(%s::boolean, avisar_noticias)
+        WHERE id_usuario = %s
+        """,
+        (jsonlib.dumps(mudancas), avisar_noticias, get_jwt_identity()),
     )
     return {'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': linhas > 0}

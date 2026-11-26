@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { type Cliente, type Tokens, criarCliente } from '../api/cliente';
 import { urlApi } from '../api/config';
 import type { DadosRegistro, RespostaLogin, RespostaRefresh, UsuarioSessao } from '../api/tipos';
+import { removerAparelho } from '../avisos/push';
 import { apagarSessao, carregarSessao, guardarSessao, guardarTokens, guardarTrocaDeSenha } from './armazenamento';
 
 type EstadoSessao =
@@ -120,6 +121,8 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sair = useCallback(async () => {
+    // O token de push sai antes do logout, que é quando a sessão ainda autentica o DELETE.
+    await removerAparelho(cliente);
     // Revoga no servidor o refresh deste aparelho. Falhar aqui (sem rede, token já
     // inválido) não impede sair: os tokens locais são apagados de qualquer jeito.
     await cliente

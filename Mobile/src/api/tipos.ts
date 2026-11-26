@@ -104,6 +104,16 @@ export type PaginaNoticias = Esquemas['PaginaNoticia'];
 export type Notificacao = Esquemas['Notificacao'];
 export type RespostaNotificacoes = Esquemas['RespostaNotificacoes'];
 
+// Preferências e push
+
+/** GET /preferencias: as completas, com os padrões no que o Usuário não mudou. */
+export type RespostaPreferencias = Esquemas['RespostaPreferencias'];
+/** PUT /preferencias: só os campos enviados mudam. */
+export type CorpoPreferencias = Esquemas['CorpoPreferencias'];
+/** PUT /push/token: o token Expo do aparelho. */
+export type CorpoRegistrarToken = Esquemas['CorpoRegistrarToken'];
+export type CorpoRemoverToken = Esquemas['CorpoRemoverToken'];
+
 // `Pagina<T>` escrito à mão tem de continuar igual às instâncias geradas: se o envelope mudar
 // no Backend, o tsc para aqui.
 type Igual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;

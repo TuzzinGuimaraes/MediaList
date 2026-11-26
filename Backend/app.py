@@ -32,6 +32,7 @@ from routes import (
     moderacao_bp,
     noticias_bp,
     preferencias_bp,
+    push_bp,
     usuario_bp,
     utils_bp,
 )
@@ -122,6 +123,7 @@ app.register_blueprint(avaliacoes_bp, url_prefix='/api/avaliacoes')
 app.register_blueprint(noticias_bp, url_prefix='/api/noticias')
 app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')
 app.register_blueprint(preferencias_bp, url_prefix='/api/preferencias')
+app.register_blueprint(push_bp, url_prefix='/api/push')
 app.register_blueprint(integracoes_bp, url_prefix='/api/integracoes')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(utils_bp, url_prefix='/api')

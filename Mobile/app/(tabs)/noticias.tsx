@@ -1,10 +1,11 @@
-import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
-import type { Noticia, Notificacao } from '@/api/tipos';
+import type { Notificacao } from '@/api/tipos';
 import { Botao } from '@/components/Botao';
+import { CartaoNoticia } from '@/components/CartaoNoticia';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { useAtualizar } from '@/components/useAtualizar';
 import { formatarData } from '@dominio/datas';
@@ -15,42 +16,6 @@ const subAbas: { chave: SubAba; titulo: string }[] = [
   { chave: 'noticias', titulo: 'Notícias' },
   { chave: 'notificacoes', titulo: 'Notificações' },
 ];
-
-function CartaoNoticia({ noticia }: { noticia: Noticia }) {
-  return (
-    <View className="overflow-hidden rounded-md bg-superficie">
-      {noticia.imagem_url ? (
-        <Image
-          source={noticia.imagem_url}
-          style={{ width: '100%', height: 160 }}
-          contentFit="cover"
-          cachePolicy="disk"
-          accessibilityIgnoresInvertColors
-        />
-      ) : null}
-      <View className="gap-2 p-4">
-        <Text className="text-titulo-secao font-bold text-texto-forte">{noticia.titulo}</Text>
-        <Text className="text-legenda text-texto-suave">
-          Por {noticia.autor} · {formatarData(noticia.data_publicacao)}
-        </Text>
-        {noticia.conteudo ? <Text className="text-corpo text-texto">{noticia.conteudo}</Text> : null}
-        {noticia.tags?.length ? (
-          <View className="flex-row flex-wrap gap-1.5">
-            {noticia.tags.map((tag) => (
-              <Text
-                key={tag}
-                maxFontSizeMultiplier={1.3}
-                className="rounded bg-superficie-alta px-2 py-0.5 text-legenda text-marca-texto"
-              >
-                {tag}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-      </View>
-    </View>
-  );
-}
 
 function ListaNoticias() {
   const noticias = useNoticias();
@@ -72,10 +37,11 @@ function ListaNoticias() {
 }
 
 function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
-  return (
-    <View
-      className={`flex-row gap-3 rounded-md p-4 ${notificacao.lida ? 'bg-superficie' : 'bg-superficie-alta'}`}
-    >
+  const router = useRouter();
+  const { id_noticia } = notificacao;
+  const classe = `flex-row gap-3 rounded-md p-4 ${notificacao.lida ? 'bg-superficie' : 'bg-superficie-alta'}`;
+  const conteudo = (
+    <>
       {notificacao.lida ? (
         <View className="mt-[6px] h-2 w-2" />
       ) : (
@@ -83,13 +49,28 @@ function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
       )}
       <View className="flex-1 gap-1">
         <Text className="text-legenda text-texto-suave">
-          {notificacao.midia_nome} · {formatarData(notificacao.data_criacao)}
+          {notificacao.origem === 'noticia' ? 'Notícia' : notificacao.midia_nome} ·{' '}
+          {formatarData(notificacao.data_criacao)}
         </Text>
         <Text className="text-corpo font-semibold text-texto-forte">{notificacao.titulo}</Text>
         <Text className="text-corpo text-texto">{notificacao.mensagem}</Text>
       </View>
-    </View>
+    </>
   );
+  // A de Notícia abre a Notícia; a de Atualização é só texto.
+  if (id_noticia) {
+    return (
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`${notificacao.titulo}, Notícia${notificacao.lida ? '' : ', não lida'}`}
+        onPress={() => router.push({ pathname: '/noticia/[id]', params: { id: id_noticia } })}
+        className={classe}
+      >
+        {conteudo}
+      </Pressable>
+    );
+  }
+  return <View className={classe}>{conteudo}</View>;
 }
 
 function ListaNotificacoes() {
@@ -105,7 +86,7 @@ function ListaNotificacoes() {
     <FlatList
       data={notificacoes.data}
       testID="lista-notificacoes"
-      keyExtractor={(n, i) => `${n.id_midia}-${n.data_criacao}-${i}`}
+      keyExtractor={(n, i) => `${n.id_noticia ?? n.id_midia}-${n.data_criacao}-${i}`}
       renderItem={({ item }) => <ItemNotificacao notificacao={item} />}
       contentContainerClassName="flex-grow gap-3 p-4"
       refreshControl={<RefreshControl {...atualizar} />}
