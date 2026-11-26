@@ -242,6 +242,18 @@ Progresso = total** (ADR-0009): atingir o total leva o Item a **Concluído**, ba
 devolve o Item a **Em progresso**, e escolher Concluído leva o Progresso ao total. Sem total
 conhecido, o Estado de consumo não segue o Progresso.
 
+## Episódios lançados
+
+Quantos episódios de um anime em exibição já foram ao ar. Quem grava é a leitura de hora em hora
+da **Atualização de mídia** de episódio novo; enquanto ela não leu o anime, o número é
+desconhecido (não zero). Não é o total da Mídia: o total é quantos episódios o anime terá.
+
+## Atraso
+
+Quantos episódios o Usuário está atrás num anime em exibição: **Episódios lançados − Progresso**
+de um Item em **Em progresso**. Zero é **em dia** (Progresso à frente dos Episódios lançados
+também conta como em dia). Sem Episódios lançados conhecidos, não há Atraso.
+
 ## Recontagem
 
 Quantas vezes o Usuário reconsumiu uma Mídia depois de concluí-la pela primeira vez —

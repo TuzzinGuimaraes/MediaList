@@ -341,7 +341,7 @@ describe('Detalhe: episódio novo', () => {
 
     const destaque = await screen.findByRole('region', { name: 'Episódio novo' });
     expect(within(destaque).getByText('Você parou no ep. 5; saiu o 7')).toBeInTheDocument();
-    expect(within(destaque).getByText('2 episódios atrás')).toBeInTheDocument();
+    expect(within(destaque).queryByText('2 episódios atrás')).not.toBeInTheDocument();
 
     await user.click(within(destaque).getByRole('button', { name: '+1 episódio' }));
 
@@ -367,6 +367,21 @@ describe('Detalhe: episódio novo', () => {
     await user.click(within(destaque).getByRole('button', { name: '+1 episódio' }));
 
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Episódio novo' })).not.toBeInTheDocument());
+  });
+
+  it('+1 recusado: o destaque volta e mostra a falha', async () => {
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ lista: [atrasado as Esquemas['ItemLista']] }),
+        'PUT /lista/LST-1/progresso': () => erro(400, 'dados_invalidos', 'Progresso inválido.'),
+      },
+    });
+
+    const destaque = await screen.findByRole('region', { name: 'Episódio novo' });
+    await user.click(within(destaque).getByRole('button', { name: '+1 episódio' }));
+
+    expect(await within(destaque).findByRole('alert')).toHaveTextContent('Progresso inválido.');
+    expect(within(destaque).getByText('Você parou no ep. 5; saiu o 7')).toBeInTheDocument();
   });
 
   it('sem atraso (em dia, ou fora de Em progresso), sem destaque', async () => {

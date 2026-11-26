@@ -1,5 +1,5 @@
 // Os cards do Início montados da Mídia e do Item, com as regras do dominio/.
-import type { CartaoAssistirAgora as CartaoDaFaixa } from '@dominio/assistirAgora';
+import type { CartaoDaFaixa } from '@dominio/assistirAgora';
 import { nomeDoProgresso, passoDeProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { type ComSituacao, emLancamento } from '@dominio/situacao';
 
@@ -78,11 +78,11 @@ export function CartaoContinuar({ item, posicaoTop }: Contexto & { item: ItemLis
  * o +1 (fora do link do card: botão não vai dentro de link).
  */
 export function CartaoAssistirAgora({
-  cartao: { item, atraso, texto },
+  cartao: { item, atrasado, texto },
   posicaoTop,
   maisUm,
-}: Omit<Contexto, 'item'> & { cartao: CartaoDaFaixa<ItemLista>; maisUm: (item: ItemLista, progresso: number) => void }) {
-  const proximo = atraso > 0 ? passoDeProgresso(item, 1) : null;
+}: Omit<Contexto, 'item'> & { cartao: CartaoDaFaixa<ItemLista>; maisUm: (item: ItemLista) => void }) {
+  const podeSomar = atrasado && passoDeProgresso(item, 1) !== null;
   const dados = cartaoDaMidia(item, item);
   return (
     <div className="relative shrink-0">
@@ -90,18 +90,18 @@ export function CartaoAssistirAgora({
         {...dados}
         bannerUrl={item.banner_url}
         notas={<NotasCartao midia={item} />}
-        status={<Selo texto={texto} tom={atraso > 0 ? 'marca' : undefined} />}
+        status={<Selo texto={texto} tom={atrasado ? 'marca' : undefined} />}
         detalhe={`${nomeDoProgresso(item.tipo)}: ${textoDoProgresso(item)}`}
         posicaoTop={posicaoTop}
         largura={LARGURA_C}
         altura={ALTURA_C}
       />
-      {proximo !== null ? (
+      {podeSomar ? (
         <Botao
           variante="secundario"
           aria-label={`+1 episódio: ${dados.titulo}`}
           className="absolute bottom-2.5 right-2.5 bg-superficie/90"
-          onClick={() => maisUm(item, proximo)}
+          onClick={() => maisUm(item)}
         >
           +1
         </Botao>

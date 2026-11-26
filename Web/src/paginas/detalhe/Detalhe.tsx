@@ -5,6 +5,7 @@
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { mensagemDeErro } from '../../api/erros';
 import type { Esquemas } from '../../api/tipos';
 import { Botao } from '../../componentes/Botao';
 import { Carregando, ErroTela } from '../../componentes/Estados';
@@ -13,7 +14,7 @@ import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
 import { Selo, SeloStatus } from '../../componentes/Selo';
-import { destaqueDoItem, textoDoAtraso } from '@dominio/assistirAgora';
+import { destaqueDoItem } from '@dominio/assistirAgora';
 import { formatarData } from '@dominio/datas';
 import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
 import { passoDeProgresso, proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
@@ -152,25 +153,33 @@ function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
 function EpisodioNovo({ item }: { item: Item | null | undefined }) {
   const progresso = useMudarProgresso();
   const destaque = destaqueDoItem(item);
-  if (!item || !destaque) return null;
-  const proximo = passoDeProgresso(item, 1);
+  const falha = progresso.isError ? (
+    <p role="alert" className="text-[14px] text-erro">
+      {mensagemDeErro(progresso.error)}
+    </p>
+  ) : null;
+  if (!item || !destaque) return falha;
+  const podeSomar = passoDeProgresso(item, 1) !== null;
   return (
     <section
       aria-labelledby="titulo-episodio-novo"
-      className="flex items-center justify-between gap-4 rounded-lg border border-marca/40 bg-superficie px-4 py-3"
+      className="flex flex-col gap-2 rounded-lg border border-marca/40 bg-superficie px-4 py-3"
     >
-      <div className="flex flex-col gap-0.5">
-        <h2 id="titulo-episodio-novo" className="sr-only">
-          Episódio novo
-        </h2>
+      <h2 id="titulo-episodio-novo" className="sr-only">
+        Episódio novo
+      </h2>
+      <div className="flex items-center justify-between gap-4">
         <p className="font-semibold text-texto-forte">{destaque.texto}</p>
-        <p className="text-[13px] text-texto-suave">{textoDoAtraso(destaque.atraso)}</p>
+        {podeSomar ? (
+          <Botao
+            aria-label="+1 episódio"
+            onClick={() => progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: 1 })}
+          >
+            +1
+          </Botao>
+        ) : null}
       </div>
-      {proximo !== null ? (
-        <Botao aria-label="+1 episódio" onClick={() => progresso.mutate({ item, progresso: proximo })}>
-          +1
-        </Botao>
-      ) : null}
+      {falha}
     </section>
   );
 }

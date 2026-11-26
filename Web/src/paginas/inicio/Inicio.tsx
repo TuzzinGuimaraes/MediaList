@@ -8,6 +8,7 @@ import { paraAssistirAgora } from '@dominio/assistirAgora';
 import { estadoDe } from '@dominio/estadoConsumo';
 import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
 
+import { mensagemDeErro } from '../../api/erros';
 import type { Esquemas } from '../../api/tipos';
 import { useCatalogo } from '../../catalogo/CatalogoContext';
 import { useEmAlta } from '../../catalogo/consultas';
@@ -130,10 +131,15 @@ export function Inicio() {
               key={c.item.id_lista}
               cartao={c}
               posicaoTop={posicaoTop(c.item.id_midia)}
-              maisUm={(item, novo) => progresso.mutate({ item, progresso: novo })}
+              maisUm={(item) => progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: 1 })}
             />
           ))}
         </Fileira>
+        {progresso.isError ? (
+          <p role="alert" className="-mt-6 px-6 text-[14px] text-erro lg:px-12">
+            {mensagemDeErro(progresso.error)}
+          </p>
+        ) : null}
         <Fileira titulo={textos.continuar} vazia={!continuar.length}>
           {continuar.map((i) => (
             <CartaoContinuar key={i.id_lista} item={i} posicaoTop={posicaoTop(i.id_midia)} />
