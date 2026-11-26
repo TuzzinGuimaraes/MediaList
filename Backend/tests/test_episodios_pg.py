@@ -14,7 +14,7 @@ import avisos_push
 import banco
 from repositories import Catalogo
 
-from .fontes_falsas import AiringFalso, exibicao
+from .fontes_falsas import AiringFalso, anime_anilist, exibicao
 from .helpers import FakeExpo
 
 TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
@@ -375,3 +375,107 @@ def test_episodio_invalido_da_fonte_e_ignorado(pg, rodar, expo):
 
     assert codigo == 0
     assert [a['dados_adicionais']['episodio'] for a in _atualizacoes(id_midia)] == [2, 3]
+
+
+
+# Situação do anime sem episódio na janela: o que terminou não fica "em exibição".
+
+def _situacao(id_midia):
+    return banco.consultar_um(
+        'SELECT status_anime, numero_episodios, episodios_lancados, proximo_episodio_em FROM animes '
+        'WHERE id_midia = %s', (id_midia,),
+    )
+
+
+def _em_exibicao(pg, proximo_em=None, **campos):
+    id_midia, anilist_id = _anime(pg, status_anime='em_exibicao', **campos)
+    banco.executar('UPDATE animes SET proximo_episodio_em = %s WHERE id_midia = %s', (proximo_em, id_midia))
+    return id_midia, anilist_id
+
+
+def test_anime_em_exibicao_sem_proximo_que_terminou_fica_finalizado_sem_atualizacao(pg, rodar, expo):
+    id_midia, anilist_id = _em_exibicao(pg, numero_episodios=None)
+    assistindo = _usuario(pg)
+    _na_lista(assistindo, id_midia, 'assistindo')
+    fonte = AiringFalso(animes={anilist_id: anime_anilist(anilist_id, status='FINISHED', episodios=12)})
+
+    codigo = rodar(fonte)
+
+    assert codigo == 0
+    assert _situacao(id_midia) == {'status_anime': 'finalizado', 'numero_episodios': 12,
+                                   'episodios_lancados': 12, 'proximo_episodio_em': None}
+    assert _atualizacoes(id_midia) == []
+    assert _mensagens(expo, assistindo) == []
+    consulta = fonte.consultas_animes[0]
+    assert 'media(id_in: $ids' in consulta
+    assert 'nextAiringEpisode { episode airingAt }' in consulta
+
+
+def test_anime_com_proximo_vencido_ha_mais_de_um_dia_e_atualizado(pg, rodar, expo):
+    id_midia, anilist_id = _em_exibicao(pg, proximo_em=AGORA - timedelta(days=2), numero_episodios=24)
+    proximo = AGORA + timedelta(days=5)
+    fonte = AiringFalso(animes={anilist_id: anime_anilist(anilist_id, episodios=24, proximo=(8, _epoch(proximo)))})
+
+    rodar(fonte)
+
+    assert _situacao(id_midia) == {'status_anime': 'em_exibicao', 'numero_episodios': 24,
+                                   'episodios_lancados': 7, 'proximo_episodio_em': proximo}
+
+
+def test_so_consulta_em_exibicao_com_proximo_nulo_ou_vencido_ha_mais_de_um_dia(pg, rodar, expo):
+    nulo = _em_exibicao(pg)
+    vencido = _em_exibicao(pg, proximo_em=AGORA - timedelta(days=1, minutes=1))
+    recente = _em_exibicao(pg, proximo_em=AGORA - timedelta(hours=12))
+    futuro = _em_exibicao(pg, proximo_em=AGORA + timedelta(days=1))
+    finalizado = _anime(pg, status_anime='finalizado')
+    fonte = AiringFalso(animes={a: anime_anilist(a, status='FINISHED') for _, a in
+                                (nulo, vencido, recente, futuro, finalizado)})
+
+    rodar(fonte)
+
+    consultados = {i for p in fonte.pedidos_animes for i in p['ids']}
+    assert {nulo[1], vencido[1]} <= consultados
+    assert not consultados & {recente[1], futuro[1], finalizado[1]}
+    assert _situacao(nulo[0])['status_anime'] == 'finalizado'
+    assert _situacao(recente[0])['status_anime'] == 'em_exibicao'
+
+
+def test_anime_com_episodio_na_janela_nao_e_consultado_de_novo(pg, rodar, expo):
+    id_midia, anilist_id = _em_exibicao(pg)
+    fonte = AiringFalso([exibicao(anilist_id, 3, _ha(30))],
+                        animes={anilist_id: anime_anilist(anilist_id, status='FINISHED')})
+
+    rodar(fonte)
+
+    assert anilist_id not in {i for p in fonte.pedidos_animes for i in p['ids']}
+    assert _situacao(id_midia)['status_anime'] == 'em_exibicao'
+
+
+def test_situacao_le_no_maximo_duas_paginas(pg, rodar, expo, monkeypatch):
+    from importacao import episodios
+
+    monkeypatch.setattr(episodios, 'POR_PAGINA', 2)
+    animes = [_em_exibicao(pg) for _ in range(5)]
+    fonte = AiringFalso(animes={a: anime_anilist(a, status='FINISHED') for _, a in animes})
+
+    rodar(fonte)
+
+    assert [p['page'] for p in fonte.pedidos_animes] == [1, 2]
+    assert {p['perPage'] for p in fonte.pedidos_animes} == {2}
+    [ids] = {tuple(sorted(p['ids'])) for p in fonte.pedidos_animes}
+    assert len(ids) == 4
+    finalizados = [i for i, _ in animes if _situacao(i)['status_anime'] == 'finalizado']
+    assert len(finalizados) == 4
+
+
+def test_falha_do_anilist_na_situacao_sai_com_1_mas_a_janela_fica_gravada(pg, rodar, expo):
+    id_midia, anilist_id = _anime(pg)
+    parado, _ = _em_exibicao(pg)
+    fonte = AiringFalso([exibicao(anilist_id, 2, _ha(30))], falha_animes=True)
+
+    codigo = rodar(fonte)
+
+    assert codigo == 1
+    assert len(_atualizacoes(id_midia)) == 1
+    assert _cursor() == AGORA
+    assert _situacao(parado)['status_anime'] == 'em_exibicao'

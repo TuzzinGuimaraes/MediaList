@@ -183,22 +183,52 @@ def exibicao(media_id, episodio, exibido_em, *, status='RELEASING', episodios=12
     }
 
 
+def anime_anilist(media_id, *, status='RELEASING', episodios=12, proximo=None):
+    """Um item de `Page.media` como o AniList devolve à consulta de Situação (`proximo` em epoch)."""
+    proximo_episodio = None if proximo is None else {'episode': proximo[0], 'airingAt': proximo[1]}
+    return {'id': media_id, 'status': status, 'episodes': episodios, 'nextAiringEpisode': proximo_episodio}
+
+
 class AiringFalso:
-    """`Page.airingSchedules` do AniList em memória para o job de episódios: `post` como o GraphQL.
+    """`Page.airingSchedules` e `Page.media(id_in:)` do AniList em memória para o job de episódios.
 
     `exibicoes` são itens de `exibicao(...)`. Entende `airingAt_greater`/`airingAt_lesser` (estritos,
-    como no AniList), o `sort` por tempo e a paginação. `falha_em`: chamadas (contadas de 1) que
-    respondem 502. Guarda as variáveis em `pedidos` e a consulta em `consultas`.
+    como no AniList), o `sort` por tempo e a paginação. `falha_em`: chamadas ao `airingSchedule`
+    (contadas de 1) que respondem 502. Guarda as variáveis em `pedidos` e a consulta em `consultas`.
+
+    `animes` ({anilist_id: anime_anilist(...)}) responde a consulta de Situação (variável `ids`),
+    paginada como o AniList; os ids sem anime não voltam. Essas chamadas ficam em `pedidos_animes`.
     """
 
-    def __init__(self, exibicoes=(), falha_em=()):
+    def __init__(self, exibicoes=(), falha_em=(), animes=None, falha_animes=False):
         self.exibicoes = list(exibicoes)
         self.falha_em = set(falha_em)
+        self.animes = dict(animes or {})
+        self.falha_animes = falha_animes
         self.pedidos: list[dict] = []
         self.consultas: list[str] = []
+        self.pedidos_animes: list[dict] = []
+        self.consultas_animes: list[str] = []
+
+    def _animes(self, variaveis, consulta):
+        self.pedidos_animes.append(variaveis)
+        self.consultas_animes.append(consulta)
+        if len(self.pedidos_animes) > 50:
+            raise KeyboardInterrupt('AniList chamado demais: laço sem limite')
+        if self.falha_animes:
+            return Resposta(502, {'errors': [{'message': 'Bad Gateway', 'status': 502}], 'data': None})
+        itens = [self.animes[i] for i in sorted(variaveis['ids']) if i in self.animes]
+        pagina, por_pagina = variaveis['page'], variaveis['perPage']
+        inicio = (pagina - 1) * por_pagina
+        return Resposta(200, {'data': {'Page': {
+            'pageInfo': {'hasNextPage': inicio + por_pagina < len(itens)},
+            'media': itens[inicio:inicio + por_pagina],
+        }}})
 
     def post(self, url, json=None, timeout=None):
         variaveis = dict(json['variables'])
+        if 'ids' in variaveis:
+            return self._animes(variaveis, json['query'])
         self.pedidos.append(variaveis)
         self.consultas.append(json['query'])
         if len(self.pedidos) > 200:

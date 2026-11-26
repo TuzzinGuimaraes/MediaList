@@ -25,6 +25,7 @@ import os
 import re
 import time
 from collections import Counter
+from dataclasses import dataclass
 
 import requests
 
@@ -112,13 +113,13 @@ def _tickets(resposta, tamanho) -> list | None:
     return tickets
 
 
-def enviar(mensagens: list[dict], cliente, *, prazo: float = PRAZO_SEGUNDOS) -> list[str]:
-    """Envia em lotes dentro do prazo; devolve os tokens com `DeviceNotRegistered`."""
-    fim = relogio() + prazo
+def enviar(mensagens: list[dict], cliente, *, prazo: float | None = PRAZO_SEGUNDOS) -> list[str]:
+    """Envia em lotes dentro do prazo (`None`: sem prazo); devolve os tokens com `DeviceNotRegistered`."""
+    fim = None if prazo is None else relogio() + prazo
     invalidos: list[str] = []
     erros: Counter[str] = Counter()
     for inicio in range(0, len(mensagens), LOTE):
-        sobra = fim - relogio()
+        sobra = TIMEOUT_SEGUNDOS if fim is None else fim - relogio()
         if sobra <= 0:
             logger.warning('Push: prazo de %ss acabou; %d mensagens sem envio', prazo, len(mensagens) - inicio)
             break
@@ -145,7 +146,7 @@ def enviar(mensagens: list[dict], cliente, *, prazo: float = PRAZO_SEGUNDOS) -> 
     return invalidos
 
 
-def _enviar_e_limpar(mensagens: list[dict], prazo: float) -> None:
+def _enviar_e_limpar(mensagens: list[dict], prazo: float | None) -> None:
     """Envia pelo cliente do Expo e apaga os tokens com `DeviceNotRegistered`."""
     cliente = criar_cliente()
     try:
@@ -177,6 +178,16 @@ def avisar_noticia(id_noticia, titulo: str, conteudo: str, id_autor) -> None:
 #: Até quantos episódios numa execução o Usuário recebe um push por episódio; acima, um só.
 EPISODIOS_SEPARADOS = 2
 
+
+@dataclass(frozen=True)
+class EpisodioNovo:
+    """Um episódio publicado pelo job, como chega a um Usuário: o anime (Mídia e nome) e o número."""
+
+    id_midia: str
+    anime: str
+    episodio: int
+
+
 TOKENS_DE_EPISODIO = """
     SELECT pt.id_usuario, pt.token
     FROM push_tokens pt
@@ -189,20 +200,20 @@ def _mensagem(token, titulo, corpo, data) -> dict:
     return {'to': token, 'title': titulo, 'body': corpo, 'data': data, 'sound': 'default', 'channelId': 'default'}
 
 
-def mensagens_dos_episodios(tokens: list[str], episodios: list[dict]) -> list[dict]:
+def mensagens_dos_episodios(tokens: list[str], episodios: list[EpisodioNovo]) -> list[dict]:
     """As mensagens de um Usuário: até 2 episódios, uma por episódio (abre o anime); 3 ou mais,
-    uma só (abre as Notificações). `episodios`: `{'id_midia', 'anime', 'episodio'}`."""
+    uma só (abre as Notificações)."""
     if len(episodios) > EPISODIOS_SEPARADOS:
         corpo = f'{len(episodios)} episódios novos na sua lista'
         return [_mensagem(token, 'Episódios novos', corpo, {'tipo': 'episodios'}) for token in tokens]
     return [
-        _mensagem(token, e['anime'], f"Episódio {e['episodio']} foi ao ar",
-                  {'tipo': 'episodio', 'id_midia': str(e['id_midia'])})
+        _mensagem(token, e.anime, f'Episódio {e.episodio} foi ao ar',
+                  {'tipo': 'episodio', 'id_midia': str(e.id_midia)})
         for e in episodios for token in tokens
     ]
 
 
-def avisar_episodios(por_usuario: dict[str, list[dict]]) -> None:
+def avisar_episodios(por_usuario: dict[str, list[EpisodioNovo]]) -> None:
     """Push dos episódios novos de uma execução do job, para quem tem `avisar_episodios`.
 
     No job não há o prazo da Vercel: o envio só tem o timeout por requisição, sem retries.
@@ -220,6 +231,6 @@ def avisar_episodios(por_usuario: dict[str, list[dict]]) -> None:
             for mensagem in mensagens_dos_episodios(tokens[str(id_usuario)], episodios)
         ]
         if mensagens:
-            _enviar_e_limpar(mensagens, float('inf'))
+            _enviar_e_limpar(mensagens, None)
     except Exception:
         logger.warning('Push dos episódios falhou', exc_info=True)
