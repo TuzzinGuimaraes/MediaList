@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Esquemas } from '../api/tipos';
@@ -17,6 +17,7 @@ function noticia(n: number, extra: Partial<Noticia> = {}): Noticia {
     data_publicacao: '2026-11-05T10:00:00',
     imagem_url: null,
     tags: [],
+    data_edicao: null,
     ...extra,
   };
 }
@@ -163,5 +164,173 @@ describe('Notícias', () => {
     });
 
     expect(await screen.findByText('Notícia não encontrada')).toBeInTheDocument();
+  });
+
+  describe('editar e excluir (admin)', () => {
+    it('Usuário comum não vê Editar nem Excluir na lista', async () => {
+      await abrirLogado('/noticias', { rotas: { 'GET /noticias': { status: 200, corpo: pagina([noticia(1)]) } } });
+      const artigo = await screen.findByRole('article', { name: 'Notícia 1' });
+      expect(within(artigo).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+      expect(within(artigo).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    });
+
+    it('Usuário comum não vê os botões na página da Notícia', async () => {
+      await abrirLogado('/noticias/NOT-7', { rotas: { 'GET /noticias/NOT-7': { status: 200, corpo: noticia(7) } } });
+      const artigo = await screen.findByRole('article', { name: 'Notícia 7' });
+      expect(within(artigo).queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+      expect(within(artigo).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    });
+
+    it('admin vê Editar e Excluir em cada card', async () => {
+      await abrirLogado('/noticias', {
+        usuario: adminBia,
+        rotas: { 'GET /noticias': { status: 200, corpo: pagina([noticia(1), noticia(2)]) } },
+      });
+      for (const nome of ['Notícia 1', 'Notícia 2']) {
+        const artigo = await screen.findByRole('article', { name: nome });
+        expect(within(artigo).getByRole('button', { name: 'Editar' })).toBeInTheDocument();
+        expect(within(artigo).getByRole('button', { name: 'Excluir' })).toBeInTheDocument();
+      }
+    });
+
+    it('editar abre o formulário preenchido, salva com PUT e mostra "editada em"', async () => {
+      let atual = noticia(7, {
+        titulo: 'Antes',
+        conteudo: 'Texto antes',
+        categoria: 'evento',
+        tags: ['anime', 'ação'],
+        imagem_url: 'https://exemplo.test/a.png',
+      });
+      const { user, api } = await abrirLogado('/noticias/NOT-7', {
+        usuario: adminBia,
+        rotas: {
+          'GET /noticias/NOT-7': () => ({ status: 200, corpo: atual }),
+          'PUT /noticias/NOT-7': (req) => {
+            atual = { ...atual, ...req.corpo, data_edicao: '2026-11-08T12:00:00Z' };
+            return { status: 200, corpo: { mensagem: 'Notícia atualizada!' } };
+          },
+        },
+      });
+
+      const artigo = await screen.findByRole('article', { name: 'Antes' });
+      expect(artigo).not.toHaveTextContent('editada em');
+      await user.click(within(artigo).getByRole('button', { name: 'Editar' }));
+      const dialogo = screen.getByRole('dialog', { name: 'Editar notícia' });
+      expect(within(dialogo).getByLabelText('Título')).toHaveValue('Antes');
+      expect(within(dialogo).getByLabelText('Conteúdo')).toHaveValue('Texto antes');
+      expect(within(dialogo).getByRole('radio', { name: 'Evento' })).toBeChecked();
+      expect(within(dialogo).getByLabelText('Tags')).toHaveValue('anime, ação');
+      expect(within(dialogo).getByLabelText('URL da imagem')).toHaveValue('https://exemplo.test/a.png');
+
+      await user.clear(within(dialogo).getByLabelText('Título'));
+      await user.type(within(dialogo).getByLabelText('Título'), 'Depois');
+      await user.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
+
+      const editada = await screen.findByRole('article', { name: 'Depois' });
+      expect(editada).toHaveTextContent('editada em 08/11/2026');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(api.para('POST /noticias')).toHaveLength(0);
+      expect(api.para('PUT /noticias/NOT-7')[0]?.corpo).toEqual({
+        titulo: 'Depois',
+        conteudo: 'Texto antes',
+        categoria: 'evento',
+        tags: ['anime', 'ação'],
+        imagem_url: 'https://exemplo.test/a.png',
+      });
+    });
+
+    it('editar pela lista também vem preenchido', async () => {
+      const { user } = await abrirLogado('/noticias', {
+        usuario: adminBia,
+        rotas: { 'GET /noticias': { status: 200, corpo: pagina([noticia(1), noticia(2)]) } },
+      });
+
+      const artigo = await screen.findByRole('article', { name: 'Notícia 2' });
+      await user.click(within(artigo).getByRole('button', { name: 'Editar' }));
+
+      const dialogo = screen.getByRole('dialog', { name: 'Editar notícia' });
+      expect(within(dialogo).getByLabelText('Título')).toHaveValue('Notícia 2');
+      expect(within(dialogo).getByLabelText('Conteúdo')).toHaveValue('Conteúdo 2');
+    });
+
+    it('excluir pede confirmação e cancelar não apaga', async () => {
+      const { user, api } = await abrirLogado('/noticias/NOT-7', {
+        usuario: adminBia,
+        rotas: { 'GET /noticias/NOT-7': { status: 200, corpo: noticia(7) } },
+      });
+
+      const artigo = await screen.findByRole('article', { name: 'Notícia 7' });
+      await user.click(within(artigo).getByRole('button', { name: 'Excluir' }));
+      const dialogo = screen.getByRole('dialog', { name: 'Excluir notícia' });
+      expect(dialogo).toHaveTextContent('Excluir a Notícia “Notícia 7”?');
+      await user.click(within(dialogo).getByRole('button', { name: 'Cancelar' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(api.para('DELETE /noticias/NOT-7')).toHaveLength(0);
+      expect(screen.getByRole('article', { name: 'Notícia 7' })).toBeInTheDocument();
+    });
+
+    it('depois de excluir pela página da Notícia, volta para a lista', async () => {
+      let restantes = [noticia(7), noticia(8)];
+      const { user, api, historico } = await abrirLogado('/noticias/NOT-7', {
+        usuario: adminBia,
+        rotas: {
+          'GET /noticias/NOT-7': { status: 200, corpo: noticia(7) },
+          'GET /noticias': () => ({ status: 200, corpo: pagina(restantes) }),
+          'DELETE /noticias/NOT-7': () => {
+            restantes = restantes.filter((n) => n.id_noticia !== 'NOT-7');
+            return { status: 200, corpo: { mensagem: 'Notícia excluída!' } };
+          },
+        },
+      });
+
+      const artigo = await screen.findByRole('article', { name: 'Notícia 7' });
+      await user.click(within(artigo).getByRole('button', { name: 'Excluir' }));
+      await user.click(within(screen.getByRole('dialog', { name: 'Excluir notícia' })).getByRole('button', { name: 'Excluir' }));
+
+      expect(await screen.findByRole('article', { name: 'Notícia 8' })).toBeInTheDocument();
+      expect(historico.location.pathname).toBe('/noticias');
+      expect(screen.queryByRole('article', { name: 'Notícia 7' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(api.para('DELETE /noticias/NOT-7')).toHaveLength(1);
+      expect(api.para('GET /noticias/NOT-7')).toHaveLength(1);
+    });
+
+    it('excluir pela lista tira o card', async () => {
+      let restantes = [noticia(1), noticia(2)];
+      const { user } = await abrirLogado('/noticias', {
+        usuario: adminBia,
+        rotas: {
+          'GET /noticias': () => ({ status: 200, corpo: pagina(restantes) }),
+          'DELETE /noticias/NOT-1': () => {
+            restantes = restantes.filter((n) => n.id_noticia !== 'NOT-1');
+            return { status: 200, corpo: { mensagem: 'Notícia excluída!' } };
+          },
+        },
+      });
+
+      const artigo = await screen.findByRole('article', { name: 'Notícia 1' });
+      await user.click(within(artigo).getByRole('button', { name: 'Excluir' }));
+      await user.click(within(screen.getByRole('dialog', { name: 'Excluir notícia' })).getByRole('button', { name: 'Excluir' }));
+
+      await waitFor(() => expect(screen.queryByRole('article', { name: 'Notícia 1' })).not.toBeInTheDocument());
+      expect(screen.getByRole('article', { name: 'Notícia 2' })).toBeInTheDocument();
+    });
+
+    it('erro ao excluir fica na confirmação', async () => {
+      const { user } = await abrirLogado('/noticias/NOT-7', {
+        usuario: adminBia,
+        rotas: {
+          'GET /noticias/NOT-7': { status: 200, corpo: noticia(7) },
+          'DELETE /noticias/NOT-7': { status: 404, corpo: { erro: 'Notícia não encontrada', codigo: 'nao_encontrado' } },
+        },
+      });
+
+      await user.click(within(await screen.findByRole('article', { name: 'Notícia 7' })).getByRole('button', { name: 'Excluir' }));
+      const dialogo = screen.getByRole('dialog', { name: 'Excluir notícia' });
+      await user.click(within(dialogo).getByRole('button', { name: 'Excluir' }));
+
+      expect(await within(dialogo).findByRole('alert')).toHaveTextContent('Notícia não encontrada');
+    });
   });
 });
