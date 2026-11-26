@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 import type { Midia } from '../api/tipos';
 import { formatarData } from '@dominio/datas';
 import { nomeDoTipo } from '@dominio/estadoConsumo';
-import { tituloDaMidia } from '@dominio/midia';
+import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
 import { seloDeEstimativa } from '@dominio/temporada';
 import { rotaDaMidia } from '../rotas';
 import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
@@ -15,7 +15,6 @@ import { Toque } from './Toque';
 
 const textos = {
   estreia: (data: string) => `Estreia ${data}`,
-  episodios: (n: number) => `${n} ${n === 1 ? 'episódio' : 'episódios'}`,
 };
 
 type Props = {
@@ -67,7 +66,7 @@ export function CartaoTemporada({ anime, naLista }: Props) {
             </Text>
           ) : null}
           {anime.numero_episodios ? (
-            <Text className="text-legenda text-texto-suave">{textos.episodios(anime.numero_episodios)}</Text>
+            <Text className="text-legenda text-texto-suave">{contagemDeEpisodios(anime.numero_episodios)}</Text>
           ) : null}
         </View>
       </Toque>

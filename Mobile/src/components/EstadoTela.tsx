@@ -5,12 +5,12 @@ import { useCores } from '../tema/TemaContext';
 import { Botao } from './Botao';
 import { Monograma } from './Monograma';
 
-export function Carregando() {
+export function Carregando({ rotulo = 'Carregando' }: { rotulo?: string }) {
   const cores = useCores();
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-fundo">
       <Monograma tamanho={44} rotulo={null} />
-      <ActivityIndicator color={cores['marca-texto']} accessibilityLabel="Carregando" />
+      <ActivityIndicator color={cores['marca-texto']} accessibilityLabel={rotulo} />
     </View>
   );
 }

@@ -1,6 +1,8 @@
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import type { EpisodioDoCalendario, MidiaDetalhe, RespostaFacetas } from '../api/tipos';
+import type { EpisodioDoCalendario } from '@dominio/tipos';
+
+import type { MidiaDetalhe, RespostaFacetas } from '../api/tipos';
 import { pagina } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { anime, itemDaLista } from './midias';
@@ -99,6 +101,8 @@ describe('Calendário', () => {
     await abrirCalendario();
 
     const hoje = await screen.findByLabelText('Hoje');
+    expect(within(hoje).getByText('2 episódios')).toBeOnTheScreen();
+    expect(within(screen.getByLabelText('Amanhã')).getByText('1 episódio')).toBeOnTheScreen();
     expect(within(hoje).getByRole('link', { name: 'Sousou no Frieren, Ep. 8, 10:00, foi ao ar' })).toBeOnTheScreen();
     expect(within(hoje).getByRole('link', { name: 'Dandadan, Ep. 9, 19:30' })).toBeOnTheScreen();
     expect(within(screen.getByLabelText('Amanhã')).getByRole('link', { name: 'Kaiju nº 8, Ep. 5, 22:30' })).toBeOnTheScreen();
@@ -106,6 +110,23 @@ describe('Calendário', () => {
       expect(within(screen.getByLabelText(dia)).getByText('Nenhum episódio neste dia.')).toBeOnTheScreen();
     }
     expect(screen.getByText(/horário da exibição no Japão/)).toBeOnTheScreen();
+  });
+
+  it('enquanto busca, diz que está buscando o Calendário', async () => {
+    simularFetch(rotas({ [CALENDARIO]: () => new Promise(() => {}) }));
+    await abrirCalendario();
+
+    expect(await screen.findByLabelText('Buscando o Calendário')).toBeOnTheScreen();
+  });
+
+  it('sem nenhum episódio na semana, um aviso só, sem a faixa e sem "Ver todos os animes"', async () => {
+    simularFetch(rotas({ [CALENDARIO]: { status: 200, corpo: { episodios: [] } } }));
+    await abrirCalendario();
+
+    expect(await screen.findByText('Nenhum episódio nos próximos 7 dias.')).toBeOnTheScreen();
+    expect(screen.queryByRole('tab', { name: /^Hoje/ })).not.toBeOnTheScreen();
+    expect(screen.queryByText('Nenhum episódio neste dia.')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Ver todos os animes' })).not.toBeOnTheScreen();
   });
 
   it('"Só os meus" começa ligado para quem tem um dos seus em exibição: Pausado fica fora, favorito entra', async () => {
@@ -208,7 +229,7 @@ describe('Calendário', () => {
     await abrirCalendario();
 
     expect(await screen.findByRole('tab', { name: 'Hoje, 26/11, 2 episódios', selected: true })).toBeOnTheScreen();
-    expect(screen.getByRole('tab', { name: 'Quarta-feira, 02/12, 0 episódios' })).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Quarta-feira, 02/12, nenhum episódio' })).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('tab', { name: 'Amanhã, 27/11, 1 episódio' }));
 

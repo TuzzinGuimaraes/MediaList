@@ -8,7 +8,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 
 import { formatarData } from '@dominio/datas';
-import { tituloDaMidia } from '@dominio/midia';
+import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
 import {
   animesDaTemporada,
   anterior,
@@ -236,7 +236,7 @@ function CartaoDaTemporada({ anime, naLista }: { anime: Midia; naLista: boolean 
       <NotasCartao midia={anime} />
       {estreia ? <Linha>Estreia {estreia}</Linha> : null}
       {anime.estudio ? <Linha>{anime.estudio}</Linha> : null}
-      {episodios ? <Linha>{episodios === 1 ? '1 episódio' : `${episodios} episódios`}</Linha> : null}
+      {episodios ? <Linha>{contagemDeEpisodios(episodios)}</Linha> : null}
       {selo ? (
         <span title={selo.explicacao} className="w-fit cursor-help text-[12px] italic text-texto-suave underline decoration-dotted">
           {selo.texto}

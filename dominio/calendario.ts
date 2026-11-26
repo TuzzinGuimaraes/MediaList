@@ -7,8 +7,6 @@ import { estadoDe } from './estadoConsumo';
 import { contagemDeEpisodios } from './midia';
 import type { EpisodioDoCalendario, ItemLista } from './tipos';
 
-export type { EpisodioDoCalendario };
-
 /** O que o filtro lê de um Item de lista (GET /lista). */
 export type ItemDoCalendario = Pick<ItemLista, 'id_midia' | 'tipo' | 'status_consumo' | 'favorito'>;
 
@@ -74,7 +72,7 @@ export function vistaGuardada(valor: string | null | undefined): VistaDoCalendar
 export const TRAVA_DA_ROLAGEM_MS = 700;
 
 /** A nota discreta ao lado do horário. */
-export const NOTA_DO_HORARIO = 'horário da exibição no Japão';
+const NOTA_DO_HORARIO = 'horário da exibição no Japão';
 
 /** Sem o nome do fuso (o `Intl` do motor não sabe dizer), a nota diz só isto. */
 const SEM_NOME_DO_FUSO = 'Horários no seu fuso';

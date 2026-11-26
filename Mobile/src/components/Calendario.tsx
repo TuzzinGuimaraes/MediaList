@@ -17,21 +17,29 @@ import {
 
 import { useCalendario } from '../api/calendario';
 import { useLista } from '../api/lista';
-import type { EpisodioDoCalendario } from '../api/tipos';
 import { useAgora } from '../calendario/agora';
 import { fusoDoAparelho } from '../calendario/fuso';
-import { type VistaDoCalendario, useVistaDoCalendario } from '../calendario/vista';
+import { useVistaDoCalendario } from '../calendario/vista';
 import {
   aSeguirDosSeus,
   type ASeguir,
+  avisoDaSemanaVazia,
+  avisoDoDiaVazio,
   type DiaDoCalendario,
   diasDoCalendario,
   type EpisodioNoDia,
   marcadorDoAgora,
   notaDoHorario,
+  rotuloDoChip,
+  semanaVazia,
   soOsMeusPorPadrao,
+  TEXTOS_DO_CALENDARIO as textos,
+  TRAVA_DA_ROLAGEM_MS,
+  type VistaDoCalendario,
+  VISTAS_DO_CALENDARIO,
 } from '@dominio/calendario';
-import { tituloDaMidia } from '@dominio/midia';
+import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
+import type { EpisodioDoCalendario } from '@dominio/tipos';
 import { rotaDaMidia } from '../rotas';
 import { useCores } from '../tema/TemaContext';
 import { Botao } from './Botao';
@@ -40,26 +48,11 @@ import { Monograma } from './Monograma';
 import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
 import { Toque } from './Toque';
 
-const textos = {
-  aSeguir: 'A seguir dos seus',
-  soOsMeus: 'Só os meus',
-  visualizacao: 'Visualização',
-  vistas: { agenda: 'Agenda', semana: 'Semana' } satisfies Record<VistaDoCalendario, string>,
-  dias: 'Dias',
-  agora: 'agora',
-  foiAoAr: 'foi ao ar',
-  ep: (n: number) => `Ep. ${n}`,
-  chip: (d: Dia) => `${d.rotulo}, ${d.data}, ${d.total === 1 ? '1 episódio' : `${d.total} episódios`}`,
-  diaVazio: (soOsMeus: boolean) => (soOsMeus ? 'Nenhum dos seus sai neste dia.' : 'Nenhum episódio neste dia.'),
-  semanaVazia: 'Nenhum dos seus animes sai nos próximos 7 dias.',
-  verTodos: 'Ver todos os animes',
-};
+const ep = (n: number) => `Ep. ${n}`;
 
 type Dia = DiaDoCalendario<EpisodioDoCalendario>;
 type NoDia = EpisodioNoDia<EpisodioDoCalendario>;
 
-/** Depois de tocar num chip, a rolagem programada não mexe no chip ativo por este tempo. */
-const TRAVA_MS = 700;
 /** A coluna da Semana ocupa esta fração da largura: a do lado aparece, e convida a rolar. */
 const FRACAO_DA_COLUNA = 0.85;
 const VAO_DA_COLUNA = 12;
@@ -84,7 +77,7 @@ export function Calendario() {
   if (calendario.isError) return <Falha erro={calendario.error} tentarDeNovo={() => calendario.refetch()} />;
   // O padrão do filtro depende da Lista: sem ela, a tela não abre com o filtro errado.
   const itens = lista.data ?? (lista.isError ? [] : null);
-  if (!calendario.data || !itens) return <Carregando />;
+  if (!calendario.data || !itens) return <Carregando rotulo={textos.carregando} />;
 
   const episodios = calendario.data;
   // O padrão vale na abertura: pôr um anime em Planejado depois não liga o filtro sozinho.
@@ -93,14 +86,14 @@ export function Calendario() {
   const dias = diasDoCalendario(episodios, { agora, fuso, itens, soOsMeus });
   const aSeguir = aSeguirDosSeus(episodios, { agora, fuso, itens });
   const naLista = lista.data ? new Set(lista.data.map((i) => i.id_midia)) : new Set<string>();
-  const semanaVazia = soOsMeus && dias.every((d) => d.total === 0);
+  const vazia = semanaVazia(dias);
 
   const larguraDaColuna = Math.round(width * FRACAO_DA_COLUNA);
   const passoDaColuna = larguraDaColuna + VAO_DA_COLUNA;
 
   const ir = (i: number) => {
     setAtivo(i);
-    travadoAte.current = Date.now() + TRAVA_MS;
+    travadoAte.current = Date.now() + TRAVA_DA_ROLAGEM_MS;
     if (vista === 'agenda') {
       const y = topoDaAgenda.current + (topoDosDias.current[i] ?? 0) - alturaDaFaixa.current;
       pagina.current?.scrollTo({ y: Math.max(0, y), animated: true });
@@ -155,10 +148,10 @@ export function Calendario() {
         }}
         className="bg-fundo py-2"
       >
-        {semanaVazia ? null : <Faixa dias={dias} ativo={ativo} ir={ir} />}
+        {vazia ? null : <Faixa dias={dias} ativo={ativo} ir={ir} />}
       </View>
-      {semanaVazia ? (
-        <SemanaVazia verTodos={() => setEscolhido(false)} />
+      {vazia ? (
+        <SemanaVazia soOsMeus={soOsMeus} verTodos={() => setEscolhido(false)} />
       ) : vista === 'agenda' ? (
         <View
           onLayout={(e) => {
@@ -231,7 +224,7 @@ function BlocoASeguir({ aSeguir }: { aSeguir: ASeguir<EpisodioDoCalendario> }) {
   return (
     <Toque
       accessibilityRole="link"
-      accessibilityLabel={`${textos.aSeguir}: ${titulo}, ${textos.ep(episodio.episodio)}, ${dia}, ${hora}`}
+      accessibilityLabel={`${textos.aSeguir}: ${titulo}, ${ep(episodio.episodio)}, ${dia}, ${hora}`}
       onPress={() => router.push(rotaDaMidia(episodio.id_midia))}
       className="flex-row items-center gap-3 rounded-lg border border-marca/30 bg-marca/15 p-3"
     >
@@ -242,7 +235,7 @@ function BlocoASeguir({ aSeguir }: { aSeguir: ASeguir<EpisodioDoCalendario> }) {
           {titulo}
         </Text>
         <Text className="text-legenda text-texto">
-          {textos.ep(episodio.episodio)} · {dia}, {hora}
+          {ep(episodio.episodio)} · {dia}, {hora}
         </Text>
       </View>
     </Toque>
@@ -272,19 +265,19 @@ function Alternador({ vista, mudar }: { vista: VistaDoCalendario; mudar(vista: V
       accessibilityLabel={textos.visualizacao}
       className="flex-row rounded-lg border border-borda p-0.5"
     >
-      {(['agenda', 'semana'] as const).map((v) => {
-        const escolhida = v === vista;
+      {VISTAS_DO_CALENDARIO.map(({ valor, nome }) => {
+        const escolhida = valor === vista;
         return (
           <Pressable
-            key={v}
+            key={valor}
             accessibilityRole="radio"
-            accessibilityLabel={textos.vistas[v]}
+            accessibilityLabel={nome}
             accessibilityState={{ checked: escolhida }}
-            onPress={() => mudar(v)}
+            onPress={() => mudar(valor)}
             className={`min-h-[36px] justify-center rounded-md px-3 ${escolhida ? 'bg-superficie-alta' : ''}`}
           >
             <Text className={`text-legenda font-semibold ${escolhida ? 'text-texto-forte' : 'text-texto-suave'}`}>
-              {textos.vistas[v]}
+              {nome}
             </Text>
           </Pressable>
         );
@@ -318,7 +311,7 @@ function Faixa({ dias, ativo, ir }: { dias: Dia[]; ativo: number; ir(i: number):
           <Pressable
             key={dia.chave}
             accessibilityRole="tab"
-            accessibilityLabel={textos.chip(dia)}
+            accessibilityLabel={rotuloDoChip(dia)}
             accessibilityState={{ selected: selecionado }}
             onPress={() => ir(i)}
             onLayout={(e) => {
@@ -353,24 +346,25 @@ function Faixa({ dias, ativo, ir }: { dias: Dia[]; ativo: number; ir(i: number):
 function DiaVazio({ soOsMeus }: { soOsMeus: boolean }) {
   return (
     <Text className="rounded-md border border-dashed border-borda px-3 py-5 text-center text-legenda text-texto-suave">
-      {textos.diaVazio(soOsMeus)}
+      {avisoDoDiaVazio(soOsMeus)}
     </Text>
   );
 }
 
-function SemanaVazia({ verTodos }: { verTodos(): void }) {
+/** A semana inteira sem episódio: um aviso só; com o filtro ligado, o atalho para ver todos. */
+function SemanaVazia({ soOsMeus, verTodos }: { soOsMeus: boolean; verTodos(): void }) {
   return (
     <View className="items-center gap-3 px-6 py-16">
       <Monograma tamanho={44} rotulo={null} />
-      <Text className="text-center text-corpo text-texto-suave">{textos.semanaVazia}</Text>
-      <Botao titulo={textos.verTodos} variante="secundario" onPress={verTodos} />
+      <Text className="text-center text-corpo text-texto-suave">{avisoDaSemanaVazia(soOsMeus)}</Text>
+      {soOsMeus ? <Botao titulo={textos.verTodos} variante="secundario" onPress={verTodos} /> : null}
     </View>
   );
 }
 
 /** O link do episódio: o título, o "Ep. N", a hora e o "foi ao ar", para o leitor de tela. */
 function rotuloDoEpisodio({ episodio, hora, foiAoAr }: NoDia): string {
-  const rotulo = `${tituloDaMidia(episodio)}, ${textos.ep(episodio.episodio)}, ${hora}`;
+  const rotulo = `${tituloDaMidia(episodio)}, ${ep(episodio.episodio)}, ${hora}`;
   return foiAoAr ? `${rotulo}, ${textos.foiAoAr}` : rotulo;
 }
 
@@ -398,7 +392,7 @@ function DiaDaAgenda({
           {dia.rotulo}
         </Text>
         <Text className="text-legenda text-texto-suave">{dia.data}</Text>
-        <Text className="ml-auto text-legenda text-texto-suave">{dia.total || ''}</Text>
+        <Text className="ml-auto text-legenda text-texto-suave">{dia.total ? contagemDeEpisodios(dia.total) : ''}</Text>
       </View>
       {dia.total === 0 ? (
         <DiaVazio soOsMeus={soOsMeus} />
@@ -456,7 +450,7 @@ function LinhaDaAgenda({ noDia, naLista }: { noDia: NoDia; naLista: Set<string> 
               {titulo}
             </Text>
             <View className="flex-row items-center gap-2">
-              <Text className="text-legenda text-texto-suave">{textos.ep(episodio.episodio)}</Text>
+              <Text className="text-legenda text-texto-suave">{ep(episodio.episodio)}</Text>
               {foiAoAr ? (
                 <Text className="rounded-sm border border-borda px-1.5 text-legenda font-semibold text-texto-suave">
                   {textos.foiAoAr}
@@ -546,7 +540,7 @@ function BlocoDaSemana({ noDia, naLista }: { noDia: NoDia; naLista: Set<string> 
               {hora}
             </Text>
             <Text className="text-legenda text-texto-suave">
-              {textos.ep(episodio.episodio)}
+              {ep(episodio.episodio)}
               {foiAoAr ? ` · ${textos.foiAoAr}` : ''}
             </Text>
           </View>

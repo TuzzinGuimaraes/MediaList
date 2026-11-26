@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { consultaDoCalendario } from '@dominio/calendario';
 
+import type { EpisodioDoCalendario as Episodio } from '@dominio/tipos';
+
 import type { Esquemas } from '../../api/tipos';
 import { abrirLogado } from '../../testes/app';
 import { simularLargura } from '../../testes/ambiente';
 import type { Rotas } from '../../testes/fetchSimulado';
 import { item, midia } from '../inicio/dadosDeTeste';
-
-type Episodio = Esquemas['EpisodioDoCalendario'];
 
 // Sábado, 14/11/2026, 12:00 no fuso do teste: a Temporada atual é Outono 2026. As horas dos
 // episódios são montadas no mesmo fuso que o navegador (simulado) informa.
@@ -102,6 +102,22 @@ describe('Calendário da Temporada', () => {
 
     expect(within(screen.getByRole('region', { name: 'Amanhã' })).getByText('Nenhum episódio neste dia.')).toBeInTheDocument();
     expect(screen.getByText(/horário da exibição no Japão/)).toBeInTheDocument();
+  });
+
+  it('o marcador "agora" traz a hora local', async () => {
+    await abrirLogado('/temporada?aba=calendario', { rotas: rotas() });
+
+    const hoje = await screen.findByRole('region', { name: 'Hoje' });
+    expect(within(hoje).getByRole('listitem', { name: 'Agora, 12:00' })).toBeInTheDocument();
+  });
+
+  it('sem nenhum episódio na semana, um aviso só, sem a faixa e sem "Ver todos os animes"', async () => {
+    await abrirLogado('/temporada?aba=calendario', { rotas: rotas({ episodios: [] }) });
+
+    expect(await screen.findByText('Nenhum episódio nos próximos 7 dias.')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Dias' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Nenhum episódio neste dia.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ver todos os animes' })).not.toBeInTheDocument();
   });
 
   it('tocar no episódio abre o Detalhe', async () => {
@@ -197,7 +213,7 @@ describe('Calendário da Temporada', () => {
     const faixa = await screen.findByRole('navigation', { name: 'Dias' });
     expect(within(faixa).getByRole('button', { name: 'Hoje, 14/11, 2 episódios' })).toHaveAttribute('aria-current', 'true');
     expect(within(faixa).getByRole('button', { name: 'Amanhã, 15/11, nenhum episódio' })).toBeInTheDocument();
-    expect(within(faixa).getByRole('button', { name: 'Seg, 16/11, 1 episódio' })).toBeInTheDocument();
+    expect(within(faixa).getByRole('button', { name: 'Segunda-feira, 16/11, 1 episódio' })).toBeInTheDocument();
   });
 
   it('a Semana fica guardada no navegador; no desktop, sem a faixa e com a contagem na coluna', async () => {
