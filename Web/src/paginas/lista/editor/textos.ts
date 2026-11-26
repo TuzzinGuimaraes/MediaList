@@ -7,7 +7,6 @@ export const textos = {
   inicio: 'Início',
   conclusao: 'Conclusão',
   limpar: (campo: string) => `Limpar ${campo}`,
-  futuro: (campo: string) => `A data de ${campo} não pode ser no futuro.`,
   comentario: 'Comentário',
   favorito: 'Favorito',
   privado: 'Privado',

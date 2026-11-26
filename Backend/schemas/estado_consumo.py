@@ -102,6 +102,14 @@ def e_terminal(rotulo: str | None, tipo: str | None = None) -> bool:
     return estado_de(rotulo, tipo) in ESTADOS_TERMINAIS
 
 
+def rotulos_dos_estados(*estados: str) -> list[str]:
+    """Os Rótulos desses estados em todos os Tipos, sem repetir, em ordem alfabética."""
+    return sorted({
+        rotulo for rotulos in ROTULOS_POR_TIPO.values()
+        for estado, rotulo in rotulos.items() if estado in estados
+    })
+
+
 def erro_de_rotulo(rotulo: str | None, tipo: str | None) -> str | None:
     """Mensagem de erro quando o rótulo não vale para o tipo, senão None."""
     if rotulo is None or rotulo_valido(rotulo, tipo):

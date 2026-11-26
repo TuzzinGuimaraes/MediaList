@@ -8,19 +8,22 @@ from spectree import Response
 from banco import consultar, consultar_um
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
 from decorators import nivel_de_acesso
+from repositories.rotulos import sql_rotulos
+from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, PLATINADO
 from schemas.usuario import RespostaEstatisticas, RespostaPerfil, RespostaPermissoes
 
 usuario_bp = Blueprint('usuario', __name__)
 
 #: Antes era a procedure `obter_estatisticas_usuario`; agora é consulta da
-#: aplicação (ADR-0007). Concluídos e Em progresso pelos Rótulos de cada Tipo.
-ESTATISTICAS_POR_TIPO = """
+#: aplicação (ADR-0007). Concluídos (Concluído + Platinado) e Em progresso pelos
+#: Rótulos de cada Tipo, gerados do vocabulário de Estado de consumo.
+ESTATISTICAS_POR_TIPO = f"""
     SELECT
         tm.nome_tipo AS tipo,
         tm.label AS label,
         count(DISTINCT lu.id_midia) AS total_midias,
-        count(*) FILTER (WHERE lu.status_consumo IN ('completo', 'lido', 'zerado', 'platinado')) AS concluidos,
-        count(*) FILTER (WHERE lu.status_consumo IN ('assistindo', 'lendo', 'jogando')) AS em_andamento,
+        count(*) FILTER (WHERE lu.status_consumo IN ({sql_rotulos(CONCLUIDO, PLATINADO)})) AS concluidos,
+        count(*) FILTER (WHERE lu.status_consumo IN ({sql_rotulos(EM_PROGRESSO)})) AS em_andamento,
         COALESCE(sum(lu.progresso_atual), 0) AS progresso_total_consumido,
         round(avg(lu.nota_usuario), 2) AS nota_media,
         count(DISTINCT lu.id_midia) FILTER (WHERE lu.favorito) AS favoritos
