@@ -356,8 +356,9 @@ class Catalogo:
                 ) episodios
                 ORDER BY id_midia, episodio, exibido DESC
             ) e
-            JOIN animes a ON a.id_midia = e.id_midia
             JOIN midias m ON m.id_midia = e.id_midia
+            -- Só anime: a Atualização `episodio` de outro Tipo fica de fora.
+            WHERE EXISTS (SELECT 1 FROM animes a WHERE a.id_midia = e.id_midia)
             ORDER BY e.instante, m.id_midia, e.episodio
             """,
             {'de': de, 'ate': ate, 'instante_iso': INSTANTE_ISO},
