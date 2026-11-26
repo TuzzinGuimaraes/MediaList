@@ -13,7 +13,8 @@ export const ESTACOES: readonly Estacao[] = ['inverno', 'primavera', 'verao', 'o
 /** Até quantas Temporadas depois da atual o seletor vai (as que a Importação traz inteiras). */
 export const TEMPORADAS_A_FRENTE = 4;
 
-const NOMES: Record<Estacao, string> = { inverno: 'Inverno', primavera: 'Primavera', verao: 'Verão', outono: 'Outono' };
+/** O nome de cada estação na tela. */
+export const NOMES_DA_ESTACAO: Record<Estacao, string> = { inverno: 'Inverno', primavera: 'Primavera', verao: 'Verão', outono: 'Outono' };
 
 /** Formatos que vão para "Filmes e especiais"; os outros (TV, TV curto, ONA, desconhecido), na grade. */
 const FORA_DA_GRADE = new Set<Midia['formato']>(['MOVIE', 'SPECIAL', 'OVA', 'MUSIC']);
@@ -73,7 +74,7 @@ export function temporadasDoSeletor(maisAntiga: Temporada | null, agora: Date): 
 
 /** "Inverno 2027": o nome da Temporada e o ano, sem os meses. */
 export function rotuloDaTemporada(temporada: Temporada): string {
-  return `${NOMES[temporada.estacao]} ${temporada.ano}`;
+  return `${NOMES_DA_ESTACAO[temporada.estacao]} ${temporada.ano}`;
 }
 
 /**

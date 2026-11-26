@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated';
 
 import { useBuscaMidias, useGeneros } from '@/api/explorar';
 import type { OrdemCatalogo, TipoMidia } from '@/api/tipos';
+import { AtalhoTemporada } from '@/components/AtalhoTemporada';
 import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
@@ -48,8 +49,8 @@ function useValorAtrasado<T>(valor: T, ms: number): T {
 }
 
 /**
- * Explorar: busca compacta e botão de filtros (Tipo, Gênero e ordem num sheet) no cabeçalho,
- * que esconde ao rolar para baixo; grade de cards A.
+ * Explorar: atalho da Temporada (só nos Recortes com anime), busca compacta e botão de filtros
+ * (Tipo, Gênero e ordem num sheet) no cabeçalho, que esconde ao rolar para baixo; grade de cards A.
  */
 export default function Explorar() {
   const cores = useCores();
@@ -132,19 +133,22 @@ export default function Explorar() {
             cabecalho.esconde ? { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 } : null,
             cabecalho.estilo,
           ]}
-          className="flex-row items-center gap-2 border-b border-borda bg-fundo px-4 py-3"
+          className="gap-2 border-b border-borda bg-fundo px-4 py-3"
         >
-          <TextInput
-            accessibilityLabel={textos.busca}
-            placeholder={textos.busca}
-            placeholderTextColor={cores['texto-suave']}
-            value={texto}
-            onChangeText={setTexto}
-            autoCorrect={false}
-            returnKeyType="search"
-            className="min-h-[44px] flex-1 rounded-md border border-borda bg-superficie-alta px-3 py-2.5 text-campo text-texto-forte"
-          />
-          <BotaoFiltros ativos={ativos} onPress={() => setFiltrosAbertos(true)} />
+          <AtalhoTemporada />
+          <View className="flex-row items-center gap-2">
+            <TextInput
+              accessibilityLabel={textos.busca}
+              placeholder={textos.busca}
+              placeholderTextColor={cores['texto-suave']}
+              value={texto}
+              onChangeText={setTexto}
+              autoCorrect={false}
+              returnKeyType="search"
+              className="min-h-[44px] flex-1 rounded-md border border-borda bg-superficie-alta px-3 py-2.5 text-campo text-texto-forte"
+            />
+            <BotaoFiltros ativos={ativos} onPress={() => setFiltrosAbertos(true)} />
+          </View>
         </Animated.View>
         {resultados.data?.length ? (
           conteudo
