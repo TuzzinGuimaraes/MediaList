@@ -362,10 +362,10 @@ mais antiga do Catálogo até 4 depois da atual.
 
 Na Temporada atual, a aba Calendário mostra os episódios de anime dos próximos 7 dias, de "Hoje"
 em diante, no fuso de quem vê (o horário é o da exibição no Japão, convertido). Os já exibidos vêm
-das **Atualizações de mídia** de episódio; os por vir, de quando sai o próximo episódio de cada
-anime. O que já saiu aparece marcado "foi ao ar". O filtro "Só os meus" deixa só os animes da
+das **Atualizações de mídia** de episódio; o próximo episódio de cada anime, da data em que
+ele sai. O que já saiu aparece marcado "foi ao ar". O filtro "Só os meus" deixa só os animes da
 **Lista pessoal** em Em progresso ou Planejado, ou favoritos, e começa ligado quando algum episódio
-da semana é de um deles. "A seguir dos seus" é o próximo episódio por vir de um desses.
+da semana é de um deles. "A seguir dos seus" é o próximo episódio, ainda não exibido, de um desses.
 
 ---
 

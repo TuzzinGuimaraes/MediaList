@@ -4,9 +4,8 @@
 // "America/Sao_Paulo") entram de fora; as contas de fuso usam só `Intl.DateTimeFormat`.
 
 import { estadoDe } from './estadoConsumo';
+import { contagemDeEpisodios } from './midia';
 import type { EpisodioDoCalendario, ItemLista } from './tipos';
-
-export type { EpisodioDoCalendario };
 
 /** O que o filtro lê de um Item de lista (GET /lista). */
 export type ItemDoCalendario = Pick<ItemLista, 'id_midia' | 'tipo' | 'status_consumo' | 'favorito'>;
@@ -41,8 +40,42 @@ export type OpcoesDoCalendario = {
 
 export const DIAS_DO_CALENDARIO = 7;
 
+/** Os textos que o web e o app mostram iguais. */
+export const TEXTOS_DO_CALENDARIO = {
+  carregando: 'Buscando o Calendário',
+  aSeguir: 'A seguir dos seus',
+  soOsMeus: 'Só os meus',
+  visualizacao: 'Visualização',
+  dias: 'Dias',
+  agora: 'agora',
+  foiAoAr: 'foi ao ar',
+  verTodos: 'Ver todos os animes',
+} as const;
+
+/** As visualizações: a lista por dia ou os dias lado a lado. */
+export type VistaDoCalendario = 'agenda' | 'semana';
+
+export const VISTAS_DO_CALENDARIO: readonly { valor: VistaDoCalendario; nome: string }[] = [
+  { valor: 'agenda', nome: 'Agenda' },
+  { valor: 'semana', nome: 'Semana' },
+];
+
+/** Onde a visualização escolhida fica guardada (estado de interface, no navegador ou no aparelho). */
+export const CHAVE_DA_VISTA = 'medialist.calendario.vista';
+
+/** A visualização guardada, se for uma das vistas; senão (nada guardado, valor antigo), a Agenda. */
+export function vistaGuardada(valor: string | null | undefined): VistaDoCalendario {
+  return VISTAS_DO_CALENDARIO.find((v) => v.valor === valor)?.valor ?? 'agenda';
+}
+
+/** Depois de tocar num dia da faixa, a rolagem programada não mexe no dia ativo por este tempo. */
+export const TRAVA_DA_ROLAGEM_MS = 700;
+
 /** A nota discreta ao lado do horário. */
-export const NOTA_DO_HORARIO = 'horário da exibição no Japão';
+const NOTA_DO_HORARIO = 'horário da exibição no Japão';
+
+/** Sem o nome do fuso (o `Intl` do motor não sabe dizer), a nota diz só isto. */
+const SEM_NOME_DO_FUSO = 'Horários no seu fuso';
 
 const DIAS_DA_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -192,4 +225,46 @@ export function aSeguirDosSeus<T extends EpisodioDoCalendario>(
     if (proximo) return { episodio: proximo.episodio, dia: dia.rotulo, hora: proximo.hora };
   }
   return null;
+}
+
+
+/** "Horário Padrão de Brasília", ou null se o `Intl` do motor não souber dizer (ou não conhecer o fuso). */
+function nomeDoFuso(agora: Date, fuso: string): string | null {
+  try {
+    const lidas = new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, timeZoneName: 'longGeneric' }).formatToParts(agora);
+    return lidas.find((p) => p.type === 'timeZoneName')?.value || null;
+  } catch {
+    return null;
+  }
+}
+
+/** A nota ao lado do horário: "Horário Padrão de Brasília · horário da exibição no Japão". */
+export function notaDoHorario(agora: Date, fuso: string): string {
+  return `${nomeDoFuso(agora, fuso) ?? SEM_NOME_DO_FUSO} · ${NOTA_DO_HORARIO}`;
+}
+
+/** O marcador "agora" da Agenda: a hora local e o rótulo para o leitor de tela. */
+export function marcadorDoAgora(agora: Date, fuso: string): { hora: string; rotulo: string } {
+  const hora = horaLocal(agora, fuso);
+  return { hora, rotulo: `Agora, ${hora}` };
+}
+
+/** O rótulo de acessibilidade do dia na faixa: "Sábado, 28/11, nenhum episódio". */
+export function rotuloDoChip(dia: Pick<DiaDoCalendario<unknown>, 'rotulo' | 'data' | 'total'>): string {
+  return `${dia.rotulo}, ${dia.data}, ${contagemDeEpisodios(dia.total)}`;
+}
+
+/** Nenhum dia tem episódio (com o filtro como está): no lugar dos dias, um aviso só. */
+export function semanaVazia(dias: readonly Pick<DiaDoCalendario<unknown>, 'total'>[]): boolean {
+  return dias.every((d) => d.total === 0);
+}
+
+/** O aviso da semana vazia; com o filtro ligado, vem com "Ver todos os animes". */
+export function avisoDaSemanaVazia(soOsMeus: boolean): string {
+  return soOsMeus ? 'Nenhum dos seus animes sai nos próximos 7 dias.' : 'Nenhum episódio nos próximos 7 dias.';
+}
+
+/** O aviso de um dia sem episódio, numa semana que tem algum. */
+export function avisoDoDiaVazio(soOsMeus: boolean): string {
+  return soOsMeus ? 'Nenhum dos seus sai neste dia.' : 'Nenhum episódio neste dia.';
 }

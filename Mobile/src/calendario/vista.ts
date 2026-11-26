@@ -1,11 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** As visualizações do Calendário: a lista por dia ou os dias lado a lado. */
-export type VistaDoCalendario = 'agenda' | 'semana';
-
-const CHAVE = 'medialist.calendario.vista';
-const VISTAS: readonly VistaDoCalendario[] = ['agenda', 'semana'];
+import { CHAVE_DA_VISTA, type VistaDoCalendario, vistaGuardada } from '@dominio/calendario';
 
 /**
  * A visualização escolhida, guardada no aparelho (estado de interface, como o tema). Começa na
@@ -18,11 +14,10 @@ export function useVistaDoCalendario(): [VistaDoCalendario, (vista: VistaDoCalen
 
   useEffect(() => {
     let vivo = true;
-    SecureStore.getItemAsync(CHAVE)
+    SecureStore.getItemAsync(CHAVE_DA_VISTA)
       .catch(() => null)
       .then((guardada) => {
-        const valida = VISTAS.find((v) => v === guardada);
-        if (vivo && valida && !escolheu.current) setVista(valida);
+        if (vivo && !escolheu.current) setVista(vistaGuardada(guardada));
       });
     return () => {
       vivo = false;
@@ -32,7 +27,7 @@ export function useVistaDoCalendario(): [VistaDoCalendario, (vista: VistaDoCalen
   const escolher = useCallback((nova: VistaDoCalendario) => {
     escolheu.current = true;
     setVista(nova);
-    SecureStore.setItemAsync(CHAVE, nova).catch(() => {});
+    SecureStore.setItemAsync(CHAVE_DA_VISTA, nova).catch(() => {});
   }, []);
 
   return [vista, escolher];

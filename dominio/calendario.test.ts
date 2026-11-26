@@ -1,12 +1,19 @@
 import {
   aSeguirDosSeus,
+  avisoDaSemanaVazia,
+  avisoDoDiaVazio,
   consultaDoCalendario,
   diasDoCalendario,
   ehDosMeus,
+  marcadorDoAgora,
+  notaDoHorario,
+  rotuloDoChip,
+  semanaVazia,
   soOsMeusPorPadrao,
-  type EpisodioDoCalendario,
+  vistaGuardada,
   type ItemDoCalendario,
 } from './calendario';
+import type { EpisodioDoCalendario } from './tipos';
 
 const BRASILIA = 'America/Sao_Paulo';
 const TOQUIO = 'Asia/Tokyo';
@@ -189,5 +196,54 @@ describe('aSeguirDosSeus', () => {
 
   it('null sem nenhum dos meus por vir', () => {
     expect(aSeguirDosSeus([episodio('a', '2026-11-27T10:00:00Z')], { agora: AGORA, fuso: BRASILIA, itens: [] })).toBeNull();
+  });
+});
+
+
+describe('notaDoHorario', () => {
+  it('o nome do fuso, e o horário de exibição no Japão', () => {
+    expect(notaDoHorario(AGORA, BRASILIA)).toBe('Horário Padrão de Brasília · horário da exibição no Japão');
+  });
+
+  it('sem o nome do fuso, "Horários no seu fuso"', () => {
+    expect(notaDoHorario(AGORA, 'Fuso/Inexistente')).toBe('Horários no seu fuso · horário da exibição no Japão');
+  });
+});
+
+describe('marcadorDoAgora', () => {
+  it('a hora local de agora, e o rótulo para o leitor de tela', () => {
+    expect(marcadorDoAgora(AGORA, BRASILIA)).toEqual({ hora: '16:45', rotulo: 'Agora, 16:45' });
+  });
+});
+
+describe('rotuloDoChip', () => {
+  it('o dia, a data e a contagem', () => {
+    const [hoje, , sabado] = diasDoCalendario([episodio('a', '2026-11-26T21:00:00Z')], { agora: AGORA, fuso: BRASILIA });
+
+    expect(rotuloDoChip(hoje!)).toBe('Hoje, 26/11, 1 episódio');
+    expect(rotuloDoChip(sabado!)).toBe('Sábado, 28/11, nenhum episódio');
+  });
+});
+
+describe('semana e dia vazios', () => {
+  it('a semana é vazia quando nenhum dia tem episódio', () => {
+    expect(semanaVazia(diasDoCalendario([], { agora: AGORA, fuso: BRASILIA }))).toBe(true);
+    expect(semanaVazia(diasDoCalendario([episodio('a', '2026-11-27T10:00:00Z')], { agora: AGORA, fuso: BRASILIA }))).toBe(false);
+  });
+
+  it('o aviso depende do filtro', () => {
+    expect(avisoDaSemanaVazia(true)).toBe('Nenhum dos seus animes sai nos próximos 7 dias.');
+    expect(avisoDaSemanaVazia(false)).toBe('Nenhum episódio nos próximos 7 dias.');
+    expect(avisoDoDiaVazio(true)).toBe('Nenhum dos seus sai neste dia.');
+    expect(avisoDoDiaVazio(false)).toBe('Nenhum episódio neste dia.');
+  });
+});
+
+describe('vistaGuardada', () => {
+  it('a guardada, se for uma das vistas; senão, a Agenda', () => {
+    expect(vistaGuardada('semana')).toBe('semana');
+    expect(vistaGuardada('agenda')).toBe('agenda');
+    expect(vistaGuardada('outra')).toBe('agenda');
+    expect(vistaGuardada(null)).toBe('agenda');
   });
 });

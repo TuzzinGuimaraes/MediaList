@@ -6,89 +6,47 @@
 // dele, "foi ao ar" e "A seguir dos seus" vêm de `@dominio/calendario`, os mesmos do app.
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 
 import {
   aSeguirDosSeus,
   type ASeguir,
+  avisoDaSemanaVazia,
+  avisoDoDiaVazio,
   consultaDoCalendario,
   type DiaDoCalendario,
   diasDoCalendario,
-  type EpisodioDoCalendario,
   type EpisodioNoDia,
   type ItemDoCalendario,
-  NOTA_DO_HORARIO,
+  marcadorDoAgora,
+  notaDoHorario,
+  rotuloDoChip,
+  semanaVazia,
   soOsMeusPorPadrao,
+  TEXTOS_DO_CALENDARIO as textos,
+  TRAVA_DA_ROLAGEM_MS,
+  type VistaDoCalendario as Vista,
+  VISTAS_DO_CALENDARIO,
 } from '@dominio/calendario';
-import { tituloDaMidia } from '@dominio/midia';
+import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
+import type { EpisodioDoCalendario } from '@dominio/tipos';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
-import { mensagemDeErro } from '../../api/erros';
 import { Botao } from '../../componentes/Botao';
 import { Carregando, ErroTela, Vazio } from '../../componentes/Estados';
-import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
 import { ALTURA_NAV } from '../../layout/Casca';
 import { useTelaLarga } from '../../layout/telaLarga';
 import { useApi } from '../../sessao/SessaoContext';
-import { useAdicionarComoPlanejado, useLista } from '../lista/api';
+import { useLista } from '../lista/api';
+import { useAgora } from './agora';
+import { FUSO } from './fuso';
+import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
+import { useVista } from './vista';
 
 type Dia = DiaDoCalendario<EpisodioDoCalendario>;
 type NoDia = EpisodioNoDia<EpisodioDoCalendario>;
-type Vista = 'agenda' | 'semana';
-
-const CHAVE_VISTA = 'medialist.calendario.vista';
-const MINUTO = 60_000;
-/** Depois de tocar num dia, a rolagem programada não mexe no dia ativo por este tempo. */
-const TRAVA_DA_ROLAGEM = 700;
-
-function lerVista(): Vista {
-  try {
-    return localStorage.getItem(CHAVE_VISTA) === 'semana' ? 'semana' : 'agenda';
-  } catch {
-    return 'agenda';
-  }
-}
-
-function useVista(): [Vista, (vista: Vista) => void] {
-  const [vista, setVista] = useState(lerVista);
-  const mudar = useCallback((nova: Vista) => {
-    setVista(nova);
-    try {
-      localStorage.setItem(CHAVE_VISTA, nova);
-    } catch {
-      // Sem armazenamento, vale até recarregar.
-    }
-  }, []);
-  return [vista, mudar];
-}
-
-/** O instante de agora, renovado a cada minuto ("foi ao ar", o marcador "agora", a virada do dia). */
-function useAgora(): Date {
-  const [agora, setAgora] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setAgora(new Date()), MINUTO);
-    return () => clearInterval(id);
-  }, []);
-  return agora;
-}
-
-const FUSO = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-/** "Horário Padrão de Brasília", ou null se o navegador não souber dizer. */
-function nomeDoFuso(agora: Date): string | null {
-  try {
-    const partes = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, timeZoneName: 'longGeneric' }).formatToParts(agora);
-    return partes.find((p) => p.type === 'timeZoneName')?.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
-const horaDe = (agora: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(agora);
-
-const contagem = (n: number) => (n === 0 ? 'nenhum episódio' : n === 1 ? '1 episódio' : `${n} episódios`);
 
 export function Calendario() {
   const agora = useAgora();
@@ -101,23 +59,22 @@ export function Calendario() {
   });
   const lista = useLista();
 
-  if (episodios.isPending || lista.isPending) return <Carregando rotulo="Buscando o Calendário" />;
+  if (episodios.isPending || lista.isPending) return <Carregando rotulo={textos.carregando} />;
   if (episodios.isError) return <ErroTela erro={episodios.error} tentarDeNovo={() => void episodios.refetch()} />;
   // Sem a Lista, o Calendário ainda mostra todos os episódios (nenhum é "dos meus").
-  return <Semana7 episodios={episodios.data} itens={lista.data ?? []} agora={agora} />;
+  return <CorpoDoCalendario episodios={episodios.data} itens={lista.data ?? []} agora={agora} />;
 }
 
-type PropsSemana7 = { episodios: EpisodioDoCalendario[]; itens: readonly ItemDoCalendario[]; agora: Date };
+type PropsCorpoDoCalendario = { episodios: EpisodioDoCalendario[]; itens: readonly ItemDoCalendario[]; agora: Date };
 
-function Semana7({ episodios, itens, agora }: PropsSemana7) {
+function CorpoDoCalendario({ episodios, itens, agora }: PropsCorpoDoCalendario) {
   // O padrão é lido uma vez: pôr um anime em Planejado não liga o filtro sozinho.
   const [soOsMeus, setSoOsMeus] = useState(() => soOsMeusPorPadrao(episodios, itens));
   const [vista, mudarVista] = useVista();
   const dias = diasDoCalendario(episodios, { agora, fuso: FUSO, itens, soOsMeus });
   const aSeguir = aSeguirDosSeus(episodios, { agora, fuso: FUSO, itens });
   const naLista = new Set(itens.map((i) => i.id_midia));
-  const vazia = dias.every((d) => d.total === 0);
-  const nome = nomeDoFuso(agora);
+  const vazia = semanaVazia(dias);
 
   return (
     <div className={`mx-auto flex w-full flex-col gap-4 ${vista === 'agenda' ? 'max-w-[760px]' : ''}`}>
@@ -126,23 +83,20 @@ function Semana7({ episodios, itens, agora }: PropsSemana7) {
         <FiltroMeus ligado={soOsMeus} mudar={setSoOsMeus} />
         <Alternador vista={vista} mudar={mudarVista} />
         <p className="w-full text-[12px] text-texto-suave md:ml-auto md:w-auto">
-          {nome ? `${nome} · ` : ''}
-          {NOTA_DO_HORARIO}
+          {notaDoHorario(agora, FUSO)}
         </p>
       </div>
       {vazia ? (
-        soOsMeus ? (
-          <Vazio
-            texto="Nenhum dos seus animes sai nos próximos 7 dias."
-            acao={
+        <Vazio
+          texto={avisoDaSemanaVazia(soOsMeus)}
+          acao={
+            soOsMeus ? (
               <Botao variante="secundario" onClick={() => setSoOsMeus(false)}>
-                Ver todos os animes
+                {textos.verTodos}
               </Botao>
-            }
-          />
-        ) : (
-          <Vazio texto="Nenhum episódio nos próximos 7 dias." />
-        )
+            ) : undefined
+          }
+        />
       ) : (
         <Visualizacao key={vista} dias={dias} vista={vista} agora={agora} naLista={naLista} soOsMeus={soOsMeus} />
       )}
@@ -155,7 +109,7 @@ function Semana7({ episodios, itens, agora }: PropsSemana7) {
 function BlocoASeguir({ aSeguir }: { aSeguir: ASeguir<EpisodioDoCalendario> }) {
   const { episodio, dia, hora } = aSeguir;
   return (
-    <aside aria-label="A seguir dos seus" className="rounded-lg bg-gradient-to-br from-marca/25 to-superficie p-3 ring-1 ring-marca/30 md:p-4">
+    <aside aria-label={textos.aSeguir} className="rounded-lg bg-gradient-to-br from-marca/25 to-superficie p-3 ring-1 ring-marca/30 md:p-4">
       <Link
         to="/midia/$id"
         params={{ id: episodio.id_midia }}
@@ -163,7 +117,7 @@ function BlocoASeguir({ aSeguir }: { aSeguir: ASeguir<EpisodioDoCalendario> }) {
       >
         <Capa url={episodio.poster_url} className="aspect-[2/3] w-14 rounded-md" />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-[12px] font-bold uppercase tracking-wide text-marca-texto">A seguir dos seus</span>
+          <span className="text-[12px] font-bold uppercase tracking-wide text-marca-texto">{textos.aSeguir}</span>
           <span className="line-clamp-2 font-bold leading-snug text-texto-forte">{tituloDaMidia(episodio)}</span>
           <span className="text-[13px] text-texto">{`Ep. ${episodio.episodio} · ${dia}, ${hora}`}</span>
         </span>
@@ -180,21 +134,16 @@ function FiltroMeus({ ligado, mudar }: { ligado: boolean; mudar(ligado: boolean)
         aria-hidden
         className="relative h-6 w-10 rounded-full bg-superficie-alta ring-1 ring-borda transition after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition peer-checked:bg-marca peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-marca-texto"
       />
-      Só os meus
+      {textos.soOsMeus}
     </label>
   );
 }
 
-const VISTAS: { valor: Vista; nome: string }[] = [
-  { valor: 'agenda', nome: 'Agenda' },
-  { valor: 'semana', nome: 'Semana' },
-];
-
 function Alternador({ vista, mudar }: { vista: Vista; mudar(vista: Vista): void }) {
   return (
     <fieldset className="inline-flex rounded-lg border border-borda p-0.5">
-      <legend className="sr-only">Visualização</legend>
-      {VISTAS.map((v) => (
+      <legend className="sr-only">{textos.visualizacao}</legend>
+      {VISTAS_DO_CALENDARIO.map((v) => (
         <label key={v.valor} className="cursor-pointer">
           <input type="radio" name="vista-do-calendario" className="peer sr-only" checked={vista === v.valor} onChange={() => mudar(v.valor)} />
           <span className="inline-flex min-h-9 items-center rounded-md px-3 text-[13px] font-semibold text-texto-suave hover:text-texto-forte peer-checked:bg-superficie-alta peer-checked:text-texto-forte peer-focus-visible:ring-2 peer-focus-visible:ring-marca-texto">
@@ -248,7 +197,7 @@ function Visualizacao({ dias, vista, agora, naLista, soOsMeus }: PropsVisualizac
 
   const irPara = (i: number) => {
     setAtivo(i);
-    travadoAte.current = Date.now() + TRAVA_DA_ROLAGEM;
+    travadoAte.current = Date.now() + TRAVA_DA_ROLAGEM_MS;
     if (vista === 'agenda') {
       secoes.current[i]?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       return;
@@ -284,13 +233,13 @@ function Faixa({ dias, ativo, irPara, ref }: PropsFaixa) {
   }, [ativo]);
   return (
     <div ref={ref} className="sticky z-20 -mx-6 bg-fundo/95 py-2 backdrop-blur md:mx-0" style={{ top: ALTURA_NAV }}>
-      <nav aria-label="Dias">
+      <nav aria-label={textos.dias}>
         <div ref={trilho} className="sem-barra flex gap-2 overflow-x-auto px-6 md:px-0">
           {dias.map((d, i) => (
             <button
               key={d.chave}
               type="button"
-              aria-label={`${d.curto}, ${d.data}, ${contagem(d.total)}`}
+              aria-label={rotuloDoChip(d)}
               aria-current={i === ativo ? 'true' : undefined}
               onClick={() => irPara(i)}
               className={`flex min-w-[64px] shrink-0 flex-col items-center rounded-xl border px-2.5 py-1.5 outline-none transition focus-visible:ring-2 focus-visible:ring-marca-texto md:flex-1 ${
@@ -330,7 +279,7 @@ function Agenda({ dias, agora, naLista, soOsMeus, secoes }: PropsAgenda) {
             <h2 className="flex items-baseline gap-2 py-2">
               <span className="text-[18px] font-bold text-texto-forte">{d.rotulo}</span>
               <span className="text-[13px] text-texto-suave">{d.data}</span>
-              <span className="ml-auto text-[12px] text-texto-suave">{d.total ? contagem(d.total) : ''}</span>
+              <span className="ml-auto text-[12px] text-texto-suave">{d.total ? contagemDeEpisodios(d.total) : ''}</span>
             </h2>
             {d.total === 0 ? (
               <DiaVazio soOsMeus={soOsMeus} />
@@ -353,13 +302,13 @@ function Agenda({ dias, agora, naLista, soOsMeus, secoes }: PropsAgenda) {
 }
 
 function Agora({ agora }: { agora: Date }) {
-  const hora = horaDe(agora);
+  const { hora, rotulo } = marcadorDoAgora(agora, FUSO);
   return (
-    <li aria-label={`Agora, ${hora}`} className="flex items-center gap-3 py-1">
+    <li aria-label={rotulo} className="flex items-center gap-3 py-1">
       <span className="w-14 shrink-0 text-right text-[12px] font-bold text-marca-texto">{hora}</span>
       <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-marca" />
       <span aria-hidden className="h-[2px] flex-1 rounded-full bg-marca" />
-      <span className="text-[11px] font-bold uppercase tracking-wide text-marca-texto">agora</span>
+      <span className="text-[11px] font-bold uppercase tracking-wide text-marca-texto">{textos.agora}</span>
     </li>
   );
 }
@@ -381,11 +330,11 @@ function LinhaDaAgenda({ noDia, naLista }: { noDia: NoDia; naLista: boolean }) {
             <span className="truncate text-[14px] font-semibold text-texto-forte">{titulo}</span>
             <span className="flex items-center gap-2 text-[12px] text-texto-suave">
               <span>Ep. {episodio.episodio}</span>
-              {foiAoAr ? <Selinho>foi ao ar</Selinho> : null}
+              {foiAoAr ? <Selinho>{textos.foiAoAr}</Selinho> : null}
             </span>
           </span>
         </Link>
-        <AcaoLista episodio={episodio} naLista={naLista} />
+        <PlanejadoOuNaLista idMidia={episodio.id_midia} tipo={episodio.tipo} titulo={titulo} naLista={naLista} compacto />
       </div>
     </li>
   );
@@ -464,7 +413,7 @@ function BlocoDaSemana({ noDia, naLista }: { noDia: NoDia; naLista: boolean }) {
             <span className="text-[15px] font-bold tabular-nums leading-tight text-texto-forte">{hora}</span>
             <span className="text-[12px] text-texto-suave">
               Ep. {episodio.episodio}
-              {foiAoAr ? ' · foi ao ar' : ''}
+              {foiAoAr ? ` · ${textos.foiAoAr}` : ''}
             </span>
           </span>
         </span>
@@ -472,7 +421,7 @@ function BlocoDaSemana({ noDia, naLista }: { noDia: NoDia; naLista: boolean }) {
           {titulo}
         </span>
       </Link>
-      <AcaoLista episodio={episodio} naLista={naLista} />
+      <PlanejadoOuNaLista idMidia={episodio.id_midia} tipo={episodio.tipo} titulo={titulo} naLista={naLista} compacto />
     </li>
   );
 }
@@ -489,34 +438,10 @@ function Capa({ url, className }: { url: string | null; className: string }) {
   );
 }
 
-/** "Na Lista" para quem tem Item; para o resto, o botão que põe o anime em Planejado. */
-function AcaoLista({ episodio, naLista }: { episodio: EpisodioDoCalendario; naLista: boolean }) {
-  const planejar = useAdicionarComoPlanejado();
-  if (naLista) return <span className="inline-flex min-h-8 shrink-0 items-center text-[12px] font-semibold text-texto-suave">Na Lista</span>;
-  return (
-    <span className="flex shrink-0 flex-col gap-1">
-      <button
-        type="button"
-        aria-label={`Pôr ${tituloDaMidia(episodio)} em Planejado`}
-        disabled={planejar.isPending}
-        onClick={() => planejar.mutate({ idMidia: episodio.id_midia, tipo: episodio.tipo })}
-        className="inline-flex min-h-8 w-fit items-center gap-1 rounded-md border border-borda px-2 text-[12px] font-bold text-texto-forte outline-none hover:bg-superficie-alta focus-visible:ring-2 focus-visible:ring-marca-texto disabled:opacity-60"
-      >
-        <Icone nome="mais" tamanho={12} /> Planejado
-      </button>
-      {planejar.isError ? (
-        <span role="alert" className="text-[12px] text-erro">
-          {mensagemDeErro(planejar.error)}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
 function DiaVazio({ soOsMeus, compacto = false }: { soOsMeus: boolean; compacto?: boolean }) {
   return (
     <p className={`rounded-md border border-dashed border-borda text-center text-[13px] text-texto-suave ${compacto ? 'px-2 py-4' : 'px-4 py-6'}`}>
-      {soOsMeus ? 'Nenhum dos seus sai neste dia.' : 'Nenhum episódio neste dia.'}
+      {avisoDoDiaVazio(soOsMeus)}
     </p>
   );
 }
