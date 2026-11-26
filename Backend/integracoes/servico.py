@@ -10,10 +10,9 @@ aplicam uma vez só (o DELETE da prévia trava a linha até o commit).
 
 Cada Não encontrado guarda o item inteiro (sem a obra da fonte), para o Vincular aplicá-lo
 depois; a resposta só mostra título, link, `origem_id` e Tipo. Vincular (`vincular`) grava o
-vínculo global e aplica o Item como a sincronização. O vínculo é reserva: a fonte casa primeiro
-(a Mídia já no Catálogo ou a obra que ela traz para importar) e o vínculo só vale para o item
-que a fonte não casa (nem localiza, nem importa). Assim um vínculo errado nunca tira um item que
-a fonte acerta.
+vínculo global e aplica o Item como a sincronização. Qual Mídia cada item casa (a fonte primeiro,
+o vínculo como reserva) é do `integracoes.casamento`; aqui a fonte é o Catálogo mais a obra que a
+plataforma traz para importar.
 
 Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
 `SemConta`/`PlataformaDesconhecida` e os do Vincular (`MidiaInexistente`, `ForaDosNaoEncontrados`,
@@ -23,11 +22,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date
-from typing import Any
+from typing import Any, Iterable
 
 import banco
 from dominio.lista_pessoal import ListaPessoal
-from integracoes import catalogo, prazo, repositorio, resultado, vinculos
+from integracoes import casamento, prazo, repositorio, resultado, vinculos
 from integracoes.anilist import AniList
 from integracoes.aplicar import NOVO, aplicar
 from integracoes.mal import MAL
@@ -87,10 +86,10 @@ class VinculoEmConflito(Exception):
 
 
 class _CatalogoLocalizado:
-    """O `catalogo.obter` que a `ListaPessoal` pede, servido do que `catalogo.localizar` já leu."""
+    """O `catalogo.obter` que a `ListaPessoal` pede, servido do que o Casamento já localizou."""
 
-    def __init__(self, localizadas: dict[tuple[str, str], catalogo.Localizada]):
-        self._por_id = {m['id_midia']: m for m in localizadas.values()}
+    def __init__(self, casados: Iterable[casamento.Casado]):
+        self._por_id = {m['id_midia']: m for _, m in casados if m}
 
     def obter(self, id_midia: str) -> dict[str, Any] | None:
         midia = self._por_id.get(id_midia)
@@ -146,23 +145,20 @@ def desconectar(id_usuario: str, nome: str) -> None:
     repositorio.remover_conta(id_usuario, nome)
 
 
-def _planejar(id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date, db=banco):
-    """(item, Mídia localizada ou None, Mudança) dos itens que mudam algo, e os Não encontrados.
+def _planejar(id_usuario: str, casados: Iterable[casamento.Casado], hoje: date, db=banco):
+    """(item, Mídia localizada ou None, Item atual, Mudança) dos itens casados que mudam algo.
 
-    Item que não está no Catálogo e é importável conta como novo (a Mídia entra ao confirmar).
+    Item casado com a obra a importar (Mídia None) conta como novo (a Mídia entra ao confirmar).
     """
-    atuais = repositorio.itens_do_usuario(id_usuario, sorted({m['id_midia'] for m in localizadas.values()}), db)
-    planos, nao_encontrados = [], []
-    for item in itens:
-        midia = localizadas.get(catalogo.chave(item)) if item.catalogo else None
-        if midia is None and not catalogo.importavel(item):
-            nao_encontrados.append(nao_encontrado(item))
-            continue
+    casados = list(casados)
+    atuais = repositorio.itens_do_usuario(id_usuario, sorted({m['id_midia'] for _, m in casados if m}), db)
+    planos = []
+    for item, midia in casados:
         atual = atuais.get(midia['id_midia']) if midia else None
         mudanca = aplicar(atual, item, total=midia['total'] if midia else None, hoje=hoje)
         if mudanca:
             planos.append((item, midia, atual, mudanca))
-    return planos, nao_encontrados
+    return planos
 
 
 def _sem_dados_se_localizado(item: ItemDeOrigem, midia) -> ItemDeOrigem:
@@ -172,24 +168,12 @@ def _sem_dados_se_localizado(item: ItemDeOrigem, midia) -> ItemDeOrigem:
     return replace(item, catalogo=replace(item.catalogo, dados=None))
 
 
-def _casar_com_reserva(nome: str, itens: list[ItemDeOrigem]):
-    """(itens, Mídias localizadas): a fonte primeiro; o vínculo só no item que ela não casa."""
-    localizadas = catalogo.localizar(itens)
-
-    def casa(item: ItemDeOrigem) -> bool:
-        return catalogo.chave(item) in localizadas or catalogo.importavel(item)
-
-    pela_reserva = iter(vinculos.aplicar(nome, [i for i in itens if not casa(i)]))
-    itens = [item if casa(item) else next(pela_reserva) for item in itens]
-    localizadas.update(catalogo.localizar([i for i in itens if i.catalogo and i.catalogo.fonte == 'midia']))
-    return itens, localizadas
-
-
 def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> dict[str, Any]:
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
     conferir_tamanho(len(itens))
-    itens, localizadas = _casar_com_reserva(nome, itens)
-    planos, nao_encontrados = _planejar(id_usuario, itens, localizadas, date.today())
+    casados = casamento.casar(nome, itens, casamento.pelo_catalogo)
+    planos = _planejar(id_usuario, casados.em_ordem, date.today())
+    nao_encontrados = [nao_encontrado(i) for i in casados.nao_encontrados]
     novos = sum(1 for *_, m in planos if m.tipo == NOVO)
     conteudo = {
         'itens': [item_para_json(_sem_dados_se_localizado(item, midia)) for item, midia, *_ in planos],
@@ -213,39 +197,16 @@ def previa(id_usuario: str, nome: str) -> dict[str, Any]:
     return previa_de_itens(id_usuario, nome, itens)
 
 
-def _importar_faltantes(itens: list[ItemDeOrigem], nome: str | None = None) -> dict[catalogo.Chave, Any]:
-    """As Mídias dos itens, importando as que faltam (cada uma no seu commit; o upsert é idempotente).
+def _gravar(db, id_usuario: str, casados: Iterable[casamento.Casado],
+            nao_encontrados: Iterable[ItemDeOrigem], hoje: date) -> Resultado:
+    """Grava na Lista o que `aplicar` decidir, pelo executor `db` (a transação do chamador).
 
-    Com `nome`, a importação que falha cai no vínculo da plataforma (a reserva), na chave do item.
+    `casados` já com a Mídia; `nao_encontrados` (os do Casamento) entram no resultado.
     """
-    localizadas = catalogo.localizar(itens)
-    falharam = []
-    for item in itens:
-        chave = catalogo.chave(item)
-        if chave is not None and chave not in localizadas:
-            prazo.conferir()
-            importada = catalogo.importar(item)
-            if importada:
-                localizadas[chave] = importada
-            else:
-                falharam.append(item)
-    if nome and falharam:
-        pela_reserva = vinculos.aplicar(nome, [replace(i, catalogo=None) for i in falharam])
-        achadas = catalogo.localizar([i for i in pela_reserva if i.catalogo])
-        for original, vinculado in zip(falharam, pela_reserva, strict=True):
-            midia = achadas.get(catalogo.chave(vinculado)) if vinculado.catalogo else None
-            if midia:
-                localizadas[catalogo.chave(original)] = midia
-    return localizadas
-
-
-def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date) -> Resultado:
-    """Grava na Lista o que `aplicar` decidir, pelo executor `db` (a transação do chamador)."""
-    lista = ListaPessoal(ItensLista(db), _CatalogoLocalizado(localizadas))
-    planos, faltando = _planejar(id_usuario, [i for i in itens if localizadas.get(catalogo.chave(i))],
-                                 localizadas, hoje, db)
-    nao_encontrados = [nao_encontrado(i) for i in itens if not localizadas.get(catalogo.chave(i))]
-    nao_encontrados.extend(faltando)
+    casados = list(casados)
+    lista = ListaPessoal(ItensLista(db), _CatalogoLocalizado(casados))
+    planos = _planejar(id_usuario, casados, hoje, db)
+    nao_encontrados = [nao_encontrado(i) for i in nao_encontrados]
 
     novos = atualizados = 0
     for item, midia, atual, mudanca in planos:
@@ -261,14 +222,15 @@ def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: d
     return resultado.criar(novos=novos, atualizados=atualizados, nao_encontrados=nao_encontrados)
 
 
-def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | None = None) -> Resultado:
-    """Importa as obras que faltam e grava na Lista (numa transação) o que `aplicar` decidir.
+def aplicar_casados(id_usuario: str, casados: Iterable[casamento.Casado],
+                    nao_encontrados: Iterable[ItemDeOrigem] = (), *, hoje: date | None = None) -> Resultado:
+    """Grava na Lista (numa transação) o que `aplicar` decidir para os casados (já com a Mídia),
+    na ordem dada; os `nao_encontrados` do Casamento entram no resultado.
 
     É o que a sincronização sem prévia (Steam) e o Vincular chamam.
     """
-    localizadas = _importar_faltantes(itens)
     with banco.transacao() as t:
-        return _gravar(t, id_usuario, itens, localizadas, hoje or date.today())
+        return _gravar(t, id_usuario, casados, nao_encontrados, hoje or date.today())
 
 
 def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> dict[str, Any] | None:
@@ -277,7 +239,8 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
     if guardada is None:
         return None
     itens = [item_de_json(d) for d in guardada['conteudo']['itens']]
-    localizadas = _importar_faltantes(itens, guardada['plataforma'])
+    # Importa as obras que faltam antes da transação; a que falha cai no vínculo da plataforma.
+    casados = casamento.casar(guardada['plataforma'], itens, casamento.importando(prazo.conferir))
 
     with banco.transacao() as t:
         consumida = repositorio.consumir_previa(id_usuario, id_previa, t)
@@ -286,7 +249,8 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
         anteriores = resultado.criar(nao_encontrados=[
             {**n, 'link': link_seguro(n.get('link'))} for n in consumida['conteudo'].get('nao_encontrados') or []
         ])
-        final = resultado.somar(anteriores, _gravar(t, id_usuario, itens, localizadas, hoje or date.today()))
+        final = resultado.somar(anteriores, _gravar(t, id_usuario, casados.em_ordem, casados.nao_encontrados,
+                                                    hoje or date.today()))
         repositorio.registrar_resultado(id_usuario, consumida['plataforma'], final, t)
     return final.resposta()
 
@@ -326,7 +290,8 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
     except vinculos.JaNoCatalogo as erro:
         raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
-    aplicado = aplicar_itens(id_usuario, [resultado.item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
+    vinculado = casamento.na_midia([resultado.item_do_nao_encontrado(entrada, destino['id_midia'])])
+    aplicado = aplicar_casados(id_usuario, vinculado.em_ordem, vinculado.nao_encontrados, hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],
             'novos': aplicado.novos, 'atualizados': aplicado.atualizados}
 

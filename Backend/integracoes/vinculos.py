@@ -8,8 +8,8 @@ vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfaz
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
 
-Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular` e o formato do
-resultado guardado, no `integracoes.resultado`.
+Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`, a ordem do
+casamento no `integracoes.casamento` e o formato do resultado guardado, no `integracoes.resultado`.
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
     """Os itens, com `catalogo` na Mídia do vínculo quando há um.
 
-    O vínculo é reserva: quem chama só passa os itens que a fonte não casou.
+    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a fonte não casou.
     """
     if not itens:
         return itens

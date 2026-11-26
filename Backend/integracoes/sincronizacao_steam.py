@@ -1,4 +1,4 @@
-"""Sincronização da Steam (Q111, Q113, Q115): sem prévia, grava direto pela `servico.aplicar_itens`.
+"""Sincronização da Steam (Q111, Q113, Q115): sem prévia, grava direto pela `servico.aplicar_casados`.
 
 1. Lê os jogos já abertos do perfil conectado (`integracoes.steam`).
 2. Os já casados em `steam_appids` e os que o Catálogo já tem pela appid (`jogos.steam_appid`)
@@ -13,7 +13,8 @@
    O que não coube no orçamento, ou o RAWG ou a loja fora do ar, fica `pendente` para a próxima
    (o job diário), sem gravar nada.
 4. O vínculo de um Usuário (`integracoes.vinculos`) é reserva: só casa o que ficou sem casamento
-   (negativo); o resto vai para "Não encontrados". O Vincular da Steam também grava o casamento
+   (negativo); o resto vai para "Não encontrados". A ordem é do `integracoes.casamento`: os passos
+   2 e 3 são a fonte da Steam (`_separar` e `_pela_cadeia`). O Vincular da Steam também grava o casamento
    em `steam_appids` (só onde não havia), então em geral o jogo vinculado já casa no passo 2.
 
 O orçamento conta do início (ler a biblioteca e aplicar os já casados entram nele) e é
@@ -29,7 +30,7 @@ from dataclasses import replace
 from datetime import date
 from typing import Any, Callable, Literal
 
-from integracoes import catalogo, repositorio, resultado, servico, steam_appids, vinculos
+from integracoes import casamento, catalogo, repositorio, resultado, servico, steam_appids
 from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
 from integracoes.rawg import Rawg
@@ -46,7 +47,7 @@ class Ignorado(enum.Enum):
 IGNORADO = Ignorado.IGNORADO
 
 #: O casamento de uma appid: a Mídia, IGNORADO (não é jogo) ou None (ninguém tem).
-Casamento = catalogo.Localizada | Literal[Ignorado.IGNORADO] | None
+DaAppid = catalogo.Localizada | Literal[Ignorado.IGNORADO] | None
 
 
 class _OrcamentoEsgotado(OrigemIndisponivel):
@@ -75,7 +76,7 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
     return midia
 
 
-def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> Casamento:
+def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> DaAppid:
     """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem).
 
     A loja já devolve a appid pedida; o nome que não é texto fica o da biblioteca da Steam, e a
@@ -95,7 +96,7 @@ def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> Casamento:
     return midia
 
 
-def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> Casamento:
+def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> DaAppid:
     """A Mídia do item (RAWG, senão a loja da Steam), IGNORADO ou None (não casa).
 
     Grava o casamento (positivo, ignorado ou negativo). Levanta OrigemIndisponivel sem gravar nada.
@@ -116,7 +117,8 @@ def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> Casamento:
 def _separar(itens: list[ItemDeOrigem]):
     """(casados, a casar, sem casamento): pelo `steam_appids` e, os que faltam, pela appid no Catálogo.
 
-    O vínculo de um Usuário não entra aqui: é reserva (`_pela_reserva`) dos que ficam sem casamento.
+    É a parte barata da fonte da Steam; o vínculo de um Usuário não entra aqui (é a reserva do
+    `integracoes.casamento`).
     """
     a_casar, sem_casamento, casados = [], [], []
     casamentos = steam_appids.ler([int(i.origem_id) for i in itens])
@@ -143,11 +145,32 @@ def _separar(itens: list[ItemDeOrigem]):
     return casados, restantes, sem_casamento
 
 
-def _pela_reserva(sem_casamento: list[ItemDeOrigem]) -> tuple[list[ItemDeOrigem], list[ItemDeOrigem]]:
-    """(vinculados, Não encontrados): os que nem `steam_appids`, nem o Catálogo, nem o RAWG, nem a
-    loja casaram, pelo vínculo de um Usuário (a reserva)."""
-    pelo_vinculo = vinculos.aplicar('steam', sem_casamento)
-    return [i for i in pelo_vinculo if i.catalogo], [i for i in pelo_vinculo if not i.catalogo]
+def _pela_cadeia(negativos: int, rawg: Rawg, loja: LojaSteam) -> casamento.Fonte:
+    """A fonte da Steam para os que `_separar` não casou: os `negativos` primeiros já não casam
+    (negativo em `steam_appids`); os outros, um por vez, pelo RAWG e pela loja (`_casar`).
+
+    O primeiro que esbarra no orçamento, no prazo ou no RAWG/loja fora do ar fica pendente, com o resto.
+    """
+    def fonte(itens: list[ItemDeOrigem]) -> list[casamento.Casado | casamento.Desfecho]:
+        desfechos: list[casamento.Casado | casamento.Desfecho] = [casamento.NAO_CASA] * negativos
+        a_casar = itens[negativos:]
+        for posicao, item in enumerate(a_casar):
+            if not rawg.disponivel():
+                return desfechos + [casamento.PENDENTE] * (len(a_casar) - posicao)
+            try:
+                casado = _casar(item, rawg, loja)
+            except OrigemIndisponivel:
+                # Orçamento ou prazo esgotado, ou o RAWG/a loja caiu: este e o resto ficam para a próxima.
+                return desfechos + [casamento.PENDENTE] * (len(a_casar) - posicao)
+            if casado is IGNORADO:
+                desfechos.append(casamento.IGNORADO)
+            elif casado:
+                desfechos.append((_na_midia(item, casado['id_midia']), casado))
+            else:
+                desfechos.append(casamento.NAO_CASA)
+        return desfechos
+
+    return fonte
 
 
 def sincronizar(
@@ -164,7 +187,8 @@ def sincronizar(
     conferir_tamanho(len(itens))
 
     casados, a_casar, sem_casamento = _separar(itens)
-    ja_casados = servico.aplicar_itens(id_usuario, casados, hoje=hoje)
+    na_midia = casamento.na_midia(casados)
+    ja_casados = servico.aplicar_casados(id_usuario, na_midia.em_ordem, na_midia.nao_encontrados, hoje=hoje)
 
     def conferir_orcamento() -> None:
         if orcamento is not None and relogio() - inicio >= orcamento:
@@ -172,33 +196,16 @@ def sincronizar(
 
     rawg = Rawg(antes_de_chamar=conferir_orcamento)
     loja = LojaSteam(antes_de_chamar=conferir_orcamento)
-    recem_casados: list[ItemDeOrigem] = []
-    pendentes = 0
     try:
-        for posicao, item in enumerate(a_casar):
-            if not rawg.disponivel():
-                pendentes = len(a_casar) - posicao
-                break
-            try:
-                casado = _casar(item, rawg, loja)
-            except OrigemIndisponivel:
-                # Orçamento ou prazo esgotado, ou o RAWG/a loja caiu: este e o resto ficam para a próxima.
-                pendentes = len(a_casar) - posicao
-                break
-            if casado is IGNORADO:
-                continue
-            if casado:
-                recem_casados.append(_na_midia(item, casado['id_midia']))
-            else:
-                sem_casamento.append(item)
+        restantes = casamento.casar('steam', sem_casamento + a_casar, _pela_cadeia(len(sem_casamento), rawg, loja))
     finally:
         rawg.fechar()
         loja.fechar()
 
-    vinculados, sem_casamento = _pela_reserva(sem_casamento)
-    novos_casados = servico.aplicar_itens(id_usuario, recem_casados + vinculados, hoje=hoje)
-    nao_casados = resultado.criar(nao_encontrados=[resultado.nao_encontrado(i) for i in sem_casamento],
-                                  pendentes=pendentes)
+    # Os casados pela fonte antes dos pelo vínculo, como sempre foi.
+    novos_casados = servico.aplicar_casados(id_usuario, restantes.pela_fonte + restantes.pelo_vinculo, hoje=hoje)
+    nao_casados = resultado.criar(nao_encontrados=[resultado.nao_encontrado(i) for i in restantes.nao_encontrados],
+                                  pendentes=restantes.pendentes)
     final = resultado.somar(ja_casados, novos_casados, nao_casados)
     repositorio.registrar_resultado(id_usuario, 'steam', final)
     return final.resposta()
