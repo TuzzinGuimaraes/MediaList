@@ -142,44 +142,50 @@ describe('aplicarProgresso (o que o backend fará, para o otimista)', () => {
 });
 
 describe('edição: sair de Concluído com o Progresso no total (ticket 33)', () => {
-  const midia = { tipo: 'anime' as const, total: 28 };
   const emProgresso = { ...anime, status_consumo: 'assistindo', progresso_atual: 12, nota_usuario: null };
 
+  it('guarda o Tipo e o total da Mídia; o do Item vale mais', () => {
+    expect(iniciarEdicao(null, anime).midia).toEqual({ tipo: 'anime', total: 28 });
+    expect(iniciarEdicao({ ...emProgresso, progresso_total: 24 }, anime).midia).toEqual({ tipo: 'anime', total: 24 });
+    expect(iniciarEdicao(null, jogo).midia).toEqual({ tipo: 'jogo', total: null });
+  });
+
   it('escolher Concluído nesta edição e depois outro Estado devolve o Progresso de antes', () => {
-    let e = iniciarEdicao(emProgresso, 'anime');
-    e = mudarEdicao(e, { status_consumo: 'completo' }, midia);
+    let e = iniciarEdicao(emProgresso, anime);
+    e = mudarEdicao(e, { status_consumo: 'completo' });
     expect(e.form).toMatchObject({ status_consumo: 'completo', progresso: '28' });
-    e = mudarEdicao(e, { status_consumo: 'pausado' }, midia);
+    e = mudarEdicao(e, { status_consumo: 'pausado' });
     expect(e.form).toMatchObject({ status_consumo: 'pausado', progresso: '12' });
   });
 
   it.each(['assistindo', 'pausado', 'planejado', 'abandonado'])('Item que abriu concluído e recebe %s zera o Progresso', (rotulo) => {
     const concluido = { ...emProgresso, status_consumo: 'completo', progresso_atual: 28 };
-    const e = mudarEdicao(iniciarEdicao(concluido, 'anime'), { status_consumo: rotulo }, midia);
+    const e = mudarEdicao(iniciarEdicao(concluido, anime), { status_consumo: rotulo });
     expect(e.form).toMatchObject({ status_consumo: rotulo, progresso: '0' });
   });
 
   it('reabrir e reconcluir na mesma edição: sair de novo volta a 0', () => {
     const concluido = { ...emProgresso, status_consumo: 'completo', progresso_atual: 28 };
-    let e = mudarEdicao(iniciarEdicao(concluido, 'anime'), { status_consumo: 'pausado' }, midia);
-    e = mudarEdicao(e, { status_consumo: 'completo' }, midia);
+    let e = mudarEdicao(iniciarEdicao(concluido, anime), { status_consumo: 'pausado' });
+    e = mudarEdicao(e, { status_consumo: 'completo' });
     expect(e.form.progresso).toBe('28');
-    e = mudarEdicao(e, { status_consumo: 'abandonado' }, midia);
+    e = mudarEdicao(e, { status_consumo: 'abandonado' });
     expect(e.form).toMatchObject({ status_consumo: 'abandonado', progresso: '0' });
   });
 
   it('mudar outros campos não mexe no Estado nem no Progresso', () => {
-    let e = mudarEdicao(iniciarEdicao(emProgresso, 'anime'), { status_consumo: 'completo' }, midia);
-    e = mudarEdicao(e, { nota: '9' }, midia);
+    let e = mudarEdicao(iniciarEdicao(emProgresso, anime), { status_consumo: 'completo' });
+    e = mudarEdicao(e, { nota: '9' });
     expect(e.form).toMatchObject({ status_consumo: 'completo', progresso: '28', nota: '9' });
   });
 
   it('jogo e Tipo sem total não mudam', () => {
     const zerado = { ...jogo, status_consumo: 'zerado', progresso_atual: 40, nota_usuario: null };
-    expect(mudarEdicao(iniciarEdicao(zerado, 'jogo'), { status_consumo: 'jogando' }, { tipo: 'jogo', total: null }).form)
+    expect(mudarEdicao(iniciarEdicao(zerado, jogo), { status_consumo: 'jogando' }).form)
       .toMatchObject({ status_consumo: 'jogando', progresso: '40' });
-    const lido = { ...manga, status_consumo: 'lido', progresso_atual: 50, nota_usuario: null };
-    expect(mudarEdicao(iniciarEdicao(lido, 'manga'), { status_consumo: 'pausado' }, { tipo: 'manga', total: null }).form)
+    const semTotal = { ...manga, numero_capitulos: null };
+    const lido = { ...semTotal, status_consumo: 'lido', progresso_atual: 50, nota_usuario: null };
+    expect(mudarEdicao(iniciarEdicao(lido, semTotal), { status_consumo: 'pausado' }).form)
       .toMatchObject({ status_consumo: 'pausado', progresso: '50' });
   });
 });
@@ -277,9 +283,13 @@ describe('formulário do editor', () => {
   });
 
   const valido = formularioDoItem(item, 'anime');
+  const HOJE = '2026-11-14';
+  /** Valida o formulário `valido` com `mudanca`, no editor do `item`. */
+  const validar = (mudanca: Partial<typeof valido> = {}, hoje = HOJE) =>
+    validarItem({ ...iniciarEdicao(item, anime), form: { ...valido, ...mudanca } }, hoje);
 
   it('converte para o corpo da API', () => {
-    expect(validarItem({ ...valido, nota: '9,5', comentario: '  ' }, { tipo: 'anime', total: 28 })).toEqual({
+    expect(validar({ nota: '9,5', comentario: '  ' })).toEqual({
       ok: true,
       dados: {
         status_consumo: 'assistindo',
@@ -293,14 +303,14 @@ describe('formulário do editor', () => {
         comentario: null,
       },
     });
-    expect(validarItem({ ...valido, nota: '' }, { tipo: 'anime', total: 28 })).toMatchObject({
+    expect(validar({ nota: '' })).toMatchObject({
       ok: true,
       dados: { nota_usuario: null },
     });
   });
 
   it.each([['0', 0], ['10', 10], ['10,0', 10], ['7.5', 7.5]])('aceita a Nota pessoal %s', (nota, esperada) => {
-    expect(validarItem({ ...valido, nota }, { tipo: 'anime', total: 28 })).toMatchObject({
+    expect(validar({ nota })).toMatchObject({
       ok: true,
       dados: { nota_usuario: esperada },
     });
@@ -317,20 +327,29 @@ describe('formulário do editor', () => {
     [{ nota: 'abc' }, 'A Nota pessoal vai de 0 a 10, com no máximo uma casa decimal.'],
     [{ recontagem: '-2' }, 'Reassistido: use um número inteiro a partir de 0.'],
     [{ inicio: '10/10/2026', conclusao: '09/10/2026' }, 'A conclusão não pode ser antes do início.'],
+    [{ inicio: '15/11/2026' }, 'A data de início não pode ser no futuro.'],
+    [{ conclusao: '20/11/2026' }, 'A data de conclusão não pode ser no futuro.'],
   ])('recusa %o', (mudanca, erro) => {
-    expect(validarItem({ ...valido, ...mudanca }, { tipo: 'anime', total: 28 })).toEqual({ ok: false, erro });
+    expect(validar(mudanca)).toEqual({ ok: false, erro });
+  });
+
+  it('aceita as datas de hoje', () => {
+    expect(validar({ inicio: '14/11/2026', conclusao: '14/11/2026' })).toMatchObject({
+      ok: true,
+      dados: { data_inicio: '2026-11-14', data_conclusao: '2026-11-14' },
+    });
   });
 
   it('jogo aceita horas sem teto e Platinado', () => {
     const f = { ...formularioDoItem(null, 'jogo'), status_consumo: 'platinado', progresso: '320' };
-    expect(validarItem(f, { tipo: 'jogo', total: null })).toMatchObject({
+    expect(validarItem({ ...iniciarEdicao(null, jogo), form: f }, HOJE)).toMatchObject({
       ok: true,
       dados: { status_consumo: 'platinado', progresso_atual: 320 },
     });
   });
 
   it('vazio no Progresso conta como 0', () => {
-    expect(validarItem({ ...valido, progresso: '' }, { tipo: 'anime', total: 28 })).toMatchObject({
+    expect(validar({ progresso: '' })).toMatchObject({
       ok: true,
       dados: { progresso_atual: 0 },
     });
