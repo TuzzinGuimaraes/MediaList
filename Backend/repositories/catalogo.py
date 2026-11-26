@@ -8,6 +8,7 @@ ficam com o JSONProvider do app.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, get_args
 
 from banco import consultar, consultar_um, executar, transacao
@@ -23,6 +24,9 @@ SQL_ROTULOS_TERMINAIS = sql_rotulos(*ESTADOS_TERMINAIS)
 
 #: Estações na ordem do ano, como lista SQL, para ordenar Temporadas.
 SQL_ESTACOES = ', '.join(f"'{e}'" for e in get_args(Estacao))
+
+#: Instante ISO 8601 com fuso, como o job de episódios grava o `exibido_em` das Atualizações.
+INSTANTE_ISO = r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}(:?\d{2})?)$'
 
 #: Colunas de uma Mídia nas respostas da API. Os nomes duplicados (`id_anime`,
 #: `codigo_anime`) e prefixados (`anime_trailer_url`) são contrato com os clientes.
@@ -321,6 +325,44 @@ class Catalogo:
                 f'ORDER BY array_position(ARRAY[{SQL_ESTACOES}], temporada_estacao) LIMIT 1'
             )
         return {'plataformas': plataformas, 'estudios': estudios, 'temporada_mais_antiga': temporada_mais_antiga}
+
+    def calendario(self, de: datetime, ate: datetime) -> list[dict[str, Any]]:
+        """Episódios de anime com o instante em [de, ate): os exibidos (Atualizações `episodio`) e
+        os próximos (`proximo_episodio_em`, episódio `episodios_lancados + 1`). O episódio com
+        Atualização e ainda apontado como próximo sai uma vez, como exibido. Pelo instante."""
+        return consultar(
+            """
+            SELECT m.id_midia, 'anime' AS tipo, m.titulo_original, m.titulo_ingles, m.titulo_portugues,
+                   m.poster_url, e.episodio, e.instante, e.exibido
+            FROM (
+                SELECT DISTINCT ON (id_midia, episodio) id_midia, episodio, instante, exibido
+                FROM (
+                    SELECT id_midia, episodio, instante, true AS exibido
+                    FROM (
+                        -- A Atualização `episodio` do admin pode vir fora do formato do job: fica de fora.
+                        SELECT id_midia,
+                               CASE WHEN dados_adicionais->>'episodio' ~ '^[1-9][0-9]{0,8}$'
+                                    THEN (dados_adicionais->>'episodio')::int END AS episodio,
+                               CASE WHEN dados_adicionais->>'exibido_em' ~ %(instante_iso)s
+                                    THEN (dados_adicionais->>'exibido_em')::timestamptz END AS instante
+                        FROM atualizacoes_midia
+                        WHERE tipo_atualizacao = 'episodio'
+                    ) atualizacoes
+                    WHERE episodio IS NOT NULL AND instante >= %(de)s AND instante < %(ate)s
+                    UNION ALL
+                    SELECT id_midia, COALESCE(episodios_lancados, 0) + 1, proximo_episodio_em, false
+                    FROM animes
+                    WHERE proximo_episodio_em >= %(de)s AND proximo_episodio_em < %(ate)s
+                ) episodios
+                ORDER BY id_midia, episodio, exibido DESC
+            ) e
+            JOIN midias m ON m.id_midia = e.id_midia
+            -- Só anime: a Atualização `episodio` de outro Tipo fica de fora.
+            WHERE EXISTS (SELECT 1 FROM animes a WHERE a.id_midia = e.id_midia)
+            ORDER BY e.instante, m.id_midia, e.episodio
+            """,
+            {'de': de, 'ate': ate, 'instante_iso': INSTANTE_ISO},
+        )
 
     def generos(self, tipo: str | None = None) -> list[dict[str, Any]]:
         """Gêneros, todos ou os que se aplicam ao Tipo (elemento inteiro de `aplicavel_a`)."""

@@ -5,6 +5,12 @@ export function tituloDaMidia(midia: Pick<Midia, 'titulo_portugues' | 'titulo_or
   return midia.titulo_portugues || midia.titulo_original;
 }
 
+/** "nenhum episódio", "1 episódio", "3 episódios". */
+export function contagemDeEpisodios(n: number): string {
+  if (n === 0) return 'nenhum episódio';
+  return n === 1 ? '1 episódio' : `${n} episódios`;
+}
+
 /**
  * O título que o detalhe mostra em texto suave abaixo do principal: o primeiro entre o
  * original e o inglês que for diferente do principal; null se nenhum for.

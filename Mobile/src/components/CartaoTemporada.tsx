@@ -1,26 +1,20 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { mensagemDeErro } from '../api/erros';
-import { useAdicionarComoPlanejado } from '../api/lista';
 import type { Midia } from '../api/tipos';
 import { formatarData } from '@dominio/datas';
 import { nomeDoTipo } from '@dominio/estadoConsumo';
-import { tituloDaMidia } from '@dominio/midia';
+import { contagemDeEpisodios, tituloDaMidia } from '@dominio/midia';
 import { seloDeEstimativa } from '@dominio/temporada';
 import { rotaDaMidia } from '../rotas';
-import { useCores } from '../tema/TemaContext';
+import { PlanejadoOuNaLista } from './PlanejadoOuNaLista';
 import { Selo } from './Selo';
 import { Toque } from './Toque';
 
 const textos = {
-  planejado: 'Planejado',
-  naLista: 'Na Lista',
   estreia: (data: string) => `Estreia ${data}`,
-  episodios: (n: number) => `${n} ${n === 1 ? 'episódio' : 'episódios'}`,
 };
 
 type Props = {
@@ -35,12 +29,10 @@ type Props = {
  */
 export function CartaoTemporada({ anime, naLista }: Props) {
   const router = useRouter();
-  const cores = useCores();
   const titulo = tituloDaMidia(anime);
   const estreia = formatarData(anime.data_lancamento);
   const selo = seloDeEstimativa(anime);
   const [explicando, setExplicando] = useState(false);
-  const adicionar = useAdicionarComoPlanejado();
 
   return (
     <View accessibilityLabel={`Cartão de ${titulo}`} className="flex-row gap-3 rounded-lg bg-superficie p-2.5">
@@ -74,7 +66,7 @@ export function CartaoTemporada({ anime, naLista }: Props) {
             </Text>
           ) : null}
           {anime.numero_episodios ? (
-            <Text className="text-legenda text-texto-suave">{textos.episodios(anime.numero_episodios)}</Text>
+            <Text className="text-legenda text-texto-suave">{contagemDeEpisodios(anime.numero_episodios)}</Text>
           ) : null}
         </View>
       </Toque>
@@ -94,35 +86,7 @@ export function CartaoTemporada({ anime, naLista }: Props) {
         ) : (
           <View />
         )}
-        {naLista ? (
-          <View className="flex-row items-center gap-1">
-            <Ionicons name="checkmark" size={16} color={cores['texto-suave']} />
-            <Text className="text-legenda font-semibold text-texto-suave">{textos.naLista}</Text>
-          </View>
-        ) : naLista === false ? (
-          <View className="items-end gap-1">
-            <Toque
-              accessibilityRole="button"
-              accessibilityLabel={`${textos.planejado}, ${titulo}`}
-              accessibilityState={{ busy: adicionar.isPending, disabled: adicionar.isPending }}
-              disabled={adicionar.isPending}
-              onPress={() => adicionar.mutate({ idMidia: anime.id_midia, tipo: anime.tipo })}
-              className="min-h-[36px] flex-row items-center gap-1 rounded-md border border-borda bg-superficie-alta px-2.5"
-            >
-              {adicionar.isPending ? (
-                <ActivityIndicator size="small" color={cores.texto} />
-              ) : (
-                <Ionicons name="add" size={16} color={cores.texto} />
-              )}
-              <Text className="text-legenda font-semibold text-texto">{textos.planejado}</Text>
-            </Toque>
-            {adicionar.isError ? (
-              <Text accessibilityRole="alert" className="max-w-[120px] text-right text-legenda text-erro">
-                {mensagemDeErro(adicionar.error)}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        <PlanejadoOuNaLista idMidia={anime.id_midia} tipo={anime.tipo} titulo={titulo} naLista={naLista} />
       </View>
     </View>
   );

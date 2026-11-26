@@ -1,4 +1,14 @@
-import { notaDeRanking, notasDaMidia, tituloAlternativo } from './midia';
+import { contagemDeEpisodios, notaDeRanking, notasDaMidia, tituloAlternativo } from './midia';
+
+describe('contagemDeEpisodios', () => {
+  it.each([
+    [0, 'nenhum episódio'],
+    [1, '1 episódio'],
+    [3, '3 episódios'],
+  ])('%i: %s', (n, texto) => {
+    expect(contagemDeEpisodios(n)).toBe(texto);
+  });
+});
 
 describe('notasDaMidia', () => {
   it('com Avaliações e Nota da fonte, mostra as duas com rótulos distintos', () => {

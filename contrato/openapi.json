@@ -418,6 +418,29 @@
         "title": "ConexaoIntegracao",
         "type": "object"
       },
+      "ConsultaCalendario": {
+        "description": "`GET /midias/calendario?de=&ate=`: instantes com fuso; `ate` depois de `de`, até 8 dias.",
+        "properties": {
+          "ate": {
+            "description": "Fim da janela, exclusive",
+            "format": "date-time",
+            "title": "Ate",
+            "type": "string"
+          },
+          "de": {
+            "description": "Início da janela, inclusive",
+            "format": "date-time",
+            "title": "De",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "ate"
+        ],
+        "title": "ConsultaCalendario",
+        "type": "object"
+      },
       "ConsultaFacetas": {
         "properties": {
           "tipo": {
@@ -1871,6 +1894,86 @@
           }
         },
         "title": "EdicaoItemLista",
+        "type": "object"
+      },
+      "EpisodioDoCalendario": {
+        "description": "Um episódio do Calendário, com o anime resumido.",
+        "properties": {
+          "episodio": {
+            "minimum": 1,
+            "title": "Episodio",
+            "type": "integer"
+          },
+          "exibido": {
+            "description": "Já foi ao ar: vem de uma Atualização `episodio`",
+            "title": "Exibido",
+            "type": "boolean"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "instante": {
+            "description": "Quando foi ao ar (exibido) ou quando sai (próximo)",
+            "format": "date-time",
+            "title": "Instante",
+            "type": "string"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "tipo": {
+            "const": "anime",
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_portugues": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Portugues"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo",
+          "titulo_original",
+          "titulo_ingles",
+          "titulo_portugues",
+          "poster_url",
+          "episodio",
+          "instante",
+          "exibido"
+        ],
+        "title": "EpisodioDoCalendario",
         "type": "object"
       },
       "Erro": {
@@ -4904,6 +5007,23 @@
           "avaliacoes"
         ],
         "title": "RespostaAvaliacoesModeracao",
+        "type": "object"
+      },
+      "RespostaCalendario": {
+        "properties": {
+          "episodios": {
+            "description": "Exibidos e próximos da janela, pelo instante; o mesmo episódio sai uma vez só (o exibido)",
+            "items": {
+              "$ref": "#/components/schemas/EpisodioDoCalendario"
+            },
+            "title": "Episodios",
+            "type": "array"
+          }
+        },
+        "required": [
+          "episodios"
+        ],
+        "title": "RespostaCalendario",
         "type": "object"
       },
       "RespostaDistribuicao": {
@@ -8654,6 +8774,99 @@
           }
         },
         "summary": "Listar mídias com filtros por tipo, paginado; `total` conta todas as páginas.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/calendario": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_calendario",
+        "parameters": [
+          {
+            "description": "Início da janela, inclusive",
+            "in": "query",
+            "name": "de",
+            "required": true,
+            "schema": {
+              "description": "Início da janela, inclusive",
+              "format": "date-time",
+              "title": "De",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fim da janela, exclusive",
+            "in": "query",
+            "name": "ate",
+            "required": true,
+            "schema": {
+              "description": "Fim da janela, exclusive",
+              "format": "date-time",
+              "title": "Ate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaCalendario"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Calendário: os episódios de anime da janela (até 8 dias), os já exibidos e os próximos.",
         "tags": [
           "midias"
         ]

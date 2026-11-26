@@ -1,5 +1,6 @@
 // Temporada de anime (ticket 49 da revisão): os animes de uma Temporada do Catálogo, abrindo na
-// atual. Estação, ano e ordem ficam nos parâmetros da rota, como no web.
+// atual, e na atual a aba Calendário (ticket 50). Estação, ano, ordem e aba ficam nos parâmetros
+// da rota, como no web.
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -10,6 +11,7 @@ import { useLista } from '@/api/lista';
 import { useAnimesDaTemporada, useTemporadaMaisAntiga } from '@/api/temporada';
 import type { Midia } from '@/api/tipos';
 import { useSessao } from '@/auth/SessaoContext';
+import { Calendario } from '@/components/Calendario';
 import { CartaoTemporada } from '@/components/CartaoTemporada';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { Opcoes } from '@/components/Opcoes';
@@ -21,6 +23,7 @@ import {
   mesmaTemporada,
   NOMES_DA_ESTACAO,
   ordemDaTemporada,
+  type OrdemTemporada,
   ORDENS_DA_TEMPORADA,
   proxima,
   rotuloDaTemporada,
@@ -44,6 +47,9 @@ const textos = {
   ano: 'Ano',
   estacao: 'Estação',
   series: 'Séries',
+  abas: 'Temporada',
+  animes: 'Animes',
+  calendario: 'Calendário',
   vazio: (t: Temporada) => `Nenhum anime de ${rotuloDaTemporada(t)} no Catálogo.`,
 };
 
@@ -59,7 +65,8 @@ export default function TelaTemporada() {
   return <PaginaTemporada />;
 }
 
-type Parametros = { estacao?: string; ano?: string; ordem?: string };
+type Parametros = { estacao?: string; ano?: string; ordem?: string; aba?: string };
+type Aba = 'animes' | 'calendario';
 
 function PaginaTemporada() {
   const router = useRouter();
@@ -74,46 +81,12 @@ function PaginaTemporada() {
   const seletor = useMemo(() => temporadasDoSeletor(maisAntiga.data ?? null, agora), [maisAntiga.data, agora]);
   // Fora do seletor (link para antes da mais antiga), as duas setas andam.
   const posicao = seletor.findIndex((t) => mesmaTemporada(t, temporada));
-  const animes = useAnimesDaTemporada(temporada, ordem);
-  const lista = useLista();
-  const naLista = useMemo(
-    () => (lista.data ? new Set(lista.data.map((i) => i.id_midia)) : lista.isError ? new Set<string>() : null),
-    [lista.data, lista.isError],
-  );
+  const ehAtual = mesmaTemporada(temporada, atual);
+  // O Calendário é só da Temporada atual: nas outras, a aba não existe.
+  const aba: Aba = ehAtual && parametros.aba === 'calendario' ? 'calendario' : 'animes';
 
   const ir = (t: Temporada) => router.setParams({ estacao: t.estacao, ano: String(t.ano) });
   const voltar = () => (router.canGoBack() ? router.back() : router.replace('/explorar'));
-
-  let conteudo: React.ReactNode;
-  if (animes.data?.length === 0) {
-    conteudo = <Vazio mensagem={textos.vazio(temporada)} />;
-  } else if (animes.data) {
-    const { principal, filmesEEspeciais } = secoesDaTemporada(animes.data);
-    const cartao = (anime: Midia) => (
-      <CartaoTemporada key={anime.id_midia} anime={anime} naLista={naLista ? naLista.has(anime.id_midia) : undefined} />
-    );
-    conteudo = (
-      <ScrollView contentContainerClassName="gap-6 px-4 pb-8 pt-3">
-        {principal.length ? (
-          <View accessibilityLabel={textos.series} className="gap-2.5">
-            {principal.map(cartao)}
-          </View>
-        ) : null}
-        {filmesEEspeciais.length ? (
-          <View accessibilityLabel={TITULO_FILMES_E_ESPECIAIS} className="gap-2.5">
-            <Text accessibilityRole="header" className="text-titulo-secao font-bold text-texto-forte">
-              {TITULO_FILMES_E_ESPECIAIS}
-            </Text>
-            {filmesEEspeciais.map(cartao)}
-          </View>
-        ) : null}
-      </ScrollView>
-    );
-  } else if (animes.isError) {
-    conteudo = <Falha erro={animes.error} tentarDeNovo={() => animes.refetch()} />;
-  } else {
-    conteudo = <Carregando />;
-  }
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-fundo">
@@ -145,29 +118,38 @@ function PaginaTemporada() {
             onPress={() => ir(proxima(temporada))}
           />
         </View>
-        <View className="flex-row items-center">
-          <View className="flex-1">
-            <Opcoes
-              rotulo={textos.ordem}
-              opcoes={ORDENS}
-              valor={ordem}
-              escolher={(o) => router.setParams({ ordem: o })}
-            />
+        {ehAtual ? <Abas aba={aba} escolher={(a) => router.setParams({ aba: a })} /> : null}
+        {aba === 'animes' ? (
+          <View className="flex-row items-center">
+            <View className="flex-1">
+              <Opcoes
+                rotulo={textos.ordem}
+                opcoes={ORDENS}
+                valor={ordem}
+                escolher={(o) => router.setParams({ ordem: o })}
+              />
+            </View>
+            {ehAtual ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={textos.temporadaAtual}
+                onPress={() => ir(atual)}
+                hitSlop={6}
+                className="mr-4 rounded-full border border-marca-texto px-3 py-1.5"
+              >
+                <Text className="text-corpo font-semibold text-marca-texto">{textos.atual}</Text>
+              </Pressable>
+            )}
           </View>
-          {mesmaTemporada(temporada, atual) ? null : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={textos.temporadaAtual}
-              onPress={() => ir(atual)}
-              hitSlop={6}
-              className="mr-4 rounded-full border border-marca-texto px-3 py-1.5"
-            >
-              <Text className="text-corpo font-semibold text-marca-texto">{textos.atual}</Text>
-            </Pressable>
-          )}
-        </View>
+        ) : null}
       </View>
-      <View className="flex-1">{conteudo}</View>
+      <View className="flex-1">
+        {aba === 'calendario' ? (
+          <Calendario />
+        ) : (
+          <AnimesDaTemporada temporada={temporada} ordem={ordem} />
+        )}
+      </View>
       {seletorAberto ? (
         <SeletorTemporada
           temporadas={seletor}
@@ -177,6 +159,67 @@ function PaginaTemporada() {
         />
       ) : null}
     </SafeAreaView>
+  );
+}
+
+function Abas({ aba, escolher }: { aba: Aba; escolher: (aba: Aba) => void }) {
+  return (
+    <View accessibilityRole="tablist" accessibilityLabel={textos.abas} className="flex-row gap-6 px-4">
+      {(['animes', 'calendario'] as const).map((a) => {
+        const ativa = a === aba;
+        return (
+          <Pressable
+            key={a}
+            accessibilityRole="tab"
+            accessibilityLabel={textos[a]}
+            accessibilityState={{ selected: ativa }}
+            onPress={() => escolher(a)}
+            className="min-h-[44px] justify-center"
+          >
+            <Text className={`text-corpo font-semibold ${ativa ? 'text-texto-forte' : 'text-texto-suave'}`}>
+              {textos[a]}
+            </Text>
+            <View className={`h-[3px] rounded-full ${ativa ? 'bg-marca' : ''}`} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** A grade da Temporada: as séries e, à parte, os filmes e especiais. */
+function AnimesDaTemporada({ temporada, ordem }: { temporada: Temporada; ordem: OrdemTemporada }) {
+  const animes = useAnimesDaTemporada(temporada, ordem);
+  const lista = useLista();
+  const naLista = useMemo(
+    () => (lista.data ? new Set(lista.data.map((i) => i.id_midia)) : lista.isError ? new Set<string>() : null),
+    [lista.data, lista.isError],
+  );
+
+  if (!animes.data) {
+    return animes.isError ? <Falha erro={animes.error} tentarDeNovo={() => animes.refetch()} /> : <Carregando />;
+  }
+  if (animes.data.length === 0) return <Vazio mensagem={textos.vazio(temporada)} />;
+  const { principal, filmesEEspeciais } = secoesDaTemporada(animes.data);
+  const cartao = (anime: Midia) => (
+    <CartaoTemporada key={anime.id_midia} anime={anime} naLista={naLista ? naLista.has(anime.id_midia) : undefined} />
+  );
+  return (
+    <ScrollView contentContainerClassName="gap-6 px-4 pb-8 pt-3">
+      {principal.length ? (
+        <View accessibilityLabel={textos.series} className="gap-2.5">
+          {principal.map(cartao)}
+        </View>
+      ) : null}
+      {filmesEEspeciais.length ? (
+        <View accessibilityLabel={TITULO_FILMES_E_ESPECIAIS} className="gap-2.5">
+          <Text accessibilityRole="header" className="text-titulo-secao font-bold text-texto-forte">
+            {TITULO_FILMES_E_ESPECIAIS}
+          </Text>
+          {filmesEEspeciais.map(cartao)}
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }
 
