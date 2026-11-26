@@ -47,7 +47,7 @@ def vincular(db, appid: int, id_midia: str, nome: str) -> str:
     """O vínculo de um Usuário só preenche o casamento vazio (negativo, ignorado ou sem linha).
 
     Na transação `db` do Vincular; devolve o `id_midia` que ficou. Casamento com outra Mídia não
-    é trocado (a fonte vem antes do vínculo): o chamador recusa. O `ON CONFLICT ... WHERE` trava a
+    é trocado (a busca vem antes do vínculo): o chamador recusa. O `ON CONFLICT ... WHERE` trava a
     linha mesmo sem atualizar, então a leitura seguinte é a que vale até o commit.
     """
     gravado = db.consultar_um(

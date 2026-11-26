@@ -14,7 +14,7 @@
    (o job diário), sem gravar nada.
 4. O vínculo de um Usuário (`integracoes.vinculos`) é reserva: só casa o que ficou sem casamento
    (negativo); o resto vai para "Não encontrados". A ordem é do `integracoes.casamento`: os passos
-   2 e 3 são a fonte da Steam (`_separar` e `_pela_cadeia`). O Vincular da Steam também grava o casamento
+   2 e 3 são a busca da Steam (`_separar` e `pela_cadeia`). O Vincular da Steam também grava o casamento
    em `steam_appids` (só onde não havia), então em geral o jogo vinculado já casa no passo 2.
 
 O orçamento conta do início (ler a biblioteca e aplicar os já casados entram nele) e é
@@ -24,13 +24,13 @@ resultado vai para `integracoes.ultimo_resultado`.
 """
 from __future__ import annotations
 
-import enum
 import time
 from dataclasses import replace
 from datetime import date
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Collection, Literal
 
 from integracoes import casamento, catalogo, repositorio, resultado, servico, steam_appids
+from integracoes.casamento import Desfecho
 from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
 from integracoes.rawg import Rawg
@@ -38,16 +38,8 @@ from integracoes.rawg import Rawg
 #: Orçamento do "Sincronizar agora", em segundos (a função da Vercel tem 300 s).
 ORCAMENTO_SEGUNDOS = 60
 
-class Ignorado(enum.Enum):
-    """O que `_casar` devolve quando a loja diz que a appid não é jogo."""
-
-    IGNORADO = 'ignorado'
-
-
-IGNORADO = Ignorado.IGNORADO
-
 #: O casamento de uma appid: a Mídia, IGNORADO (não é jogo) ou None (ninguém tem).
-DaAppid = catalogo.Localizada | Literal[Ignorado.IGNORADO] | None
+DaAppid = catalogo.Localizada | Literal[Desfecho.IGNORADO] | None
 
 
 class _OrcamentoEsgotado(OrigemIndisponivel):
@@ -77,7 +69,7 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
 
 
 def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> DaAppid:
-    """A Mídia criada pela loja da Steam (só `game`), IGNORADO (outro tipo) ou None (a loja não tem).
+    """A Mídia criada pela loja da Steam (só `game`), `Desfecho.IGNORADO` (outro tipo) ou None (a loja não tem).
 
     A loja já devolve a appid pedida; o nome que não é texto fica o da biblioteca da Steam, e a
     capa vertical só entra se o CDN a confirmar dentro do orçamento.
@@ -86,7 +78,7 @@ def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> DaAppid:
     if dados is None:
         return None
     if dados.get('type') != 'game':
-        return IGNORADO
+        return Desfecho.IGNORADO
     nome = dados.get('name')
     dados = {**dados, 'name': nome if isinstance(nome, str) and nome.strip() else item.titulo,
              'steam_appid': int(item.origem_id), 'capa_vertical': loja.capa_vertical(item.origem_id)}
@@ -96,8 +88,8 @@ def _pela_loja(item: ItemDeOrigem, loja: LojaSteam) -> DaAppid:
     return midia
 
 
-def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> DaAppid:
-    """A Mídia do item (RAWG, senão a loja da Steam), IGNORADO ou None (não casa).
+def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> casamento.Casado | Desfecho:
+    """O item na Mídia do RAWG (senão a da loja da Steam), `IGNORADO` (não é jogo) ou `NAO_CASA`.
 
     Grava o casamento (positivo, ignorado ou negativo). Levanta OrigemIndisponivel sem gravar nada.
     """
@@ -107,17 +99,17 @@ def _casar(item: ItemDeOrigem, rawg: Rawg, loja: LojaSteam) -> DaAppid:
         steam_appids.marcar_na_midia(appid, midia['id_midia'])
     else:
         midia = _pela_loja(item, loja)
-    if midia is IGNORADO:
+    if midia is Desfecho.IGNORADO:
         steam_appids.ignorar(appid, item.titulo)
-        return IGNORADO
+        return Desfecho.IGNORADO
     steam_appids.gravar(appid, midia['id_midia'] if midia else None, item.titulo)
-    return midia
+    return (_na_midia(item, midia['id_midia']), midia) if midia else Desfecho.NAO_CASA
 
 
 def _separar(itens: list[ItemDeOrigem]):
     """(casados, a casar, sem casamento): pelo `steam_appids` e, os que faltam, pela appid no Catálogo.
 
-    É a parte barata da fonte da Steam; o vínculo de um Usuário não entra aqui (é a reserva do
+    É a parte barata da busca da Steam; o vínculo de um Usuário não entra aqui (é a reserva do
     `integracoes.casamento`).
     """
     a_casar, sem_casamento, casados = [], [], []
@@ -145,32 +137,31 @@ def _separar(itens: list[ItemDeOrigem]):
     return casados, restantes, sem_casamento
 
 
-def _pela_cadeia(negativos: int, rawg: Rawg, loja: LojaSteam) -> casamento.Fonte:
-    """A fonte da Steam para os que `_separar` não casou: os `negativos` primeiros já não casam
-    (negativo em `steam_appids`); os outros, um por vez, pelo RAWG e pela loja (`_casar`).
+def pela_cadeia(negativos: Collection[str], rawg: Rawg, loja: LojaSteam) -> casamento.Busca:
+    """A busca da Steam para os que `_separar` não casou: as appids em `negativos` (negativo em
+    `steam_appids`) já não casam; as outras, uma por vez, pelo RAWG e pela loja (`_casar`).
 
-    O primeiro que esbarra no orçamento, no prazo ou no RAWG/loja fora do ar fica pendente, com o resto.
+    A primeira que esbarra no orçamento, no prazo ou no RAWG/loja fora do ar fica pendente, com as
+    outras que faltam buscar.
     """
-    def fonte(itens: list[ItemDeOrigem]) -> list[casamento.Casado | casamento.Desfecho]:
-        desfechos: list[casamento.Casado | casamento.Desfecho] = [casamento.NAO_CASA] * negativos
-        a_casar = itens[negativos:]
-        for posicao, item in enumerate(a_casar):
-            if not rawg.disponivel():
-                return desfechos + [casamento.PENDENTE] * (len(a_casar) - posicao)
-            try:
-                casado = _casar(item, rawg, loja)
-            except OrigemIndisponivel:
-                # Orçamento ou prazo esgotado, ou o RAWG/a loja caiu: este e o resto ficam para a próxima.
-                return desfechos + [casamento.PENDENTE] * (len(a_casar) - posicao)
-            if casado is IGNORADO:
-                desfechos.append(casamento.IGNORADO)
-            elif casado:
-                desfechos.append((_na_midia(item, casado['id_midia']), casado))
+    def busca(itens: list[ItemDeOrigem]) -> list[casamento.Casado | Desfecho]:
+        desfechos: list[casamento.Casado | Desfecho] = []
+        parou = False
+        for item in itens:
+            if item.origem_id in negativos:
+                desfecho = Desfecho.NAO_CASA
+            elif parou or not rawg.disponivel():
+                parou, desfecho = True, Desfecho.PENDENTE
             else:
-                desfechos.append(casamento.NAO_CASA)
+                try:
+                    desfecho = _casar(item, rawg, loja)
+                except OrigemIndisponivel:
+                    # Orçamento ou prazo esgotado, ou o RAWG/a loja caiu: esta e as outras ficam para a próxima.
+                    parou, desfecho = True, Desfecho.PENDENTE
+            desfechos.append(desfecho)
         return desfechos
 
-    return fonte
+    return busca
 
 
 def sincronizar(
@@ -188,7 +179,7 @@ def sincronizar(
 
     casados, a_casar, sem_casamento = _separar(itens)
     na_midia = casamento.na_midia(casados)
-    ja_casados = servico.aplicar_casados(id_usuario, na_midia.em_ordem, na_midia.nao_encontrados, hoje=hoje)
+    ja_casados = servico.aplicar_casados(id_usuario, na_midia.todos, na_midia.nao_encontrados, hoje=hoje)
 
     def conferir_orcamento() -> None:
         if orcamento is not None and relogio() - inicio >= orcamento:
@@ -197,13 +188,13 @@ def sincronizar(
     rawg = Rawg(antes_de_chamar=conferir_orcamento)
     loja = LojaSteam(antes_de_chamar=conferir_orcamento)
     try:
-        restantes = casamento.casar('steam', sem_casamento + a_casar, _pela_cadeia(len(sem_casamento), rawg, loja))
+        restantes = casamento.casar('steam', sem_casamento + a_casar,
+                                    pela_cadeia({i.origem_id for i in sem_casamento}, rawg, loja))
     finally:
         rawg.fechar()
         loja.fechar()
 
-    # Os casados pela fonte antes dos pelo vínculo, como sempre foi.
-    novos_casados = servico.aplicar_casados(id_usuario, restantes.pela_fonte + restantes.pelo_vinculo, hoje=hoje)
+    novos_casados = servico.aplicar_casados(id_usuario, restantes.todos, hoje=hoje)
     nao_casados = resultado.criar(nao_encontrados=[resultado.nao_encontrado(i) for i in restantes.nao_encontrados],
                                   pendentes=restantes.pendentes)
     final = resultado.somar(ja_casados, novos_casados, nao_casados)

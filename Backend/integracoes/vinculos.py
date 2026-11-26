@@ -3,7 +3,7 @@
 O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para todo Usuário com o mesmo
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
 (no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
-a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
+a busca da plataforma não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
 vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfazer deixa ali o
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
@@ -43,7 +43,7 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
     """Os itens, com `catalogo` na Mídia do vínculo quando há um.
 
-    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a fonte não casou.
+    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a busca da plataforma não casou.
     """
     if not itens:
         return itens
@@ -88,7 +88,7 @@ def nao_encontrados(id_usuario: str, plataforma: str, origem_id: str) -> list[di
 
 
 class JaNoCatalogo(Exception):
-    """A appid da Steam já casou com outra Mídia (pela fonte): o vínculo não a troca."""
+    """A appid da Steam já casou com outra Mídia (pela busca): o vínculo não a troca."""
 
     def __init__(self, id_midia: str):
         super().__init__(id_midia)

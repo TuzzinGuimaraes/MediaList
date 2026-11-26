@@ -1,6 +1,6 @@
-"""Casamento (ADR-0015, Q133): a fonte casa primeiro; o vínculo só vale para o que ela não casa.
+"""Casamento (ADR-0015, Q133): a busca da plataforma casa primeiro; o vínculo só vale para o que ela não casa.
 
-Pela interface do module com fontes falsas (funções que dizem o que cada item casou) e o
+Pela interface do module com buscas falsas (funções que dizem o que cada item casou) e o
 Catálogo/vínculos no PostgreSQL de teste; a cadeia da Steam pela sincronização, com Steam, RAWG e
 loja falsos. Sem TEST_DATABASE_URL, pula.
 """
@@ -10,9 +10,11 @@ import pytest
 
 import banco
 from integracoes import casamento, catalogo, sincronizacao_steam
+from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import ItemDeOrigem, RefCatalogo
+from integracoes.rawg import Rawg
 
-from .fontes_falsas import appdetails, jogo_steam
+from .fontes_falsas import CHAVE_RAWG, SessaoGet, appdetails, jogo_steam
 from .test_integracoes_steam_pg import (  # noqa: F401 (fixtures)
     HORA,
     _conectar,
@@ -47,34 +49,34 @@ def _localizada(id_midia):
     return {'id_midia': id_midia, 'tipo': 'jogo', 'total': None}
 
 
-def _fonte(desfechos):
-    """Fonte falsa: o desfecho de cada item, pelo `origem_id`; guarda os itens que recebeu."""
-    def fonte(itens):
-        fonte.recebidos = list(itens)
+def _busca(desfechos):
+    """Busca falsa: o desfecho de cada item, pelo `origem_id`; guarda os itens que recebeu."""
+    def busca(itens):
+        busca.recebidos = list(itens)
         return [desfechos[i.origem_id](i) if callable(desfechos[i.origem_id]) else desfechos[i.origem_id]
                 for i in itens]
 
-    return fonte
+    return busca
 
 
 def _midias(casados):
     return [(item.origem_id, str(midia['id_midia']) if midia else None) for item, midia in casados]
 
 
-def test_a_fonte_vence_o_vinculo(jogo):  # noqa: F811
-    appid, slug, nome = jogo('PelaFonte')
+def test_a_busca_vence_o_vinculo(jogo):  # noqa: F811
+    appid, slug, nome = jogo('PelaBusca')
     _, slug_v, nome_v = jogo('PeloVinculo')
-    pela_fonte = _no_catalogo(appid, slug, nome, casado=False)
+    pela_busca = _no_catalogo(appid, slug, nome, casado=False)
     _vincular_direto(appid, _no_catalogo(appid + 1, slug_v, nome_v, casado=False))
     item = _item(appid, nome)
 
-    casados = casamento.casar('steam', [item], _fonte({str(appid): lambda i: (i, _localizada(pela_fonte))}))
+    casados = casamento.casar('steam', [item], _busca({str(appid): lambda i: (i, _localizada(pela_busca))}))
 
-    assert _midias(casados.pela_fonte) == [(str(appid), str(pela_fonte))]
+    assert _midias(casados.pela_busca) == [(str(appid), str(pela_busca))]
     assert (casados.pelo_vinculo, casados.nao_encontrados, casados.pendentes) == ((), (), 0)
 
 
-def test_o_vinculo_so_casa_o_que_a_fonte_nao_casa_e_relocaliza_no_catalogo(jogo):  # noqa: F811
+def test_o_vinculo_so_casa_o_que_a_busca_nao_casa_e_relocaliza_no_catalogo(jogo):  # noqa: F811
     casa, _, nome_casa = jogo('Casa')
     vinculado, _, nome_vinculado = jogo('Vinculado')
     perdido, _, nome_perdido = jogo('Perdido')
@@ -83,28 +85,28 @@ def test_o_vinculo_so_casa_o_que_a_fonte_nao_casa_e_relocaliza_no_catalogo(jogo)
     _vincular_direto(vinculado, destino)
     _vincular_direto(casa, destino)
     itens = [_item(vinculado, nome_vinculado), _item(casa, nome_casa), _item(perdido, nome_perdido)]
-    fonte = _fonte({str(casa): lambda i: (i, _localizada(destino)), str(vinculado): casamento.NAO_CASA,
-                    str(perdido): casamento.NAO_CASA})
+    busca = _busca({str(casa): lambda i: (i, _localizada(destino)), str(vinculado): casamento.Desfecho.NAO_CASA,
+                    str(perdido): casamento.Desfecho.NAO_CASA})
 
-    casados = casamento.casar('steam', itens, fonte)
+    casados = casamento.casar('steam', itens, busca)
 
-    assert fonte.recebidos == itens
+    assert busca.recebidos == itens
     assert _midias(casados.pelo_vinculo) == [(str(vinculado), str(destino))]
     item, midia = casados.pelo_vinculo[0]
     assert (item.catalogo.fonte, midia['tipo'], midia['total']) == ('midia', 'jogo', None)
     assert [i.origem_id for i in casados.nao_encontrados] == [str(perdido)]
-    assert _midias(casados.em_ordem) == [(str(vinculado), str(destino)), (str(casa), str(destino))]
+    assert _midias(casados.todos) == [(str(casa), str(destino)), (str(vinculado), str(destino))]
 
 
-def test_obra_a_importar_e_da_fonte_e_nao_consulta_o_vinculo(jogo):  # noqa: F811
+def test_obra_a_importar_e_da_busca_e_nao_consulta_o_vinculo(jogo):  # noqa: F811
     appid, slug, nome = jogo('AImportar')
     _, slug_v, nome_v = jogo('PeloVinculo')
     _vincular_direto(appid, _no_catalogo(appid + 1, slug_v, nome_v, casado=False))
     item = _item(appid, nome, RefCatalogo('rawg', slug, {'slug': slug}))
 
-    casados = casamento.casar('steam', [item], _fonte({str(appid): lambda i: (i, None)}))
+    casados = casamento.casar('steam', [item], _busca({str(appid): lambda i: (i, None)}))
 
-    assert casados.pela_fonte == ((item, None),)
+    assert casados.pela_busca == ((item, None),)
     assert casados.pelo_vinculo == ()
 
 
@@ -116,10 +118,11 @@ def test_pendente_e_ignorado_nao_vao_para_a_reserva(jogo):  # noqa: F811
     _vincular_direto(pendente, destino)
     _vincular_direto(ignorado, destino)
 
-    casados = casamento.casar('steam', [_item(pendente, nome_p), _item(ignorado, nome_i)],
-                              _fonte({str(pendente): casamento.PENDENTE, str(ignorado): casamento.IGNORADO}))
+    casados = casamento.casar('steam', [_item(pendente, nome_p), _item(ignorado, nome_i)], _busca({
+        str(pendente): casamento.Desfecho.PENDENTE, str(ignorado): casamento.Desfecho.IGNORADO,
+    }))
 
-    assert (casados.pela_fonte, casados.pelo_vinculo, casados.nao_encontrados) == ((), (), ())
+    assert (casados.pela_busca, casados.pelo_vinculo, casados.nao_encontrados) == ((), (), ())
     assert casados.pendentes == 1
 
 
@@ -131,7 +134,7 @@ def test_na_midia_relocaliza_e_a_midia_que_sumiu_e_nao_encontrado(jogo):  # noqa
 
     casados = casamento.na_midia([existe, sumiu])
 
-    assert _midias(casados.pela_fonte) == [(str(appid), str(id_midia))]
+    assert _midias(casados.pela_busca) == [(str(appid), str(id_midia))]
     assert casados.nao_encontrados == (sumiu,)
 
 
@@ -150,7 +153,7 @@ def test_pelo_catalogo_localiza_aceita_a_obra_a_importar_e_deixa_o_resto_para_o_
 
     casados = casamento.casar('steam', itens, casamento.pelo_catalogo)
 
-    assert _midias(casados.pela_fonte) == [(str(no_catalogo), str(id_midia)), (str(a_importar), None)]
+    assert _midias(casados.pela_busca) == [(str(no_catalogo), str(id_midia)), (str(a_importar), None)]
     assert _midias(casados.pelo_vinculo) == [(str(sem_ref), str(destino))]
     assert banco.consultar_um('SELECT 1 AS x FROM jogos WHERE rawg_slug = %s', (slug_i,)) is None
 
@@ -169,13 +172,13 @@ def test_importando_grava_a_obra_e_a_importacao_que_falha_cai_no_vinculo(jogo): 
     casados = casamento.casar('steam', itens, casamento.importando(lambda: conferidos.append(1)))
 
     importada = catalogo.localizar([replace(itens[1], catalogo=RefCatalogo('steam', str(loja)))])
-    assert _midias(casados.pela_fonte) == [(str(loja), str(importada[('jogo', 'steam', str(loja))]['id_midia']))]
+    assert _midias(casados.pela_busca) == [(str(loja), str(importada[('jogo', 'steam', str(loja))]['id_midia']))]
     assert _midias(casados.pelo_vinculo) == [(str(falha), str(destino))]
     assert len(conferidos) == 2
 
 
 # ============================================
-# A fonte da Steam
+# A busca da Steam
 # ============================================
 
 def test_steam_casa_na_ordem_de_hoje_e_o_vinculo_por_ultimo(client, usuario, fontes, jogo):  # noqa: F811
@@ -202,11 +205,11 @@ def test_steam_casa_na_ordem_de_hoje_e_o_vinculo_por_ultimo(client, usuario, fon
 
     corpo = sincronizacao_steam.sincronizar(id_usuario, orcamento=None)
 
-    pela_fonte_rawg = banco.consultar_um('SELECT id_midia FROM jogos WHERE rawg_slug = %s', (slug_r,))['id_midia']
-    pela_fonte_loja = banco.consultar_um('SELECT id_midia FROM jogos WHERE steam_appid = %s', (pela_loja,))['id_midia']
+    pela_busca_rawg = banco.consultar_um('SELECT id_midia FROM jogos WHERE rawg_slug = %s', (slug_r,))['id_midia']
+    pela_busca_loja = banco.consultar_um('SELECT id_midia FROM jogos WHERE steam_appid = %s', (pela_loja,))['id_midia']
     assert (corpo['novos'], corpo['total_nao_encontrados'], corpo['pendentes']) == (5, 1, 0)
     assert [n['origem_id'] for n in corpo['nao_encontrados']] == [str(perdido)]
-    for id_midia in (midia_gravada, midia_appid, pela_fonte_rawg, pela_fonte_loja, destino):
+    for id_midia in (midia_gravada, midia_appid, pela_busca_rawg, pela_busca_loja, destino):
         assert _item_da_midia(id_usuario, id_midia)['progresso_atual'] == 3
 
 
@@ -224,3 +227,34 @@ def test_steam_orcamento_esgotado_vira_pendente_e_nao_usa_o_vinculo(client, usua
 
     assert (corpo['pendentes'], corpo['novos'], corpo['total_nao_encontrados']) == (1, 0, 0)
     assert _item_da_midia(id_usuario, destino) is None
+
+
+
+def _cadeia(negativos, rawg_rotas=None):
+    rawg = Rawg(sessao=SessaoGet(rawg_rotas or {r'/games$': {'results': []}}), chave=CHAVE_RAWG)
+    loja = LojaSteam(sessao=SessaoGet(loja_com()))
+    return sincronizacao_steam.pela_cadeia(negativos, rawg, loja)
+
+
+def test_cadeia_da_steam_sabe_os_negativos_pela_appid_e_nao_pela_posicao(jogo):  # noqa: F811
+    pelo_rawg, slug, nome = jogo('PeloRawg')
+    negativo, _, nome_n = jogo('Negativo')
+    itens = [_item(pelo_rawg, nome), _item(negativo, nome_n)]
+
+    casados = casamento.casar('steam', itens, _cadeia({str(negativo)}, rawg_que_casa((pelo_rawg, slug, nome))))
+
+    rawg_id = banco.consultar_um('SELECT id_midia FROM jogos WHERE rawg_slug = %s', (slug,))['id_midia']
+    assert _midias(casados.pela_busca) == [(str(pelo_rawg), str(rawg_id))]
+    assert [i.origem_id for i in casados.nao_encontrados] == [str(negativo)]
+
+
+def test_cadeia_da_steam_sem_rawg_deixa_pendente_so_o_que_nao_e_negativo(jogo):  # noqa: F811
+    a_casar, _, nome = jogo('ACasar')
+    negativo, _, nome_n = jogo('Negativo')
+    rawg = Rawg(sessao=SessaoGet({}), chave='')
+    busca = sincronizacao_steam.pela_cadeia({str(negativo)}, rawg, LojaSteam(sessao=SessaoGet(loja_com())))
+
+    casados = casamento.casar('steam', [_item(a_casar, nome), _item(negativo, nome_n)], busca)
+
+    assert casados.pendentes == 1
+    assert [i.origem_id for i in casados.nao_encontrados] == [str(negativo)]

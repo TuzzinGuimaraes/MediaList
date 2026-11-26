@@ -74,7 +74,7 @@ class TipoIncompativel(ValueError):
 
 
 class VinculoEmConflito(Exception):
-    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a fonte já casou o jogo."""
+    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a busca da Steam já casou o jogo."""
 
     def __init__(self, id_midia: str, *, no_catalogo: bool = False):
         super().__init__(id_midia)
@@ -166,7 +166,7 @@ def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> di
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
     conferir_tamanho(len(itens))
     casados = casamento.casar(nome, itens, casamento.pelo_catalogo)
-    planos = _planejar(id_usuario, casados.em_ordem, date.today())
+    planos = _planejar(id_usuario, casados.todos, date.today())
     nova = resultado.previa(itens=[_sem_dados_se_localizado(item, midia) for item, midia, *_ in planos],
                             nao_encontrados=casados.nao_encontrados)
     guardada = repositorio.criar_previa(id_usuario, nome, nova)
@@ -242,7 +242,7 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
         anteriores = resultado.criar(nao_encontrados=[
             {**n, 'link': link_seguro(n.get('link'))} for n in guardada.nao_encontrados
         ])
-        final = resultado.somar(anteriores, _gravar(t, id_usuario, casados.em_ordem, casados.nao_encontrados,
+        final = resultado.somar(anteriores, _gravar(t, id_usuario, casados.todos, casados.nao_encontrados,
                                                     hoje or date.today()))
         repositorio.registrar_resultado(id_usuario, plataforma_da_previa, final, t)
     return final.resposta()
@@ -256,7 +256,7 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
 
     Só aceita o que apareceu como Não encontrado para ele (no último resultado ou numa prévia
     válida), na Mídia do mesmo Tipo. O item sai dos Não encontrados dele. Vínculo já existente
-    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a fonte já casou a
+    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a busca já casou a
     appid com outra Mídia desde o Não encontrado (checado e gravado na mesma transação), também
     VinculoEmConflito, com `no_catalogo`: o jogo entra na próxima sincronização.
     """
@@ -284,7 +284,7 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
         raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
     vinculado = casamento.na_midia([resultado.item_do_nao_encontrado(entrada, destino['id_midia'])])
-    aplicado = aplicar_casados(id_usuario, vinculado.em_ordem, vinculado.nao_encontrados, hoje=hoje)
+    aplicado = aplicar_casados(id_usuario, vinculado.todos, vinculado.nao_encontrados, hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],
             'novos': aplicado.novos, 'atualizados': aplicado.atualizados}
 
