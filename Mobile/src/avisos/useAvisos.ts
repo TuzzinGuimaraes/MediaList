@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
-import { mostrarAvisosComAppAberto, noticiaDoAviso, pushDisponivel, registrarAparelho } from './push';
+import { destinoDoAviso, mostrarAvisosComAppAberto, pushDisponivel, registrarAparelho } from './push';
 
 /**
  * Com a sessão autenticada (depois do login ou ao abrir o app já logado): pede a permissão na
@@ -22,8 +22,9 @@ export function useRegistroDoAparelho(): void {
 }
 
 /**
- * Tocar no aviso abre a Notícia: com o app aberto ou em segundo plano pelo ouvinte; com o app
- * fechado pela última resposta, lida ao montar. A tela da Notícia cuida da sessão.
+ * Tocar no aviso abre o que ele anuncia (ver `destinoDoAviso`): com o app aberto ou em segundo
+ * plano pelo ouvinte; com o app fechado pela última resposta, lida ao montar. A tela de destino
+ * cuida da sessão.
  */
 export function useToqueNoAviso(): void {
   useEffect(() => {
@@ -31,9 +32,9 @@ export function useToqueNoAviso(): void {
     mostrarAvisosComAppAberto();
 
     const abrir = (resposta: Notifications.NotificationResponse | null) => {
-      const id = noticiaDoAviso(resposta);
-      if (!id) return;
-      router.push({ pathname: '/noticia/[id]', params: { id } });
+      const destino = destinoDoAviso(resposta);
+      if (!destino) return;
+      router.push(destino);
       Notifications.clearLastNotificationResponse();
     };
 

@@ -1,5 +1,4 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
@@ -113,7 +112,10 @@ function ListaNotificacoes() {
 }
 
 export default function Noticias() {
-  const [atual, setAtual] = useState<SubAba>('noticias');
+  // A sub-aba vem da rota, para o aviso de vários episódios abrir direto as Notificações.
+  const { aba: param } = useLocalSearchParams<{ aba?: string }>();
+  const router = useRouter();
+  const atual: SubAba = param === 'notificacoes' ? 'notificacoes' : 'noticias';
   return (
     <View className="flex-1 bg-fundo">
       <View accessibilityRole="tablist" className="flex-row border-b border-borda">
@@ -125,7 +127,7 @@ export default function Noticias() {
               accessibilityRole="tab"
               accessibilityLabel={aba.titulo}
               accessibilityState={{ selected: selecionada }}
-              onPress={() => setAtual(aba.chave)}
+              onPress={() => router.setParams({ aba: aba.chave })}
               className={`flex-1 items-center border-b-2 py-3 ${
                 selecionada ? 'border-marca-texto' : 'border-transparent'
               }`}

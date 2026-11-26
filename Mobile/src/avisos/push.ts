@@ -2,6 +2,7 @@
 // O push remoto não existe no Expo Go (SDK 53+): lá nada aqui roda, nem o pedido de permissão.
 import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
+import type { Href } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
@@ -74,9 +75,25 @@ export async function removerAparelho(cliente: Cliente): Promise<void> {
   await SecureStore.deleteItemAsync(CHAVE_TOKEN);
 }
 
-/** A Notícia que o aviso abre, ou null se o aviso não é de Notícia. */
-export function noticiaDoAviso(resposta: Notifications.NotificationResponse | null): string | null {
+/**
+ * Para onde o toque no aviso leva, ou null se o aviso não é conhecido: a Notícia (`noticia`), o
+ * anime (`episodio`) ou as Notificações (`episodios`, 3 ou mais de uma vez).
+ */
+export function destinoDoAviso(resposta: Notifications.NotificationResponse | null): Href | null {
   const data = resposta?.notification.request.content.data;
-  if (data?.tipo !== 'noticia' || typeof data.id_noticia !== 'string' || !data.id_noticia) return null;
-  return data.id_noticia;
+  const id = (campo: string) => (typeof data?.[campo] === 'string' && data[campo] ? data[campo] : null);
+  switch (data?.tipo) {
+    case 'noticia': {
+      const idNoticia = id('id_noticia');
+      return idNoticia ? { pathname: '/noticia/[id]', params: { id: idNoticia } } : null;
+    }
+    case 'episodio': {
+      const idMidia = id('id_midia');
+      return idMidia ? { pathname: '/midia/[id]', params: { id: idMidia } } : null;
+    }
+    case 'episodios':
+      return { pathname: '/noticias', params: { aba: 'notificacoes' } };
+    default:
+      return null;
+  }
 }
