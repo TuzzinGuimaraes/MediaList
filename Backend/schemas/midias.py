@@ -10,6 +10,7 @@ da Mídia (`CorpoAnime`, `CorpoManga`, `CorpoJogo`).
 """
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, Field, model_validator
@@ -104,6 +105,25 @@ class ConsultaFacetas(BaseModel):
     tipo: Annotated[TipoDeMidia | None, VazioComoAusente] = Field(
         default=None, description='Sem Tipo, as facetas de todos',
     )
+
+
+#: Janela máxima de `GET /midias/calendario`: os 7 dias do Calendário e folga para o fuso.
+JANELA_MAXIMA_DO_CALENDARIO = timedelta(days=8)
+
+
+class ConsultaCalendario(BaseModel):
+    """`GET /midias/calendario?de=&ate=`: instantes com fuso; `ate` depois de `de`, até 8 dias."""
+
+    de: Instante = Field(description='Início da janela, inclusive')
+    ate: Instante = Field(description='Fim da janela, exclusive')
+
+    @model_validator(mode='after')
+    def _janela(self):
+        if self.ate <= self.de:
+            raise ValueError('ate deve ser depois de de')
+        if self.ate - self.de > JANELA_MAXIMA_DO_CALENDARIO:
+            raise ValueError('a janela vai até 8 dias')
+        return self
 
 
 class _CorpoMidiaBase(BaseModel):
@@ -326,6 +346,26 @@ class RespostaAtividade(BaseModel):
     dias: list[AtividadeDoDia] = Field(description='Só os dias com atividade, do mais antigo ao mais recente')
     inicio: Data = Field(description='1º dia da janela: 52 semanas (364 dias) terminando em `fim`')
     fim: Data = Field(description='Hoje')
+
+
+class EpisodioDoCalendario(BaseModel):
+    """Um episódio do Calendário, com o anime resumido."""
+
+    id_midia: Id
+    tipo: Literal['anime']
+    titulo_original: str
+    titulo_ingles: str | None
+    titulo_portugues: str | None
+    poster_url: str | None
+    episodio: int = Field(ge=1)
+    instante: Instante = Field(description='Quando foi ao ar (exibido) ou quando sai (próximo)')
+    exibido: bool = Field(description='Já foi ao ar: vem de uma Atualização `episodio`')
+
+
+class RespostaCalendario(BaseModel):
+    episodios: list[EpisodioDoCalendario] = Field(
+        description='Exibidos e próximos da janela, pelo instante; o mesmo episódio sai uma vez só (o exibido)',
+    )
 
 
 class AtualizacaoPublicada(BaseModel):
