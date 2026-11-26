@@ -70,6 +70,18 @@ def test_midia_de_outro_tipo_sai_sem_temporada(client, pg):
     }
 
 
+def test_ordem_estreia_vai_da_mais_cedo_para_a_mais_tarde_e_sem_data_no_fim(client, pg):
+    sem_data = _anime(pg, ('primavera', 2600))
+    tarde = _anime(pg, ('primavera', 2600), data_lancamento='2600-06-20')
+    empate_a = _anime(pg, ('primavera', 2600), data_lancamento='2600-04-05')
+    empate_b = _anime(pg, ('primavera', 2600), data_lancamento='2600-04-05')
+    cedo = _anime(pg, ('primavera', 2600), data_lancamento='2600-04-01')
+
+    corpo = client.get('/api/midias?temporada_estacao=primavera&temporada_ano=2600&ordem=estreia').get_json()
+
+    assert [m['id_midia'] for m in corpo['itens']] == [cedo, *sorted([empate_a, empate_b]), tarde, sem_data]
+
+
 @pytest.mark.parametrize('consulta', [
     'temporada_estacao=outono',
     'temporada_ano=2600',

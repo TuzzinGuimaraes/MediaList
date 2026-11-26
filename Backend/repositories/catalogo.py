@@ -114,6 +114,8 @@ NOTA_DE_RANKING = 'COALESCE(n.nota_media, m.nota_fonte) DESC NULLS LAST'
 ORDENS = {
     'nota_media': f'{NOTA_DE_RANKING}, total_usuarios DESC',
     'data_lancamento': 'm.data_lancamento DESC NULLS LAST',
+    # A Temporada da estreia mais cedo para a mais tarde.
+    'estreia': 'm.data_lancamento ASC NULLS LAST',
     'titulo': 'COALESCE(m.titulo_portugues, m.titulo_original) ASC',
     'mais_adicionados': f'total_usuarios DESC, {NOTA_DE_RANKING}',
     'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
