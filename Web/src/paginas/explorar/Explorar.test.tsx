@@ -36,6 +36,8 @@ function midia(id: string, titulo: string, extra: Partial<Midia> = {}): Midia {
     status_manga: null,
     status_jogo: null,
     numero_episodios: 12,
+    episodios_lancados: null,
+    proximo_episodio_em: null,
     duracao_episodio: null,
     estudio: null,
     numero_capitulos: null,

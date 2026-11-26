@@ -1,9 +1,11 @@
 // Detalhe da Mídia (Resolution do 19 e do 29): banner largo com o pôster sobreposto; à
 // esquerda, o botão carmesim da Lista e a ficha; à direita, título, sinopse, Atualizações,
-// distribuição das notas, mapa de atividade e Avaliações.
+// distribuição das notas, mapa de atividade e Avaliações. Anime atrasado (Resolution do 48):
+// o destaque do episódio novo com +1, acima da sinopse.
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { mensagemDeErro } from '../../api/erros';
 import type { Esquemas } from '../../api/tipos';
 import { Botao } from '../../componentes/Botao';
 import { Carregando, ErroTela } from '../../componentes/Estados';
@@ -12,12 +14,13 @@ import { FioProgresso } from '../../componentes/FioProgresso';
 import { Icone } from '../../componentes/Icone';
 import { Monograma } from '../../componentes/Monograma';
 import { Selo, SeloStatus } from '../../componentes/Selo';
+import { destaqueDoItem } from '@dominio/assistirAgora';
 import { formatarData } from '@dominio/datas';
 import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
-import { proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
+import { passoDeProgresso, proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import { atributosDoTipo, notasDaMidia, ROTULO_NOTA_MEDIA, tituloAlternativo, tituloDaMidia } from '@dominio/midia';
 import { emLancamento } from '@dominio/situacao';
-import { useItemDaMidia } from '../lista/api';
+import { useItemDaMidia, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
 import { Avaliacoes } from './Avaliacoes';
 import { useMidia } from './consultas';
@@ -146,6 +149,41 @@ function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
   );
 }
 
+/** "Você parou no ep. 5; saiu o 7" com +1, para o anime em exibição em que o Usuário está atrasado. */
+function EpisodioNovo({ item }: { item: Item | null | undefined }) {
+  const progresso = useMudarProgresso();
+  const destaque = destaqueDoItem(item);
+  const falha = progresso.isError ? (
+    <p role="alert" className="text-[14px] text-erro">
+      {mensagemDeErro(progresso.error)}
+    </p>
+  ) : null;
+  if (!item || !destaque) return falha;
+  const podeSomar = passoDeProgresso(item, 1) !== null;
+  return (
+    <section
+      aria-labelledby="titulo-episodio-novo"
+      className="flex flex-col gap-2 rounded-lg border border-marca/40 bg-superficie px-4 py-3"
+    >
+      <h2 id="titulo-episodio-novo" className="sr-only">
+        Episódio novo
+      </h2>
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-semibold text-texto-forte">{destaque.texto}</p>
+        {podeSomar ? (
+          <Botao
+            aria-label="+1 episódio"
+            onClick={() => progresso.mutate({ idLista: item.id_lista, idMidia: item.id_midia, passo: 1 })}
+          >
+            +1
+          </Botao>
+        ) : null}
+      </div>
+      {falha}
+    </section>
+  );
+}
+
 function Sinopse({ texto }: { texto: string | null }) {
   const [inteira, setInteira] = useState(false);
   if (!texto) return null;
@@ -208,6 +246,7 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
         </div>
         <div className="flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
+          <EpisodioNovo item={item.data} />
           <Sinopse texto={midia.sinopse} />
           <Atualizacoes atualizacoes={midia.atualizacoes} />
           <DistribuicaoNotas idMidia={midia.id_midia} />

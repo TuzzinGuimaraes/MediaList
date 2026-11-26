@@ -13,6 +13,9 @@ export type CodigoErro = Esquemas['CodigoErro'];
 /** A Mídia das listagens (GET /midias, /midias/trending): os campos de todos os Tipos. */
 export type Midia = Esquemas['Midia'];
 
+/** Um Item de GET /lista: a parte da Mídia mais os campos do Item. */
+export type ItemLista = Esquemas['ItemLista'];
+
 /** As notas de uma Mídia (CONTEXT.md: Nota média, Nota da fonte), em qualquer listagem. */
 export type NotasDaMidia = Pick<Midia, 'nota_media' | 'nota_fonte' | 'origem_nota'>;
 

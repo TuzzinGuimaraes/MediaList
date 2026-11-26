@@ -2174,6 +2174,18 @@
             ],
             "title": "Desenvolvedor"
           },
+          "episodios_lancados": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele",
+            "title": "Episodios Lancados"
+          },
           "estudio": {
             "anyOf": [
               {
@@ -2382,6 +2394,19 @@
             ],
             "description": "Total copiado da Mídia na criação do Item",
             "title": "Progresso Total"
+          },
+          "proximo_episodio_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quando sai o próximo episódio; nulo se não se sabe",
+            "title": "Proximo Episodio Em"
           },
           "publicadora": {
             "anyOf": [
@@ -2595,6 +2620,8 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
+          "episodios_lancados",
+          "proximo_episodio_em",
           "estudio",
           "fonte_original",
           "status_manga",
@@ -2749,6 +2776,18 @@
             "description": "Minutos",
             "title": "Duracao Episodio"
           },
+          "episodios_lancados": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele",
+            "title": "Episodios Lancados"
+          },
           "estudio": {
             "anyOf": [
               {
@@ -2908,6 +2947,19 @@
               }
             ],
             "title": "Poster Url"
+          },
+          "proximo_episodio_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quando sai o próximo episódio; nulo se não se sabe",
+            "title": "Proximo Episodio Em"
           },
           "publicadora": {
             "anyOf": [
@@ -3132,6 +3184,8 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
+          "episodios_lancados",
+          "proximo_episodio_em",
           "estudio",
           "fonte_original",
           "status_manga",
@@ -3273,6 +3327,18 @@
             "description": "Minutos",
             "title": "Duracao Episodio"
           },
+          "episodios_lancados": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele",
+            "title": "Episodios Lancados"
+          },
           "estudio": {
             "anyOf": [
               {
@@ -3432,6 +3498,19 @@
               }
             ],
             "title": "Poster Url"
+          },
+          "proximo_episodio_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quando sai o próximo episódio; nulo se não se sabe",
+            "title": "Proximo Episodio Em"
           },
           "publicadora": {
             "anyOf": [
@@ -3656,6 +3735,8 @@
           "total_concluidos",
           "status_anime",
           "numero_episodios",
+          "episodios_lancados",
+          "proximo_episodio_em",
           "estudio",
           "fonte_original",
           "status_manga",

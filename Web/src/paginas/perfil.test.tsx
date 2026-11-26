@@ -70,6 +70,8 @@ function item(extra: Partial<ItemLista>): ItemLista {
     modo_jogo: null,
     numero_capitulos: null,
     numero_episodios: null,
+    episodios_lancados: null,
+    proximo_episodio_em: null,
     numero_volumes: null,
     nota_fonte: null,
     nota_media: null,

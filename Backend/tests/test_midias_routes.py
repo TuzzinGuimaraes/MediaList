@@ -25,7 +25,8 @@ ATUALIZACAO = {
     'descricao': None, 'dados_adicionais': {}, 'data_atualizacao': datetime(2026, 11, 6, 10, tzinfo=UTC),
 }
 NAO_ENCONTRADA = {'erro': 'Mídia não encontrada', 'codigo': 'nao_encontrado'}
-LINHA_JOGO = {**LINHA_ANIME, 'tipo': 'jogo', 'status_anime': None, 'numero_episodios': None, 'status_jogo': 'lancado'}
+LINHA_JOGO = {**LINHA_ANIME, 'tipo': 'jogo', 'status_anime': None, 'numero_episodios': None,
+              'episodios_lancados': None, 'status_jogo': 'lancado'}
 
 
 @pytest.fixture

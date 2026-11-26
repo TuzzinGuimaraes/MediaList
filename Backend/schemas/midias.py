@@ -183,6 +183,10 @@ class CamposDaMidia(BaseModel):
     # anime
     status_anime: StatusAnime | None
     numero_episodios: int | None
+    episodios_lancados: int | None = Field(
+        description='Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele',
+    )
+    proximo_episodio_em: Instante | None = Field(description='Quando sai o próximo episódio; nulo se não se sabe')
     estudio: str | None
     fonte_original: str | None
     # mangá

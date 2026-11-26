@@ -5,8 +5,10 @@
 // Cache: chaves.lista.toda (['lista']) guarda o RespostaLista inteiro (GET /api/lista); o
 // Início, o detalhe e o Perfil leem a mesma chave (`useLista`, `useItemDaMidia`).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 
-import { type DadosItem, mudancaDeStatus } from '@dominio/itemLista';
+import { diaIso } from '@dominio/datas';
+import { aplicarProgresso, type DadosItem, mudancaDeStatus, totalDoItem } from '@dominio/itemLista';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
@@ -74,14 +76,23 @@ export function useRemoverItem() {
 }
 
 /**
- * Troca só o Status de um Item (o menu ⋯ da Lista) com PUT /lista/<id_lista>, pelas regras
- * do editor (`mudancaDeStatus`). Aparece no cache na hora; se o servidor recusar, o Item
- * volta ao que era. A Lista refeita traz o resto (data de conclusão, Recontagem).
+ * Escrita otimista de um Item da Lista: `mostrar` aplica o toque no Item do cache na hora
+ * (depois de cancelar o GET /lista em voo, que traria o valor antigo); se o servidor recusar,
+ * `desfazer` tira do Item só o efeito daquele toque. No fim refaz o que deriva da Lista, salvo
+ * se `refazer` disser que ainda há toque pendente.
  */
-export function useMudarStatus() {
-  const api = useApi();
+function useEscritaOtimistaDoItem<V>(opcoes: {
+  /** O Item que o toque escreve. */
+  alvo: (v: V) => { idLista: string; idMidia: string };
+  enviar: (v: V) => Promise<unknown>;
+  mostrar: (v: V, atual: ItemLista) => ItemLista;
+  desfazer: (v: V, atual: ItemLista) => ItemLista;
+  refazer?: () => boolean;
+  chave?: readonly string[];
+}) {
   const queryClient = useQueryClient();
   const invalidar = useInvalidarLista();
+  const { alvo, enviar, mostrar, desfazer, refazer = () => true, chave } = opcoes;
 
   const trocar = (idLista: string, novo: (item: ItemLista) => ItemLista) =>
     queryClient.setQueryData<RespostaLista>(CHAVE_LISTA, (r) =>
@@ -89,21 +100,103 @@ export function useMudarStatus() {
     );
 
   return useMutation({
-    mutationFn: ({ item, rotulo }: { item: ItemLista; rotulo: string }) =>
+    ...(chave ? { mutationKey: chave, scope: { id: chave.join('/') } } : {}),
+    mutationFn: enviar,
+    onMutate: async (v: V) => {
+      await queryClient.cancelQueries({ queryKey: CHAVE_LISTA, exact: true });
+      trocar(alvo(v).idLista, (atual) => mostrar(v, atual));
+    },
+    onError: (_e, v) => trocar(alvo(v).idLista, (atual) => desfazer(v, atual)),
+    onSettled: (_r, _e, v) => (refazer() ? invalidar(alvo(v).idMidia) : undefined),
+  });
+}
+
+/**
+ * Troca só o Status de um Item (o menu ⋯ da Lista) com PUT /lista/<id_lista>, pelas regras
+ * do editor (`mudancaDeStatus`). Aparece no cache na hora; se o servidor recusar, o Item
+ * volta ao que era. A Lista refeita traz o resto (data de conclusão, Recontagem).
+ */
+export function useMudarStatus() {
+  const api = useApi();
+  return useEscritaOtimistaDoItem<{ item: ItemLista; rotulo: string }>({
+    alvo: ({ item }) => ({ idLista: item.id_lista, idMidia: item.id_midia }),
+    enviar: ({ item, rotulo }) =>
       exigir(
         api.PUT('/api/lista/{lista_id}', {
           params: { path: { lista_id: item.id_lista } },
           body: mudancaDeStatus(item, rotulo),
         }),
       ),
-    onMutate: async ({ item, rotulo }) => {
-      await queryClient.cancelQueries({ queryKey: CHAVE_LISTA, exact: true });
-      trocar(item.id_lista, (atual) => {
-        const mudanca = mudancaDeStatus(item, rotulo);
-        return { ...atual, ...mudanca, status_consumo: mudanca.status_consumo as ItemLista['status_consumo'] };
-      });
+    mostrar: ({ item, rotulo }, atual) => {
+      const mudanca = mudancaDeStatus(item, rotulo);
+      return { ...atual, ...mudanca, status_consumo: mudanca.status_consumo as ItemLista['status_consumo'] };
     },
-    onError: (_e, { item }) => trocar(item.id_lista, () => item),
-    onSettled: (_r, _e, { item }) => invalidar(item.id_midia),
+    desfazer: ({ item }) => item,
+  });
+}
+
+const CHAVE_PROGRESSO = ['lista', 'progresso'] as const;
+
+/** Uma sequência de toques de +1 num Item, enquanto houver toque pendente. */
+type Rajada = {
+  /** O Item como estava no cache antes do primeiro toque. */
+  original: ItemLista;
+  /** Soma dos passos que não falharam (pendentes ou confirmados): o que a tela mostra. */
+  aplicado: number;
+  /** Último Progresso que o servidor aceitou: base do próximo envio. */
+  confirmado: number;
+};
+
+/**
+ * Soma `passo` ao Progresso de um Item (o +1 do Para assistir agora) com
+ * PUT /lista/<id_lista>/progresso, como o stepper do app: aparece no cache na hora, inclusive
+ * a conclusão no total (`aplicarProgresso`); os toques vão um por vez, cada um sobre o último
+ * valor aceito, e um toque recusado desfaz só o passo dele. Só o último a terminar refaz a Lista.
+ */
+export function useMudarProgresso() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const rajadas = useRef(new Map<string, Rajada>()).current;
+
+  const comProgresso = (rajada: Rajada) =>
+    aplicarProgresso(rajada.original, (rajada.original.progresso_atual ?? 0) + rajada.aplicado, diaIso());
+
+  return useEscritaOtimistaDoItem<{ idLista: string; idMidia: string; passo: number }>({
+    chave: CHAVE_PROGRESSO,
+    alvo: (v) => v,
+    enviar: async ({ idLista, passo }) => {
+      const rajada = rajadas.get(idLista);
+      if (!rajada) throw new Error('Item fora da Lista pessoal');
+      const total = totalDoItem(rajada.original);
+      const soma = rajada.confirmado + passo;
+      const progresso = Math.max(0, total === null ? soma : Math.min(total, soma));
+      await exigir(
+        api.PUT('/api/lista/{lista_id}/progresso', {
+          params: { path: { lista_id: idLista } },
+          body: { progresso_atual: progresso },
+        }),
+      );
+      rajada.confirmado = progresso;
+    },
+    mostrar: ({ idLista, passo }, atual) => {
+      let rajada = rajadas.get(idLista);
+      if (!rajada) {
+        rajada = { original: atual, aplicado: 0, confirmado: atual.progresso_atual ?? 0 };
+        rajadas.set(idLista, rajada);
+      }
+      rajada.aplicado += passo;
+      return comProgresso(rajada);
+    },
+    desfazer: ({ idLista, passo }, atual) => {
+      const rajada = rajadas.get(idLista);
+      if (!rajada) return atual;
+      rajada.aplicado -= passo;
+      return comProgresso(rajada);
+    },
+    refazer: () => {
+      if (queryClient.isMutating({ mutationKey: CHAVE_PROGRESSO }) !== 1) return false;
+      rajadas.clear();
+      return true;
+    },
   });
 }

@@ -1787,6 +1787,11 @@ export interface components {
             demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
             /** Desenvolvedor */
             desenvolvedor: string | null;
+            /**
+             * Episodios Lancados
+             * @description Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele
+             */
+            episodios_lancados: number | null;
             /** Estudio */
             estudio: string | null;
             /** Favorito */
@@ -1845,6 +1850,11 @@ export interface components {
              * @description Total copiado da Mídia na criação do Item
              */
             progresso_total: number | null;
+            /**
+             * Proximo Episodio Em
+             * @description Quando sai o próximo episódio; nulo se não se sabe
+             */
+            proximo_episodio_em: string | null;
             /** Publicadora */
             publicadora: string | null;
             /** Sinopse */
@@ -1931,6 +1941,11 @@ export interface components {
              * @description Minutos
              */
             duracao_episodio: number | null;
+            /**
+             * Episodios Lancados
+             * @description Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele
+             */
+            episodios_lancados: number | null;
             /** Estudio */
             estudio: string | null;
             /** Fonte Original */
@@ -1971,6 +1986,11 @@ export interface components {
             plataformas: string | null;
             /** Poster Url */
             poster_url: string | null;
+            /**
+             * Proximo Episodio Em
+             * @description Quando sai o próximo episódio; nulo se não se sabe
+             */
+            proximo_episodio_em: string | null;
             /** Publicadora */
             publicadora: string | null;
             /** Publicadora Original */
@@ -2047,6 +2067,11 @@ export interface components {
              * @description Minutos
              */
             duracao_episodio: number | null;
+            /**
+             * Episodios Lancados
+             * @description Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele
+             */
+            episodios_lancados: number | null;
             /** Estudio */
             estudio: string | null;
             /** Fonte Original */
@@ -2087,6 +2112,11 @@ export interface components {
             plataformas: string | null;
             /** Poster Url */
             poster_url: string | null;
+            /**
+             * Proximo Episodio Em
+             * @description Quando sai o próximo episódio; nulo se não se sabe
+             */
+            proximo_episodio_em: string | null;
             /** Publicadora */
             publicadora: string | null;
             /** Publicadora Original */
