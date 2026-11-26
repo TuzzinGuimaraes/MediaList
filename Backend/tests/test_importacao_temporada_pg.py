@@ -134,3 +134,18 @@ def test_falha_de_uma_temporada_nao_derruba_as_outras_nem_o_cursor(importar):  #
     mais_populares = sorted(obras, key=lambda o: (-o[1], o[0]))[:3]
     assert _cursor('anime')['crescimento_id'] == mais_populares[-1][0]
     assert _importadas('anime') == {o[0] for o in mais_populares} | {BASE + 30, BASE + 40}
+
+
+def test_falha_da_passada_principal_nao_impede_as_temporadas_e_sai_com_erro(importar):  # noqa: F811
+    # Chamada 1: o crescimento, que recebe uma resposta que a Importação não entende e para.
+    fonte = AniListFalso({'ANIME': _obras_das_temporadas()}, quebra_em={1})
+
+    codigo, _, _ = importar('anime', fonte, '--paginas', '1', '--paginas-atualizacao', '0', '--temporadas', '5')
+
+    assert codigo == 1
+    assert _temporadas_pedidas(fonte) == [
+        ('FALL', 2026, 1), ('FALL', 2026, 2), ('WINTER', 2027, 1), ('SPRING', 2027, 1), ('SUMMER', 2027, 1),
+        ('FALL', 2027, 1),
+    ]
+    assert _importadas('anime') == {BASE + 10, BASE + 11, BASE + 12, BASE + 13, BASE + 30, BASE + 40}
+    assert _cursor('anime') is None

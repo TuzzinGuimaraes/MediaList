@@ -115,7 +115,7 @@ describe('Temporada', () => {
     expect(naUrl(historico)).toEqual({ ordem: 'estreia' });
 
     await user.click(screen.getByRole('radio', { name: 'Nota da fonte' }));
-    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ ordem: 'nota_media' }));
+    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ ordem: 'nota_fonte' }));
 
     await user.click(screen.getByRole('radio', { name: 'Mais esperados' }));
     expect(naUrl(historico)).toEqual({});

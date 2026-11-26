@@ -148,7 +148,7 @@ describe('Temporada', () => {
     const api = simularFetch(
       rotas({
         [rota('outono', 2026, 'estreia')]: pagina([dandadan, frieren], { por_pagina: 50 }),
-        [rota('outono', 2026, 'nota_media')]: pagina([frieren], { por_pagina: 50 }),
+        [rota('outono', 2026, 'nota_fonte')]: pagina([frieren], { por_pagina: 50 }),
       }),
     );
     await abrirTemporada();
@@ -164,7 +164,7 @@ describe('Temporada', () => {
     });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Nota da fonte' }));
-    await waitFor(() => expect(api.para(rota('outono', 2026, 'nota_media'))).toHaveLength(1));
+    await waitFor(() => expect(api.para(rota('outono', 2026, 'nota_fonte'))).toHaveLength(1));
   });
 
   it('traz todas as páginas da temporada', async () => {

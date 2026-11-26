@@ -69,7 +69,7 @@ export function useSalvarItem() {
 }
 
 /** Põe a Mídia na Lista pessoal em Planejado num toque (POST /lista/adicionar só com o Estado). */
-export function useAdicionarPlanejado() {
+export function useAdicionarComoPlanejado() {
   const { cliente } = useSessao();
   const invalidar = useInvalidarLista();
   return useMutation({

@@ -123,6 +123,8 @@ ORDENS = {
     'mais_concluidos': f'total_concluidos DESC, {NOTA_DE_RANKING}',
     # Os mais esperados: a Popularidade da fonte (a do AniList), não a do MediaList.
     'popularidade_fonte': f'a.popularidade_fonte DESC NULLS LAST, {NOTA_DE_RANKING}',
+    # Só a Nota da fonte (a do AniList/RAWG), sem a Nota média (ADR 0010).
+    'nota_fonte': 'm.nota_fonte DESC NULLS LAST',
 }
 
 #: Filtros de texto parcial, sem caixa: filtro -> coluna.

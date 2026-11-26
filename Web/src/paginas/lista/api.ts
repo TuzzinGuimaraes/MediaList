@@ -70,7 +70,7 @@ export function useSalvarItem() {
  * Põe a Mídia na Lista em Planejado num toque (o botão da Temporada): POST /lista/adicionar só
  * com o rótulo de Planejado do Tipo; o resto do Item fica com os padrões do servidor.
  */
-export function usePorEmPlanejado() {
+export function useAdicionarComoPlanejado() {
   const api = useApi();
   const invalidar = useInvalidarLista();
   return useMutation({
