@@ -3,8 +3,9 @@ import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-lib
 import { AppState, type AppStateStatus } from 'react-native';
 
 import type { Noticia, Notificacao } from '../api/tipos';
-import { pagina } from './contrato';
+import { pagina, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
+import { anime } from './midias';
 import { aba, abrirLogado, entrarPeloLogin as entrar } from './sessao';
 
 afterEach(() => focusManager.setFocused(undefined));
@@ -230,5 +231,32 @@ describe('Notificação de Notícia', () => {
     await abrirLogado('/noticia/NOT-0009');
 
     expect(await screen.findByText('Notícia não encontrada')).toBeOnTheScreen();
+  });
+});
+
+
+describe('Notificação de Atualização', () => {
+  it('aparece com o nome da Mídia e tocar abre a Mídia', async () => {
+    const frieren = anime({ id_midia: 'ANI-0001' });
+    simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /noticias?por_pagina=20': semNoticias,
+      'GET /notificacoes': { status: 200, corpo: { notificacoes: [notificacao('Episódio 12 de Frieren foi ao ar', false)] } },
+      'GET /midias/ANI-0001': { status: 200, corpo: frieren },
+      'GET /midias/ANI-0001/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+      [rotaAvaliacoes('ANI-0001')]: paginaAvaliacoes([]),
+      [rotaNotas('ANI-0001')]: respostaNotas(),
+      'GET /lista': { status: 200, corpo: { lista: [] } },
+    });
+    const app = await entrar();
+
+    await fireEvent.press(await aba('Notícias'));
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Notificações' }));
+    const item = await screen.findByRole('link', { name: /Episódio 12 de Frieren foi ao ar/ });
+    expect(within(item).getByText('Frieren · 06/11/2026')).toBeOnTheScreen();
+    await fireEvent.press(item);
+
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(app.getPathname()).toBe('/midia/ANI-0001');
   });
 });

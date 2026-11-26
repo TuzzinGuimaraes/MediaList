@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
@@ -37,7 +37,7 @@ function ListaNoticias() {
 
 function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
   const router = useRouter();
-  const { id_noticia } = notificacao;
+  const { id_noticia, id_midia } = notificacao;
   const classe = `flex-row gap-3 rounded-md p-4 ${notificacao.lida ? 'bg-superficie' : 'bg-superficie-alta'}`;
   const conteudo = (
     <>
@@ -56,13 +56,18 @@ function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
       </View>
     </>
   );
-  // A de Notícia abre a Notícia; a de Atualização é só texto.
-  if (id_noticia) {
+  // A de Notícia abre a Notícia; a de Atualização abre a Mídia.
+  const destino: Href | null = id_noticia
+    ? { pathname: '/noticia/[id]', params: { id: id_noticia } }
+    : id_midia
+      ? { pathname: '/midia/[id]', params: { id: id_midia } }
+      : null;
+  if (destino) {
     return (
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={`${notificacao.titulo}, Notícia${notificacao.lida ? '' : ', não lida'}`}
-        onPress={() => router.push({ pathname: '/noticia/[id]', params: { id: id_noticia } })}
+        accessibilityLabel={`${notificacao.titulo}, ${id_noticia ? 'Notícia' : notificacao.midia_nome}${notificacao.lida ? '' : ', não lida'}`}
+        onPress={() => router.push(destino)}
         className={classe}
       >
         {conteudo}
