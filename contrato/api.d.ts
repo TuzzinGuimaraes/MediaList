@@ -1142,11 +1142,11 @@ export interface components {
             modo_jogo?: string | null;
             /**
              * Ordem
-             * @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim
+             * @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim
              * @default nota_media
              * @enum {string}
              */
-            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia";
+            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte";
             /**
              * Pagina
              * @default 1
@@ -4925,8 +4925,8 @@ export interface operations {
                 temporada_estacao?: ("inverno" | "primavera" | "verao" | "outono") | null;
                 /** @description Com `temporada_estacao`, só os animes da Temporada */
                 temporada_ano?: number | null;
-                /** @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim */
-                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia";
+                /** @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim */
+                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte";
             };
             header?: never;
             path?: never;

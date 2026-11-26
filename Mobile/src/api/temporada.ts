@@ -9,7 +9,7 @@ export const POR_PAGINA_TEMPORADA = 50;
 /** Teto de páginas por Temporada (as maiores têm ~150 animes): protege de um `total` errado. */
 const MAX_PAGINAS = 10;
 
-export type OrdemTemporada = Extract<OrdemCatalogo, 'popularidade_fonte' | 'estreia' | 'nota_media'>;
+export type OrdemTemporada = Extract<OrdemCatalogo, 'popularidade_fonte' | 'estreia' | 'nota_fonte'>;
 
 /**
  * Todos os animes de uma Temporada do Catálogo, na ordem pedida. Vêm todas as páginas de uma vez:

@@ -50,7 +50,7 @@ const ORDEM_PADRAO: OrdemTemporada = 'popularidade_fonte';
 const ORDENS: { valor: OrdemTemporada; titulo: string }[] = [
   { valor: 'popularidade_fonte', titulo: 'Mais esperados' },
   { valor: 'estreia', titulo: 'Estreia' },
-  { valor: 'nota_media', titulo: 'Nota da fonte' },
+  { valor: 'nota_fonte', titulo: 'Nota da fonte' },
 ];
 
 /** Fora das abas, a tela precisa do próprio guard: um deep link pode abrir sem sessão. */

@@ -18,8 +18,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _anime(pg, temporada=None, formato=None, popularidade=None, estimada=False, **dados):
-    """Um anime do Catálogo com Temporada, formato e Popularidade da fonte (que só a Importação grava)."""
+def _anime(pg, temporada=None, formato=None, popularidade=None, estimada=False, nota_fonte=None, **dados):
+    """Um anime do Catálogo com Temporada, formato, Popularidade e Nota da fonte (que só a Importação grava)."""
     id_midia = Catalogo().criar('anime', {'titulo_original': f'Temporada {uuid.uuid4().hex}', **dados})
     pg['midias'].append(id_midia)
     estacao, ano = temporada or (None, None)
@@ -28,6 +28,7 @@ def _anime(pg, temporada=None, formato=None, popularidade=None, estimada=False, 
         'temporada_estimada = %s WHERE id_midia = %s',
         (estacao, ano, formato, popularidade, estimada, id_midia),
     )
+    banco.executar('UPDATE midias SET nota_fonte = %s WHERE id_midia = %s', (nota_fonte, id_midia))
     return id_midia
 
 
@@ -112,3 +113,16 @@ def test_facetas_fora_dos_animes_vem_sem_temporada(client, pg, tipo):
     _anime(pg, ('outono', 1800))
 
     assert client.get(f'/api/midias/facetas?tipo={tipo}').get_json()['temporada_mais_antiga'] is None
+
+
+
+def test_ordem_nota_fonte_vai_da_maior_para_a_menor_e_sem_nota_no_fim(client, pg):
+    sem_nota = _anime(pg, ('verao', 2602))
+    baixa = _anime(pg, ('verao', 2602), nota_fonte=5.5)
+    empate_a = _anime(pg, ('verao', 2602), nota_fonte=8.0)
+    empate_b = _anime(pg, ('verao', 2602), nota_fonte=8.0)
+    alta = _anime(pg, ('verao', 2602), nota_fonte=9.1)
+
+    corpo = client.get('/api/midias?temporada_estacao=verao&temporada_ano=2602&ordem=nota_fonte').get_json()
+
+    assert [m['id_midia'] for m in corpo['itens']] == [alta, *sorted([empate_a, empate_b]), baixa, sem_nota]

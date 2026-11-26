@@ -4,15 +4,14 @@ import { ESTACOES, type Temporada, temporadaDe } from '@dominio/temporada';
 
 import type { ConsultaMidias } from '../explorar/busca';
 
-export type OrdemTemporada = Extract<NonNullable<ConsultaMidias['ordem']>, 'popularidade_fonte' | 'estreia' | 'nota_media'>;
+export type OrdemTemporada = Extract<NonNullable<ConsultaMidias['ordem']>, 'popularidade_fonte' | 'estreia' | 'nota_fonte'>;
 
 export const ORDEM_PADRAO: OrdemTemporada = 'popularidade_fonte';
 
-/** As ordens da página; "Nota da fonte" é a `nota_media` da API (que cai na Nota da fonte sem Avaliações). */
 export const ORDENS: readonly { valor: OrdemTemporada; nome: string }[] = [
   { valor: 'popularidade_fonte', nome: 'Mais esperados' },
   { valor: 'estreia', nome: 'Estreia' },
-  { valor: 'nota_media', nome: 'Nota da fonte' },
+  { valor: 'nota_fonte', nome: 'Nota da fonte' },
 ];
 
 /** O máximo da API por página: a Temporada vem inteira, página por página. */
