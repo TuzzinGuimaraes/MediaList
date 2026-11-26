@@ -338,7 +338,7 @@ A de **episódio novo** de anime é automática: de hora em hora, o MediaList l�
 episódios que foram ao ar desde a última leitura (uma hora sem leitura é recuperada na seguinte,
 até 7 dias) e publica "Episódio N de <anime> foi ao ar" para cada anime do Catálogo, uma vez só
 por episódio. A estreia (episódio 1) vai a quem tem o anime em Em progresso ou Planejado; os
-outros episódios, só a Em progresso; quem o favoritou recebe sempre, qualquer que seja o Status.
+outros episódios, só a Em progresso; quem o favoritou recebe sempre, qualquer que seja o Estado de consumo.
 Na mesma leitura, o anime fica com a Situação, o total de episódios, quantos já foram ao ar e
 quando sai o próximo. O admin ainda pode registrar uma Atualização à mão; nela, recebe quem tem a
 Mídia em Em progresso ou Planejado, ou como favorita.
