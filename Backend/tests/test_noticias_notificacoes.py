@@ -3,11 +3,14 @@ from datetime import datetime, timezone
 
 import pytest
 
+import avisos_push
 from routes import noticias as noticias_routes
 
 from .helpers import FakeAtualizacoes, FakeBanco
 
 ADMIN = 'admin'
+#: Criar Notícia fala com o banco na rota e no push.
+CRIACAO = (noticias_routes, avisos_push)
 
 NOTICIA = {
     'id_noticia': 'NOT-1',
@@ -70,7 +73,7 @@ def test_paginacao_invalida_das_noticias_responde_400(client, monkeypatch, query
 
 def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, *CRIACAO)
 
     response = client.post('/api/noticias', headers=admin_headers, json={
         'titulo': 'Nova notícia', 'conteudo': 'Texto', 'autor': 'Ignorado',
@@ -85,7 +88,7 @@ def test_noticia_criada_tem_o_usuario_logado_como_autor(client, admin_headers, m
 
 def test_noticia_criada_notifica_os_ativos_menos_o_autor_na_mesma_transacao(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, *CRIACAO)
 
     client.post('/api/noticias', headers=admin_headers, json={'titulo': 'Nova notícia'})
 
@@ -93,6 +96,17 @@ def test_noticia_criada_notifica_os_ativos_menos_o_autor_na_mesma_transacao(clie
     assert 'ativo' in sql and 'id_usuario <> %s' in sql
     assert params == ('NOT-1', 'USR-ADMIN-0001')
     assert fake.transacoes == 1
+
+
+def test_noticia_criada_avisa_por_push_depois_de_gravar(client, admin_headers, monkeypatch):
+    monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
+    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, *CRIACAO)
+    avisos = []
+    monkeypatch.setattr(avisos_push, 'avisar_noticia', lambda *args: avisos.append((fake.transacoes, args)))
+
+    client.post('/api/noticias', headers=admin_headers, json={'titulo': 'Nova notícia', 'conteudo': 'Texto'})
+
+    assert avisos == [(1, ('NOT-1', 'Nova notícia', 'Texto', 'USR-ADMIN-0001'))]
 
 
 def test_uma_noticia_pelo_id_e_404_sem_ela(client, monkeypatch):
@@ -107,7 +121,7 @@ def test_uma_noticia_pelo_id_e_404_sem_ela(client, monkeypatch):
 
 def test_noticia_sem_campos_opcionais_usa_os_padroes(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco({'INSERT INTO noticias': {'id_noticia': 'NOT-1'}}).instalar(monkeypatch, *CRIACAO)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': 'Só título'})
 
@@ -117,7 +131,7 @@ def test_noticia_sem_campos_opcionais_usa_os_padroes(client, admin_headers, monk
 
 def test_noticia_sem_titulo_responde_400(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco().instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco().instalar(monkeypatch, *CRIACAO)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'conteudo': 'Sem título'})
 
@@ -128,7 +142,7 @@ def test_noticia_sem_titulo_responde_400(client, admin_headers, monkeypatch):
 
 def test_noticia_com_titulo_vazio_responde_400(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco().instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco().instalar(monkeypatch, *CRIACAO)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': '  '})
 
@@ -139,7 +153,7 @@ def test_noticia_com_titulo_vazio_responde_400(client, admin_headers, monkeypatc
 
 def test_noticia_com_tags_que_nao_sao_lista_de_texto_responde_400(client, admin_headers, monkeypatch):
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _id: ADMIN)
-    fake = FakeBanco().instalar(monkeypatch, noticias_routes)
+    fake = FakeBanco().instalar(monkeypatch, *CRIACAO)
 
     response = client.post('/api/noticias', headers=admin_headers, json={'titulo': 'X', 'tags': 'a,b'})
 
@@ -222,23 +236,26 @@ def _instalar_preferencias(monkeypatch, respostas=None):
 
 
 def test_preferencias_sem_nada_salvo_saem_com_os_padroes(client, auth_headers, monkeypatch):
-    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {}}})
+    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {}, 'avisar_noticias': True}})
 
     response = client.get('/api/preferencias', headers=auth_headers)
 
     assert response.status_code == 200
     # `id_usuario` saiu: é o próprio Usuário logado, e nenhum cliente lia.
-    assert response.get_json() == {'preferencias': {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}}
+    assert response.get_json() == {'preferencias': {
+        'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True, 'avisar_noticias': True,
+    }}
     assert fake.sql('FROM usuarios')[0][2] == ('USR-TEST-0001',)
 
 
 def test_preferencias_salvas_vencem_os_padroes(client, auth_headers, monkeypatch):
-    _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {'tema': 'dark'}}})
+    _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {'tema': 'dark'}, 'avisar_noticias': False}})
 
     response = client.get('/api/preferencias', headers=auth_headers)
 
     assert response.get_json()['preferencias']['tema'] == 'dark'
     assert response.get_json()['preferencias']['idioma'] == 'pt-BR'
+    assert response.get_json()['preferencias']['avisar_noticias'] is False
 
 
 def test_preferencias_de_usuario_inexistente_respondem_404(client, auth_headers, monkeypatch):
@@ -260,7 +277,18 @@ def test_preferencias_put_grava_so_os_campos_permitidos(client, auth_headers, mo
     assert response.status_code == 200
     assert response.get_json() == {'mensagem': 'Preferências atualizadas com sucesso!', 'modificado': True}
     _, _, params = fake.sql('UPDATE usuarios')[0]
-    assert params == ('{"tema": "dark", "notificacoes_ativas": false}', 'USR-TEST-0001')
+    assert params == ('{"tema": "dark", "notificacoes_ativas": false}', None, 'USR-TEST-0001')
+
+
+def test_preferencias_put_avisar_noticias_vai_para_a_coluna_e_nao_para_o_jsonb(client, auth_headers, monkeypatch):
+    fake = _instalar_preferencias(monkeypatch, {'UPDATE usuarios': 1})
+
+    response = client.put('/api/preferencias', headers=auth_headers, json={'avisar_noticias': False})
+
+    assert response.status_code == 200
+    [(_, sql, params)] = fake.sql('UPDATE usuarios')
+    assert 'avisar_noticias = COALESCE' in sql
+    assert params == ('{}', False, 'USR-TEST-0001')
 
 
 def test_preferencias_put_sem_campo_valido_responde_400(client, auth_headers, monkeypatch):

@@ -190,9 +190,9 @@ def test_preferencias_salvas_sao_lidas_com_os_padroes_no_resto(pg, client, entra
     salvo = client.put('/api/preferencias', headers=entrar(eu), json={'notificacoes_ativas': False})
     depois = client.get('/api/preferencias', headers=entrar(eu)).get_json()['preferencias']
 
-    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True}
+    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True, 'avisar_noticias': True}
     assert salvo.get_json()['modificado'] is True
-    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False}
+    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False, 'avisar_noticias': True}
 
 
 

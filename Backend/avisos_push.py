@@ -127,7 +127,7 @@ def enviar(mensagens: list[dict], cliente, *, prazo: float = PRAZO_SEGUNDOS) -> 
         tickets = _tickets(resposta, len(lote))
         if tickets is None:
             continue
-        for mensagem, ticket in zip(lote, tickets):
+        for mensagem, ticket in zip(lote, tickets, strict=True):
             if not isinstance(ticket, dict) or ticket.get('status') == 'ok':
                 continue
             codigo = (ticket.get('details') or {}).get('error') or 'desconhecido'
