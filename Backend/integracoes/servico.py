@@ -21,13 +21,13 @@ Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
 """
 from __future__ import annotations
 
-from dataclasses import fields, replace
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
 import banco
 from dominio.lista_pessoal import ListaPessoal
-from integracoes import catalogo, prazo, repositorio, vinculos
+from integracoes import catalogo, prazo, repositorio, resultado, vinculos
 from integracoes.anilist import AniList
 from integracoes.aplicar import NOVO, aplicar
 from integracoes.mal import MAL
@@ -37,20 +37,17 @@ from integracoes.plataforma import (
     ItemDeOrigem,
     Plataforma,
     PlataformaIndisponivel,
-    RefCatalogo,
     conferir_tamanho,
     item_de_json,
     item_para_json,
     link_seguro,
 )
+from integracoes.resultado import Resultado, nao_encontrado
 from integracoes.steam import Steam
 from repositories.itens_lista import ItensLista
 
 #: As plataformas registradas, na ordem da tela. Os tickets do MAL e da Steam somam aqui.
 PLATAFORMAS: dict[str, Plataforma] = {'anilist': AniList(), 'mal': MAL(), 'steam': Steam()}
-
-#: Quantos Não encontrados saem na resposta (o total sai à parte).
-AMOSTRA_NAO_ENCONTRADOS = 100
 
 #: Plataformas sem prévia: só sincronizam (`integracoes.sincronizacao_steam`).
 SO_SINCRONIZAM = frozenset({'steam'})
@@ -114,6 +111,10 @@ def plataforma_disponivel(nome: str) -> Plataforma:
     return escolhida
 
 
+def _resposta_guardada(guardado: dict[str, Any] | None) -> dict[str, Any] | None:
+    return resultado.de_guardado(guardado).resposta() if guardado else None
+
+
 def _visao(escolhida: Plataforma, conta: dict[str, Any] | None) -> dict[str, Any]:
     return {
         'plataforma': escolhida.nome,
@@ -123,7 +124,7 @@ def _visao(escolhida: Plataforma, conta: dict[str, Any] | None) -> dict[str, Any
         'identificador': (conta or {}).get('identificador'),
         'nome_exibicao': (conta or {}).get('nome_exibicao'),
         'ultima_sincronizacao': (conta or {}).get('ultima_sincronizacao'),
-        'ultimo_resultado': (conta or {}).get('ultimo_resultado'),
+        'ultimo_resultado': _resposta_guardada((conta or {}).get('ultimo_resultado')),
     }
 
 
@@ -143,26 +144,6 @@ def conectar(id_usuario: str, nome: str, identificador: str) -> dict[str, Any]:
 def desconectar(id_usuario: str, nome: str) -> None:
     plataforma(nome)
     repositorio.remover_conta(id_usuario, nome)
-
-
-def nao_encontrado(item: ItemDeOrigem) -> dict[str, Any]:
-    """O Não encontrado como fica guardado: o item inteiro, sem a obra da fonte (o Vincular o aplica)."""
-    return item_para_json(replace(item, catalogo=None))
-
-
-def _item_do_nao_encontrado(entrada: dict[str, Any], id_midia: str) -> ItemDeOrigem:
-    campos = {f.name for f in fields(ItemDeOrigem)} - {'catalogo'}
-    return replace(item_de_json({k: v for k, v in entrada.items() if k in campos}),
-                   catalogo=RefCatalogo('midia', id_midia))
-
-
-def _contagens(novos: int, atualizados: int, nao_encontrados: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        'novos': novos,
-        'atualizados': atualizados,
-        'nao_encontrados': nao_encontrados[:AMOSTRA_NAO_ENCONTRADOS],
-        'total_nao_encontrados': len(nao_encontrados),
-    }
 
 
 def _planejar(id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date, db=banco):
@@ -215,11 +196,8 @@ def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> di
         'nao_encontrados': nao_encontrados,
     }
     guardada = repositorio.criar_previa(id_usuario, nome, conteudo)
-    return {
-        'id_previa': guardada['id_previa'],
-        'expira_em': guardada['expira_em'],
-        **_contagens(novos, len(planos) - novos, nao_encontrados),
-    }
+    contagens = resultado.criar(novos=novos, atualizados=len(planos) - novos, nao_encontrados=nao_encontrados)
+    return {'id_previa': guardada['id_previa'], 'expira_em': guardada['expira_em'], **contagens.resposta()}
 
 
 def previa(id_usuario: str, nome: str) -> dict[str, Any]:
@@ -261,7 +239,7 @@ def _importar_faltantes(itens: list[ItemDeOrigem], nome: str | None = None) -> d
     return localizadas
 
 
-def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date) -> dict[str, Any]:
+def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: date) -> Resultado:
     """Grava na Lista o que `aplicar` decidir, pelo executor `db` (a transação do chamador)."""
     lista = ListaPessoal(ItensLista(db), _CatalogoLocalizado(localizadas))
     planos, faltando = _planejar(id_usuario, [i for i in itens if localizadas.get(catalogo.chave(i))],
@@ -272,21 +250,21 @@ def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: d
     novos = atualizados = 0
     for item, midia, atual, mudanca in planos:
         if mudanca.tipo == NOVO:
-            resultado = lista.adicionar(id_usuario, {**mudanca.campos, 'id_midia': midia['id_midia']})
-            novos += resultado.bem_sucedido
+            gravado = lista.adicionar(id_usuario, {**mudanca.campos, 'id_midia': midia['id_midia']})
+            novos += gravado.bem_sucedido
         else:
             # Q114b: a origem chegar ao total nunca soma Recontagem.
-            resultado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False)
-            atualizados += resultado.bem_sucedido
-        if not resultado.bem_sucedido:
+            gravado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False)
+            atualizados += gravado.bem_sucedido
+        if not gravado.bem_sucedido:
             nao_encontrados.append(nao_encontrado(item))
-    return _contagens(novos, atualizados, nao_encontrados)
+    return resultado.criar(novos=novos, atualizados=atualizados, nao_encontrados=nao_encontrados)
 
 
-def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | None = None) -> dict[str, Any]:
+def aplicar_itens(id_usuario: str, itens: list[ItemDeOrigem], *, hoje: date | None = None) -> Resultado:
     """Importa as obras que faltam e grava na Lista (numa transação) o que `aplicar` decidir.
 
-    É o que a sincronização sem prévia (Steam) chama. Devolve as contagens.
+    É o que a sincronização sem prévia (Steam) e o Vincular chamam.
     """
     localizadas = _importar_faltantes(itens)
     with banco.transacao() as t:
@@ -305,17 +283,12 @@ def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> d
         consumida = repositorio.consumir_previa(id_usuario, id_previa, t)
         if consumida is None:
             return None  # outro confirmar levou a prévia enquanto as obras eram importadas
-        resultado = _gravar(t, id_usuario, itens, localizadas, hoje or date.today())
-        anteriores = [{**n, 'link': link_seguro(n.get('link'))}
-                      for n in consumida['conteudo'].get('nao_encontrados') or []]
-        nao_encontrados = anteriores + resultado['nao_encontrados']
-        resultado = {
-            **resultado,
-            'nao_encontrados': nao_encontrados[:AMOSTRA_NAO_ENCONTRADOS],
-            'total_nao_encontrados': len(anteriores) + resultado['total_nao_encontrados'],
-        }
-        repositorio.registrar_resultado(id_usuario, consumida['plataforma'], resultado, t)
-    return resultado
+        anteriores = resultado.criar(nao_encontrados=[
+            {**n, 'link': link_seguro(n.get('link'))} for n in consumida['conteudo'].get('nao_encontrados') or []
+        ])
+        final = resultado.somar(anteriores, _gravar(t, id_usuario, itens, localizadas, hoje or date.today()))
+        repositorio.registrar_resultado(id_usuario, consumida['plataforma'], final, t)
+    return final.resposta()
 
 
 _ARTIGO_DO_TIPO = {'anime': 'um anime', 'manga': 'um mangá', 'jogo': 'um jogo'}
@@ -349,10 +322,26 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
                                       entrada.get('titulo') or origem_id)
             if vinculo['id_midia'] != destino['id_midia']:
                 raise VinculoEmConflito(vinculo['id_midia'])
-            vinculos.tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
+            _tirar_dos_nao_encontrados(t, id_usuario, nome, origem_id, destino['tipo'])
     except vinculos.JaNoCatalogo as erro:
         raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
-    resultado = aplicar_itens(id_usuario, [_item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
+    aplicado = aplicar_itens(id_usuario, [resultado.item_do_nao_encontrado(entrada, destino['id_midia'])], hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],
-            'novos': resultado['novos'], 'atualizados': resultado['atualizados']}
+            'novos': aplicado.novos, 'atualizados': aplicado.atualizados}
+
+
+def _tirar_dos_nao_encontrados(db, id_usuario: str, nome: str, origem_id: str, tipo: str) -> None:
+    """O item sai do último resultado e das prévias do Usuário (o confirmar não o repete)."""
+    guardado = vinculos.ultimo_resultado_travado(db, id_usuario, nome)
+    if guardado:
+        antes = resultado.de_guardado(guardado)
+        depois = antes.sem_o_item(origem_id, tipo)
+        if depois is not antes:
+            vinculos.trocar_ultimo_resultado(db, id_usuario, nome, depois)
+    for previa in vinculos.previas_travadas(db, id_usuario, nome):
+        conteudo = previa['conteudo']
+        antes = conteudo.get('nao_encontrados') or []
+        restantes = resultado.tirar(antes, origem_id, tipo)
+        if len(restantes) != len(antes):
+            vinculos.trocar_conteudo_da_previa(db, previa['id_previa'], {**conteudo, 'nao_encontrados': restantes})
