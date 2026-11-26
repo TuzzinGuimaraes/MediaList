@@ -156,14 +156,14 @@ def test_falha_ao_notificar_desfaz_a_atualizacao(pg, client, entrar, monkeypatch
     id_midia = _anime(pg)
     _na_lista(assistindo, id_midia, 'assistindo')
 
-    original = banco.Transacao.executar
+    original = banco.Transacao.consultar
 
-    def executar(self, sql, params=None):
+    def consultar(self, sql, params=None):
         if 'INSERT INTO notificacoes' in sql:
             raise RuntimeError('falha depois de gravar a Atualização')
         return original(self, sql, params)
 
-    monkeypatch.setattr(banco.Transacao, 'executar', executar)
+    monkeypatch.setattr(banco.Transacao, 'consultar', consultar)
 
     response = client.post(f'/api/midias/{id_midia}/atualizacoes', headers=entrar(admin), json={
         'tipo': 'episodio', 'titulo': 'Nunca gravada',
