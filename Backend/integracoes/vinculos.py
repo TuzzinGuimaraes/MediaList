@@ -3,19 +3,19 @@
 O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para todo Usuário com o mesmo
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
 (no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
-a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
+a busca da plataforma não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
 vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfazer deixa ali o
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
 
-Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`.
+Só SQL de `vinculos_origem` e a troca do `catalogo` dos itens; as regras ficam no
+`servico.vincular`, a ordem do casamento no `integracoes.casamento`, o resultado e as prévias
+guardados no `integracoes.repositorio` (formato do `integracoes.resultado`).
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
-
-from psycopg.types.json import Jsonb
 
 import banco
 from integracoes import steam_appids
@@ -43,7 +43,7 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
     """Os itens, com `catalogo` na Mídia do vínculo quando há um.
 
-    O vínculo é reserva: quem chama só passa os itens que a fonte não casou.
+    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a busca da plataforma não casou.
     """
     if not itens:
         return itens
@@ -88,7 +88,7 @@ def nao_encontrados(id_usuario: str, plataforma: str, origem_id: str) -> list[di
 
 
 class JaNoCatalogo(Exception):
-    """A appid da Steam já casou com outra Mídia (pela fonte): o vínculo não a troca."""
+    """A appid da Steam já casou com outra Mídia (pela busca): o vínculo não a troca."""
 
     def __init__(self, id_midia: str):
         super().__init__(id_midia)
@@ -118,40 +118,6 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
         if casada != id_midia:
             raise JaNoCatalogo(casada)
     return vinculo
-
-
-def _sem_o_item(entradas: list[dict] | None, origem_id: str, tipo: str) -> tuple[list[dict], int]:
-    restantes = [e for e in entradas or [] if (e.get('origem_id'), e.get('tipo')) != (origem_id, tipo)]
-    return restantes, len(entradas or []) - len(restantes)
-
-
-def tirar_dos_nao_encontrados(db, id_usuario: str, plataforma: str, origem_id: str, tipo: str) -> None:
-    """O item sai do último resultado e das prévias do Usuário: o confirmar não o repete."""
-    conta = db.consultar_um(
-        'SELECT ultimo_resultado FROM integracoes WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-    resultado = (conta or {}).get('ultimo_resultado')
-    if resultado:
-        restantes, tirados = _sem_o_item(resultado.get('nao_encontrados'), origem_id, tipo)
-        if tirados:
-            resultado = {**resultado, 'nao_encontrados': restantes,
-                         'total_nao_encontrados': max(int(resultado.get('total_nao_encontrados') or 0) - tirados, 0)}
-            db.executar(
-                'UPDATE integracoes SET ultimo_resultado = %s WHERE id_usuario = %s AND plataforma = %s',
-                (Jsonb(resultado), id_usuario, plataforma),
-            )
-    previas = db.consultar(
-        'SELECT id_previa, conteudo FROM importacao_previas WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-    for previa in previas:
-        restantes, tirados = _sem_o_item(previa['conteudo'].get('nao_encontrados'), origem_id, tipo)
-        if tirados:
-            db.executar(
-                'UPDATE importacao_previas SET conteudo = %s WHERE id_previa = %s',
-                (Jsonb({**previa['conteudo'], 'nao_encontrados': restantes}), previa['id_previa']),
-            )
 
 
 def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:

@@ -17,18 +17,15 @@ from .test_integracoes_anilist import _colecao, _entrada
 from .test_integracoes_mal import XML, _entrada_mal, _media_anilist, _page, _pagina
 from .test_integracoes_mal_pg import mal  # noqa: F401 (fixture)
 from .test_integracoes_pg import _anime_no_catalogo, _media_nova, anilist, anilist_ids  # noqa: F401
-from .test_integracoes_steam_pg import (  # noqa: F401 (fixtures)
+from .test_integracoes_steam_pg import (
     HORA,
     _conectar,
     _item_da_midia,
     _no_catalogo,
     _sincronizar,
-    fontes,
-    jogo,
-    limpar,
     rawg_que_casa,
 )
-from .test_repositorios_pg import TEST_DATABASE_URL, _midia, _usuario, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL, _midia, _usuario
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para os vínculos'

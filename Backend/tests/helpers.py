@@ -3,9 +3,21 @@ from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+import banco
 from repositories.itens_lista import COLUNAS_GRAVAVEIS
 
 INTERFACE_BANCO = ('consultar', 'consultar_um', 'executar', 'transacao')
+
+
+def criar_usuario(pg, nivel='usuario'):
+    """Um Usuário no PostgreSQL de teste, apagado no fim pela fixture `pg`."""
+    id_usuario = banco.consultar_um(
+        "INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES ('PG', %s, 'x', %s) "
+        "RETURNING id_usuario",
+        (f'pg-{uuid.uuid4().hex}@exemplo.test', nivel),
+    )['id_usuario']
+    pg['usuarios'].append(id_usuario)
+    return id_usuario
 
 
 def linha_de_midia(**campos):

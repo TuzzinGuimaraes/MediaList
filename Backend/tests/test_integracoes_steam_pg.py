@@ -4,9 +4,7 @@
 `steam_appids` (positivo e negativo, negativo retentado depois de 30 dias), regras da Q111 e o
 job diário (`integracoes.job_steam`) sem orçamento e sem vazar as chaves. Sem TEST_DATABASE_URL, pula.
 """
-import random
 import sys
-import uuid
 
 import pytest
 
@@ -14,9 +12,7 @@ import banco
 from importacao import utils
 from importacao.importar_jogos import processar_e_inserir_jogo
 from integracoes import job_steam, repositorio, servico, sincronizacao_steam
-from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta
-from integracoes.rawg import Rawg
 from integracoes.steam import Steam
 
 from .fontes_falsas import (
@@ -29,66 +25,14 @@ from .fontes_falsas import (
     detalhe_rawg,
     jogo_steam,
     resultado_rawg,
-    rotas_steam,
 )
-from .test_repositorios_pg import TEST_DATABASE_URL, _usuario, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL, _usuario
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para a Steam'
 )
 
 HORA = 1_000_000_000  # rtime_last_played antigo: jogo novo entra como pausado
-
-
-@pytest.fixture
-def limpar(pg):  # noqa: F811
-    """appids e slugs do teste: apagados no fim (inclusive as Mídias importadas)."""
-    usados = {'appids': [], 'slugs': []}
-    yield usados
-    banco.executar('DELETE FROM steam_appids WHERE appid = ANY(%s)', (usados['appids'],))
-    banco.executar(
-        'DELETE FROM midias WHERE id_midia IN '
-        '(SELECT id_midia FROM jogos WHERE rawg_slug = ANY(%s) OR steam_appid = ANY(%s))',
-        (usados['slugs'], usados['appids']),
-    )
-
-
-@pytest.fixture
-def jogo(limpar):
-    """Cria (appid, slug, nome) únicos para o teste."""
-    def novo(nome='Jogo'):
-        appid = random.randint(10**8, 2 * 10**9)
-        slug = f'int-steam-{uuid.uuid4().hex[:12]}'
-        limpar['appids'].append(appid)
-        limpar['slugs'].append(slug)
-        return appid, slug, f'{nome} {slug}'
-
-    return novo
-
-
-@pytest.fixture
-def usuario(pg, make_token):  # noqa: F811
-    id_usuario = _usuario(pg)
-    return id_usuario, {'Authorization': f'Bearer {make_token(id_usuario)}'}
-
-
-@pytest.fixture
-def fontes(monkeypatch):
-    """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja, cabecas=heads_do_cdn)` instala a Steam, o RAWG e a loja da
-    Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`). A loja padrão não tem
-    nenhuma appid (`success: false`)."""
-    def instalar(jogos, rawg=None, loja=None, cabecas=None, **steam):
-        monkeypatch.setitem(
-            servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
-        )
-        sessao_rawg = SessaoGet(rawg or {})
-        sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}},
-                                     cabecas)
-        monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))
-        monkeypatch.setattr(sincronizacao_steam, 'LojaSteam', lambda **kw: LojaSteam(sessao=sessao_rawg.loja, **kw))
-        return sessao_rawg
-
-    return instalar
 
 
 def loja_com(*apps):

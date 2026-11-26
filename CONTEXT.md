@@ -105,6 +105,19 @@ vinculou, pelas mesmas regras da importação. O
 admin vê os Vínculos com autor e data e pode desfazer um errado; desfazer não apaga Itens, só faz
 a próxima importação voltar a dar Não encontrado.
 
+O **Casamento** é achar a Mídia de cada item da plataforma, sempre na mesma ordem: a **busca**
+da plataforma casa primeiro e o Vínculo só vale para o que ela não casa; o que nenhum dos dois
+casa é Não encontrado. Ao aplicar, os casados pela busca vêm antes dos casados pelo Vínculo.
+A busca varia por plataforma: no AniList e no MAL é o Catálogo mais a obra que a fonte traz para
+importar; na Steam é o casamento já gravado da appid, a appid no Catálogo, o RAWG e a loja, nessa
+ordem e dentro do orçamento (o que não coube fica pendente, e o ignorado some). "Busca" é o
+casamento da plataforma; "fonte" continua sendo a fonte externa de onde a obra vem.
+O **Resultado da integração** é o que uma prévia, um confirmar ou uma sincronização deixa para o
+Usuário: novos, atualizados, os Não encontrados e o total deles (na Steam, também os pendentes).
+O último fica guardado na conta com **todos** os Não encontrados (até 5000), e qualquer um deles
+pode ser vinculado; a tela recebe só os 100 primeiros e o total ("e mais N"). Vincular tira o
+item do Resultado e baixa o total.
+
 ## Recorte de catálogo
 
 O agrupamento de Tipos de mídia que o usuário está visualizando no momento: `animanga`

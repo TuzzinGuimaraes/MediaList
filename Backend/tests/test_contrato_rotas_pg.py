@@ -15,7 +15,7 @@ import pytest
 import banco
 from importacao import db as importacao
 
-from .test_repositorios_pg import TEST_DATABASE_URL, _usuario, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL, _usuario
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para o contrato das rotas'
