@@ -33,6 +33,8 @@ export function midia(id: string, titulo: string, campos: Partial<Midia> = {}): 
     status_jogo: null,
     status_catalogo: null,
     numero_episodios: null,
+    episodios_lancados: null,
+    proximo_episodio_em: null,
     duracao_episodio: null,
     estudio: null,
     numero_capitulos: null,

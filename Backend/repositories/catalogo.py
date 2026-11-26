@@ -43,6 +43,8 @@ SELECT_MIDIA = f"""
         m.banner_url,
         a.status_anime,
         a.numero_episodios,
+        a.episodios_lancados,
+        a.proximo_episodio_em,
         a.duracao_episodio,
         a.classificacao_etaria,
         a.trailer_url AS anime_trailer_url,
