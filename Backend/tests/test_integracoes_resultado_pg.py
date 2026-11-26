@@ -8,18 +8,15 @@ from integracoes.plataforma import ItemDeOrigem
 
 from .fontes_falsas import jogo_steam
 from .test_integracoes_pg import _anime_no_catalogo, _PlataformaFalsa, anilist_ids  # noqa: F401 (fixture)
-from .test_integracoes_steam_pg import (  # noqa: F401 (fixtures)
+from .test_integracoes_steam_pg import (
     HORA,
     _conectar,
     _item_da_midia,
     _no_catalogo,
     _sincronizar,
-    fontes,
-    jogo,
-    limpar,
 )
 from .test_integracoes_vinculos_pg import _vincular, pessoa  # noqa: F401 (fixture)
-from .test_repositorios_pg import TEST_DATABASE_URL, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para o Resultado da integração'

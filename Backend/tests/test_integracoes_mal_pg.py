@@ -16,7 +16,7 @@ from .test_integracoes_anilist import SessaoFalsa as SessaoAniList
 from .test_integracoes_anilist import _Resposta
 from .test_integracoes_mal import CHAVE, XML, SessaoMal, _entrada_mal, _media_anilist, _page, _pagina
 from .test_integracoes_pg import _anime_no_catalogo, _id_anilist, _item, anilist_ids, usuario  # noqa: F401
-from .test_repositorios_pg import TEST_DATABASE_URL, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para as Integrações'
