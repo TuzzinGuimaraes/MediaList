@@ -31,14 +31,14 @@ describe('paraAssistirAgora', () => {
     expect(ids(paraAssistirAgora(itens, AGORA))).toEqual(['atras-3', 'atras-1', 'em-dia-perto', 'em-dia-longe']);
   });
 
-  it('cada cartão traz o atraso e o texto', () => {
+  it('cada cartão traz o atraso, se está atrasado e o texto', () => {
     const [atrasado, emDia] = paraAssistirAgora(
       [anime('a', { progresso_atual: 2 }), anime('b', { proximo_episodio_em: '2026-11-29T12:00:00Z' })],
       AGORA,
     );
 
-    expect([atrasado?.atraso, atrasado?.texto]).toEqual([3, '3 episódios atrás']);
-    expect([emDia?.atraso, emDia?.texto]).toEqual([0, 'próximo em 2 d']);
+    expect([atrasado?.atraso, atrasado?.atrasado, atrasado?.texto]).toEqual([3, true, '3 episódios atrás']);
+    expect([emDia?.atraso, emDia?.atrasado, emDia?.texto]).toEqual([0, false, 'próximo em 2 d']);
   });
 
   it('em dia sem data do próximo episódio vai para o fim, como "em dia"', () => {
@@ -71,6 +71,7 @@ describe('paraAssistirAgora', () => {
     ['Pausado', { status_consumo: 'pausado' as const }],
     ['Concluído', { status_consumo: 'completo' as const }],
     ['episódios lançados ainda não conhecidos', { episodios_lancados: null }],
+    ['episódios lançados ausentes (API antiga)', { episodios_lancados: undefined as unknown as null }],
   ])('%s fica de fora', (_caso, dados) => {
     expect(paraAssistirAgora([anime('fora', dados)], AGORA)).toEqual([]);
   });
@@ -129,8 +130,6 @@ describe('destaqueDoItem', () => {
   it('anime em exibição, Em progresso e atrasado: onde parou e o último lançado', () => {
     expect(destaqueDoItem(anime('a', { progresso_atual: 5, episodios_lancados: 7 }))).toEqual({
       atraso: 2,
-      parouNo: 5,
-      ultimoLancado: 7,
       texto: 'Você parou no ep. 5; saiu o 7',
     });
   });
@@ -146,6 +145,7 @@ describe('destaqueDoItem', () => {
     ['finalizado', { status_anime: 'finalizado' as const, episodios_lancados: 12 }],
     ['Pausado', { status_consumo: 'pausado' as const, episodios_lancados: 9 }],
     ['episódios lançados desconhecidos', { episodios_lancados: null }],
+    ['episódios lançados ausentes (API antiga)', { episodios_lancados: undefined as unknown as null }],
     ['mangá', { tipo: 'manga' as const, status_consumo: 'lendo' as const, episodios_lancados: 9 }],
   ])('%s: sem destaque', (_caso, dados) => {
     expect(destaqueDoItem(anime('a', dados))).toBeNull();

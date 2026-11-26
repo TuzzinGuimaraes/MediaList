@@ -11,11 +11,11 @@ export type ItemAssistirAgora = Pick<
   'tipo' | 'status_consumo' | 'status_anime' | 'progresso_atual' | 'episodios_lancados' | 'proximo_episodio_em'
 >;
 
-/** Um cartão da faixa: o Item, quantos episódios o Usuário está atrás (0: em dia) e o texto. */
-export type CartaoAssistirAgora<T> = { item: T; atraso: number; texto: string };
+/** Um cartão da faixa: o Item, o Atraso (0: em dia), se está atrasado e o texto. */
+export type CartaoDaFaixa<T> = { item: T; atraso: number; atrasado: boolean; texto: string };
 
 /** O destaque do Detalhe de um anime atrasado. */
-export type DestaqueDeEpisodio = { atraso: number; parouNo: number; ultimoLancado: number; texto: string };
+export type DestaqueDeEpisodio = { atraso: number; texto: string };
 
 const MINUTO = 60_000;
 const HORA = 60 * MINUTO;
@@ -26,7 +26,7 @@ const DIA = 24 * HORA;
  * com os episódios lançados já conhecidos. Progresso à frente do que o job viu conta como em dia.
  */
 function atrasoDe(item: ItemAssistirAgora): number | null {
-  if (item.tipo !== 'anime' || item.status_anime !== 'em_exibicao' || item.episodios_lancados === null) return null;
+  if (item.tipo !== 'anime' || item.status_anime !== 'em_exibicao' || item.episodios_lancados == null) return null;
   if (estadoDe(item.status_consumo, item.tipo) !== 'em_progresso') return null;
   return Math.max(0, item.episodios_lancados - (item.progresso_atual ?? 0));
 }
@@ -61,7 +61,7 @@ export function textoDoProximo(proximoEm: string | null, agora: Date): string | 
  * A faixa "Para assistir agora": os atrasados, do mais atrasado ao menos, depois os em dia, do
  * próximo episódio mais perto ao mais longe (sem data, no fim). Vazia: a faixa some.
  */
-export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T[], agora: Date): CartaoAssistirAgora<T>[] {
+export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T[], agora: Date): CartaoDaFaixa<T>[] {
   const cartoes = itens.flatMap((item) => {
     const atraso = atrasoDe(item);
     if (atraso === null) return [];
@@ -72,7 +72,7 @@ export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T
     a.proximo === b.proximo ? 0 : a.proximo < b.proximo ? -1 : 1;
   return cartoes
     .sort((a, b) => b.atraso - a.atraso || (a.atraso === 0 ? ordemDoProximo(a, b) : 0))
-    .map(({ item, atraso, texto }) => ({ item, atraso, texto }));
+    .map(({ item, atraso, texto }) => ({ item, atraso, atrasado: atraso > 0, texto }));
 }
 
 /**
@@ -82,9 +82,8 @@ export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T
 export function destaqueDoItem(item: ItemAssistirAgora | null | undefined): DestaqueDeEpisodio | null {
   if (!item) return null;
   const atraso = atrasoDe(item);
-  if (!atraso || item.episodios_lancados === null) return null;
+  if (!atraso || item.episodios_lancados == null) return null;
   const parouNo = item.progresso_atual ?? 0;
-  const ultimoLancado = item.episodios_lancados;
   const onde = parouNo > 0 ? `Você parou no ep. ${parouNo}` : 'Você ainda não começou';
-  return { atraso, parouNo, ultimoLancado, texto: `${onde}; saiu o ${ultimoLancado}` };
+  return { atraso, texto: `${onde}; saiu o ${item.episodios_lancados}` };
 }

@@ -59,14 +59,14 @@ export function FaixaAssistirAgora({ itens }: { itens: ItemLista[] }) {
         titulo={textos.faixa}
         itens={cartoes}
         chave={(c) => c.item.id_lista}
-        renderizar={({ item, atraso, texto }) => (
+        renderizar={({ item, atrasado, texto }) => (
           <View className="gap-2" style={{ width: LARGURA_CARTAO }}>
             <CardInfo midia={item} largura={LARGURA_CARTAO} />
             <View className="min-h-9 flex-row items-center justify-between gap-3 px-1">
-              <Text className={`flex-1 text-legenda font-semibold ${atraso ? 'text-marca-texto' : 'text-texto-suave'}`}>
+              <Text className={`flex-1 text-legenda font-semibold ${atrasado ? 'text-marca-texto' : 'text-texto-suave'}`}>
                 {texto}
               </Text>
-              {atraso ? <MaisUm item={item} mudar={mudar} /> : null}
+              {atrasado ? <MaisUm item={item} mudar={mudar} /> : null}
             </View>
           </View>
         )}
