@@ -3,7 +3,8 @@ Escrita da Lista pessoal: tudo o que um Item de lista significa.
 
 O módulo é o autor do Estado de consumo (ver docs/adr/0002): validação do
 Rótulo de estado contra o Tipo de mídia, escala da Nota pessoal, limites de Progresso, Concluído ⇔ total
-Concluído e dono do Item vivem aqui, não nas rotas nem no banco. Esta é a única
+Concluído, datas (nunca no futuro, conclusão não antes do início) e dono do Item
+vivem aqui, não nas rotas nem no banco. Esta é a única
 validação dessas regras: no PostgreSQL não há trigger de Progresso, só CHECKs
 simples (Rótulo entre os conhecidos, sem olhar o Tipo; nota de 0 a 10; contadores
 não negativos); ver docs/adr/0007 e 0009.
@@ -136,6 +137,55 @@ def _erro_de_progresso(progresso: int | None, total: int | None) -> str | None:
     return None
 
 
+#: Mensagens das regras de data, as mesmas do editor do Web.
+DATA_NO_FUTURO = {
+    'data_inicio': 'A data de início não pode ser no futuro.',
+    'data_conclusao': 'A data de conclusão não pode ser no futuro.',
+}
+CONCLUSAO_ANTES_DO_INICIO = 'A conclusão não pode ser antes do início.'
+
+
+def _como_data(valor: Any) -> date | None:
+    """`date` de um valor do payload (texto ISO) ou do banco (`date`/`datetime`)."""
+    if valor is None:
+        return None
+    if isinstance(valor, date):
+        return valor if type(valor) is date else valor.date()
+    return date.fromisoformat(str(valor)[:10])
+
+
+def _erros_de_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
+    """Erros das datas enviadas: nenhuma depois de hoje, conclusão não antes do início.
+
+    Só as datas que vieram no payload são julgadas; a que não veio entra como a gravada
+    no Item, para comparar. Assim editar só o Progresso de um Item com uma data antiga
+    ruim não falha. O erro de ordem vai para a data enviada (a de conclusão, se foram as duas).
+    """
+    erros: dict[str, str] = {}
+    enviadas: dict[str, date] = {}
+    for nome, mensagem in DATA_NO_FUTURO.items():
+        if campos.get(nome) is None:
+            continue
+        try:
+            enviadas[nome] = _como_data(campos[nome])
+        except ValueError:
+            erros[nome] = 'Valor inválido'
+            continue
+        if enviadas[nome] > hoje:
+            erros[nome] = mensagem
+    if erros or not enviadas:
+        return erros
+
+    def efetiva(nome: str) -> date | None:
+        return enviadas[nome] if nome in enviadas else (None if nome in campos else _como_data(item.get(nome)))
+
+    inicio, conclusao = efetiva('data_inicio'), efetiva('data_conclusao')
+    if inicio and conclusao and conclusao < inicio:
+        campo = 'data_conclusao' if 'data_conclusao' in enviadas else 'data_inicio'
+        erros[campo] = CONCLUSAO_ANTES_DO_INICIO
+    return erros
+
+
 def _decidido(campos: dict[str, Any], item: dict[str, Any], nome: str) -> bool:
     """Diz se o payload traz um valor novo para o campo.
 
@@ -218,6 +268,8 @@ class ListaPessoal:
             erros['id_midia'] = 'Campo obrigatório'
         if 'status_consumo' not in campos:
             erros.setdefault('status_consumo', 'Campo obrigatório')
+        if not erros:
+            erros = _erros_de_data(campos, {}, date.today())
         if erros:
             return Resultado(INVALIDO, erros)
 
@@ -259,6 +311,8 @@ class ListaPessoal:
             return Resultado(NEGADO)
 
         campos, erros = _validar_campos(payload or {})
+        if not erros:
+            erros = _erros_de_data(campos, item, date.today())
         if erros:
             return Resultado(INVALIDO, erros)
 

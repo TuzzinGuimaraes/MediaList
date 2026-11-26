@@ -1,5 +1,5 @@
 """Regras de escrita do Item de lista (ver CONTEXT.md: Item de lista, Progresso)."""
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -554,3 +554,116 @@ def test_remover_item_inexistente_nao_e_encontrado():
     modulo, _repo = _modulo()
 
     assert modulo.remover(DONO, 'LST-404').codigo == NAO_ENCONTRADO
+
+
+
+# --- datas do Item: nunca no futuro, conclusão não antes do início -----------
+
+AMANHA = (date.today() + timedelta(days=1)).isoformat()
+HOJE = date.today().isoformat()
+FUTURO_INICIO = 'A data de início não pode ser no futuro.'
+FUTURO_CONCLUSAO = 'A data de conclusão não pode ser no futuro.'
+CONCLUSAO_ANTES = 'A conclusão não pode ser antes do início.'
+
+
+@pytest.mark.parametrize(('campo', 'mensagem'), [('data_inicio', FUTURO_INICIO), ('data_conclusao', FUTURO_CONCLUSAO)])
+def test_adicionar_recusa_data_no_futuro(campo, mensagem):
+    modulo, repo = _modulo()
+
+    resultado = modulo.adicionar(DONO, {'id_midia': 'MID-ANIME', 'status_consumo': 'assistindo', campo: AMANHA})
+
+    assert (resultado.codigo, resultado.detalhes) == (INVALIDO, {campo: mensagem})
+    assert repo.escritas == []
+
+
+def test_adicionar_aceita_data_de_hoje():
+    modulo, _ = _modulo()
+
+    resultado = modulo.adicionar(DONO, {
+        'id_midia': 'MID-ANIME', 'status_consumo': 'assistindo', 'data_inicio': HOJE, 'data_conclusao': HOJE,
+    })
+
+    assert resultado.codigo == OK
+
+
+def test_adicionar_recusa_conclusao_antes_do_inicio():
+    modulo, repo = _modulo()
+
+    resultado = modulo.adicionar(DONO, {
+        'id_midia': 'MID-ANIME', 'status_consumo': 'assistindo',
+        'data_inicio': '2026-05-02', 'data_conclusao': '2026-05-01',
+    })
+
+    assert (resultado.codigo, resultado.detalhes) == (INVALIDO, {'data_conclusao': CONCLUSAO_ANTES})
+    assert repo.escritas == []
+
+
+def test_datas_no_futuro_e_fora_de_ordem_dao_erro_por_campo():
+    modulo, _ = _modulo()
+
+    resultado = modulo.adicionar(DONO, {
+        'id_midia': 'MID-ANIME', 'status_consumo': 'assistindo', 'data_inicio': AMANHA, 'data_conclusao': AMANHA,
+    })
+
+    assert resultado.detalhes == {'data_inicio': FUTURO_INICIO, 'data_conclusao': FUTURO_CONCLUSAO}
+
+
+@pytest.mark.parametrize(('campo', 'mensagem'), [('data_inicio', FUTURO_INICIO), ('data_conclusao', FUTURO_CONCLUSAO)])
+def test_atualizar_recusa_data_no_futuro(campo, mensagem):
+    modulo, repo = _com_item()
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {campo: AMANHA})
+
+    assert (resultado.codigo, resultado.detalhes) == (INVALIDO, {campo: mensagem})
+    assert repo.escritas == []
+
+
+def test_atualizar_recusa_conclusao_antes_do_inicio_enviado():
+    modulo, _ = _com_item()
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'data_inicio': '2026-05-02', 'data_conclusao': '2026-05-01'})
+
+    assert resultado.detalhes == {'data_conclusao': CONCLUSAO_ANTES}
+
+
+def test_atualizar_recusa_conclusao_antes_do_inicio_gravado():
+    modulo, _ = _com_item(data_inicio=date(2026, 5, 2))
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'data_conclusao': '2026-05-01'})
+
+    assert resultado.detalhes == {'data_conclusao': CONCLUSAO_ANTES}
+
+
+def test_atualizar_recusa_inicio_depois_da_conclusao_gravada():
+    modulo, _ = _com_item(data_conclusao=date(2026, 5, 1))
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'data_inicio': '2026-05-02'})
+
+    assert resultado.detalhes == {'data_inicio': CONCLUSAO_ANTES}
+
+
+def test_apagar_uma_data_nao_compara_com_a_gravada():
+    modulo, repo = _com_item(data_inicio=date(2026, 5, 2), data_conclusao=date(2026, 5, 1))
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'data_inicio': None})
+
+    assert resultado.codigo == OK
+    assert repo.itens['LST-1']['data_inicio'] is None
+
+
+def test_editar_so_o_progresso_de_item_com_datas_ruins_continua_funcionando():
+    modulo, repo = _com_item(data_inicio=date(2026, 5, 2), data_conclusao=date(2026, 5, 1))
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 4})
+
+    assert resultado.codigo == OK
+    assert repo.itens['LST-1']['progresso_atual'] == 4
+
+
+def test_conclusao_automatica_segue_com_inicio_gravado():
+    modulo, repo = _com_item(data_inicio=date(2026, 5, 2))
+
+    resultado = modulo.atualizar(DONO, 'LST-1', {'progresso_atual': 24})
+
+    assert resultado.codigo == OK
+    assert repo.itens['LST-1']['data_conclusao'] == HOJE

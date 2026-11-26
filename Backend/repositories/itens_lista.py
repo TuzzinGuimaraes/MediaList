@@ -151,7 +151,7 @@ class ItensLista:
         return self._db.consultar_um(
             f"""
             SELECT lu.id_lista, lu.id_usuario, lu.id_midia, lu.status_consumo, lu.progresso_atual,
-                   lu.progresso_total, lu.data_conclusao, lu.total_rewatches,
+                   lu.progresso_total, lu.data_inicio, lu.data_conclusao, lu.total_rewatches,
                    tm.nome_tipo AS tipo,
                    {por_tipo('tm.nome_tipo', lambda t: t.coluna_total and f'{t.apelido}.{t.coluna_total}')}
                        AS progresso_total_padrao
