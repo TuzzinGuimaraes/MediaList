@@ -44,6 +44,8 @@ jobs:
         working-directory: Backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Opcional: vazio se o secret não existir (o push vai sem Bearer).
+          EXPO_ACCESS_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL ausente"
