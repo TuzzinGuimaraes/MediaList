@@ -248,3 +248,14 @@ def test_existente_com_conclusao_da_origem_antes_do_inicio_gravado_perde_a_concl
 
     assert mudanca.campos['status_consumo'] == 'completo'
     assert 'data_conclusao' not in mudanca.campos
+
+
+
+def test_item_novo_com_inicio_no_futuro_depois_da_conclusao_perde_so_o_inicio():
+    """O futuro sai primeiro; sem o início, o par já não está fora de ordem e a conclusão fica."""
+    origem = _origem(status=CONCLUIDO, progresso=28, data_inicio=AMANHA, data_conclusao='2026-11-20')
+
+    mudanca = aplicar(None, origem, total=28, hoje=HOJE)
+
+    assert mudanca.campos['data_conclusao'] == '2026-11-20'
+    assert 'data_inicio' not in mudanca.campos

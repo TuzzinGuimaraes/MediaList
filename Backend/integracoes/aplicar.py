@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
-from dominio.lista_pessoal import CONCLUSAO_ANTES_DO_INICIO, erros_de_data
+from dominio.lista_pessoal import erro_de_ordem, erros_de_cada_data
 from integracoes.plataforma import ItemDeOrigem
 from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, PAUSADO, PLANEJADO, estado_de, rotulo_para
 
@@ -63,13 +63,16 @@ def _nota_se_vazia(campos: dict[str, Any], item: dict[str, Any], origem: ItemDeO
 
 
 def _sem_datas_invalidas(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, Any]:
-    """Tira de `campos` as datas que a `ListaPessoal` recusaria."""
-    while erros := erros_de_data(campos, item, hoje):
-        if CONCLUSAO_ANTES_DO_INICIO in erros.values():
-            campos.pop('data_inicio' if 'data_inicio' in campos else 'data_conclusao')
-        else:
-            for nome in erros:
-                campos.pop(nome)
+    """Tira de `campos` as datas que a `ListaPessoal` recusaria, em dois passos.
+
+    1. Sai cada data que não vale sozinha (no futuro).
+    2. Se o par fica fora de ordem, sai o início enviado; sem início enviado (o do Item é o
+       gravado, do Usuário), sai a conclusão.
+    """
+    for nome in erros_de_cada_data(campos, item, hoje):
+        campos.pop(nome)
+    if erro_de_ordem(campos, item):
+        campos.pop('data_inicio' if 'data_inicio' in campos else 'data_conclusao')
     return campos
 
 

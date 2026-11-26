@@ -272,11 +272,13 @@ def _gravar(db, id_usuario: str, itens: list[ItemDeOrigem], localizadas, hoje: d
     novos = atualizados = 0
     for item, midia, atual, mudanca in planos:
         if mudanca.tipo == NOVO:
-            resultado = lista.adicionar(id_usuario, {**mudanca.campos, 'id_midia': midia['id_midia']})
+            resultado = lista.adicionar(id_usuario, {**mudanca.campos, 'id_midia': midia['id_midia']}, hoje=hoje)
             novos += resultado.bem_sucedido
         else:
             # Q114b: a origem chegar ao total nunca soma Recontagem.
-            resultado = lista.atualizar(id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False)
+            resultado = lista.atualizar(
+                id_usuario, atual['id_lista'], mudanca.campos, contar_recontagem=False, hoje=hoje,
+            )
             atualizados += resultado.bem_sucedido
         if not resultado.bem_sucedido:
             nao_encontrados.append(nao_encontrado(item))
