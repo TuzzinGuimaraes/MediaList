@@ -64,7 +64,10 @@ def pg(monkeypatch):
 
 @pytest.fixture
 def importar(pg, monkeypatch, capsys):
-    """Roda `run_import` de um Tipo; devolve (código de saída, janelas pedidas, resumo do Tipo)."""
+    """Roda `run_import` de um Tipo; devolve (código de saída, janelas pedidas, resumo do Tipo).
+
+    Sem a passada das Temporadas (`--temporadas 0`), que tem o seu teste; `argv` pode religá-la.
+    """
     from importacao import importar_animes, importar_mangas, run_import
 
     modulos = {'anime': importar_animes, 'manga': importar_mangas}
@@ -72,7 +75,7 @@ def importar(pg, monkeypatch, capsys):
     def _importar(tipo, fonte, *argv):
         monkeypatch.setattr(modulos[tipo], 'criar_sessao_http', lambda **kw: fonte)
         monkeypatch.setattr(modulos[tipo], 'RateLimiter', _SemEspera)
-        monkeypatch.setattr(sys, 'argv', ['run_import', '--tipo', tipo, *argv])
+        monkeypatch.setattr(sys, 'argv', ['run_import', '--tipo', tipo, '--temporadas', '0', *argv])
         antes = len(fonte.pedidos)
         capsys.readouterr()
         try:

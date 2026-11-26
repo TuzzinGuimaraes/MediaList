@@ -12,6 +12,8 @@ nenhuma consulta passa da página `ULTIMA_PAGINA`:
   até o da fronteira. Acabada a faixa, segue com `popularity_lesser: P`. Janela que chega à
   última página continua numa janela nova a partir da fronteira. No fim do AniList, volta ao topo.
 - **Atualização das populares**: as páginas 1–100 por popularidade, em rodízio.
+- **Temporadas** (só anime): todas as páginas da Temporada atual e das seguintes (`season`,
+  `seasonYear`, sem os adultos), sem cursor.
 
 Uma faixa de empate com mais de 5000 obras não cabe numa janela: o resto dela fica para a volta
 seguinte (em 2026-11-25, a página 100 das faixas de popularidade 0, 1 e 3 vinha vazia).
@@ -21,6 +23,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import date
 
 from importacao.config import ANILIST_URL
 from importacao.utils import logger
@@ -55,6 +58,10 @@ CAMPOS_MEDIA = """
       source
       trailer { id site }
       isAdult
+      season
+      seasonYear
+      format
+      popularity
 """
 
 POR_PAGINA = 50
@@ -66,8 +73,19 @@ ULTIMA_PAGINA = 100
 POR_POPULARIDADE = ['POPULARITY_DESC', 'ID']
 POR_ID = ['ID']
 
-#: Filtro de `Page.media` → variável da consulta (só vão as que a janela usa).
-_FILTROS = {'popularity': 'popularity', 'popularity_lesser': 'popularityLesser'}
+#: Filtro de `Page.media` → (variável da consulta, tipo dela); só vão os que a passada usa.
+_FILTROS = {
+    'popularity': ('popularity', 'Int'),
+    'popularity_lesser': ('popularityLesser', 'Int'),
+    'season': ('season', 'MediaSeason'),
+    'seasonYear': ('seasonYear', 'Int'),
+    'isAdult': ('isAdult', 'Boolean'),
+}
+
+#: `MediaSeason` do AniList, na ordem do ano: janeiro–março é o inverno (WINTER).
+ESTACOES = ('WINTER', 'SPRING', 'SUMMER', 'FALL')
+#: Temporadas que a Importação de animes traz inteiras por execução: a atual e as 4 seguintes.
+TEMPORADAS = 5
 
 
 @dataclass(frozen=True)
@@ -80,16 +98,16 @@ class Fronteira:
 
 
 def _consulta(filtros: dict) -> tuple[str, dict]:
-    argumentos = ''.join(f', {nome}: ${_FILTROS[nome]}' for nome in filtros)
-    declaracoes = ''.join(f', ${_FILTROS[nome]}: Int' for nome in filtros)
+    argumentos = ''.join(f', {nome}: ${_FILTROS[nome][0]}' for nome in filtros)
+    declaracoes = ''.join(f', ${_FILTROS[nome][0]}: {_FILTROS[nome][1]}' for nome in filtros)
     query = (
         f'query ($page: Int, $perPage: Int, $tipo: MediaType, $sort: [MediaSort]{declaracoes}) {{\n'
         '  Page(page: $page, perPage: $perPage) {\n'
         '    pageInfo { hasNextPage }\n'
-        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_MEDIA + '      popularity\n    }\n'
+        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_MEDIA + '    }\n'
         '  }\n}\n'
     )
-    return query, {_FILTROS[nome]: valor for nome, valor in filtros.items()}
+    return query, {_FILTROS[nome][0]: valor for nome, valor in filtros.items()}
 
 
 def _limite_de_paginas(response) -> bool:
@@ -221,3 +239,31 @@ def atualizacao(buscar: Buscar, paginas: int, pagina_inicial: int = 1) -> Iterat
         proxima = 1 if pagina >= ULTIMA_PAGINA else pagina + 1
         yield {'pagina': pagina, 'itens': resposta['itens'], 'erro': None, 'cursor': proxima}
         pagina = proxima
+
+
+
+def temporadas_a_frente(hoje: date, quantas: int = TEMPORADAS) -> list[tuple[str, int]]:
+    """A Temporada de `hoje` e as seguintes, `quantas` ao todo: [(`MediaSeason`, `seasonYear`)]."""
+    indice, ano = (hoje.month - 1) // 3, hoje.year
+    temporadas = []
+    for _ in range(quantas):
+        temporadas.append((ESTACOES[indice], ano))
+        indice, ano = (0, ano + 1) if indice == len(ESTACOES) - 1 else (indice + 1, ano)
+    return temporadas
+
+
+def temporada(buscar: Buscar, estacao: str, ano: int) -> Iterator[dict]:
+    """Todas as páginas de uma Temporada, sem os adultos, por popularidade.
+
+    Gera `{'pagina', 'itens', 'erro', 'payload'}`. Página com erro encerra a Temporada (as outras
+    seguem). Não tem cursor: cada execução lê a Temporada inteira de novo.
+    """
+    filtros = {'season': estacao, 'seasonYear': ano, 'isAdult': False}
+    for pagina in range(1, ULTIMA_PAGINA + 1):
+        resposta = buscar(pagina, POR_POPULARIDADE, filtros)
+        if resposta['erro'] is not None:
+            yield {'pagina': pagina, 'itens': [], 'erro': resposta['erro'], 'payload': resposta['payload']}
+            return
+        yield {'pagina': pagina, 'itens': resposta['itens'], 'erro': None}
+        if resposta['fim']:
+            return

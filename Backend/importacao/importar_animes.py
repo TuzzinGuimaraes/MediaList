@@ -3,6 +3,8 @@ Importador de animes via AniList.
 """
 from __future__ import annotations
 
+from datetime import date
+
 from banco import Indisponivel, autocommit
 from importacao import anilist, cursor
 from importacao.db import salvar_anime
@@ -46,6 +48,13 @@ STATUS_MAP = {
     'HIATUS': 'aguardando',
 }
 
+#: `MediaSeason` do AniList → estação da Temporada.
+ESTACAO_MAP = {'WINTER': 'inverno', 'SPRING': 'primavera', 'SUMMER': 'verao', 'FALL': 'outono'}
+#: Estações na ordem do ano, um trimestre cada (a divisão do AniList).
+ESTACOES_DO_ANO = ('inverno', 'primavera', 'verao', 'outono')
+#: `MediaFormat` de anime que o Catálogo guarda; outro vira desconhecido (nulo).
+FORMATOS = {'TV', 'TV_SHORT', 'ONA', 'MOVIE', 'SPECIAL', 'OVA', 'MUSIC'}
+
 SOURCE_MAP = {
     'MANGA': 'Manga',
     'LIGHT_NOVEL': 'Light Novel',
@@ -58,12 +67,38 @@ SOURCE_MAP = {
 }
 
 
+def hoje() -> date:
+    """O dia da execução, que diz qual é a Temporada atual (os testes trocam)."""
+    return date.today()
+
+
+def _inteiro(valor) -> int | None:
+    return valor if isinstance(valor, int) and not isinstance(valor, bool) else None
+
+
+def temporada_do_anime(anime: dict) -> tuple[str | None, int | None, bool]:
+    """(estação, ano, estimada): a Temporada do AniList ou, sem ela, a do mês de estreia.
+
+    Sem nenhuma das duas (estreia sem mês), sem Temporada.
+    """
+    estacao, ano = ESTACAO_MAP.get(anime.get('season')), _inteiro(anime.get('seasonYear'))
+    if estacao and ano:
+        return estacao, ano, False
+    estreia = anime.get('startDate') or {}
+    ano, mes = _inteiro(estreia.get('year')), _inteiro(estreia.get('month'))
+    if ano and mes and 1 <= mes <= 12:
+        return ESTACOES_DO_ANO[(mes - 1) // 3], ano, True
+    return None, None, False
+
+
 def processar_e_inserir_anime(anime: dict, t=None):
     """Processa um item do AniList e grava no banco (um comando por Mídia; `t`: a conexão da página)."""
     trailer_url = None
     if anime.get('trailer') and anime['trailer'].get('site', '').lower() == 'youtube':
         trailer_url = f"https://www.youtube.com/watch?v={anime['trailer']['id']}"
 
+    estacao, ano, estimada = temporada_do_anime(anime)
+    popularidade = _inteiro(anime.get('popularity'))
     dados = {
         'titulo_original': anime['title'].get('native') or anime['title'].get('romaji'),
         'titulo_ingles': anime['title'].get('english'),
@@ -81,6 +116,11 @@ def processar_e_inserir_anime(anime: dict, t=None):
         'fonte_original': SOURCE_MAP.get(anime.get('source')),
         'trailer_url': trailer_url,
         'anilist_id': anime.get('id'),
+        'temporada_estacao': estacao,
+        'temporada_ano': ano,
+        'temporada_estimada': estimada,
+        'formato': anime.get('format') if anime.get('format') in FORMATOS else None,
+        'popularidade_fonte': popularidade if popularidade is not None and popularidade >= 0 else None,
     }
     generos = [GENERO_MAP.get(genero, genero) for genero in anime.get('genres', [])]
 
@@ -91,8 +131,14 @@ def processar_e_inserir_anime(anime: dict, t=None):
 
 def importar_animes(
     paginas: int = 20, do_inicio: bool = False, paginas_atualizacao: int = anilist.PAGINAS_ATUALIZACAO,
+    temporadas: int = anilist.TEMPORADAS,
 ):
-    """Importação de animes: `paginas` do crescimento e `paginas_atualizacao` das populares."""
+    """Importação de animes: `paginas` do crescimento, `paginas_atualizacao` das populares e,
+    inteiras, as `temporadas` a partir da atual (0 desliga).
+
+    A passada das Temporadas roda mesmo depois de falha nas outras, e uma Temporada que falha não
+    impede as seguintes; nenhuma mexe no cursor.
+    """
     stats = ImportStats(tipo_midia='anime', origem='AniList')
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = RateLimiter(0.35)
@@ -121,14 +167,16 @@ def importar_animes(
                         extra={'pagina': pagina['pagina']},
                     )
 
+    def buscar(pagina, sort, filtros):
+        return anilist.buscar_pagina(session, rate_limiter, 'ANIME', pagina, sort, filtros)
+
     try:
-        cursor.importar_anilist(
-            'anime', stats,
-            lambda pagina, sort, filtros: anilist.buscar_pagina(
-                session, rate_limiter, 'ANIME', pagina, sort, filtros
-            ),
-            importar_pagina, paginas, paginas_atualizacao, do_inicio,
-        )
+        cursor.importar_anilist('anime', stats, buscar, importar_pagina, paginas, paginas_atualizacao, do_inicio)
+        for estacao, ano in anilist.temporadas_a_frente(hoje(), temporadas):
+            cursor.importar(
+                'anime', 'AniList', stats, anilist.temporada(buscar, estacao, ano), importar_pagina,
+                lambda pagina: None,
+            )
 
         logger.info('Importação de animes concluída. %s', stats.to_dict())
         if stats.falhas:
