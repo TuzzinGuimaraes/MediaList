@@ -1,6 +1,14 @@
 import {
   anterior,
+  animesDaTemporada,
+  consultaDaTemporada,
+  MAX_PAGINAS_DA_TEMPORADA,
+  ORDEM_PADRAO_DA_TEMPORADA,
+  ordemDaTemporada,
+  ORDENS_DA_TEMPORADA,
+  POR_PAGINA_DA_TEMPORADA,
   proxima,
+  temporadaDosParametros,
   rotuloDaTemporada,
   secoesDaTemporada,
   seloDeEstimativa,
@@ -117,5 +125,103 @@ describe('seloDeEstimativa', () => {
     });
     expect(seloDeEstimativa({ temporada_estimada: false })).toBeNull();
     expect(seloDeEstimativa({ temporada_estimada: null })).toBeNull();
+  });
+});
+
+describe('ordens da Temporada', () => {
+  it('são os mais esperados (o padrão), a estreia e a Nota da fonte', () => {
+    expect(ORDENS_DA_TEMPORADA).toEqual([
+      { valor: 'popularidade_fonte', rotulo: 'Mais esperados' },
+      { valor: 'estreia', rotulo: 'Estreia' },
+      { valor: 'nota_fonte', rotulo: 'Nota da fonte' },
+    ]);
+    expect(ORDEM_PADRAO_DA_TEMPORADA).toBe('popularidade_fonte');
+  });
+
+  it.each([
+    ['estreia', 'estreia'],
+    ['nota_fonte', 'nota_fonte'],
+    ['nota_media', 'popularidade_fonte'],
+    [undefined, 'popularidade_fonte'],
+    [['estreia'], 'popularidade_fonte'],
+  ])('%o vale %s', (valor, ordem) => {
+    expect(ordemDaTemporada(valor)).toBe(ordem);
+  });
+});
+
+describe('temporadaDosParametros', () => {
+  const agora = new Date(2026, 10, 28);
+
+  it.each([
+    [{ estacao: 'verao', ano: '2027' }, t('verao', 2027)],
+    [{ estacao: 'inverno', ano: 1990 }, t('inverno', 1990)],
+    [{ estacao: 'outono', ano: '1900' }, t('outono', 1900)],
+  ])('lê %o', (parametros, temporada) => {
+    expect(temporadaDosParametros(parametros, agora)).toEqual(temporada);
+  });
+
+  it.each([
+    [{}],
+    [{ estacao: 'verao' }],
+    [{ ano: '2027' }],
+    [{ estacao: 'moncao', ano: '2027' }],
+    [{ estacao: 'verao', ano: '1899' }],
+    [{ estacao: 'verao', ano: '20270' }],
+    [{ estacao: 'verao', ano: '2027.5' }],
+    [{ estacao: 'verao', ano: 2027.5 }],
+    [{ estacao: 'verao', ano: 'abc' }],
+  ])('inválido (%o) volta para a atual', (parametros) => {
+    expect(temporadaDosParametros(parametros, agora)).toEqual(t('outono', 2026));
+  });
+});
+
+describe('animesDaTemporada', () => {
+  const paginas = (total: number) => (pagina: number) =>
+    Promise.resolve({
+      itens: Array.from({ length: Math.max(0, Math.min(POR_PAGINA_DA_TEMPORADA, total - (pagina - 1) * POR_PAGINA_DA_TEMPORADA)) }, (_, i) => (pagina - 1) * POR_PAGINA_DA_TEMPORADA + i),
+      pagina,
+      por_pagina: POR_PAGINA_DA_TEMPORADA,
+      total,
+    });
+
+  /** A busca e as páginas que ela recebeu. */
+  function registrando<T>(buscar: (pagina: number) => Promise<T>) {
+    const pedidas: number[] = [];
+    return { pedidas, buscar: (pagina: number) => (pedidas.push(pagina), buscar(pagina)) };
+  }
+
+  it('a consulta de uma página é a da Temporada, na ordem, com o máximo por página', () => {
+    expect(consultaDaTemporada(t('outono', 2026), 'estreia', 2)).toEqual({
+      tipo: 'anime',
+      temporada_estacao: 'outono',
+      temporada_ano: 2026,
+      ordem: 'estreia',
+      pagina: 2,
+      por_pagina: 50,
+    });
+  });
+
+  it.each([
+    [0, [1]],
+    [50, [1]],
+    [51, [1, 2]],
+    [120, [1, 2, 3]],
+  ])('com %i animes, pede as páginas %o e junta todos', async (total, pedidas) => {
+    const { buscar, pedidas: feitas } = registrando(paginas(total));
+    const animes = await animesDaTemporada(buscar);
+    expect(feitas).toEqual(pedidas);
+    expect(animes).toHaveLength(total);
+  });
+
+  it('para numa página vazia, mesmo com o total maior', async () => {
+    const { buscar, pedidas } = registrando((pagina) => Promise.resolve({ itens: pagina === 1 ? [1] : [], pagina, por_pagina: 1, total: 5 }));
+    expect(await animesDaTemporada(buscar)).toEqual([1]);
+    expect(pedidas).toEqual([1, 2]);
+  });
+
+  it(`não passa de ${MAX_PAGINAS_DA_TEMPORADA} páginas com um total errado`, async () => {
+    const { buscar, pedidas } = registrando(paginas(10_000));
+    await animesDaTemporada(buscar);
+    expect(pedidas).toHaveLength(MAX_PAGINAS_DA_TEMPORADA);
   });
 });

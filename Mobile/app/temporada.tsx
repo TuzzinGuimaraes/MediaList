@@ -7,7 +7,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLista } from '@/api/lista';
-import { type OrdemTemporada, useAnimesDaTemporada, useTemporadaMaisAntiga } from '@/api/temporada';
+import { useAnimesDaTemporada, useTemporadaMaisAntiga } from '@/api/temporada';
 import type { Midia } from '@/api/tipos';
 import { useSessao } from '@/auth/SessaoContext';
 import { CartaoTemporada } from '@/components/CartaoTemporada';
@@ -17,16 +17,17 @@ import { GrupoFiltro, SheetFiltros } from '@/components/SheetFiltros';
 import { Toque } from '@/components/Toque';
 import { Voltar } from '@/components/TopoDetalhe';
 import {
-  ESTACOES,
-  type Estacao,
   anterior,
   mesmaTemporada,
   NOMES_DA_ESTACAO,
+  ordemDaTemporada,
+  ORDENS_DA_TEMPORADA,
   proxima,
   rotuloDaTemporada,
   secoesDaTemporada,
   type Temporada,
   temporadaDe,
+  temporadaDosParametros,
   temporadasDoSeletor,
   TITULO_FILMES_E_ESPECIAIS,
 } from '@dominio/temporada';
@@ -46,12 +47,8 @@ const textos = {
   vazio: (t: Temporada) => `Nenhum anime de ${rotuloDaTemporada(t)} no Catálogo.`,
 };
 
-const ORDEM_PADRAO: OrdemTemporada = 'popularidade_fonte';
-const ORDENS: { valor: OrdemTemporada; titulo: string }[] = [
-  { valor: 'popularidade_fonte', titulo: 'Mais esperados' },
-  { valor: 'estreia', titulo: 'Estreia' },
-  { valor: 'nota_fonte', titulo: 'Nota da fonte' },
-];
+/** As ordens no formato de `Opcoes`. */
+const ORDENS = ORDENS_DA_TEMPORADA.map((o) => ({ valor: o.valor, titulo: o.rotulo }));
 
 /** Fora das abas, a tela precisa do próprio guard: um deep link pode abrir sem sessão. */
 export default function TelaTemporada() {
@@ -64,21 +61,13 @@ export default function TelaTemporada() {
 
 type Parametros = { estacao?: string; ano?: string; ordem?: string };
 
-/** A Temporada do link, se vier inteira e válida; senão, a atual. */
-function temporadaDosParametros(p: Parametros, atual: Temporada): Temporada {
-  const ano = Number(p.ano);
-  return ESTACOES.includes(p.estacao as Estacao) && Number.isInteger(ano)
-    ? { estacao: p.estacao as Estacao, ano }
-    : atual;
-}
-
 function PaginaTemporada() {
   const router = useRouter();
   const parametros = useLocalSearchParams<Parametros>();
   const [agora] = useState(() => new Date());
   const atual = useMemo(() => temporadaDe(agora), [agora]);
-  const temporada = temporadaDosParametros(parametros, atual);
-  const ordem = ORDENS.find((o) => o.valor === parametros.ordem)?.valor ?? ORDEM_PADRAO;
+  const temporada = temporadaDosParametros(parametros, agora);
+  const ordem = ordemDaTemporada(parametros.ordem);
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   const maisAntiga = useTemporadaMaisAntiga();

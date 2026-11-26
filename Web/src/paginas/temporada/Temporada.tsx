@@ -9,14 +9,20 @@ import type { ReactNode } from 'react';
 import { formatarData } from '@dominio/datas';
 import { tituloDaMidia } from '@dominio/midia';
 import {
+  animesDaTemporada,
   anterior,
+  consultaDaTemporada,
   mesmaTemporada,
+  ORDEM_PADRAO_DA_TEMPORADA,
+  ORDENS_DA_TEMPORADA,
+  type OrdemTemporada,
   proxima,
   rotuloDaTemporada,
   secoesDaTemporada,
   seloDeEstimativa,
   type Temporada as TemporadaDoDominio,
   temporadaDe,
+  temporadaDosParametros,
   temporadasDoSeletor,
   TITULO_FILMES_E_ESPECIAIS,
 } from '@dominio/temporada';
@@ -34,29 +40,23 @@ import { Opcoes } from '../../componentes/Opcoes';
 import { TituloSecao } from '../../componentes/Fileira';
 import { useApi } from '../../sessao/SessaoContext';
 import { useLista, usePorEmPlanejado } from '../lista/api';
-import { type BuscaTemporada, consultaDaTemporada, ORDEM_PADRAO, ORDENS, POR_PAGINA, temporadaDaBusca } from './busca';
 
 const rota = getRouteApi('/autenticado/temporada');
 
-/** Teto de páginas por Temporada (50 por página): folga sobre as ~120 de uma Temporada cheia. */
-const MAX_PAGINAS = 10;
-
 const chave = (t: TemporadaDoDominio) => `${t.estacao}-${t.ano}`;
 
+/** As ordens no formato de `Opcoes`. */
+const ORDENS = ORDENS_DA_TEMPORADA.map((o) => ({ valor: o.valor, nome: o.rotulo }));
+
 /** Todos os animes da Temporada, página por página, na ordem pedida. */
-function useAnimesDaTemporada(temporada: TemporadaDoDominio, ordem: NonNullable<BuscaTemporada['ordem']>) {
+function useAnimesDaTemporada(temporada: TemporadaDoDominio, ordem: OrdemTemporada) {
   const api = useApi();
   return useQuery({
     queryKey: chaves.midias.temporada(temporada.estacao, temporada.ano, ordem),
-    queryFn: async () => {
-      const animes: Midia[] = [];
-      for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
-        const r = await exigir(api.GET('/api/midias', { params: { query: consultaDaTemporada(temporada, ordem, pagina) } }));
-        animes.push(...r.itens);
-        if (r.itens.length < POR_PAGINA || animes.length >= r.total) break;
-      }
-      return animes;
-    },
+    queryFn: () =>
+      animesDaTemporada((pagina) =>
+        exigir(api.GET('/api/midias', { params: { query: consultaDaTemporada(temporada, ordem, pagina) } })),
+      ),
     placeholderData: keepPreviousData,
   });
 }
@@ -66,8 +66,8 @@ export function Temporada() {
   const navigate = rota.useNavigate();
   const agora = new Date();
   const atual = temporadaDe(agora);
-  const temporada = temporadaDaBusca(busca, agora);
-  const ordem = busca.ordem ?? ORDEM_PADRAO;
+  const temporada = temporadaDosParametros(busca, agora);
+  const ordem = busca.ordem ?? ORDEM_PADRAO_DA_TEMPORADA;
 
   const api = useApi();
   const facetas = useQuery({
@@ -86,8 +86,8 @@ export function Temporada() {
 
   const irPara = (t: TemporadaDoDominio) =>
     void navigate({ search: { ...(mesmaTemporada(t, atual) ? {} : { estacao: t.estacao, ano: t.ano }), ...(busca.ordem ? { ordem: busca.ordem } : {}) } });
-  const mudarOrdem = (nova: NonNullable<BuscaTemporada['ordem']>) =>
-    void navigate({ search: { ...busca, ordem: nova === ORDEM_PADRAO ? undefined : nova }, replace: true });
+  const mudarOrdem = (nova: OrdemTemporada) =>
+    void navigate({ search: { ...busca, ordem: nova === ORDEM_PADRAO_DA_TEMPORADA ? undefined : nova }, replace: true });
 
   const rotulo = rotuloDaTemporada(temporada);
   const naLista = new Set((lista.data ?? []).map((i) => i.id_midia));
