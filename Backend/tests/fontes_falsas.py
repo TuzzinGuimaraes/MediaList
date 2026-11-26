@@ -171,3 +171,50 @@ class AniListFalso:
 
     def close(self):
         pass
+
+
+
+def exibicao(media_id, episodio, exibido_em, *, status='RELEASING', episodios=12, proximo=None):
+    """Um item de `Page.airingSchedules` como o AniList devolve (`exibido_em` e `proximo` em epoch)."""
+    proximo_episodio = None if proximo is None else {'episode': proximo[0], 'airingAt': proximo[1]}
+    return {
+        'episode': episodio, 'airingAt': exibido_em, 'mediaId': media_id,
+        'media': {'status': status, 'episodes': episodios, 'nextAiringEpisode': proximo_episodio},
+    }
+
+
+class AiringFalso:
+    """`Page.airingSchedules` do AniList em memória para o job de episódios: `post` como o GraphQL.
+
+    `exibicoes` são itens de `exibicao(...)`. Entende `airingAt_greater`/`airingAt_lesser` (estritos,
+    como no AniList), o `sort` por tempo e a paginação. `falha_em`: chamadas (contadas de 1) que
+    respondem 502. Guarda as variáveis em `pedidos` e a consulta em `consultas`.
+    """
+
+    def __init__(self, exibicoes=(), falha_em=()):
+        self.exibicoes = list(exibicoes)
+        self.falha_em = set(falha_em)
+        self.pedidos: list[dict] = []
+        self.consultas: list[str] = []
+
+    def post(self, url, json=None, timeout=None):
+        variaveis = dict(json['variables'])
+        self.pedidos.append(variaveis)
+        self.consultas.append(json['query'])
+        if len(self.pedidos) > 200:
+            raise KeyboardInterrupt('AniList chamado demais: laço sem limite')
+        if len(self.pedidos) in self.falha_em:
+            return Resposta(502, {'errors': [{'message': 'Bad Gateway', 'status': 502}], 'data': None})
+        itens = sorted(
+            (e for e in self.exibicoes if variaveis['depois'] < e['airingAt'] < variaveis['antes']),
+            key=lambda e: (e['airingAt'], e['mediaId'], e['episode']),
+        )
+        pagina, por_pagina = variaveis['page'], variaveis['perPage']
+        inicio = (pagina - 1) * por_pagina
+        return Resposta(200, {'data': {'Page': {
+            'pageInfo': {'hasNextPage': inicio + por_pagina < len(itens)},
+            'airingSchedules': itens[inicio:inicio + por_pagina],
+        }}})
+
+    def close(self):
+        pass

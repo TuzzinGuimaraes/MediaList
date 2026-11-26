@@ -137,6 +137,19 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     assert atualizacao['dados_adicionais'] == {'episodio': 12}
 
 
+def test_episodio_que_ja_tem_atualizacao_nao_se_repete_na_publicacao_manual(pg, client, entrar):
+    admin, assistindo = _usuario(pg, 'admin'), _usuario(pg)
+    id_midia = _anime(pg)
+    _na_lista(assistindo, id_midia, 'assistindo')
+    corpo = {'tipo': 'episodio', 'titulo': 'Episódio 3', 'dados_adicionais': {'episodio': 3}}
+
+    primeira = client.post(f'/api/midias/{id_midia}/atualizacoes', headers=entrar(admin), json=corpo)
+    segunda = client.post(f'/api/midias/{id_midia}/atualizacoes', headers=entrar(admin), json=corpo)
+
+    assert [r.get_json()['notificacoes_enviadas'] for r in (primeira, segunda)] == [1, 0]
+    assert len(client.get('/api/notificacoes', headers=entrar(assistindo)).get_json()['notificacoes']) == 1
+
+
 def test_falha_ao_notificar_desfaz_a_atualizacao(pg, client, entrar, monkeypatch):
     admin = _usuario(pg, 'admin')
     assistindo = _usuario(pg)
@@ -190,9 +203,11 @@ def test_preferencias_salvas_sao_lidas_com_os_padroes_no_resto(pg, client, entra
     salvo = client.put('/api/preferencias', headers=entrar(eu), json={'notificacoes_ativas': False})
     depois = client.get('/api/preferencias', headers=entrar(eu)).get_json()['preferencias']
 
-    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True, 'avisar_noticias': True}
+    assert inicial == {'tema': 'light', 'idioma': 'pt-BR', 'notificacoes_ativas': True, 'avisar_noticias': True,
+                       'avisar_episodios': True}
     assert salvo.get_json()['modificado'] is True
-    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False, 'avisar_noticias': True}
+    assert depois == {'tema': 'dark', 'idioma': 'pt-BR', 'notificacoes_ativas': False, 'avisar_noticias': True,
+                      'avisar_episodios': True}
 
 
 

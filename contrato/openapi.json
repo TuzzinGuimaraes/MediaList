@@ -1506,6 +1506,18 @@
       "CorpoPreferencias": {
         "description": "Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `\"true\"` não é booleano.",
         "properties": {
+          "avisar_episodios": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avisar Episodios"
+          },
           "avisar_noticias": {
             "anyOf": [
               {
@@ -4486,6 +4498,11 @@
       "Preferencias": {
         "description": "As preferências completas: o que o Usuário mudou, e os padrões no resto.",
         "properties": {
+          "avisar_episodios": {
+            "description": "\"Avisar sobre episódios novos\" (push no app); ligado por padrão",
+            "title": "Avisar Episodios",
+            "type": "boolean"
+          },
           "avisar_noticias": {
             "description": "\"Avisar sobre Notícias\" (push no app); ligado por padrão",
             "title": "Avisar Noticias",
@@ -4508,7 +4525,8 @@
           "tema",
           "idioma",
           "notificacoes_ativas",
-          "avisar_noticias"
+          "avisar_noticias",
+          "avisar_episodios"
         ],
         "title": "Preferencias",
         "type": "object"
