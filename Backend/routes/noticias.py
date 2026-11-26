@@ -3,12 +3,15 @@ Blueprint de Notícias.
 
 `autor` sai como o nome do Usuário que publicou (`noticias.id_autor`); Notícia
 de Usuário apagado sai com 'Admin', o autor padrão de antes. Publicar uma Notícia
-grava, na mesma transação, a Notificação de cada Usuário ativo menos o autor.
+grava, na mesma transação, a Notificação de cada Usuário ativo menos o autor, e
+depois avisa por push os aparelhos de quem quer ser avisado (`avisos_push`), antes de
+responder: na Vercel o que roda depois da resposta pode ser congelado.
 """
 from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
+import avisos_push
 from banco import consultar, consultar_um, transacao
 from contrato import (
     AUTENTICADO,
@@ -68,7 +71,8 @@ def obter_noticia(id_noticia):
     resp=Response(HTTP_201=NoticiaCriada, **ERROS_AUTENTICADA), tags=['noticias'], security=AUTENTICADO,
 )
 def criar_noticia(json: CorpoNoticia):
-    """Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação."""
+    """Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação
+    e, se tiver "Avisar sobre Notícias", o push."""
     id_autor = get_jwt_identity()
     with transacao() as t:
         criada = t.consultar_um(
@@ -93,4 +97,6 @@ def criar_noticia(json: CorpoNoticia):
             """,
             (criada['id_noticia'], id_autor),
         )
+    # A Notícia já está gravada: o push tem prazo curto e nunca levanta.
+    avisos_push.avisar_noticia(criada['id_noticia'], json.titulo, json.conteudo or '', id_autor)
     return {'mensagem': 'Notícia criada!', 'id_noticia': criada['id_noticia']}, 201
