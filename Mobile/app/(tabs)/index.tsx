@@ -5,6 +5,7 @@ import { useCarrosseisPorGenero, useCarrossel } from '@/api/inicio';
 import { useLista } from '@/api/lista';
 import { useEmAlta, usePopulares } from '@/api/midias';
 import type { ItemLista, Midia } from '@/api/tipos';
+import { FaixaAssistirAgora } from '@/components/AssistirAgora';
 import { CardInfo } from '@/components/CardMidia';
 import { Carrossel, Fileira, Top10 } from '@/components/Carrossel';
 import { Destaques } from '@/components/Destaques';
@@ -97,6 +98,8 @@ export default function Inicio() {
             itens={itens}
             aoEditar={(midia, item) => setEditando({ midia, item })}
           /> : null}
+        {/* Só os animes do Recorte: no de Jogos, a faixa não tem o que mostrar e some. */}
+        <FaixaAssistirAgora itens={itensDoRecorte ?? []} />
         <Fileira
           titulo={textos.continuar}
           itens={continuar}

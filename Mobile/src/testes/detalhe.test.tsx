@@ -330,3 +330,56 @@ describe('detalhe da Mídia', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Mídia não encontrada');
   });
 });
+
+
+describe('detalhe: destaque do episódio', () => {
+  const emExibicao = anime({ status_anime: 'em_exibicao', numero_episodios: 12, episodios_lancados: 7 });
+
+  it('anime Assistindo e atrasado mostra onde o Usuário parou e o +1 grava o Progresso', async () => {
+    let lista = [item(emExibicao, { status_consumo: 'assistindo', progresso_atual: 5, progresso_total: 12 })];
+    const api = simularFetch({
+      ...detalhe(emExibicao),
+      'GET /lista': () => ({ status: 200, corpo: { lista } }),
+      [`PUT /lista/${lista[0].id_lista}/progresso`]: (req) => {
+        lista = lista.map((i) => ({ ...i, ...req.corpo }));
+        return { status: 200, corpo: { mensagem: 'Progresso atualizado com sucesso!' } };
+      },
+    });
+
+    await abrirDetalhe(emExibicao.id_midia);
+
+    expect(await screen.findByText('Você parou no ep. 5; saiu o 7')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Mais um em Sousou no Frieren' }));
+
+    expect(await screen.findByText('Você parou no ep. 6; saiu o 7')).toBeOnTheScreen();
+    expect(api.para(`PUT /lista/${lista[0].id_lista}/progresso`)[0].corpo).toEqual({ progresso_atual: 6 });
+    expect(screen.getByLabelText('Progresso: 6 de 12')).toBeOnTheScreen();
+  });
+
+  it('em dia, sem destaque', async () => {
+    simularFetch(
+      detalhe(emExibicao, {
+        lista: [item(emExibicao, { status_consumo: 'assistindo', progresso_atual: 7, progresso_total: 12 })],
+      }),
+    );
+
+    await abrirDetalhe(emExibicao.id_midia);
+
+    expect(await screen.findByLabelText('Na sua Lista: Em progresso')).toBeOnTheScreen();
+    expect(screen.queryByText(/saiu o/)).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /^Mais um em/ })).not.toBeOnTheScreen();
+  });
+
+  it('atrasado mas Pausado, sem destaque', async () => {
+    simularFetch(
+      detalhe(emExibicao, {
+        lista: [item(emExibicao, { status_consumo: 'pausado', progresso_atual: 2, progresso_total: 12 })],
+      }),
+    );
+
+    await abrirDetalhe(emExibicao.id_midia);
+
+    expect(await screen.findByLabelText('Na sua Lista: Pausado')).toBeOnTheScreen();
+    expect(screen.queryByText(/saiu o/)).not.toBeOnTheScreen();
+  });
+});
