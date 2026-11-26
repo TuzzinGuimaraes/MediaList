@@ -237,7 +237,9 @@ def _instalar_preferencias(monkeypatch, respostas=None):
 
 
 def test_preferencias_sem_nada_salvo_saem_com_os_padroes(client, auth_headers, monkeypatch):
-    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {'preferencias': {}, 'avisar_noticias': True, 'avisar_episodios': True}})
+    fake = _instalar_preferencias(monkeypatch, {'FROM usuarios': {
+        'preferencias': {}, 'avisar_noticias': True, 'avisar_episodios': True,
+    }})
 
     response = client.get('/api/preferencias', headers=auth_headers)
 

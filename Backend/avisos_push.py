@@ -1,10 +1,14 @@
-"""Push das Notícias pelo Expo Push Service (spec `noticias-avisos`, Q129).
+"""Push pelo Expo Push Service: Notícias (spec `noticias-avisos`, Q129) e episódios novos
+(spec `episodio-novo`, Q148).
 
 Publicar uma Notícia avisa, por push, os aparelhos (`push_tokens`) dos Usuários ativos com
 `avisar_noticias`, menos o autor. O envio é **síncrono, antes da resposta**: na Vercel o que
 roda depois da resposta pode ser congelado e nunca terminar (ADR-0013). Para não atrasar a
 publicação, o envio tem prazo total curto (`PRAZO_SEGUNDOS`) e timeout curto por requisição,
 sem retries; o que não couber no prazo fica sem aviso (a Notificação já está gravada).
+
+O job de episódios (`importacao.episodios`) avisa os Usuários ativos com `avisar_episodios` dos
+episódios novos da execução (`avisar_episodios`), sem prazo total: só o timeout por requisição.
 
 - Lotes de até 100 mensagens por requisição (limite do Expo).
 - Ticket `DeviceNotRegistered` apaga o token: o app foi desinstalado ou o token trocou.
@@ -141,21 +145,81 @@ def enviar(mensagens: list[dict], cliente, *, prazo: float = PRAZO_SEGUNDOS) -> 
     return invalidos
 
 
+def _enviar_e_limpar(mensagens: list[dict], prazo: float) -> None:
+    """Envia pelo cliente do Expo e apaga os tokens com `DeviceNotRegistered`."""
+    cliente = criar_cliente()
+    try:
+        invalidos = enviar(mensagens, cliente, prazo=prazo)
+    finally:
+        fechar = getattr(cliente, 'close', None)
+        if fechar:
+            fechar()
+    if invalidos:
+        executar('DELETE FROM push_tokens WHERE token = ANY(%s)', (invalidos,))
+        logger.info('Push: %d tokens não registrados apagados', len(invalidos))
+
+
 def avisar_noticia(id_noticia, titulo: str, conteudo: str, id_autor) -> None:
     """Avisa por push quem quer ser avisado da Notícia. Nunca levanta: falha vai para o log."""
     try:
         tokens = [linha['token'] for linha in consultar(TOKENS_A_AVISAR, (id_autor,))]
         if not tokens:
             return
-        cliente = criar_cliente()
-        try:
-            invalidos = enviar(mensagens_da_noticia(tokens, id_noticia, titulo, conteudo), cliente)
-        finally:
-            fechar = getattr(cliente, 'close', None)
-            if fechar:
-                fechar()
-        if invalidos:
-            executar('DELETE FROM push_tokens WHERE token = ANY(%s)', (invalidos,))
-            logger.info('Push: %d tokens não registrados apagados', len(invalidos))
+        _enviar_e_limpar(mensagens_da_noticia(tokens, id_noticia, titulo, conteudo), PRAZO_SEGUNDOS)
     except Exception:
         logger.warning('Push da Notícia %s falhou', id_noticia, exc_info=True)
+
+
+# ============================================
+# Episódios novos (spec `episodio-novo`, Q148)
+# ============================================
+
+#: Até quantos episódios numa execução o Usuário recebe um push por episódio; acima, um só.
+EPISODIOS_SEPARADOS = 2
+
+TOKENS_DE_EPISODIO = """
+    SELECT pt.id_usuario, pt.token
+    FROM push_tokens pt
+    JOIN usuarios u ON u.id_usuario = pt.id_usuario
+    WHERE u.ativo AND u.avisar_episodios AND u.id_usuario = ANY(%s::uuid[])
+"""
+
+
+def _mensagem(token, titulo, corpo, data) -> dict:
+    return {'to': token, 'title': titulo, 'body': corpo, 'data': data, 'sound': 'default', 'channelId': 'default'}
+
+
+def mensagens_dos_episodios(tokens: list[str], episodios: list[dict]) -> list[dict]:
+    """As mensagens de um Usuário: até 2 episódios, uma por episódio (abre o anime); 3 ou mais,
+    uma só (abre as Notificações). `episodios`: `{'id_midia', 'anime', 'episodio'}`."""
+    if len(episodios) > EPISODIOS_SEPARADOS:
+        corpo = f'{len(episodios)} episódios novos na sua lista'
+        return [_mensagem(token, 'Episódios novos', corpo, {'tipo': 'episodios'}) for token in tokens]
+    return [
+        _mensagem(token, e['anime'], f"Episódio {e['episodio']} foi ao ar",
+                  {'tipo': 'episodio', 'id_midia': str(e['id_midia'])})
+        for e in episodios for token in tokens
+    ]
+
+
+def avisar_episodios(por_usuario: dict[str, list[dict]]) -> None:
+    """Push dos episódios novos de uma execução do job, para quem tem `avisar_episodios`.
+
+    No job não há o prazo da Vercel: o envio só tem o timeout por requisição, sem retries.
+    Nunca levanta: falha vai para o log.
+    """
+    try:
+        if not por_usuario:
+            return
+        tokens: dict[str, list[str]] = {}
+        for linha in consultar(TOKENS_DE_EPISODIO, ([str(u) for u in por_usuario],)):
+            tokens.setdefault(str(linha['id_usuario']), []).append(linha['token'])
+        mensagens = [
+            mensagem
+            for id_usuario, episodios in por_usuario.items() if str(id_usuario) in tokens
+            for mensagem in mensagens_dos_episodios(tokens[str(id_usuario)], episodios)
+        ]
+        if mensagens:
+            _enviar_e_limpar(mensagens, float('inf'))
+    except Exception:
+        logger.warning('Push dos episódios falhou', exc_info=True)

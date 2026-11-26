@@ -3,8 +3,9 @@ Atualizações de mídia e as Notificações que as entregam aos Usuários.
 
 Publicar uma Atualização grava, na mesma transação, a Notificação de cada
 Usuário que tem a Mídia na Lista pessoal num Rótulo ativo ou como favorita. A
-Notificação de Notícia nasce em `routes/noticias.py`; a lista e o "marcar todas"
-daqui cobrem as duas.
+publicação manual (admin) usa `ROTULOS_NOTIFICADOS`; a de episódio, do job de
+episódios, `ROTULOS_DO_EPISODIO`. A Notificação de Notícia nasce em
+`routes/noticias.py`; a lista e o "marcar todas" daqui cobrem as duas.
 """
 from __future__ import annotations
 
@@ -19,6 +20,27 @@ ROTULOS_NOTIFICADOS = {
     'manga': ('lendo', 'planejado'),
     'jogo': ('jogando', 'na_fila', 'planejado'),
 }
+
+#: Rótulos de quem recebe a Atualização de episódio (além dos favoritos): a estreia avisa também
+#: quem planeja assistir; os outros episódios, só quem está assistindo.
+ROTULOS_DO_EPISODIO = {
+    'estreia': ('assistindo', 'planejado'),
+    'demais': ('assistindo',),
+}
+
+
+def _gravar(t, id_midia, tipo, titulo, descricao, dados_adicionais) -> str | None:
+    """Grava a Atualização; `None` se ela já existia (o índice único de episódio)."""
+    linha = t.consultar_um(
+        """
+        INSERT INTO atualizacoes_midia (id_midia, tipo_atualizacao, titulo, descricao, dados_adicionais)
+        VALUES (%s, %s, %s, %s, %s::jsonb)
+        ON CONFLICT DO NOTHING
+        RETURNING id_atualizacao
+        """,
+        (id_midia, tipo, titulo, descricao, json.dumps(dados_adicionais)),
+    )
+    return linha and linha['id_atualizacao']
 
 
 class Atualizacoes:
@@ -42,17 +64,16 @@ class Atualizacoes:
         self, id_midia: str, tipo_midia: str, tipo: str, titulo: str,
         descricao: str | None = None, dados_adicionais: dict | None = None,
     ) -> int:
-        """Grava a Atualização e as Notificações; devolve quantas Notificações saíram."""
+        """Grava a Atualização e as Notificações; devolve quantas Notificações saíram.
+
+        É a publicação manual (admin). O episódio que já tem Atualização não se repete (índice
+        único por Mídia e episódio): sai 0 Notificações.
+        """
         rotulos = sorted(ROTULOS_NOTIFICADOS.get(tipo_midia, ('planejado',)))
         with transacao() as t:
-            atualizacao = t.consultar_um(
-                """
-                INSERT INTO atualizacoes_midia (id_midia, tipo_atualizacao, titulo, descricao, dados_adicionais)
-                VALUES (%s, %s, %s, %s, %s::jsonb)
-                RETURNING id_atualizacao
-                """,
-                (id_midia, tipo, titulo, descricao, json.dumps(dados_adicionais or {})),
-            )
+            id_atualizacao = _gravar(t, id_midia, tipo, titulo, descricao, dados_adicionais or {})
+            if id_atualizacao is None:
+                return 0
             return t.executar(
                 """
                 INSERT INTO notificacoes (id_usuario, id_atualizacao)
@@ -60,8 +81,31 @@ class Atualizacoes:
                 FROM lista_usuarios
                 WHERE id_midia = %s AND (status_consumo = ANY(%s) OR favorito)
                 """,
-                (atualizacao['id_atualizacao'], id_midia, rotulos),
+                (id_atualizacao, id_midia, rotulos),
             )
+
+    def publicar_episodio(self, t, id_midia: str, episodio: int, titulo: str, exibido_em: str) -> list[str] | None:
+        """Atualização `episodio` do job de episódios, na transação `t`; devolve quem a recebeu.
+
+        A estreia (episódio 1) vai a quem tem o anime em Assistindo ou Planejado; os demais, só a
+        Assistindo. Favorito recebe sempre. `None`: o episódio já tinha Atualização (nada muda).
+        """
+        rotulos = sorted(ROTULOS_DO_EPISODIO['estreia' if episodio == 1 else 'demais'])
+        id_atualizacao = _gravar(
+            t, id_midia, 'episodio', titulo, None, {'episodio': episodio, 'exibido_em': exibido_em},
+        )
+        if id_atualizacao is None:
+            return None
+        return [linha['id_usuario'] for linha in t.consultar(
+            """
+            INSERT INTO notificacoes (id_usuario, id_atualizacao)
+            SELECT id_usuario, %s
+            FROM lista_usuarios
+            WHERE id_midia = %s AND (status_consumo = ANY(%s) OR favorito)
+            RETURNING id_usuario
+            """,
+            (id_atualizacao, id_midia, rotulos),
+        )]
 
     def notificacoes(self, id_usuario: str, apenas_nao_lidas: bool = False) -> list[dict[str, Any]]:
         """As 50 Notificações mais recentes do Usuário, de Atualização e de Notícia.
