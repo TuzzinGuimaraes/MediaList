@@ -18,6 +18,7 @@ import {
 import { useCalendario } from '../api/calendario';
 import { useLista } from '../api/lista';
 import type { EpisodioDoCalendario } from '../api/tipos';
+import { useAgora } from '../calendario/agora';
 import { fusoDoAparelho } from '../calendario/fuso';
 import { type VistaDoCalendario, useVistaDoCalendario } from '../calendario/vista';
 import {
@@ -26,7 +27,8 @@ import {
   type DiaDoCalendario,
   diasDoCalendario,
   type EpisodioNoDia,
-  NOTA_DO_HORARIO,
+  marcadorDoAgora,
+  notaDoHorario,
   soOsMeusPorPadrao,
 } from '@dominio/calendario';
 import { tituloDaMidia } from '@dominio/midia';
@@ -43,7 +45,6 @@ const textos = {
   soOsMeus: 'Só os meus',
   visualizacao: 'Visualização',
   vistas: { agenda: 'Agenda', semana: 'Semana' } satisfies Record<VistaDoCalendario, string>,
-  nota: `Horários no seu fuso · ${NOTA_DO_HORARIO}`,
   dias: 'Dias',
   agora: 'agora',
   foiAoAr: 'foi ao ar',
@@ -63,7 +64,8 @@ const TRAVA_MS = 700;
 const FRACAO_DA_COLUNA = 0.85;
 const VAO_DA_COLUNA = 12;
 
-export function Calendario({ agora }: { agora: Date }) {
+export function Calendario() {
+  const agora = useAgora();
   const [fuso] = useState(fusoDoAparelho);
   const calendario = useCalendario(agora, fuso);
   const lista = useLista();
@@ -144,7 +146,7 @@ export function Calendario({ agora }: { agora: Date }) {
             <FiltroSoOsMeus ligado={soOsMeus} mudar={setEscolhido} />
           </View>
           <Alternador vista={vista} mudar={mudarVista} />
-          <Text className="w-full text-legenda text-texto-suave">{textos.nota}</Text>
+          <Text className="w-full text-legenda text-texto-suave">{notaDoHorario(agora, fuso)}</Text>
         </View>
       </View>
       <View
@@ -168,6 +170,7 @@ export function Calendario({ agora }: { agora: Date }) {
             <DiaDaAgenda
               key={dia.chave}
               dia={dia}
+              agora={marcadorDoAgora(agora, fuso)}
               soOsMeus={soOsMeus}
               naLista={naLista}
               aoMedir={(y) => {
@@ -375,11 +378,13 @@ function rotuloDoEpisodio({ episodio, hora, foiAoAr }: NoDia): string {
 
 function DiaDaAgenda({
   dia,
+  agora,
   soOsMeus,
   naLista,
   aoMedir,
 }: {
   dia: Dia;
+  agora: Marcador;
   soOsMeus: boolean;
   naLista: Set<string>;
   aoMedir(y: number): void;
@@ -401,23 +406,24 @@ function DiaDaAgenda({
         <View className="gap-1.5">
           {dia.episodios.map((noDia, i) => (
             <Fragment key={`${noDia.episodio.id_midia}-${noDia.episodio.episodio}`}>
-              {i === iAgora ? <MarcadorAgora /> : null}
+              {i === iAgora ? <MarcadorAgora {...agora} /> : null}
               <LinhaDaAgenda noDia={noDia} naLista={naLista} />
             </Fragment>
           ))}
-          {iAgora === -1 ? <MarcadorAgora /> : null}
+          {iAgora === -1 ? <MarcadorAgora {...agora} /> : null}
         </View>
       )}
     </View>
   );
 }
 
-function MarcadorAgora() {
+type Marcador = ReturnType<typeof marcadorDoAgora>;
+
+function MarcadorAgora({ hora, rotulo }: Marcador) {
   return (
-    <View accessibilityLabel="Agora" className="flex-row items-center gap-3 py-1">
-      <View className="w-14 items-end">
-        <View className="h-2.5 w-2.5 rounded-full bg-marca" />
-      </View>
+    <View accessibilityLabel={rotulo} className="flex-row items-center gap-3 py-1">
+      <Text className="w-14 text-right text-legenda font-bold text-marca-texto">{hora}</Text>
+      <View className="h-2.5 w-2.5 rounded-full bg-marca" />
       <View className="h-[2px] flex-1 rounded-full bg-marca" />
       <Text className="text-legenda font-bold uppercase text-marca-texto">{textos.agora}</Text>
     </View>

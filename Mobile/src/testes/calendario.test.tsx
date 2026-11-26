@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import type { EpisodioDoCalendario, MidiaDetalhe, RespostaFacetas } from '../api/tipos';
 import { pagina } from './contrato';
@@ -219,14 +219,41 @@ describe('Calendário', () => {
     simularFetch(rotas());
     const app = await abrirCalendario();
     expect(await screen.findByRole('radio', { name: 'Agenda', checked: true })).toBeOnTheScreen();
-    expect(screen.getByLabelText('Agora')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Agora, 12:00')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('radio', { name: 'Semana' }));
     expect(await within(screen.getByLabelText('Hoje')).findByText('Ep. 8 · foi ao ar')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Agora')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Agora/)).not.toBeOnTheScreen();
 
     app.unmount();
     await abrirCalendario();
     expect(await screen.findByRole('radio', { name: 'Semana', checked: true })).toBeOnTheScreen();
+  });
+
+  it('com a tela aberta, o relógio anda: "foi ao ar", o marcador "agora" e a virada do dia', async () => {
+    // Aqui o setInterval também é falso, para o minuto passar no teste.
+    jest.useFakeTimers({
+      now: new Date('2026-11-26T15:00:00Z'),
+      doNotFake: ['nextTick', 'queueMicrotask', 'setImmediate', 'clearImmediate', 'setTimeout', 'clearTimeout'],
+    });
+    const AMANHA = 'GET /midias/calendario?de=2026-11-27T03%3A00%3A00.000Z&ate=2026-12-04T03%3A00%3A00.000Z';
+    simularFetch(rotas({ [AMANHA]: { status: 200, corpo: { episodios } } }));
+    await abrirCalendario();
+    const minuto = () => act(() => jest.advanceTimersByTime(60_000));
+
+    expect(await screen.findByLabelText('Agora, 12:00')).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: 'Dandadan, Ep. 9, 19:30' })).toBeOnTheScreen();
+
+    jest.setSystemTime(new Date('2026-11-26T22:30:00Z'));
+    await minuto();
+    expect(await screen.findByRole('link', { name: 'Dandadan, Ep. 9, 19:30, foi ao ar' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('Agora, 19:30')).toBeOnTheScreen();
+
+    // Meia-noite e meia em Brasília: Hoje é sexta, e a janela anda um dia.
+    jest.setSystemTime(new Date('2026-11-27T03:30:00Z'));
+    await minuto();
+    const hoje = await screen.findByRole('tab', { name: 'Hoje, 27/11, 1 episódio' });
+    expect(hoje).toBeOnTheScreen();
+    expect(within(screen.getByLabelText('Hoje')).getByRole('link', { name: 'Kaiju nº 8, Ep. 5, 22:30' })).toBeOnTheScreen();
   });
 });

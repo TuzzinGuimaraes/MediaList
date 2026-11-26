@@ -145,7 +145,7 @@ function PaginaTemporada() {
       </View>
       <View className="flex-1">
         {aba === 'calendario' ? (
-          <Calendario agora={agora} />
+          <Calendario />
         ) : (
           <AnimesDaTemporada temporada={temporada} ordem={ordem} />
         )}
