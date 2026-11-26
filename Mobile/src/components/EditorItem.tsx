@@ -6,7 +6,7 @@ import { Keyboard, Platform, Pressable, Text, TextInput, type TextInputProps, Vi
 import { mensagemDeErro } from '../api/erros';
 import { useRemoverItem, useSalvarItem } from '../api/lista';
 import type { ItemLista, Midia } from '../api/tipos';
-import { dataDoTexto, textoDaData } from '@dominio/datas';
+import { dataDoTexto, diaIso, textoDaData } from '@dominio/datas';
 import { estadoDe, NOMES_ESTADO, rotulosDoTipo, type TipoMidia } from '@dominio/estadoConsumo';
 import {
   type EdicaoItem,
@@ -16,7 +16,6 @@ import {
   nomeDaRecontagem,
   nomeDoProgresso,
   temProgresso,
-  totalDoItem,
   validarItem,
 } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
@@ -196,10 +195,9 @@ function Alternar({ rotulo, icone, ativo, mudar }: { rotulo: string; icone: 'hea
 
 /** Editor do Item de lista em bottom sheet. Montado só enquanto está aberto. */
 export function EditorItem({ midia, item, aoFechar }: Props) {
-  const tipo = midia.tipo;
-  const total = totalDoItem(item ?? { ...midia, progresso_total: null });
-  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, tipo));
-  const form = edicao.form;
+  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, midia));
+  const { form } = edicao;
+  const { tipo, total } = edicao.midia;
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
@@ -208,10 +206,10 @@ export function EditorItem({ midia, item, aoFechar }: Props) {
 
   // Estado e Progresso andam juntos (ADR 0009): a tela mostra o que o backend vai gravar.
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
-    setEdicao((e) => mudarEdicao(e, { [campo]: valor }, { tipo, total }));
+    setEdicao((e) => mudarEdicao(e, { [campo]: valor }));
 
   const enviar = async () => {
-    const resultado = validarItem(form, { tipo, total });
+    const resultado = validarItem(edicao, diaIso());
     if (!resultado.ok) return setErro(resultado.erro);
     setErro(null);
     try {
