@@ -8,7 +8,8 @@ from spectree import Response
 from banco import consultar, consultar_um
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
 from decorators import nivel_de_acesso
-from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, PLATINADO, sql_rotulos
+from repositories.rotulos import sql_rotulos
+from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, PLATINADO
 from schemas.usuario import RespostaEstatisticas, RespostaPerfil, RespostaPermissoes
 
 usuario_bp = Blueprint('usuario', __name__)

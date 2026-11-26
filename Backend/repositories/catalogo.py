@@ -11,7 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 from banco import consultar, consultar_um, executar, transacao
-from schemas.estado_consumo import ESTADOS_TERMINAIS, sql_rotulos
+from repositories.rotulos import sql_rotulos
+from schemas.estado_consumo import ESTADOS_TERMINAIS
 from tipos_midia import COLUNAS_BASE, TIPOS, joins_das_filhas, origem_nota, por_tipo, valor_de_coluna
 
 #: Rótulos de Concluído e Platinado de todos os Tipos, como lista SQL ('completo', 'lido', ...).
