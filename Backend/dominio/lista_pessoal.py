@@ -154,36 +154,72 @@ def _como_data(valor: Any) -> date | None:
     return date.fromisoformat(str(valor)[:10])
 
 
-def erros_de_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
-    """Erros das datas enviadas: nenhuma depois de hoje, conclusão não antes do início.
+def _datas_enviadas(campos: dict[str, Any], item: dict[str, Any]) -> tuple[dict[str, date], dict[str, str]]:
+    """As datas que o payload muda no Item, e os erros das que não são data.
 
-    Só as datas que vieram no payload são julgadas; a que não veio entra como a gravada
-    no Item, para comparar. Assim editar só o Progresso de um Item com uma data antiga
-    ruim não falha. O erro de ordem vai para a data enviada (a de conclusão, se foram as duas).
+    Uma data igual à gravada no Item não conta como enviada: o editor reenvia o formulário
+    inteiro, e repetir uma data antiga ruim não é decidir sobre ela (User Story 3).
     """
-    erros: dict[str, str] = {}
     enviadas: dict[str, date] = {}
-    for nome, mensagem in DATA_NO_FUTURO.items():
+    erros: dict[str, str] = {}
+    for nome in DATA_NO_FUTURO:
         if campos.get(nome) is None:
             continue
         try:
-            enviadas[nome] = _como_data(campos[nome])
+            valor = _como_data(campos[nome])
         except ValueError:
             erros[nome] = 'Valor inválido'
             continue
-        if enviadas[nome] > hoje:
-            erros[nome] = mensagem
-    if erros or not enviadas:
-        return erros
+        if valor != _como_data(item.get(nome)):
+            enviadas[nome] = valor
+    return enviadas, erros
 
-    def efetiva(nome: str) -> date | None:
-        return enviadas[nome] if nome in enviadas else (None if nome in campos else _como_data(item.get(nome)))
 
-    inicio, conclusao = efetiva('data_inicio'), efetiva('data_conclusao')
+def _data_efetiva(nome: str, enviadas: dict[str, date], campos: dict[str, Any], item: dict[str, Any]) -> date | None:
+    """A data como fica no Item depois da escrita."""
+    if nome in enviadas:
+        return enviadas[nome]
+    if nome in campos and campos[nome] is None:
+        return None  # o payload apaga a data
+    return _como_data(item.get(nome))  # não veio, ou veio igual à gravada
+
+
+def erro_de_ordem(campos: dict[str, Any], item: dict[str, Any]) -> dict[str, str]:
+    """Conclusão antes do início, com a outra data enviada ou, se ela não veio, a gravada.
+
+    Só vale se alguma data foi enviada. O erro vai para a data enviada (a de conclusão, se
+    foram as duas). Datas que não são data ficam de fora (ver `erros_de_cada_data`).
+    """
+    enviadas, _ = _datas_enviadas(campos, item)
+    if not enviadas:
+        return {}
+    inicio = _data_efetiva('data_inicio', enviadas, campos, item)
+    conclusao = _data_efetiva('data_conclusao', enviadas, campos, item)
     if inicio and conclusao and conclusao < inicio:
         campo = 'data_conclusao' if 'data_conclusao' in enviadas else 'data_inicio'
-        erros[campo] = CONCLUSAO_ANTES_DO_INICIO
+        return {campo: CONCLUSAO_ANTES_DO_INICIO}
+    return {}
+
+
+def erros_de_cada_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
+    """Erros de cada data enviada, sozinha: não é data, ou é depois de hoje."""
+    enviadas, erros = _datas_enviadas(campos, item)
+    for nome, valor in enviadas.items():
+        if valor > hoje:
+            erros[nome] = DATA_NO_FUTURO[nome]
     return erros
+
+
+def erros_de_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
+    """Erros das datas enviadas: nenhuma depois de hoje, conclusão não antes do início.
+
+    Só as datas que o payload muda são julgadas (ver `_datas_enviadas`), então editar um Item
+    com uma data antiga ruim não falha. A ordem é a de `validarItem` (dominio/itemLista.ts),
+    para o mesmo caso dar a mesma mensagem: data que não é data, depois conclusão antes do
+    início, depois no futuro.
+    """
+    _, erros_de_formato = _datas_enviadas(campos, item)
+    return erros_de_formato or erro_de_ordem(campos, item) or erros_de_cada_data(campos, item, hoje)
 
 
 def _decidido(campos: dict[str, Any], item: dict[str, Any], nome: str) -> bool:
@@ -195,7 +231,9 @@ def _decidido(campos: dict[str, Any], item: dict[str, Any], nome: str) -> bool:
     return campos.get(nome) is not None and campos.get(nome) != item.get(nome)
 
 
-def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any], contar_recontagem: bool = True) -> None:
+def _registrar_conclusao(
+    campos: dict[str, Any], item: dict[str, Any], hoje: date, contar_recontagem: bool = True,
+) -> None:
     """Entrada em Concluído: data de hoje e, se já houve passagem, +1 na Recontagem.
 
     `contar_recontagem=False` (Integrações, Q114b) nunca mexe na Recontagem.
@@ -203,20 +241,20 @@ def _registrar_conclusao(campos: dict[str, Any], item: dict[str, Any], contar_re
     As datas do Item descrevem a passagem mais recente (ADR 0003), então a nova
     conclusão sobrescreve a anterior, salvo data escolhida pelo Usuário.
     """
-    hoje = date.today().isoformat()
+    hoje_iso = hoje.isoformat()
     if not _decidido(campos, item, 'data_conclusao'):
-        campos['data_conclusao'] = hoje
+        campos['data_conclusao'] = hoje_iso
 
     # Concluir de novo no mesmo dia da conclusão anterior é desfazer um toque
     # errado (− e + no stepper), não uma nova passagem: não conta Recontagem.
     anterior = item.get('data_conclusao')
-    mesmo_dia = anterior is not None and str(anterior)[:10] == hoje
+    mesmo_dia = anterior is not None and str(anterior)[:10] == hoje_iso
     if contar_recontagem and anterior and not mesmo_dia and not _decidido(campos, item, 'total_rewatches'):
         campos['total_rewatches'] = (item.get('total_rewatches') or 0) + 1
 
 
 def _concluido_segue_o_progresso(
-    campos: dict[str, Any], tipo: str | None, total: int | None, item: dict[str, Any] | None = None,
+    campos: dict[str, Any], tipo: str | None, total: int | None, hoje: date, item: dict[str, Any] | None = None,
     contar_recontagem: bool = True,
 ) -> None:
     """Concluído ⇔ Progresso = total (ADR 0009), escrito direto em `campos`.
@@ -247,7 +285,7 @@ def _concluido_segue_o_progresso(
         return
 
     if not ja_concluido:
-        _registrar_conclusao(campos, item, contar_recontagem)
+        _registrar_conclusao(campos, item, hoje, contar_recontagem)
 
 
 class ListaPessoal:
@@ -258,8 +296,12 @@ class ListaPessoal:
         self._lista = itens
         self._catalogo = catalogo
 
-    def adicionar(self, id_usuario: str, payload: dict[str, Any] | None) -> Resultado:
-        """Põe uma Mídia na Lista do Usuário. Item já existente é conflito."""
+    def adicionar(self, id_usuario: str, payload: dict[str, Any] | None, *, hoje: date | None = None) -> Resultado:
+        """Põe uma Mídia na Lista do Usuário. Item já existente é conflito.
+
+        `hoje` (padrão `date.today()`) é o limite das datas e o dia da conclusão automática.
+        """
+        hoje = hoje or date.today()
         payload = payload or {}
         campos, erros = _validar_campos(payload)
 
@@ -269,7 +311,7 @@ class ListaPessoal:
         if 'status_consumo' not in campos:
             erros.setdefault('status_consumo', 'Campo obrigatório')
         if not erros:
-            erros = erros_de_data(campos, {}, date.today())
+            erros = erros_de_data(campos, {}, hoje)
         if erros:
             return Resultado(INVALIDO, erros)
 
@@ -288,7 +330,7 @@ class ListaPessoal:
         if erro:
             return _invalido('progresso_atual', erro)
 
-        _concluido_segue_o_progresso(campos, tipo, total)
+        _concluido_segue_o_progresso(campos, tipo, total, hoje)
 
         id_lista = self._lista.criar_item(id_usuario, id_midia, campos)
         if id_lista is None:
@@ -298,12 +340,14 @@ class ListaPessoal:
 
     def atualizar(
         self, id_usuario: str, id_lista: str, payload: dict[str, Any] | None, *, contar_recontagem: bool = True,
+        hoje: date | None = None,
     ) -> Resultado:
         """Grava os campos enviados num Item do Usuário, numa escrita só.
 
         `contar_recontagem=False` é o das Integrações (Q114b): chegar ao total pela origem
-        não soma Recontagem, nem num Item que já tinha `data_conclusao`.
+        não soma Recontagem, nem num Item que já tinha `data_conclusao`. `hoje` como em `adicionar`.
         """
+        hoje = hoje or date.today()
         item = self._lista.obter_item_por_id(id_lista)
         if not item:
             return Resultado(NAO_ENCONTRADO)
@@ -312,7 +356,7 @@ class ListaPessoal:
 
         campos, erros = _validar_campos(payload or {})
         if not erros:
-            erros = erros_de_data(campos, item, date.today())
+            erros = erros_de_data(campos, item, hoje)
         if erros:
             return Resultado(INVALIDO, erros)
 
@@ -329,7 +373,7 @@ class ListaPessoal:
 
         # Sem status no payload, o estado atual do Item é o que vale: atualizar
         # o progresso não é uma decisão sobre o estado de consumo.
-        _concluido_segue_o_progresso(campos, tipo, total, item, contar_recontagem)
+        _concluido_segue_o_progresso(campos, tipo, total, hoje, item, contar_recontagem)
 
         if campos:
             self._lista.atualizar_campos(id_lista, campos)

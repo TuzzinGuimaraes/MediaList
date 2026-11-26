@@ -99,3 +99,22 @@ def test_editar_so_o_progresso_de_item_com_datas_ruins_funciona(client, catalogo
 
     assert (progresso.status_code, edicao.status_code) == (200, 200)
     assert _datas(id_lista) == (date(2026, 5, 2), date(2026, 5, 1), 4)
+
+
+
+def test_editor_reenviando_as_datas_ruins_gravadas_edita_o_item(client, catalogo, eu):  # noqa: F811
+    """O editor reenvia o formulário inteiro: as datas iguais às gravadas não são julgadas (User Story 3)."""
+    _, cabecalho = eu
+    id_lista = _item(client, cabecalho, catalogo['anime'])
+    banco.executar(
+        "UPDATE lista_usuarios SET data_inicio = '2026-05-02', data_conclusao = '2026-05-01' WHERE id_lista = %s",
+        (id_lista,),
+    )
+
+    resposta = client.put(f'/api/lista/{id_lista}', headers=cabecalho, json={
+        'status_consumo': 'assistindo', 'progresso_atual': 4,
+        'data_inicio': '2026-05-02', 'data_conclusao': '2026-05-01',
+    })
+
+    assert resposta.status_code == 200, resposta.get_json()
+    assert _datas(id_lista) == (date(2026, 5, 2), date(2026, 5, 1), 4)
