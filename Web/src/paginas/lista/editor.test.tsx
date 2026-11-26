@@ -117,7 +117,8 @@ describe('editor do Item', () => {
     expect(put()[0]?.corpo.total_rewatches).toBe(2);
   });
 
-  it('o calendário não aceita data futura nem conclusão antes do início', async () => {
+  // As regras de data (futuro, conclusão antes do início) são do domínio, em itemLista.test.ts.
+  it('o calendário limita as datas e o erro do domínio aparece no editor', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 14, 12) });
     const { user, dialogo, put } = await editar(umItem({ titulo_original: 'Frieren', data_inicio: '2026-11-01' }));
     const inicio = within(dialogo).getByLabelText('Início');
@@ -126,11 +127,6 @@ describe('editor do Item', () => {
     expect(inicio).toHaveAttribute('max', '2026-11-14');
     expect(conclusao).toHaveAttribute('min', '2026-11-01');
 
-    await user.type(conclusao, '2026-11-20');
-    await user.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
-    expect(within(dialogo).getByRole('alert')).toHaveTextContent('A data de conclusão não pode ser no futuro.');
-
-    await user.clear(conclusao);
     await user.type(conclusao, '2026-10-20');
     await user.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
     expect(within(dialogo).getByRole('alert')).toHaveTextContent('A conclusão não pode ser antes do início.');

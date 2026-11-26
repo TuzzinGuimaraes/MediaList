@@ -245,14 +245,29 @@ export function ajustarFormulario(
   };
 }
 
-/**
- * Estado do editor aberto: o formulário e o Progresso de antes de o Item entrar em Concluído
- * nesta edição (null se não entrou).
- */
-export type EdicaoItem = { form: FormularioItem; progressoAntesDoConcluido: string | null };
+/** O que o editor sabe da Mídia: o Tipo e o total contra o qual o Progresso é medido. */
+export type MidiaDaEdicao = { tipo: TipoMidia; total: number | null };
 
-export function iniciarEdicao(item: ItemDaApi | null, tipo: TipoMidia): EdicaoItem {
-  return { form: formularioDoItem(item, tipo), progressoAntesDoConcluido: null };
+/**
+ * Estado do editor aberto: o formulário, a Mídia (Tipo e total, fixos durante a edição) e o
+ * Progresso de antes de o Item entrar em Concluído nesta edição (null se não entrou).
+ */
+export type EdicaoItem = { form: FormularioItem; midia: MidiaDaEdicao; progressoAntesDoConcluido: string | null };
+
+/**
+ * Abre o editor. `midia` é a Mídia do Item (a da listagem, a do detalhe ou o próprio Item); o
+ * total é o do Item, ou o da Mídia pelo Tipo (`totalDoItem`).
+ */
+export function iniciarEdicao(
+  item: (ItemDaApi & { progresso_total?: number | null }) | null,
+  midia: Omit<ComTotal, 'progresso_total'>,
+): EdicaoItem {
+  const total = totalDoItem({ ...midia, progresso_total: item?.progresso_total ?? null });
+  return {
+    form: formularioDoItem(item, midia.tipo),
+    midia: { tipo: midia.tipo, total },
+    progressoAntesDoConcluido: null,
+  };
 }
 
 /**
@@ -261,27 +276,29 @@ export function iniciarEdicao(item: ItemDaApi | null, tipo: TipoMidia): EdicaoIt
  * Concluído de novo): volta ao Progresso de antes de entrar em Concluído nesta edição, ou a 0
  * se o Item já abriu concluído (nova passagem; reconcluir soma Recontagem, ADR 0009).
  */
-export function mudarEdicao(
-  edicao: EdicaoItem,
-  mudanca: Partial<FormularioItem>,
-  midia: { tipo: TipoMidia; total: number | null },
-): EdicaoItem {
+export function mudarEdicao(edicao: EdicaoItem, mudanca: Partial<FormularioItem>): EdicaoItem {
+  const { midia } = edicao;
   const antes = edicao.form;
   const depois = { ...antes, ...mudanca };
   const estavaConcluido = eConcluido(antes.status_consumo, midia.tipo);
   const comTotal = temProgresso(midia.tipo) && midia.total !== null && midia.total > 0;
   if (comTotal && estavaConcluido && mudanca.status_consumo !== undefined && !eConcluido(mudanca.status_consumo, midia.tipo)) {
-    return { form: { ...depois, progresso: edicao.progressoAntesDoConcluido ?? '0' }, progressoAntesDoConcluido: null };
+    return { ...edicao, form: { ...depois, progresso: edicao.progressoAntesDoConcluido ?? '0' }, progressoAntesDoConcluido: null };
   }
   const form = ajustarFormulario(antes, depois, midia);
   const concluido = eConcluido(form.status_consumo, midia.tipo);
   let memoria = edicao.progressoAntesDoConcluido;
   if (!estavaConcluido && concluido) memoria = antes.progresso;
   else if (!concluido) memoria = null;
-  return { form, progressoAntesDoConcluido: memoria };
+  return { ...edicao, form, progressoAntesDoConcluido: memoria };
 }
 
-export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: number | null }): ResultadoItem {
+/**
+ * O formulário do editor como corpo da API, ou a primeira regra que ele quebra. `hoje` é o dia
+ * local do aparelho em ISO (`diaIso()`): nenhuma data pode passar dele.
+ */
+export function validarItem(edicao: EdicaoItem, hoje: string): ResultadoItem {
+  const { form: f, midia } = edicao;
   const falha = (erro: string): ResultadoItem => ({ ok: false, erro });
 
   if (!estadoDe(f.status_consumo, midia.tipo)) {
@@ -308,6 +325,8 @@ export function validarItem(f: FormularioItem, midia: { tipo: TipoMidia; total: 
   const inicio = dataIso(f.inicio);
   const conclusao = dataIso(f.conclusao);
   if (inicio && conclusao && conclusao < inicio) return falha('A conclusão não pode ser antes do início.');
+  if (inicio && inicio > hoje) return falha('A data de início não pode ser no futuro.');
+  if (conclusao && conclusao > hoje) return falha('A data de conclusão não pode ser no futuro.');
 
   return {
     ok: true,
@@ -353,12 +372,7 @@ export function mudancaDeStatus(
   item: ComTotal & { status_consumo: string; progresso_atual: number | null },
   rotulo: string,
 ): { status_consumo: string; progresso_atual?: number } {
-  const midia = { tipo: item.tipo, total: totalDoItem(item) };
-  const { form } = mudarEdicao(
-    iniciarEdicao({ ...item, nota_usuario: null }, item.tipo),
-    { status_consumo: rotulo },
-    midia,
-  );
+  const { form } = mudarEdicao(iniciarEdicao({ ...item, nota_usuario: null }, item), { status_consumo: rotulo });
   const progresso = Number(form.progresso);
   return progresso === (item.progresso_atual ?? 0)
     ? { status_consumo: form.status_consumo }

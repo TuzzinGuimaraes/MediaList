@@ -1,6 +1,6 @@
 // Editor do Item de lista, em modal. As regras são as do app (`@dominio/itemLista`): Status e
 // Progresso andam juntos (ADR 0009) e sair de Concluído devolve o Progresso (ticket 33).
-// Datas pelo calendário do navegador, nunca no futuro; Recontagem com − e +.
+// Datas pelo calendário do navegador (a regra de data também é do domínio); Recontagem com − e +.
 import { useState } from 'react';
 
 import { diaIso } from '@dominio/datas';
@@ -12,7 +12,6 @@ import {
   mudarEdicao,
   nomeDoProgresso,
   temProgresso,
-  totalDoItem,
   validarItem,
 } from '@dominio/itemLista';
 import { tituloDaMidia } from '@dominio/midia';
@@ -56,10 +55,9 @@ function ConfirmarRemocao({ manter, remover, removendo }: { manter(): void; remo
 type Props = { midia: MidiaDoEditor; item: ItemLista | null; fechar(): void };
 
 export function EditorItem({ midia, item, fechar }: Props) {
-  const tipo = midia.tipo;
-  const total = totalDoItem(item ?? { ...midia, progresso_total: null });
-  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, tipo));
-  const form = edicao.form;
+  const [edicao, setEdicao] = useState<EdicaoItem>(() => iniciarEdicao(item, midia));
+  const { form } = edicao;
+  const { tipo, total } = edicao.midia;
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const salvar = useSalvarItem();
@@ -67,15 +65,11 @@ export function EditorItem({ midia, item, fechar }: Props) {
   const hoje = diaIso();
 
   const mudar = <K extends keyof FormularioItem>(campo: K) => (valor: FormularioItem[K]) =>
-    setEdicao((e) => mudarEdicao(e, { [campo]: valor }, { tipo, total }));
+    setEdicao((e) => mudarEdicao(e, { [campo]: valor }));
 
   const enviar = async () => {
-    const resultado = validarItem(form, { tipo, total });
+    const resultado = validarItem(edicao, hoje);
     if (!resultado.ok) return setErro(resultado.erro);
-    const { data_inicio, data_conclusao } = resultado.dados;
-    // O calendário já barra o futuro; a data digitada à mão passa por aqui.
-    if (data_inicio && data_inicio > hoje) return setErro(textos.futuro(textos.inicio.toLowerCase()));
-    if (data_conclusao && data_conclusao > hoje) return setErro(textos.futuro(textos.conclusao.toLowerCase()));
     setErro(null);
     try {
       await salvar.mutateAsync({ idMidia: midia.id_midia, idLista: item?.id_lista, dados: resultado.dados });
