@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from importacao.anilist import PAGINAS_ATUALIZACAO
+from importacao.anilist import PAGINAS_ATUALIZACAO, TEMPORADAS
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
 from importacao.importar_mangas import importar_mangas
@@ -45,6 +45,10 @@ def main():
         help='AniList: páginas da atualização das populares (rodízio pelas páginas 1–100)',
     )
     parser.add_argument(
+        '--temporadas', type=int, default=TEMPORADAS,
+        help='Anime: Temporadas trazidas inteiras, a atual e as seguintes (0 desliga)',
+    )
+    parser.add_argument(
         '--do-inicio', action='store_true',
         help='Ignora o cursor da Importação e recomeça do início (no AniList, as duas passadas)',
     )
@@ -59,7 +63,7 @@ def main():
         print('=== Importando Animes (AniList) ===')
         stats, erro_fatal = executar_importacao(
             'anime', 'AniList', importar_animes, paginas=args.paginas,
-            paginas_atualizacao=args.paginas_atualizacao, do_inicio=args.do_inicio,
+            paginas_atualizacao=args.paginas_atualizacao, temporadas=args.temporadas, do_inicio=args.do_inicio,
         )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal

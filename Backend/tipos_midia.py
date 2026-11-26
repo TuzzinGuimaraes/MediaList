@@ -34,6 +34,8 @@ class TipoMidia(NamedTuple):
     # Outras chaves de fonte (UNIQUE, anuláveis), só da Importação: a Mídia sem a chave da fonte
     # é achada por elas (o jogo criado pela loja da Steam e depois achado no RAWG).
     chaves_extras: tuple[str, ...] = ()
+    # Colunas da filha que só a Importação grava, como a Nota da fonte na base.
+    colunas_fonte: tuple[str, ...] = ()
 
     @property
     def colunas_gravaveis(self) -> tuple[str, ...]:
@@ -50,6 +52,7 @@ TIPOS: dict[str, TipoMidia] = {
                  'trailer_url', 'estudio', 'fonte_original'),
         coluna_status='status_anime', coluna_total='numero_episodios', unidade_progresso='episodios',
         aplicavel_a=['anime', 'manga'],
+        colunas_fonte=('temporada_estacao', 'temporada_ano', 'temporada_estimada', 'formato', 'popularidade_fonte'),
     ),
     'manga': TipoMidia(
         tabela='mangas', apelido='ma', chave_fonte='anilist_id', origem_nota='AniList',
@@ -73,8 +76,11 @@ def valor_de_coluna(coluna: str, valor: Any) -> Any:
     """O valor como a coluna o guarda.
 
     `plataformas` é text[] no banco; a API a recebe como texto separado por
-    vírgula ('PC, Switch') e a Importação como lista.
+    vírgula ('PC, Switch') e a Importação como lista. `temporada_estimada` não é nula: sem
+    valor, a Temporada não é estimada.
     """
+    if coluna == 'temporada_estimada':
+        return bool(valor)
     if coluna != 'plataformas':
         return valor
     if valor is None:

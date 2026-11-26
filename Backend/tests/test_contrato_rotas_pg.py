@@ -28,7 +28,7 @@ CHAVES_MIDIA = {
     'jogo_trailer_url',
     'manga_anilist_id', 'manga_artista', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
-    'proximo_episodio_em',
+    'proximo_episodio_em', 'temporada_estacao', 'temporada_ano', 'temporada_estimada', 'formato',
     'publicadora', 'publicadora_original', 'rawg_slug', 'revista', 'sinopse', 'status_anime', 'status_catalogo',
     'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues',
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',

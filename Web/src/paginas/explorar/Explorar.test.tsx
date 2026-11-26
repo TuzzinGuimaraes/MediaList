@@ -38,6 +38,10 @@ function midia(id: string, titulo: string, extra: Partial<Midia> = {}): Midia {
     numero_episodios: 12,
     episodios_lancados: null,
     proximo_episodio_em: null,
+    temporada_estacao: null,
+    temporada_ano: null,
+    temporada_estimada: null,
+    formato: null,
     duracao_episodio: null,
     estudio: null,
     numero_capitulos: null,
@@ -77,6 +81,7 @@ function facetas(req: Requisicao): Resposta {
   const corpo: Esquemas['RespostaFacetas'] = {
     plataformas: tipo === 'jogo' ? PLATAFORMAS : [],
     estudios: tipo === 'anime' ? ESTUDIOS : [],
+    temporada_mais_antiga: null,
   };
   return { status: 200, corpo };
 }

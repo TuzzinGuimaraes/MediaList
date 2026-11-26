@@ -511,7 +511,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`. */
+        /** Plataformas e estúdios distintos e a Temporada mais antiga, para as opções dos filtros de `GET /midias`. */
         get: operations["get__api_midias_facetas"];
         put?: never;
         post?: never;
@@ -1142,10 +1142,11 @@ export interface components {
             modo_jogo?: string | null;
             /**
              * Ordem
+             * @description `popularidade_fonte`: os mais esperados (Popularidade da fonte)
              * @default nota_media
              * @enum {string}
              */
-            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte";
             /**
              * Pagina
              * @default 1
@@ -1168,6 +1169,18 @@ export interface components {
              * @default null
              */
             status?: string | null;
+            /**
+             * Temporada Ano
+             * @description Com `temporada_estacao`, só os animes da Temporada
+             * @default null
+             */
+            temporada_ano?: number | null;
+            /**
+             * Temporada Estacao
+             * @description Com `temporada_ano`, só os animes da Temporada
+             * @default null
+             */
+            temporada_estacao?: ("inverno" | "primavera" | "verao" | "outono") | null;
             /**
              * Tipo
              * @default null
@@ -1951,6 +1964,11 @@ export interface components {
             /** Fonte Original */
             fonte_original: string | null;
             /**
+             * Formato
+             * @description O formato do AniList; nulo é desconhecido
+             */
+            formato: ("TV" | "TV_SHORT" | "ONA" | "MOVIE" | "SPECIAL" | "OVA" | "MUSIC") | null;
+            /**
              * Generos
              * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
              */
@@ -2010,6 +2028,18 @@ export interface components {
             status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /** Status Manga */
             status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /** Temporada Ano */
+            temporada_ano: number | null;
+            /**
+             * Temporada Estacao
+             * @description Temporada do anime, com `temporada_ano`; nula sem ela
+             */
+            temporada_estacao: ("inverno" | "primavera" | "verao" | "outono") | null;
+            /**
+             * Temporada Estimada
+             * @description A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes
+             */
+            temporada_estimada: boolean | null;
             /**
              * Tipo
              * @enum {string}
@@ -2077,6 +2107,11 @@ export interface components {
             /** Fonte Original */
             fonte_original: string | null;
             /**
+             * Formato
+             * @description O formato do AniList; nulo é desconhecido
+             */
+            formato: ("TV" | "TV_SHORT" | "ONA" | "MOVIE" | "SPECIAL" | "OVA" | "MUSIC") | null;
+            /**
              * Generos
              * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
              */
@@ -2136,6 +2171,18 @@ export interface components {
             status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
             /** Status Manga */
             status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /** Temporada Ano */
+            temporada_ano: number | null;
+            /**
+             * Temporada Estacao
+             * @description Temporada do anime, com `temporada_ano`; nula sem ela
+             */
+            temporada_estacao: ("inverno" | "primavera" | "verao" | "outono") | null;
+            /**
+             * Temporada Estimada
+             * @description A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes
+             */
+            temporada_estimada: boolean | null;
             /**
              * Tipo
              * @enum {string}
@@ -2608,14 +2655,16 @@ export interface components {
         };
         /**
          * RespostaFacetas
-         * @description Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
-         *     filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).
+         * @description Valores distintos e ordenados dos filtros de `GET /midias`. Vazio (ou nulo) quando o
+         *     filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios e Temporada só nos animes).
          */
         RespostaFacetas: {
             /** Estudios */
             estudios: string[];
             /** Plataformas */
             plataformas: string[];
+            /** @description A Temporada mais antiga dos animes do Catálogo (a primeira do seletor); nula sem nenhuma */
+            temporada_mais_antiga: components["schemas"]["Temporada"] | null;
         };
         /** RespostaGeneros */
         RespostaGeneros: {
@@ -2769,6 +2818,16 @@ export interface components {
              * @enum {string}
              */
             status: "healthy" | "unhealthy";
+        };
+        /** Temporada */
+        Temporada: {
+            /** Ano */
+            ano: number;
+            /**
+             * Estacao
+             * @enum {string}
+             */
+            estacao: "inverno" | "primavera" | "verao" | "outono";
         };
         /** UsuarioAtual */
         UsuarioAtual: {
@@ -4862,7 +4921,12 @@ export interface operations {
                 ano_min?: number | null;
                 /** @description Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora */
                 ano_max?: number | null;
-                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos";
+                /** @description Com `temporada_ano`, só os animes da Temporada */
+                temporada_estacao?: ("inverno" | "primavera" | "verao" | "outono") | null;
+                /** @description Com `temporada_estacao`, só os animes da Temporada */
+                temporada_ano?: number | null;
+                /** @description `popularidade_fonte`: os mais esperados (Popularidade da fonte) */
+                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte";
             };
             header?: never;
             path?: never;

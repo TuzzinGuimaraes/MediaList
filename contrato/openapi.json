@@ -633,13 +633,15 @@
           },
           "ordem": {
             "default": "nota_media",
+            "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte)",
             "enum": [
               "nota_media",
               "data_lancamento",
               "titulo",
               "mais_adicionados",
               "popularidade",
-              "mais_concluidos"
+              "mais_concluidos",
+              "popularidade_fonte"
             ],
             "title": "Ordem",
             "type": "string"
@@ -681,6 +683,40 @@
             "default": null,
             "description": "Status do Catálogo; sem Tipo, o de qualquer Tipo",
             "title": "Status"
+          },
+          "temporada_ano": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Com `temporada_estacao`, só os animes da Temporada",
+            "title": "Temporada Ano"
+          },
+          "temporada_estacao": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inverno",
+                  "primavera",
+                  "verao",
+                  "outono"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Com `temporada_ano`, só os animes da Temporada",
+            "title": "Temporada Estacao"
           },
           "tipo": {
             "anyOf": [
@@ -2810,6 +2846,27 @@
             ],
             "title": "Fonte Original"
           },
+          "formato": {
+            "anyOf": [
+              {
+                "enum": [
+                  "TV",
+                  "TV_SHORT",
+                  "ONA",
+                  "MOVIE",
+                  "SPECIAL",
+                  "OVA",
+                  "MUSIC"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O formato do AniList; nulo é desconhecido",
+            "title": "Formato"
+          },
           "generos": {
             "anyOf": [
               {
@@ -3094,6 +3151,47 @@
             ],
             "title": "Status Manga"
           },
+          "temporada_ano": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporada Ano"
+          },
+          "temporada_estacao": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inverno",
+                  "primavera",
+                  "verao",
+                  "outono"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Temporada do anime, com `temporada_ano`; nula sem ela",
+            "title": "Temporada Estacao"
+          },
+          "temporada_estimada": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes",
+            "title": "Temporada Estimada"
+          },
           "tipo": {
             "enum": [
               "anime",
@@ -3201,6 +3299,10 @@
           "trailer_url",
           "duracao_episodio",
           "classificacao_etaria",
+          "temporada_estacao",
+          "temporada_ano",
+          "temporada_estimada",
+          "formato",
           "artista",
           "publicadora_original",
           "revista",
@@ -3361,6 +3463,27 @@
             ],
             "title": "Fonte Original"
           },
+          "formato": {
+            "anyOf": [
+              {
+                "enum": [
+                  "TV",
+                  "TV_SHORT",
+                  "ONA",
+                  "MOVIE",
+                  "SPECIAL",
+                  "OVA",
+                  "MUSIC"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O formato do AniList; nulo é desconhecido",
+            "title": "Formato"
+          },
           "generos": {
             "anyOf": [
               {
@@ -3645,6 +3768,47 @@
             ],
             "title": "Status Manga"
           },
+          "temporada_ano": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporada Ano"
+          },
+          "temporada_estacao": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inverno",
+                  "primavera",
+                  "verao",
+                  "outono"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Temporada do anime, com `temporada_ano`; nula sem ela",
+            "title": "Temporada Estacao"
+          },
+          "temporada_estimada": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes",
+            "title": "Temporada Estimada"
+          },
           "tipo": {
             "enum": [
               "anime",
@@ -3752,6 +3916,10 @@
           "trailer_url",
           "duracao_episodio",
           "classificacao_etaria",
+          "temporada_estacao",
+          "temporada_ano",
+          "temporada_estimada",
+          "formato",
           "artista",
           "publicadora_original",
           "revista",
@@ -4774,7 +4942,7 @@
         "type": "object"
       },
       "RespostaFacetas": {
-        "description": "Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o\nfiltro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes).",
+        "description": "Valores distintos e ordenados dos filtros de `GET /midias`. Vazio (ou nulo) quando o\nfiltro não se aplica ao Tipo (plataformas só nos jogos; estúdios e Temporada só nos animes).",
         "properties": {
           "estudios": {
             "items": {
@@ -4789,11 +4957,23 @@
             },
             "title": "Plataformas",
             "type": "array"
+          },
+          "temporada_mais_antiga": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Temporada"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Temporada mais antiga dos animes do Catálogo (a primeira do seletor); nula sem nenhuma"
           }
         },
         "required": [
           "plataformas",
-          "estudios"
+          "estudios",
+          "temporada_mais_antiga"
         ],
         "title": "RespostaFacetas",
         "type": "object"
@@ -5164,6 +5344,30 @@
           "postgres"
         ],
         "title": "Saude",
+        "type": "object"
+      },
+      "Temporada": {
+        "properties": {
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          },
+          "estacao": {
+            "enum": [
+              "inverno",
+              "primavera",
+              "verao",
+              "outono"
+            ],
+            "title": "Estacao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "estacao",
+          "ano"
+        ],
+        "title": "Temporada",
         "type": "object"
       },
       "UsuarioAtual": {
@@ -8356,19 +8560,67 @@
             }
           },
           {
-            "description": "",
+            "description": "Com `temporada_ano`, só os animes da Temporada",
+            "in": "query",
+            "name": "temporada_estacao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inverno",
+                    "primavera",
+                    "verao",
+                    "outono"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Com `temporada_ano`, só os animes da Temporada",
+              "title": "Temporada Estacao"
+            }
+          },
+          {
+            "description": "Com `temporada_estacao`, só os animes da Temporada",
+            "in": "query",
+            "name": "temporada_ano",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Com `temporada_estacao`, só os animes da Temporada",
+              "title": "Temporada Ano"
+            }
+          },
+          {
+            "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte)",
             "in": "query",
             "name": "ordem",
             "required": false,
             "schema": {
               "default": "nota_media",
+              "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte)",
               "enum": [
                 "nota_media",
                 "data_lancamento",
                 "titulo",
                 "mais_adicionados",
                 "popularidade",
-                "mais_concluidos"
+                "mais_concluidos",
+                "popularidade_fonte"
               ],
               "title": "Ordem",
               "type": "string"
@@ -8455,7 +8707,7 @@
             "description": "Bad Request"
           }
         },
-        "summary": "Plataformas e estúdios distintos, para as opções dos filtros de `GET /midias`.",
+        "summary": "Plataformas e estúdios distintos e a Temporada mais antiga, para as opções dos filtros de `GET /midias`.",
         "tags": [
           "midias"
         ]

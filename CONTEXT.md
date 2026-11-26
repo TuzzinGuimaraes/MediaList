@@ -70,6 +70,11 @@ obra que muda de popularidade entre execuções e pula a fronteira pode ficar de
 seguinte (meses, nos mangás); as 5000 mais populares não sofrem com isso, porque a atualização
 as cobre.
 
+Nos animes há ainda uma terceira passada, sem cursor: a **Temporada** atual e as 4 seguintes vêm
+inteiras todo dia (sem os adultos), para o Catálogo ter todos os animes anunciados e não só os
+populares. Uma Temporada que falha não impede as outras nem mexe no cursor. Temporadas passadas
+não são completadas.
+
 ## Integração
 
 A conta pública do Usuário numa plataforma externa (AniList, MyAnimeList, Steam), conectada
@@ -330,6 +335,28 @@ Quantos Usuários têm a Mídia na sua **Lista pessoal**, em qualquer Estado de 
 
 Mede alcance, não qualidade — é independente da **Nota média**. Uma Mídia muito adicionada
 e mal avaliada é popular.
+
+## Popularidade da fonte
+
+Quantas pessoas acompanham a Mídia na fonte externa: a popularidade do AniList, para animes.
+Chega pela **Importação**, que é a única que a grava. Não é **Popularidade** (que conta Usuários
+do MediaList), como a **Nota da fonte** não é a **Nota média**. Ordena os "Mais esperados" da
+**Temporada**, já que poucos Usuários do MediaList não bastam para ordenar o que ainda vai estrear.
+
+## Temporada
+
+O trimestre de estreia de um anime, como a indústria japonesa divide o ano: **inverno**
+(janeiro–março), **primavera** (abril–junho), **verão** (julho–setembro) e **outono**
+(outubro–dezembro). É a estação mais o ano, e na interface aparece só assim ("Inverno 2027"),
+sem os meses. Só anime tem Temporada.
+
+A Temporada vem do AniList pela **Importação**. Sem ela, é **estimada** pelo mês da data de estreia,
+e a interface avisa ("temporada estimada": pela data de estreia, pode estar errada) até a
+Importação trazer a do AniList. Estreia sem mês conhecido não dá Temporada.
+
+A página Temporada mostra os animes de uma Temporada: séries na grade principal (TV, TV curto,
+ONA e formato desconhecido) e filmes, especiais, OVAs e clipes musicais à parte, em "Filmes e especiais". Vai da
+mais antiga do Catálogo até 4 depois da atual.
 
 ---
 

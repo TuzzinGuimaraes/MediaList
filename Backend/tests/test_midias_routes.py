@@ -71,7 +71,8 @@ def test_get_midias_repassa_filtros_ao_catalogo(client, catalogo):
     filtros = {
         'busca': 'zelda', 'genero': 'Aventura', 'status': 'lancado', 'autor': None, 'estudio': None,
         'demografia': None, 'plataforma': 'Switch', 'desenvolvedor': 'Nintendo', 'modo_jogo': 'single',
-        'artista': None, 'ano_min': 2000, 'ano_max': 2010, 'ordem': 'titulo',
+        'artista': None, 'ano_min': 2000, 'ano_max': 2010, 'temporada_estacao': None, 'temporada_ano': None,
+        'ordem': 'titulo',
     }
     assert falso.chamadas == [('buscar', 'jogo', 1, 15, filtros), ('contar', 'jogo', filtros)]
 
