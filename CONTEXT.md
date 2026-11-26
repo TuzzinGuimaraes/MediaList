@@ -334,6 +334,15 @@ passa a mostrar "editada em <data>". Excluir apaga de vez, com as Notificações
 Um aviso vinculado a uma Mídia específica — episódio novo, capítulo novo, mudança de status
 da obra. Diferente da **Notícia**, que é geral.
 
+A de **episódio novo** de anime é automática: de hora em hora, o MediaList lê no AniList os
+episódios que foram ao ar desde a última leitura (uma hora sem leitura é recuperada na seguinte,
+até 7 dias) e publica "Episódio N de <anime> foi ao ar" para cada anime do Catálogo, uma vez só
+por episódio. A estreia (episódio 1) vai a quem tem o anime em Em progresso ou Planejado; os
+outros episódios, só a Em progresso; quem o favoritou recebe sempre, qualquer que seja o Estado de consumo.
+Na mesma leitura, o anime fica com a Situação, o total de episódios, quantos já foram ao ar e
+quando sai o próximo. O admin ainda pode registrar uma Atualização à mão; nela, recebe quem tem a
+Mídia em Em progresso ou Planejado, ou como favorita.
+
 ## Notificação
 
 A entrega de uma **Atualização de mídia** ou de uma **Notícia** a um Usuário, com a marca de
@@ -341,5 +350,7 @@ lida ou não lida. A Atualização (ou a Notícia) é o fato; a Notificação é
 alguém. A de Notícia vai a todo Usuário ativo, menos o autor.
 
 No app, a Notificação de Notícia também chega como **push**, para quem deixou ligado "Avisar
-sobre Notícias" (`avisar_noticias`). O antigo `notificacoes_ativas` das preferências não tem
-efeito.
+sobre Notícias" (`avisar_noticias`). A de episódio novo chega como push para quem deixou ligado
+"Avisar sobre episódios novos" (`avisar_episodios`): até 2 episódios numa leitura, um push por
+episódio; 3 ou mais, um só ("3 episódios novos na sua lista"). O antigo `notificacoes_ativas` das
+preferências não tem efeito.

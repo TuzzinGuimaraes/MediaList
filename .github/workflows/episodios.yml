@@ -1,0 +1,54 @@
+name: episodios
+
+# Job de episódios (spec `episodio-novo`), de hora em hora no runner (ADR-0013):
+# lê o airingSchedule do AniList desde o cursor guardado no banco, publica a
+# Atualização de cada episódio novo de anime do Catálogo para quem o acompanha
+# e manda o push. Uma execução perdida é recuperada na próxima (até 7 dias).
+# Uma falha deixa o workflow vermelho, e o GitHub avisa por email.
+on:
+  schedule:
+    # Fora do minuto 0, quando o Actions atrasa mais os agendamentos.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  episodios:
+    name: Episódios novos
+    runs-on: ubuntu-latest
+    # Uma hora de janela cabe numa página do AniList; 7 dias, em poucas dezenas (2 s cada).
+    timeout-minutes: 15
+    # Uma execução por vez; a nova espera a anterior em vez de cancelá-la no meio da janela.
+    concurrency:
+      group: episodios-producao
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: Backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: Backend
+        run: pip install -r requirements.txt
+
+      - name: Job de episódios
+        working-directory: Backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Opcional: vazio se o secret não existir (o push vai sem Bearer).
+          EXPO_ACCESS_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL ausente"
+            exit 1
+          fi
+          python -m importacao.episodios

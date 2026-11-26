@@ -285,6 +285,43 @@ describe('detalhe da Mídia', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeOnTheScreen());
   });
 
+  it('mostra as Atualizações recentes com título e data, na ordem da API (mais recentes primeiro)', async () => {
+    const atualizacao = (titulo: string, data: string): MidiaDetalhe['atualizacoes'][number] => ({
+      id_midia: 'MID-ANM-2026-20053',
+      tipo_midia: 'anime',
+      tipo_atualizacao: 'episodio',
+      titulo,
+      descricao: null,
+      dados_adicionais: {},
+      data_atualizacao: data,
+    });
+    const frieren = anime({
+      atualizacoes: [
+        atualizacao('Episódio 2 de Sousou no Frieren foi ao ar', '2026-11-27T12:00:00Z'),
+        atualizacao('Episódio 1 de Sousou no Frieren foi ao ar', '2026-11-20T12:00:00Z'),
+      ],
+    });
+    simularFetch(detalhe(frieren));
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: 'Atualizações' })).toBeOnTheScreen();
+    expect(screen.getAllByLabelText(/^Atualização: /).map((e) => e.props.accessibilityLabel)).toEqual([
+      'Atualização: Episódio 2 de Sousou no Frieren foi ao ar, 27/11/2026',
+      'Atualização: Episódio 1 de Sousou no Frieren foi ao ar, 20/11/2026',
+    ]);
+  });
+
+  it('sem Atualizações, a seção some', async () => {
+    const frieren = anime();
+    simularFetch(detalhe(frieren));
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Atualizações' })).not.toBeOnTheScreen();
+  });
+
   it('Mídia inexistente mostra a mensagem da API', async () => {
     simularFetch({ 'GET /midias/MID-NADA': erro(404, 'nao_encontrado', 'Mídia não encontrada') });
 

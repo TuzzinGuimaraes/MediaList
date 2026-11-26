@@ -39,6 +39,7 @@ const textos = {
   editarNaLista: 'Editar na Lista',
   progresso: 'Progresso',
   usuarios: 'Nas Listas dos Usuários',
+  atualizacoes: 'Atualizações',
   avaliacoes: (n: number) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`,
 };
 
@@ -147,6 +148,28 @@ function DetalheMidia() {
           ) : null}
 
           {m.sinopse ? <Text className="text-corpo text-texto">{m.sinopse}</Text> : null}
+
+          {m.atualizacoes.length ? (
+            <Secao titulo={textos.atualizacoes}>
+              {m.atualizacoes.map((a) => {
+                const data = formatarData(a.data_atualizacao);
+                return (
+                  <View
+                    key={`${a.data_atualizacao}-${a.titulo}`}
+                    accessible
+                    accessibilityLabel={`Atualização: ${a.titulo}${data ? `, ${data}` : ''}`}
+                    className="gap-1"
+                  >
+                    <View className="flex-row items-baseline justify-between gap-3">
+                      <Text className="flex-1 text-corpo font-semibold text-texto-forte">{a.titulo}</Text>
+                      {data ? <Text className="text-legenda text-texto-suave">{data}</Text> : null}
+                    </View>
+                    {a.descricao ? <Text className="text-corpo text-texto">{a.descricao}</Text> : null}
+                  </View>
+                );
+              })}
+            </Secao>
+          ) : null}
 
           <View className="flex-row flex-wrap gap-x-6 gap-y-3 rounded-md bg-superficie p-4">
             {lancamento ? <Info rotulo={textos.lancamento} valor={lancamento} /> : null}
