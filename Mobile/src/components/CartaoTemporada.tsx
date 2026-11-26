@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { mensagemDeErro } from '../api/erros';
-import { useAdicionarPlanejado } from '../api/lista';
+import { useAdicionarComoPlanejado } from '../api/lista';
 import type { Midia } from '../api/tipos';
 import { formatarData } from '@dominio/datas';
 import { nomeDoTipo } from '@dominio/estadoConsumo';
@@ -40,7 +40,7 @@ export function CartaoTemporada({ anime, naLista }: Props) {
   const estreia = formatarData(anime.data_lancamento);
   const selo = seloDeEstimativa(anime);
   const [explicando, setExplicando] = useState(false);
-  const adicionar = useAdicionarPlanejado();
+  const adicionar = useAdicionarComoPlanejado();
 
   return (
     <View accessibilityLabel={`Cartão de ${titulo}`} className="flex-row gap-3 rounded-lg bg-superficie p-2.5">

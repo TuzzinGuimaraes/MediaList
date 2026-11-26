@@ -39,7 +39,7 @@ import { Icone } from '../../componentes/Icone';
 import { Opcoes } from '../../componentes/Opcoes';
 import { TituloSecao } from '../../componentes/Fileira';
 import { useApi } from '../../sessao/SessaoContext';
-import { useLista, usePorEmPlanejado } from '../lista/api';
+import { useLista, useAdicionarComoPlanejado } from '../lista/api';
 
 const rota = getRouteApi('/autenticado/temporada');
 
@@ -186,7 +186,7 @@ function Linha({ children }: { children: ReactNode }) {
 
 /** Card A com estreia, estúdio e episódios; abaixo (fora do link), "Planejado" ou "Na Lista". */
 function CartaoDaTemporada({ anime, naLista }: { anime: Midia; naLista: boolean }) {
-  const planejar = usePorEmPlanejado();
+  const planejar = useAdicionarComoPlanejado();
   const estreia = formatarData(anime.data_lancamento);
   const selo = seloDeEstimativa(anime);
   const episodios = anime.numero_episodios;
