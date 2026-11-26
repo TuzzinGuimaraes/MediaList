@@ -2,7 +2,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { abrirLogado } from '../../testes/app';
-import { erro } from '../../testes/fetchSimulado';
+import { erro, type Resposta, type Rotas } from '../../testes/fetchSimulado';
 import { item, midia, popular, rotasDoInicio } from './dadosDeTeste';
 
 afterEach(() => {
@@ -344,5 +344,69 @@ describe('Início: Para assistir agora', () => {
 
     act(() => recusar());
     expect(await within(faixa).findByText('3 episódios atrás')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Progresso inválido.');
+  });
+
+  /** Dandadan 4 de 7 na Lista, com o GET /lista refletindo o que o servidor aceitou. */
+  function rotasDoMaisUm(recusa: (n: number) => Resposta | Promise<Resposta> | null): Rotas {
+    let progresso = 4;
+    let n = 0;
+    return {
+      ...rotasDoInicio({ emAlta: [frieren] }),
+      'GET /lista': () => ({ status: 200, corpo: { lista: [item(dandadan, { progresso_atual: progresso })] } }),
+      'PUT /lista/L-ANI-10/progresso': async (req) => {
+        const resposta = await recusa(++n);
+        if (resposta) return resposta;
+        progresso = (req.corpo as { progresso_atual: number }).progresso_atual;
+        return { status: 200, corpo: { mensagem: 'ok' } };
+      },
+    };
+  }
+
+  it('dois toques, o segundo recusado: fica o +1 do primeiro', async () => {
+    const { user, api } = await abrirLogado('/', {
+      rotas: rotasDoMaisUm((n) => (n === 2 ? erro(400, 'dados_invalidos', 'Progresso inválido.') : null)),
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
+    const maisUm = () => within(faixa).getByRole('button', { name: '+1 episódio: Dandadan' });
+    await user.click(maisUm());
+    await user.click(maisUm());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Progresso inválido.');
+    expect(await within(faixa).findByText('2 episódios atrás')).toBeInTheDocument();
+    expect(api.para('PUT /lista/L-ANI-10/progresso').map((r) => r.corpo)).toEqual([
+      { progresso_atual: 5 },
+      { progresso_atual: 6 },
+    ]);
+  });
+
+  it('dois toques, o primeiro recusado: o segundo grava sobre o último aceito', async () => {
+    let recusar = () => {};
+    const { user, api } = await abrirLogado('/', {
+      rotas: rotasDoMaisUm((n) =>
+        n === 1
+          ? new Promise<Resposta>((resolver) => {
+              recusar = () => resolver(erro(400, 'dados_invalidos', 'Progresso inválido.'));
+            })
+          : null,
+      ),
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
+    const maisUm = () => within(faixa).getByRole('button', { name: '+1 episódio: Dandadan' });
+    await user.click(maisUm());
+    await user.click(maisUm());
+    expect(await within(faixa).findByText('1 episódio atrás')).toBeInTheDocument();
+
+    act(() => recusar());
+
+    expect(await within(faixa).findByText('2 episódios atrás')).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(api.para('PUT /lista/L-ANI-10/progresso').map((r) => r.corpo)).toEqual([
+        { progresso_atual: 5 },
+        { progresso_atual: 5 },
+      ]),
+    );
   });
 });
