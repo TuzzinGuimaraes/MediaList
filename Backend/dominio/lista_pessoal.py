@@ -154,7 +154,7 @@ def _como_data(valor: Any) -> date | None:
     return date.fromisoformat(str(valor)[:10])
 
 
-def _erros_de_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
+def erros_de_data(campos: dict[str, Any], item: dict[str, Any], hoje: date) -> dict[str, str]:
     """Erros das datas enviadas: nenhuma depois de hoje, conclusão não antes do início.
 
     Só as datas que vieram no payload são julgadas; a que não veio entra como a gravada
@@ -269,7 +269,7 @@ class ListaPessoal:
         if 'status_consumo' not in campos:
             erros.setdefault('status_consumo', 'Campo obrigatório')
         if not erros:
-            erros = _erros_de_data(campos, {}, date.today())
+            erros = erros_de_data(campos, {}, date.today())
         if erros:
             return Resultado(INVALIDO, erros)
 
@@ -312,7 +312,7 @@ class ListaPessoal:
 
         campos, erros = _validar_campos(payload or {})
         if not erros:
-            erros = _erros_de_data(campos, item, date.today())
+            erros = erros_de_data(campos, item, date.today())
         if erros:
             return Resultado(INVALIDO, erros)
 

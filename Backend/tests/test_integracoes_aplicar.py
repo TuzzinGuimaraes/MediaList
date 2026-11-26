@@ -198,3 +198,53 @@ def test_jogo_nunca_vira_zerado_nem_platinado_pela_origem():
 
     assert mudanca.campos['status_consumo'] == 'jogando'
     assert 'status_consumo' not in existente.campos
+
+
+
+# ============================================
+# Datas inválidas da origem: só a data sai, o Item entra (ADR 0015)
+# ============================================
+
+AMANHA = '2026-11-26'
+
+
+def test_item_novo_com_inicio_no_futuro_entra_sem_o_inicio():
+    mudanca = aplicar(None, _origem(data_inicio=AMANHA), total=28, hoje=HOJE)
+
+    assert mudanca.campos == {'status_consumo': 'assistindo', 'progresso_atual': 5, 'nota_usuario': 8.5}
+
+
+def test_item_novo_com_conclusao_no_futuro_entra_sem_a_conclusao():
+    mudanca = aplicar(None, _origem(status=CONCLUIDO, progresso=28, data_conclusao=AMANHA), total=28, hoje=HOJE)
+
+    assert mudanca.campos['data_inicio'] == '2026-10-01'
+    assert 'data_conclusao' not in mudanca.campos
+
+
+def test_item_novo_com_conclusao_antes_do_inicio_perde_o_inicio():
+    origem = _origem(status=CONCLUIDO, progresso=28, data_inicio='2026-11-10', data_conclusao='2026-11-01')
+
+    mudanca = aplicar(None, origem, total=28, hoje=HOJE)
+
+    assert mudanca.campos['data_conclusao'] == '2026-11-01'
+    assert 'data_inicio' not in mudanca.campos
+
+
+def test_existente_com_inicio_da_origem_depois_da_conclusao_gravada_perde_o_inicio():
+    item = _item(data_conclusao=date(2026, 9, 1))
+
+    mudanca = aplicar(item, _origem(progresso=8), total=28, hoje=HOJE)
+
+    assert mudanca.campos['progresso_atual'] == 8
+    assert 'data_inicio' not in mudanca.campos
+
+
+def test_existente_com_conclusao_da_origem_antes_do_inicio_gravado_perde_a_conclusao():
+    """O início gravado é do Usuário e não é enviado: a data que sai é a que veio da origem."""
+    item = _item(data_inicio=date(2026, 11, 10))
+    origem = _origem(status=CONCLUIDO, progresso=28, data_conclusao='2026-11-01')
+
+    mudanca = aplicar(item, origem, total=28, hoje=HOJE)
+
+    assert mudanca.campos['status_consumo'] == 'completo'
+    assert 'data_conclusao' not in mudanca.campos
