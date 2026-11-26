@@ -4,6 +4,7 @@ Importador de animes via AniList.
 from __future__ import annotations
 
 from datetime import date
+from typing import get_args
 
 from banco import Indisponivel, autocommit
 from importacao import anilist, cursor
@@ -20,6 +21,7 @@ from importacao.utils import (
     remover_html,
     truncar,
 )
+from schemas.midias import Estacao, FormatoAnime
 
 GENERO_MAP = {
     'Action': 'Ação',
@@ -48,12 +50,12 @@ STATUS_MAP = {
     'HIATUS': 'aguardando',
 }
 
-#: `MediaSeason` do AniList → estação da Temporada.
-ESTACAO_MAP = {'WINTER': 'inverno', 'SPRING': 'primavera', 'SUMMER': 'verao', 'FALL': 'outono'}
-#: Estações na ordem do ano, um trimestre cada (a divisão do AniList).
-ESTACOES_DO_ANO = ('inverno', 'primavera', 'verao', 'outono')
-#: `MediaFormat` de anime que o Catálogo guarda; outro vira desconhecido (nulo).
-FORMATOS = {'TV', 'TV_SHORT', 'ONA', 'MOVIE', 'SPECIAL', 'OVA', 'MUSIC'}
+#: Estações da Temporada na ordem do ano, as do contrato (`schemas.midias.Estacao`).
+ESTACOES_DO_ANO = get_args(Estacao)
+#: `MediaSeason` do AniList → estação da Temporada (as duas na ordem do ano).
+ESTACAO_MAP = dict(zip(anilist.ESTACOES, ESTACOES_DO_ANO, strict=True))
+#: `MediaFormat` de anime que o Catálogo guarda (`schemas.midias.FormatoAnime`); outro vira desconhecido (nulo).
+FORMATOS = frozenset(get_args(FormatoAnime))
 
 SOURCE_MAP = {
     'MANGA': 'Manga',
@@ -87,7 +89,7 @@ def temporada_do_anime(anime: dict) -> tuple[str | None, int | None, bool]:
     estreia = anime.get('startDate') or {}
     ano, mes = _inteiro(estreia.get('year')), _inteiro(estreia.get('month'))
     if ano and mes and 1 <= mes <= 12:
-        return ESTACOES_DO_ANO[(mes - 1) // 3], ano, True
+        return ESTACOES_DO_ANO[anilist.estacao_do_mes(mes)], ano, True
     return None, None, False
 
 

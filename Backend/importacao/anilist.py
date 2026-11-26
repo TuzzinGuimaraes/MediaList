@@ -85,6 +85,7 @@ _FILTROS = {
 #: `MediaSeason` do AniList, na ordem do ano: janeiro–março é o inverno (WINTER).
 ESTACOES = ('WINTER', 'SPRING', 'SUMMER', 'FALL')
 #: Temporadas que a Importação de animes traz inteiras por execução: a atual e as 4 seguintes.
+#: Anda junto com `TEMPORADAS_A_FRENTE` de `dominio/temporada.ts` (4: até onde o seletor vai).
 TEMPORADAS = 5
 
 
@@ -241,10 +242,14 @@ def atualizacao(buscar: Buscar, paginas: int, pagina_inicial: int = 1) -> Iterat
         pagina = proxima
 
 
+def estacao_do_mes(mes: int) -> int:
+    """A posição (0 a 3) da estação de um mês (1 a 12) no ano: um trimestre cada, inverno é janeiro–março."""
+    return (mes - 1) // 3
+
 
 def temporadas_a_frente(hoje: date, quantas: int = TEMPORADAS) -> list[tuple[str, int]]:
     """A Temporada de `hoje` e as seguintes, `quantas` ao todo: [(`MediaSeason`, `seasonYear`)]."""
-    indice, ano = (hoje.month - 1) // 3, hoje.year
+    indice, ano = estacao_do_mes(hoje.month), hoje.year
     temporadas = []
     for _ in range(quantas):
         temporadas.append((ESTACOES[indice], ano))

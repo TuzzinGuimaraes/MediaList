@@ -10,7 +10,8 @@ export type Temporada = { estacao: Estacao; ano: number };
 /** As estações na ordem do ano. */
 export const ESTACOES: readonly Estacao[] = ['inverno', 'primavera', 'verao', 'outono'];
 
-/** Até quantas Temporadas depois da atual o seletor vai (as que a Importação traz inteiras). */
+/** Até quantas Temporadas depois da atual o seletor vai (as que a Importação traz inteiras: `TEMPORADAS` de
+ * `Backend/importacao/anilist.py`, que conta também a atual). */
 export const TEMPORADAS_A_FRENTE = 4;
 
 /** O nome de cada estação na tela. */
