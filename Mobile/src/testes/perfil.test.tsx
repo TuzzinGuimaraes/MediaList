@@ -1,6 +1,6 @@
-import { fireEvent, screen, within } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import type { RespostaEstatisticas, RespostaMe, RespostaPermissoes } from '../api/tipos';
+import type { RespostaEstatisticas, RespostaMe, RespostaPermissoes, RespostaPreferencias } from '../api/tipos';
 import { erro } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
 import { aba, entrarPeloLogin } from './sessao';
@@ -48,6 +48,11 @@ const lista = {
   },
 };
 
+/** GET /preferencias, com "Avisar sobre Notícias" ligado ou desligado. */
+function preferencias(avisar_noticias: boolean): { status: 200; corpo: RespostaPreferencias } {
+  return { status: 200, corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias } } };
+}
+
 // No Jest o manifesto vem vazio; no APK e no Expo Go a versão vem do app.json.
 jest.mock('expo-constants', () => {
   const real = jest.requireActual('expo-constants').default;
@@ -75,6 +80,7 @@ describe('estatísticas no Perfil', () => {
       'GET /usuario/estatisticas': estatisticas,
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
     });
   });
 
@@ -121,6 +127,7 @@ describe('estatísticas sem itens', () => {
       'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [], resumo: { total_midias: 0, concluidos: 0, em_andamento: 0, favoritos: 0 } } },
       'GET /lista': { status: 200, corpo: { lista: [] } },
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
     });
     await abrirPerfil();
 
@@ -140,6 +147,7 @@ describe('estatísticas com erro', () => {
       'GET /usuario/estatisticas': () => (falhar ? erro(500, 'erro_interno', 'Erro ao buscar estatísticas') : estatisticas),
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
     });
     await abrirPerfil();
 
@@ -164,6 +172,7 @@ describe('versão do app no Perfil', () => {
       'GET /usuario/estatisticas': estatisticas,
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
     });
   });
 
@@ -198,5 +207,45 @@ describe('versão do app no Perfil', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Atualizar agora' }));
 
     expect(Updates.reloadAsync).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('"Avisar sobre Notícias" no Perfil', () => {
+  function api(avisar: boolean, put: (corpo: unknown) => { status: number; corpo?: unknown }) {
+    return simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /auth/me': me,
+      'GET /usuario/permissoes': permissoes,
+      'GET /usuario/estatisticas': estatisticas,
+      'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(avisar),
+      'PUT /preferencias': (req) => put(req.corpo),
+    });
+  }
+
+  it('mostra o estado salvo e desliga com PUT /preferencias', async () => {
+    const fetch = api(true, () => ({ status: 200, corpo: { mensagem: 'ok', modificado: true } }));
+    await abrirPerfil();
+
+    const chave = await screen.findByRole('switch', { name: 'Avisar sobre Notícias' });
+    expect(chave).toBeChecked();
+    await fireEvent(chave, 'valueChange', false);
+
+    await waitFor(() => expect(fetch.para('PUT /preferencias')).toHaveLength(1));
+    expect(fetch.para('PUT /preferencias')[0].corpo).toEqual({ avisar_noticias: false });
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Avisar sobre Notícias' })).not.toBeChecked());
+  });
+
+  it('se salvar falha, volta ao estado anterior e mostra o erro', async () => {
+    api(false, () => erro(500, 'erro_interno', 'Erro ao salvar'));
+    await abrirPerfil();
+
+    const chave = await screen.findByRole('switch', { name: 'Avisar sobre Notícias' });
+    expect(chave).not.toBeChecked();
+    await fireEvent(chave, 'valueChange', true);
+
+    expect(await screen.findByText('Erro ao salvar', {}, { timeout: 3000 })).toBeOnTheScreen();
+    expect(screen.getByRole('switch', { name: 'Avisar sobre Notícias' })).not.toBeChecked();
   });
 });

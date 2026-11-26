@@ -1506,6 +1506,18 @@
       "CorpoPreferencias": {
         "description": "Só os campos enviados mudam; nulo vale como ausente. Tipos estritos: `\"true\"` não é booleano.",
         "properties": {
+          "avisar_noticias": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avisar Noticias"
+          },
           "idioma": {
             "anyOf": [
               {
@@ -1579,6 +1591,30 @@
         "title": "CorpoRefresh",
         "type": "object"
       },
+      "CorpoRegistrarToken": {
+        "properties": {
+          "plataforma": {
+            "enum": [
+              "android",
+              "ios"
+            ],
+            "title": "Plataforma",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 255,
+            "pattern": "^(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "plataforma"
+        ],
+        "title": "CorpoRegistrarToken",
+        "type": "object"
+      },
       "CorpoRegistro": {
         "properties": {
           "biografia": {
@@ -1628,6 +1664,21 @@
           "senha"
         ],
         "title": "CorpoRegistro",
+        "type": "object"
+      },
+      "CorpoRemoverToken": {
+        "properties": {
+          "token": {
+            "maxLength": 255,
+            "pattern": "^(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "CorpoRemoverToken",
         "type": "object"
       },
       "CorpoTrocarSenha": {
@@ -3868,7 +3919,7 @@
         "type": "object"
       },
       "Notificacao": {
-        "description": "A entrega de uma Atualização de mídia a um Usuário.",
+        "description": "A entrega de uma Atualização de mídia ou de uma Notícia a um Usuário.\n\n`origem` diz qual das duas: na de Notícia, `id_noticia` vem preenchido e os campos da\nMídia vêm nulos; na de Atualização, o contrário.",
         "properties": {
           "data_criacao": {
             "format": "date-time",
@@ -3876,8 +3927,28 @@
             "type": "string"
           },
           "id_midia": {
-            "title": "Id Midia",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Mídia, na de origem `atualizacao`",
+            "title": "Id Midia"
+          },
+          "id_noticia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Notícia, na de origem `noticia`",
+            "title": "Id Noticia"
           },
           "lida": {
             "title": "Lida",
@@ -3888,23 +3959,45 @@
             "type": "string"
           },
           "midia_nome": {
-            "description": "Título em português, ou o original",
-            "title": "Midia Nome",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Título em português, ou o original; nulo na de Notícia",
+            "title": "Midia Nome"
+          },
+          "origem": {
+            "enum": [
+              "atualizacao",
+              "noticia"
+            ],
+            "title": "Origem",
             "type": "string"
           },
           "tipo": {
-            "description": "Tipo da Atualização: episodio, capitulo, dlc...",
+            "description": "Tipo da Atualização (episodio, capitulo, dlc...) ou `noticia`",
             "title": "Tipo",
             "type": "string"
           },
           "tipo_midia": {
-            "enum": [
-              "anime",
-              "manga",
-              "jogo"
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga",
+                  "jogo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Tipo Midia",
-            "type": "string"
+            "title": "Tipo Midia"
           },
           "titulo": {
             "title": "Titulo",
@@ -3912,6 +4005,8 @@
           }
         },
         "required": [
+          "origem",
+          "id_noticia",
           "id_midia",
           "tipo_midia",
           "tipo",
@@ -4377,6 +4472,11 @@
       "Preferencias": {
         "description": "As preferências completas: o que o Usuário mudou, e os padrões no resto.",
         "properties": {
+          "avisar_noticias": {
+            "description": "\"Avisar sobre Notícias\" (push no app); ligado por padrão",
+            "title": "Avisar Noticias",
+            "type": "boolean"
+          },
           "idioma": {
             "title": "Idioma",
             "type": "string"
@@ -4393,7 +4493,8 @@
         "required": [
           "tema",
           "idioma",
-          "notificacoes_ativas"
+          "notificacoes_ativas",
+          "avisar_noticias"
         ],
         "title": "Preferencias",
         "type": "object"
@@ -9352,7 +9453,60 @@
             "bearer": []
           }
         ],
-        "summary": "Criar Notícia; o autor é o Usuário logado.",
+        "summary": "Criar Notícia; o autor é o Usuário logado. Cada Usuário ativo, menos o autor, ganha a Notificação e, se tiver \"Avisar sobre Notícias\", o push.",
+        "tags": [
+          "noticias"
+        ]
+      }
+    },
+    "/api/noticias/{id_noticia}": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_noticias_{id_noticia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_noticia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Noticia"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Uma Notícia, para o link da Notificação.",
         "tags": [
           "noticias"
         ]
@@ -9694,6 +9848,160 @@
         ]
       }
     },
+    "/api/push/token": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_push_token",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoRemoverToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remover o token do aparelho (logout). Só apaga o token do próprio Usuário; sem ele, nada muda.",
+        "tags": [
+          "push"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_push_token",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoRegistrarToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar ou renovar o token do aparelho; um token de outro Usuário muda de dono.",
+        "tags": [
+          "push"
+        ]
+      }
+    },
     "/api/usuario/estatisticas": {
       "get": {
         "description": "",
@@ -9934,6 +10242,9 @@
     },
     {
       "name": "preferencias"
+    },
+    {
+      "name": "push"
     },
     {
       "name": "integracoes"

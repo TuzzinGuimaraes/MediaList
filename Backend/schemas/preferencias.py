@@ -1,7 +1,7 @@
 """Modelos do contrato das rotas do blueprint `preferencias` (ADR 0011)."""
 from __future__ import annotations
 
-from pydantic import BaseModel, StrictBool, StrictStr
+from pydantic import BaseModel, Field, StrictBool, StrictStr
 
 
 class Preferencias(BaseModel):
@@ -10,6 +10,7 @@ class Preferencias(BaseModel):
     tema: str
     idioma: str
     notificacoes_ativas: bool
+    avisar_noticias: bool = Field(description='"Avisar sobre Notícias" (push no app); ligado por padrão')
 
 
 class RespostaPreferencias(BaseModel):
@@ -22,6 +23,7 @@ class CorpoPreferencias(BaseModel):
     tema: StrictStr | None = None
     idioma: StrictStr | None = None
     notificacoes_ativas: StrictBool | None = None
+    avisar_noticias: StrictBool | None = None
 
 
 class PreferenciasAtualizadas(BaseModel):

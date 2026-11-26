@@ -137,4 +137,31 @@ describe('Notícias', () => {
     expect(screen.getByText('Informe o título.')).toBeInTheDocument();
     expect(api.para('POST /noticias')).toHaveLength(0);
   });
+
+  it('uma Notícia pelo link, com volta para todas', async () => {
+    const { user, historico } = await abrirLogado('/noticias/NOT-7', {
+      rotas: {
+        'GET /noticias/NOT-7': { status: 200, corpo: noticia(7) },
+        'GET /noticias': { status: 200, corpo: pagina([noticia(7)]) },
+      },
+    });
+
+    expect(await screen.findByRole('article', { name: 'Notícia 7' })).toHaveTextContent('Conteúdo 7');
+    await user.click(screen.getByRole('link', { name: 'Todas as Notícias' }));
+
+    expect(historico.location.pathname).toBe('/noticias');
+  });
+
+  it('Notícia que não existe mostra o erro da API', async () => {
+    await abrirLogado('/noticias/NOT-9', {
+      rotas: {
+        'GET /noticias/NOT-9': {
+          status: 404,
+          corpo: { erro: 'Notícia não encontrada', codigo: 'nao_encontrado' },
+        },
+      },
+    });
+
+    expect(await screen.findByText('Notícia não encontrada')).toBeInTheDocument();
+  });
 });
