@@ -1,12 +1,16 @@
 """Resultado da integração (Q132): o que uma prévia, um confirmar, uma sincronização da Steam ou o
 Vincular deixam para o Usuário. É o único dono do formato: monta, soma, corta a amostra, tira um
-item e guarda.
+item e guarda. Também é dono do formato da prévia guardada (`Previa`), que guarda Não encontrados
+do mesmo jeito e de onde o Vincular os tira pela mesma regra.
 
 Um resultado tem novos, atualizados, os Não encontrados (cada um o item inteiro, para o Vincular
 aplicá-lo depois) e o total deles; na Steam, também os `pendentes`. A resposta HTTP leva a amostra
 de `AMOSTRA` e o total; o que fica guardado (`integracoes.ultimo_resultado`) leva todos, até
 `MAXIMO_ITENS`, para que qualquer um possa ser vinculado. Resultado antigo, guardado só com a
 amostra, continua valendo: o total vem guardado ao lado e não é recalculado pela lista.
+
+A prévia guardada (`importacao_previas.conteudo`) tem os `itens` que mudam algo (o confirmar os
+aplica) e os `nao_encontrados`, sem total nem amostra.
 """
 from __future__ import annotations
 
@@ -37,12 +41,12 @@ class Resultado:
         return self._formato(MAXIMO_ITENS)
 
     def sem_o_item(self, origem_id: str, tipo: str) -> Resultado:
-        """O resultado sem esse item nos Não encontrados, com o total ajustado."""
-        restantes = tirar(self.nao_encontrados, origem_id, tipo)
-        tirados = len(self.nao_encontrados) - len(restantes)
-        if not tirados:
+        """O resultado sem esse item nos Não encontrados, com o total ajustado (ele mesmo, se não estava)."""
+        restantes = _tirar(self.nao_encontrados, origem_id, tipo)
+        if restantes is None:
             return self
-        return replace(self, nao_encontrados=tuple(restantes),
+        tirados = len(self.nao_encontrados) - len(restantes)
+        return replace(self, nao_encontrados=restantes,
                        total_nao_encontrados=max(self.total_nao_encontrados - tirados, 0))
 
     def _formato(self, quantos: int) -> dict[str, Any]:
@@ -80,18 +84,51 @@ def de_guardado(guardado: dict[str, Any]) -> Resultado:
     """O resultado lido do banco (inverso de `Resultado.guardado`; aceita o antigo, só com a amostra)."""
     nao_encontrados = tuple(guardado.get('nao_encontrados') or ())
     total = guardado.get('total_nao_encontrados')
+    pendentes = guardado.get('pendentes')
     return Resultado(
         novos=int(guardado.get('novos') or 0),
         atualizados=int(guardado.get('atualizados') or 0),
         nao_encontrados=nao_encontrados,
         total_nao_encontrados=len(nao_encontrados) if total is None else int(total),
-        pendentes=guardado.get('pendentes'),
+        pendentes=None if pendentes is None else int(pendentes),
     )
 
 
-def tirar(nao_encontrados: Iterable[dict[str, Any]], origem_id: str, tipo: str) -> list[dict[str, Any]]:
-    """Os Não encontrados sem esse item (por `origem_id` e Tipo). A prévia guarda só a lista."""
-    return [n for n in nao_encontrados if (n.get('origem_id'), n.get('tipo')) != (origem_id, tipo)]
+@dataclass(frozen=True)
+class Previa:
+    """A prévia guardada: os itens que o confirmar aplica e os Não encontrados (já como ficam guardados)."""
+
+    itens: tuple[dict[str, Any], ...]
+    nao_encontrados: tuple[dict[str, Any], ...]
+
+    def guardada(self) -> dict[str, Any]:
+        """O que fica em `importacao_previas.conteudo`."""
+        return {'itens': list(self.itens), 'nao_encontrados': list(self.nao_encontrados)}
+
+    def itens_de_origem(self) -> list[ItemDeOrigem]:
+        return [item_de_json(i) for i in self.itens]
+
+    def sem_o_item(self, origem_id: str, tipo: str) -> Previa:
+        """A prévia sem esse item nos Não encontrados (ela mesma, se não estava)."""
+        restantes = _tirar(self.nao_encontrados, origem_id, tipo)
+        return self if restantes is None else replace(self, nao_encontrados=restantes)
+
+
+def previa(*, itens: Iterable[ItemDeOrigem], nao_encontrados: Iterable[ItemDeOrigem]) -> Previa:
+    """A prévia a guardar: os itens como vêm (com a obra a importar) e os Não encontrados sem a obra."""
+    return Previa(tuple(item_para_json(i) for i in itens), tuple(nao_encontrado(i) for i in nao_encontrados))
+
+
+def previa_de_guardada(conteudo: dict[str, Any]) -> Previa:
+    """A prévia lida do banco (inverso de `Previa.guardada`)."""
+    return Previa(tuple(conteudo.get('itens') or ()), tuple(conteudo.get('nao_encontrados') or ()))
+
+
+def _tirar(nao_encontrados: tuple[dict[str, Any], ...], origem_id: str,
+           tipo: str) -> tuple[dict[str, Any], ...] | None:
+    """Os Não encontrados sem esse item (por `origem_id` e Tipo); None se ele não estava."""
+    restantes = tuple(n for n in nao_encontrados if (n.get('origem_id'), n.get('tipo')) != (origem_id, tipo))
+    return None if len(restantes) == len(nao_encontrados) else restantes
 
 
 def nao_encontrado(item: ItemDeOrigem) -> dict[str, Any]:

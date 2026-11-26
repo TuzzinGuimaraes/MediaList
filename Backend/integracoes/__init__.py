@@ -20,7 +20,7 @@ Peças reaproveitáveis:
 - `servico.previa_de_itens(id_usuario, nome, itens)`: prévia de itens já lidos (o XML do MAL).
 - `servico.aplicar_casados(id_usuario, casados, nao_encontrados)`: grava sem prévia (Steam, Vincular).
 - `catalogo.IMPORTADORES`: (fonte, Tipo) -> gravação da obra sob demanda (some `rawg`).
-- `casamento.casar(plataforma, itens, fonte)`: a Mídia de cada item, a fonte da plataforma
+- `casamento.casar(plataforma, itens, busca)`: a Mídia de cada item, a busca da plataforma
   primeiro e o vínculo de um Usuário (Vincular) como reserva; a prévia, o confirmar e a
-  sincronização da Steam passam por ele, cada um com a sua fonte.
+  sincronização da Steam passam por ele, cada um com a sua busca.
 """

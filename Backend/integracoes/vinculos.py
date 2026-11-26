@@ -3,25 +3,23 @@
 O vínculo é global (`vinculos_origem`, migração 0009): vale na hora para todo Usuário com o mesmo
 item na mesma plataforma, e guarda autor e data para o admin desfazer. A chave inclui o Tipo
 (no MAL, anime 1 e mangá 1 são obras diferentes). O vínculo é reserva: só vale para o item que
-a fonte não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
+a busca da plataforma não casa. Na Steam o casamento também vai para `steam_appids`, mas só onde ele estava
 vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfazer deixa ali o
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
 
-Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`, a ordem do
-casamento no `integracoes.casamento` e o formato do resultado guardado, no `integracoes.resultado`.
+Só SQL de `vinculos_origem` e a troca do `catalogo` dos itens; as regras ficam no
+`servico.vincular`, a ordem do casamento no `integracoes.casamento`, o resultado e as prévias
+guardados no `integracoes.repositorio` (formato do `integracoes.resultado`).
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
 
-from psycopg.types.json import Jsonb
-
 import banco
 from integracoes import steam_appids
 from integracoes.plataforma import ItemDeOrigem, RefCatalogo, uuid_valido
-from integracoes.resultado import Resultado
 from integracoes.steam import link_da_loja
 
 #: Tipos de Mídia a que cada plataforma pode vincular (Q116).
@@ -45,7 +43,7 @@ def link(plataforma: str, tipo: str, origem_id: str) -> str | None:
 def aplicar(plataforma: str, itens: list[ItemDeOrigem], db=banco) -> list[ItemDeOrigem]:
     """Os itens, com `catalogo` na Mídia do vínculo quando há um.
 
-    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a fonte não casou.
+    O vínculo é reserva: quem chama (`integracoes.casamento`) só passa os itens que a busca da plataforma não casou.
     """
     if not itens:
         return itens
@@ -90,7 +88,7 @@ def nao_encontrados(id_usuario: str, plataforma: str, origem_id: str) -> list[di
 
 
 class JaNoCatalogo(Exception):
-    """A appid da Steam já casou com outra Mídia (pela fonte): o vínculo não a troca."""
+    """A appid da Steam já casou com outra Mídia (pela busca): o vínculo não a troca."""
 
     def __init__(self, id_midia: str):
         super().__init__(id_midia)
@@ -120,35 +118,6 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
         if casada != id_midia:
             raise JaNoCatalogo(casada)
     return vinculo
-
-
-def ultimo_resultado_travado(db, id_usuario: str, plataforma: str) -> dict[str, Any] | None:
-    """O último resultado guardado da conta, travado até o fim da transação `db`."""
-    conta = db.consultar_um(
-        'SELECT ultimo_resultado FROM integracoes WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-    return (conta or {}).get('ultimo_resultado')
-
-
-def trocar_ultimo_resultado(db, id_usuario: str, plataforma: str, resultado: Resultado) -> None:
-    """Regrava o último resultado (sem mexer na hora da sincronização)."""
-    db.executar(
-        'UPDATE integracoes SET ultimo_resultado = %s WHERE id_usuario = %s AND plataforma = %s',
-        (Jsonb(resultado.guardado()), id_usuario, plataforma),
-    )
-
-
-def previas_travadas(db, id_usuario: str, plataforma: str) -> list[dict[str, Any]]:
-    """As prévias do Usuário na plataforma (`id_previa`, `conteudo`), travadas até o fim da transação."""
-    return db.consultar(
-        'SELECT id_previa, conteudo FROM importacao_previas WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-
-
-def trocar_conteudo_da_previa(db, id_previa: str, conteudo: dict[str, Any]) -> None:
-    db.executar('UPDATE importacao_previas SET conteudo = %s WHERE id_previa = %s', (Jsonb(conteudo), id_previa))
 
 
 def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:

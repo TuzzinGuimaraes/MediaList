@@ -15,7 +15,7 @@ from integracoes.anilist import AniList
 from integracoes.plataforma import Conta, ItemDeOrigem, PerfilPrivado, RefCatalogo
 
 from .test_integracoes_anilist import SessaoFalsa, _colecao, _entrada, _erro, _media
-from .test_repositorios_pg import TEST_DATABASE_URL, _usuario, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL, _usuario
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para as Integrações'

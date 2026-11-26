@@ -1,5 +1,8 @@
+import os
 import pathlib
+import random
 import sys
+import uuid
 
 import pytest
 from flask_jwt_extended import create_access_token
@@ -9,7 +12,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 import banco
 from app import app as flask_app
 
-from .helpers import FakeAcessoRepository, FakeRefreshTokenRepository
+from .fontes_falsas import CHAVE_RAWG, CHAVE_STEAM, SessaoGet, rotas_steam
+from .helpers import FakeAcessoRepository, FakeRefreshTokenRepository, criar_usuario
+
+TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
 
 
 def _sem_banco_real():
@@ -93,3 +99,79 @@ def auth_headers(make_token):
 def admin_headers(make_token):
     token = make_token('USR-ADMIN-0001')
     return {'Authorization': f'Bearer {token}'}
+
+
+
+# ============================================
+# PostgreSQL de teste (TEST_DATABASE_URL); cada módulo pula sem ela
+# ============================================
+
+@pytest.fixture
+def pg(monkeypatch):
+    """O `banco` no PostgreSQL de teste; as Mídias e os Usuários anotados aqui são apagados no fim."""
+    banco.fechar()
+    monkeypatch.setattr(banco, 'database_url', lambda: TEST_DATABASE_URL)
+    criados = {'midias': [], 'usuarios': []}
+    yield criados
+    if criados['midias']:
+        banco.executar('DELETE FROM midias WHERE id_midia = ANY(%s::uuid[])', (criados['midias'],))
+    if criados['usuarios']:
+        banco.executar('DELETE FROM usuarios WHERE id_usuario = ANY(%s::uuid[])', (criados['usuarios'],))
+    banco.fechar()
+
+
+@pytest.fixture
+def usuario(pg, make_token):
+    """(id, headers) de um Usuário novo no PostgreSQL de teste."""
+    id_usuario = criar_usuario(pg)
+    return id_usuario, {'Authorization': f'Bearer {make_token(id_usuario)}'}
+
+
+@pytest.fixture
+def limpar(pg):
+    """appids e slugs do teste: apagados no fim (inclusive as Mídias importadas)."""
+    usados = {'appids': [], 'slugs': []}
+    yield usados
+    banco.executar('DELETE FROM steam_appids WHERE appid = ANY(%s)', (usados['appids'],))
+    banco.executar(
+        'DELETE FROM midias WHERE id_midia IN '
+        '(SELECT id_midia FROM jogos WHERE rawg_slug = ANY(%s) OR steam_appid = ANY(%s))',
+        (usados['slugs'], usados['appids']),
+    )
+
+
+@pytest.fixture
+def jogo(limpar):
+    """Cria (appid, slug, nome) únicos para o teste."""
+    def novo(nome='Jogo'):
+        appid = random.randint(10**8, 2 * 10**9)
+        slug = f'int-steam-{uuid.uuid4().hex[:12]}'
+        limpar['appids'].append(appid)
+        limpar['slugs'].append(slug)
+        return appid, slug, f'{nome} {slug}'
+
+    return novo
+
+
+@pytest.fixture
+def fontes(monkeypatch):
+    """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja, cabecas=heads_do_cdn)` instala a Steam, o RAWG e a loja da
+    Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`). A loja padrão não tem
+    nenhuma appid (`success: false`)."""
+    from integracoes import servico, sincronizacao_steam
+    from integracoes.loja_steam import LojaSteam
+    from integracoes.rawg import Rawg
+    from integracoes.steam import Steam
+
+    def instalar(jogos, rawg=None, loja=None, cabecas=None, **steam):
+        monkeypatch.setitem(
+            servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
+        )
+        sessao_rawg = SessaoGet(rawg or {})
+        sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}},
+                                     cabecas)
+        monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))
+        monkeypatch.setattr(sincronizacao_steam, 'LojaSteam', lambda **kw: LojaSteam(sessao=sessao_rawg.loja, **kw))
+        return sessao_rawg
+
+    return instalar

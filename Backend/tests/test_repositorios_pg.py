@@ -15,34 +15,13 @@ from decorators import nivel_de_acesso
 from repositories import Catalogo, ItensLista
 from routes.usuario import ESTATISTICAS_POR_TIPO
 
+from .helpers import criar_usuario as _usuario  # noqa: F401 (outros testes importam daqui)
+
 TEST_DATABASE_URL = os.getenv('TEST_DATABASE_URL')
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para os repositórios'
 )
-
-
-@pytest.fixture
-def pg(monkeypatch):
-    banco.fechar()
-    monkeypatch.setattr(banco, 'database_url', lambda: TEST_DATABASE_URL)
-    criados = {'midias': [], 'usuarios': []}
-    yield criados
-    if criados['midias']:
-        banco.executar('DELETE FROM midias WHERE id_midia = ANY(%s::uuid[])', (criados['midias'],))
-    if criados['usuarios']:
-        banco.executar('DELETE FROM usuarios WHERE id_usuario = ANY(%s::uuid[])', (criados['usuarios'],))
-    banco.fechar()
-
-
-def _usuario(pg, nivel='usuario'):
-    id_usuario = banco.consultar_um(
-        "INSERT INTO usuarios (nome_completo, email, senha_hash, nivel_acesso) VALUES ('PG', %s, 'x', %s) "
-        "RETURNING id_usuario",
-        (f'pg-{uuid.uuid4().hex}@exemplo.test', nivel),
-    )['id_usuario']
-    pg['usuarios'].append(id_usuario)
-    return id_usuario
 
 
 def _midia(pg, tipo, **dados):

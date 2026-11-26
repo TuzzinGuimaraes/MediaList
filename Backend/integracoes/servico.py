@@ -1,18 +1,17 @@
 """Casos de uso das Integrações, sem HTTP: listar, conectar, desconectar, prévia e confirmar.
 
-A prévia lê a origem, localiza cada item no Catálogo e conta o que `aplicar` faria
-(novos, atualizados, Não encontrados), sem gravar nada; guarda os itens que mudam por 1 h.
+A prévia lê a origem, casa cada item e conta o que `aplicar` faria (novos, atualizados, Não
+encontrados), sem gravar nada na Lista; guarda por 1 h os itens que mudam e os Não encontrados.
 Confirmar importa as obras que faltam no Catálogo (commits próprios: o upsert da Importação
 é idempotente) e, numa transação só, consome a prévia, recalcula `aplicar` com a Lista de
 agora, grava pela `ListaPessoal` (a mesma validação da rota da Lista) e registra o resultado.
 Falha no meio desfaz tudo e a prévia continua valendo; dois confirmar da mesma prévia
 aplicam uma vez só (o DELETE da prévia trava a linha até o commit).
 
-Cada Não encontrado guarda o item inteiro (sem a obra da fonte), para o Vincular aplicá-lo
-depois; a resposta só mostra título, link, `origem_id` e Tipo. Vincular (`vincular`) grava o
-vínculo global e aplica o Item como a sincronização. Qual Mídia cada item casa (a fonte primeiro,
-o vínculo como reserva) é do `integracoes.casamento`; aqui a fonte é o Catálogo mais a obra que a
-plataforma traz para importar.
+Vincular (`vincular`) grava o vínculo global, tira o item dos Não encontrados do Usuário e aplica
+o Item como a sincronização. Qual Mídia cada item casa (a busca da plataforma primeiro, o vínculo
+como reserva) é do `integracoes.casamento`; o formato do resultado e da prévia guardados, do
+`integracoes.resultado`.
 
 Os erros sobem como `integracoes.plataforma.ErroDaIntegracao` (a rota traduz) ou
 `SemConta`/`PlataformaDesconhecida` e os do Vincular (`MidiaInexistente`, `ForaDosNaoEncontrados`,
@@ -37,8 +36,6 @@ from integracoes.plataforma import (
     Plataforma,
     PlataformaIndisponivel,
     conferir_tamanho,
-    item_de_json,
-    item_para_json,
     link_seguro,
 )
 from integracoes.resultado import Resultado, nao_encontrado
@@ -77,7 +74,7 @@ class TipoIncompativel(ValueError):
 
 
 class VinculoEmConflito(Exception):
-    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a fonte já casou o jogo."""
+    """O item já está vinculado a outra Mídia (`id_midia`); `no_catalogo`: a busca da Steam já casou o jogo."""
 
     def __init__(self, id_midia: str, *, no_catalogo: bool = False):
         super().__init__(id_midia)
@@ -110,11 +107,8 @@ def plataforma_disponivel(nome: str) -> Plataforma:
     return escolhida
 
 
-def _resposta_guardada(guardado: dict[str, Any] | None) -> dict[str, Any] | None:
-    return resultado.de_guardado(guardado).resposta() if guardado else None
-
-
 def _visao(escolhida: Plataforma, conta: dict[str, Any] | None) -> dict[str, Any]:
+    guardado = (conta or {}).get('ultimo_resultado')
     return {
         'plataforma': escolhida.nome,
         'rotulo': escolhida.rotulo,
@@ -123,7 +117,7 @@ def _visao(escolhida: Plataforma, conta: dict[str, Any] | None) -> dict[str, Any
         'identificador': (conta or {}).get('identificador'),
         'nome_exibicao': (conta or {}).get('nome_exibicao'),
         'ultima_sincronizacao': (conta or {}).get('ultima_sincronizacao'),
-        'ultimo_resultado': _resposta_guardada((conta or {}).get('ultimo_resultado')),
+        'ultimo_resultado': resultado.de_guardado(guardado).resposta() if guardado else None,
     }
 
 
@@ -172,15 +166,12 @@ def previa_de_itens(id_usuario: str, nome: str, itens: list[ItemDeOrigem]) -> di
     """Conta e guarda a prévia de itens já lidos (a da plataforma ou a de um arquivo, como o XML do MAL)."""
     conferir_tamanho(len(itens))
     casados = casamento.casar(nome, itens, casamento.pelo_catalogo)
-    planos = _planejar(id_usuario, casados.em_ordem, date.today())
-    nao_encontrados = [nao_encontrado(i) for i in casados.nao_encontrados]
+    planos = _planejar(id_usuario, casados.todos, date.today())
+    nova = resultado.previa(itens=[_sem_dados_se_localizado(item, midia) for item, midia, *_ in planos],
+                            nao_encontrados=casados.nao_encontrados)
+    guardada = repositorio.criar_previa(id_usuario, nome, nova)
     novos = sum(1 for *_, m in planos if m.tipo == NOVO)
-    conteudo = {
-        'itens': [item_para_json(_sem_dados_se_localizado(item, midia)) for item, midia, *_ in planos],
-        'nao_encontrados': nao_encontrados,
-    }
-    guardada = repositorio.criar_previa(id_usuario, nome, conteudo)
-    contagens = resultado.criar(novos=novos, atualizados=len(planos) - novos, nao_encontrados=nao_encontrados)
+    contagens = resultado.criar(novos=novos, atualizados=len(planos) - novos, nao_encontrados=nova.nao_encontrados)
     return {'id_previa': guardada['id_previa'], 'expira_em': guardada['expira_em'], **contagens.resposta()}
 
 
@@ -235,23 +226,25 @@ def aplicar_casados(id_usuario: str, casados: Iterable[casamento.Casado],
 
 def confirmar(id_usuario: str, id_previa: str, *, hoje: date | None = None) -> dict[str, Any] | None:
     """Aplica a prévia (uma vez só) e registra o resultado na conta. None se ela não vale mais."""
-    guardada = repositorio.ler_previa(id_usuario, id_previa)
-    if guardada is None:
+    lida = repositorio.ler_previa(id_usuario, id_previa)
+    if lida is None:
         return None
-    itens = [item_de_json(d) for d in guardada['conteudo']['itens']]
+    plataforma_da_previa, guardada = lida
     # Importa as obras que faltam antes da transação; a que falha cai no vínculo da plataforma.
-    casados = casamento.casar(guardada['plataforma'], itens, casamento.importando(prazo.conferir))
+    casados = casamento.casar(plataforma_da_previa, guardada.itens_de_origem(),
+                              casamento.importando(prazo.conferir))
 
     with banco.transacao() as t:
         consumida = repositorio.consumir_previa(id_usuario, id_previa, t)
         if consumida is None:
             return None  # outro confirmar levou a prévia enquanto as obras eram importadas
+        plataforma_da_previa, guardada = consumida
         anteriores = resultado.criar(nao_encontrados=[
-            {**n, 'link': link_seguro(n.get('link'))} for n in consumida['conteudo'].get('nao_encontrados') or []
+            {**n, 'link': link_seguro(n.get('link'))} for n in guardada.nao_encontrados
         ])
-        final = resultado.somar(anteriores, _gravar(t, id_usuario, casados.em_ordem, casados.nao_encontrados,
+        final = resultado.somar(anteriores, _gravar(t, id_usuario, casados.todos, casados.nao_encontrados,
                                                     hoje or date.today()))
-        repositorio.registrar_resultado(id_usuario, consumida['plataforma'], final, t)
+        repositorio.registrar_resultado(id_usuario, plataforma_da_previa, final, t)
     return final.resposta()
 
 
@@ -263,7 +256,7 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
 
     Só aceita o que apareceu como Não encontrado para ele (no último resultado ou numa prévia
     válida), na Mídia do mesmo Tipo. O item sai dos Não encontrados dele. Vínculo já existente
-    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a fonte já casou a
+    na mesma Mídia só aplica o Item; em outra, VinculoEmConflito. Na Steam, se a busca já casou a
     appid com outra Mídia desde o Não encontrado (checado e gravado na mesma transação), também
     VinculoEmConflito, com `no_catalogo`: o jogo entra na próxima sincronização.
     """
@@ -291,22 +284,19 @@ def vincular(id_usuario: str, nome: str, origem_id: str, id_midia: str, *, hoje:
         raise VinculoEmConflito(erro.id_midia, no_catalogo=True) from None
 
     vinculado = casamento.na_midia([resultado.item_do_nao_encontrado(entrada, destino['id_midia'])])
-    aplicado = aplicar_casados(id_usuario, vinculado.em_ordem, vinculado.nao_encontrados, hoje=hoje)
+    aplicado = aplicar_casados(id_usuario, vinculado.todos, vinculado.nao_encontrados, hoje=hoje)
     return {'id_vinculo': vinculo['id'], 'id_midia': destino['id_midia'],
             'novos': aplicado.novos, 'atualizados': aplicado.atualizados}
 
 
 def _tirar_dos_nao_encontrados(db, id_usuario: str, nome: str, origem_id: str, tipo: str) -> None:
     """O item sai do último resultado e das prévias do Usuário (o confirmar não o repete)."""
-    guardado = vinculos.ultimo_resultado_travado(db, id_usuario, nome)
-    if guardado:
-        antes = resultado.de_guardado(guardado)
+    antes = repositorio.ultimo_resultado_travado(db, id_usuario, nome)
+    if antes is not None:
         depois = antes.sem_o_item(origem_id, tipo)
         if depois is not antes:
-            vinculos.trocar_ultimo_resultado(db, id_usuario, nome, depois)
-    for previa in vinculos.previas_travadas(db, id_usuario, nome):
-        conteudo = previa['conteudo']
-        antes = conteudo.get('nao_encontrados') or []
-        restantes = resultado.tirar(antes, origem_id, tipo)
-        if len(restantes) != len(antes):
-            vinculos.trocar_conteudo_da_previa(db, previa['id_previa'], {**conteudo, 'nao_encontrados': restantes})
+            repositorio.trocar_ultimo_resultado(db, id_usuario, nome, depois)
+    for id_previa, previa_antes in repositorio.previas_travadas(db, id_usuario, nome):
+        previa_depois = previa_antes.sem_o_item(origem_id, tipo)
+        if previa_depois is not previa_antes:
+            repositorio.trocar_previa(db, id_previa, previa_depois)

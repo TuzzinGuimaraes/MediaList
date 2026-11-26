@@ -10,7 +10,7 @@ import pytest
 
 from repositories import Catalogo
 
-from .test_repositorios_pg import TEST_DATABASE_URL, pg  # noqa: F401 (fixture)
+from .test_repositorios_pg import TEST_DATABASE_URL
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL, reason='TEST_DATABASE_URL ausente: sem PostgreSQL para as facetas'
