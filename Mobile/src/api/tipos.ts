@@ -55,6 +55,9 @@ export type RespostaGeneros = Esquemas['RespostaGeneros'];
 /** GET /midias/facetas: os valores dos filtros e a Temporada mais antiga do Catálogo. */
 export type RespostaFacetas = Esquemas['RespostaFacetas'];
 export type OrigemNota = NonNullable<Midia['origem_nota']>;
+/** GET /midias/calendario: os episódios exibidos e os próximos da janela, pelo instante. */
+export type RespostaCalendario = Esquemas['RespostaCalendario'];
+export type EpisodioDoCalendario = Esquemas['EpisodioDoCalendario'];
 
 /**
  * Valores de `ordem` de GET /midias que o app usa. `popularidade` fica de fora: é a mesma
