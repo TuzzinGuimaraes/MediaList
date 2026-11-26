@@ -18,6 +18,8 @@ export const chaves = {
     carrossel: (recorte: Recorte, ordem: OrdemCarrossel, genero: string | null) =>
       ['midias', 'carrossel', recorte, ordem, genero] as const,
     explorar: (consulta: object) => ['midias', 'explorar', consulta] as const,
+    /** A Temporada inteira, numa ordem (todas as páginas de GET /midias). */
+    temporada: (estacao: string, ano: number, ordem: string) => ['midias', 'temporada', estacao, ano, ordem] as const,
     /** O detalhe; prefixo também da atividade. */
     detalhe: (id: string) => ['midias', id] as const,
     atividade: (id: string) => ['midias', id, 'atividade'] as const,

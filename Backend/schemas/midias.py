@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
 from contrato import (
     ConsultaPaginada,
@@ -35,11 +35,16 @@ StatusJogo = Literal['lancado', 'em_desenvolvimento', 'cancelado', 'remasterizad
 Demografia = Literal['shounen', 'shoujo', 'seinen', 'josei', 'kodomomuke']
 ModoJogo = Literal['single', 'multi', 'ambos']
 OrigemNota = Literal['AniList', 'RAWG']
+#: Estação da Temporada de um anime (a divisão do AniList: inverno é janeiro–março).
+Estacao = Literal['inverno', 'primavera', 'verao', 'outono']
+#: O `format` do AniList; nulo é desconhecido.
+FormatoAnime = Literal['TV', 'TV_SHORT', 'ONA', 'MOVIE', 'SPECIAL', 'OVA', 'MUSIC']
 #: Ano de lançamento nos filtros de `GET /midias`: o intervalo de uma data.
 Ano = Annotated[int, Field(ge=1, le=9999)]
 #: Ordens de `GET /midias` (`ORDENS` em `repositories/catalogo.py`).
 OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
+    'popularidade_fonte', 'estreia', 'nota_fonte',
 ]
 
 
@@ -67,7 +72,23 @@ class ConsultaMidias(ConsultaPaginada):
     ano_max: Annotated[Ano | None, VazioComoAusente] = Field(
         default=None, description='Ano de lançamento máximo, inclusive; sem data de lançamento, a Mídia fica fora',
     )
-    ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = 'nota_media'
+    temporada_estacao: Annotated[Estacao | None, VazioComoAusente] = Field(
+        default=None, description='Com `temporada_ano`, só os animes da Temporada',
+    )
+    temporada_ano: Annotated[Ano | None, VazioComoAusente] = Field(
+        default=None, description='Com `temporada_estacao`, só os animes da Temporada',
+    )
+    ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = Field(
+        default='nota_media', description='`popularidade_fonte`: os mais esperados (Popularidade da fonte); '
+        '`estreia`: data de lançamento crescente, sem data no fim; '
+        '`nota_fonte`: Nota da fonte decrescente, sem nota no fim',
+    )
+
+    @model_validator(mode='after')
+    def _temporada_inteira(self):
+        if (self.temporada_estacao is None) != (self.temporada_ano is None):
+            raise ValueError('temporada_estacao e temporada_ano vão juntos')
+        return self
 
 
 class ConsultaTrending(BaseModel):
@@ -210,6 +231,12 @@ class Midia(CamposDaMidia):
     # anime
     duracao_episodio: int | None = Field(description='Minutos')
     classificacao_etaria: str | None
+    temporada_estacao: Estacao | None = Field(description='Temporada do anime, com `temporada_ano`; nula sem ela')
+    temporada_ano: int | None
+    temporada_estimada: bool | None = Field(
+        description='A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes',
+    )
+    formato: FormatoAnime | None = Field(description='O formato do AniList; nulo é desconhecido')
     # mangá
     artista: str | None = Field(validation_alias='manga_artista')
     publicadora_original: str | None
@@ -255,12 +282,20 @@ class RespostaPopulares(BaseModel):
     midias: list[MidiaPopular]
 
 
+class Temporada(BaseModel):
+    estacao: Estacao
+    ano: int
+
+
 class RespostaFacetas(BaseModel):
-    """Valores distintos e ordenados dos filtros de texto de `GET /midias`. Vazio quando o
-    filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios só nos animes)."""
+    """Valores distintos e ordenados dos filtros de `GET /midias`. Vazio (ou nulo) quando o
+    filtro não se aplica ao Tipo (plataformas só nos jogos; estúdios e Temporada só nos animes)."""
 
     plataformas: list[str]
     estudios: list[str]
+    temporada_mais_antiga: Temporada | None = Field(
+        description='A Temporada mais antiga dos animes do Catálogo (a primeira do seletor); nula sem nenhuma',
+    )
 
 
 class ContagemPorRotulo(BaseModel):

@@ -8,6 +8,7 @@ seu Tipo (a parte específica: episódios, capítulos, plataformas).
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, NamedTuple
 
 #: Colunas de `midias` que a API grava. A Nota média não está aqui: é calculada
@@ -34,6 +35,8 @@ class TipoMidia(NamedTuple):
     # Outras chaves de fonte (UNIQUE, anuláveis), só da Importação: a Mídia sem a chave da fonte
     # é achada por elas (o jogo criado pela loja da Steam e depois achado no RAWG).
     chaves_extras: tuple[str, ...] = ()
+    # Colunas da filha que só a Importação grava, como a Nota da fonte na base.
+    colunas_fonte: tuple[str, ...] = ()
 
     @property
     def colunas_gravaveis(self) -> tuple[str, ...]:
@@ -50,6 +53,7 @@ TIPOS: dict[str, TipoMidia] = {
                  'trailer_url', 'estudio', 'fonte_original'),
         coluna_status='status_anime', coluna_total='numero_episodios', unidade_progresso='episodios',
         aplicavel_a=['anime', 'manga'],
+        colunas_fonte=('temporada_estacao', 'temporada_ano', 'temporada_estimada', 'formato', 'popularidade_fonte'),
     ),
     'manga': TipoMidia(
         tabela='mangas', apelido='ma', chave_fonte='anilist_id', origem_nota='AniList',
@@ -69,19 +73,28 @@ TIPOS: dict[str, TipoMidia] = {
 }
 
 
-def valor_de_coluna(coluna: str, valor: Any) -> Any:
-    """O valor como a coluna o guarda.
-
-    `plataformas` é text[] no banco; a API a recebe como texto separado por
-    vírgula ('PC, Switch') e a Importação como lista.
-    """
-    if coluna != 'plataformas':
-        return valor
+def _plataformas(valor: Any) -> list[str]:
+    """`plataformas` é text[] no banco; a API a recebe como texto separado por vírgula ('PC, Switch')
+    e a Importação como lista."""
     if valor is None:
         return []
     if isinstance(valor, str):
         valor = valor.split(',')
     return [str(item).strip() for item in valor if str(item).strip()]
+
+
+#: Colunas cujo valor muda antes de gravar: coluna → conversão. `temporada_estimada` não é nula:
+#: sem valor, a Temporada não é estimada.
+CONVERSOES: dict[str, Callable[[Any], Any]] = {
+    'plataformas': _plataformas,
+    'temporada_estimada': bool,
+}
+
+
+def valor_de_coluna(coluna: str, valor: Any) -> Any:
+    """O valor como a coluna o guarda (`CONVERSOES`; as outras, como veio)."""
+    converter = CONVERSOES.get(coluna)
+    return converter(valor) if converter else valor
 
 
 def joins_das_filhas(midia: str = 'm') -> str:

@@ -13,6 +13,11 @@ def test_plataformas_viram_lista(valor, esperado):
     assert valor_de_coluna('plataformas', valor) == esperado
 
 
+@pytest.mark.parametrize('valor, esperado', [(None, False), (True, True), (False, False)])
+def test_temporada_estimada_nunca_e_nula(valor, esperado):
+    assert valor_de_coluna('temporada_estimada', valor) is esperado
+
+
 def test_outras_colunas_passam_como_vieram():
     assert valor_de_coluna('autor', 'Urasawa, Naoki') == 'Urasawa, Naoki'
 

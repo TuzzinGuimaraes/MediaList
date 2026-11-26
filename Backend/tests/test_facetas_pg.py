@@ -64,7 +64,9 @@ def test_facetas_dos_animes_trazem_os_estudios_e_nenhuma_plataforma(client, pg, 
 def test_facetas_dos_mangas_vem_vazias(client, pg, prefixo):  # noqa: F811
     _midia(pg, 'anime', estudio=f'{prefixo} Bones')
 
-    assert client.get('/api/midias/facetas?tipo=manga').get_json() == {'plataformas': [], 'estudios': []}
+    assert client.get('/api/midias/facetas?tipo=manga').get_json() == {
+        'plataformas': [], 'estudios': [], 'temporada_mais_antiga': None,
+    }
 
 
 def test_facetas_sem_tipo_trazem_as_duas(client, pg, prefixo):  # noqa: F811

@@ -44,14 +44,23 @@ export function CartaoCatalogo({ midia, item, posicaoTop, largura = LARGURA_A }:
   );
 }
 
-/** Top 10: o numeral grande ao lado do card A. */
+/**
+ * Top 10: o numeral grande ao lado do card A. Os cards se alinham pelo topo (o título de 1 ou 2
+ * linhas muda só o pé), e o numeral fica numa caixa da altura do pôster, com o pé dele no pé do
+ * pôster: nada passa da altura do card, e o trilho da fileira não rola na vertical.
+ */
 export function CartaoTop({ posicao, ...props }: Contexto & { midia: MidiaDoCartao; posicao: number }) {
+  const largura = LARGURA_A - 16;
   return (
-    <div className="flex shrink-0 items-end">
-      <span aria-hidden className="-mr-4 select-none text-[120px] font-bold leading-[0.85] tracking-[-0.06em] text-texto-suave/40">
+    <div className="flex shrink-0 items-start">
+      <span
+        aria-hidden
+        className="-mr-4 flex select-none items-end overflow-hidden text-[120px] font-bold leading-[0.75] tracking-[-0.06em] text-texto-suave/40"
+        style={{ height: (largura * 3) / 2 }}
+      >
         {posicao}
       </span>
-      <CartaoCatalogo {...props} largura={LARGURA_A - 16} />
+      <CartaoCatalogo {...props} largura={largura} />
     </div>
   );
 }

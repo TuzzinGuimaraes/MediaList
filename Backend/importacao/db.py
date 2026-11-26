@@ -7,7 +7,8 @@ pela chave da fonte (`anilist_id` ou `rawg_slug`), os gêneros e as ligações. 
 ao banco por Mídia; a Importação usa uma conexão por página (`t`), e Mídia que falha não leva
 as outras junto. Reimportar atualiza a Mídia no lugar;
 Avaliações e Itens não são tocados. A Nota média não é gravada: é calculada na
-leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`).
+leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`) e, nos animes, as
+colunas da fonte do Tipo (`colunas_fonte`: Temporada, formato, Popularidade da fonte).
 
 O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo.
 """
@@ -41,7 +42,9 @@ def _midia(config: TipoMidia) -> str:
     (`atualizada` falso: a fonte do Tipo manda). Extra que já é de outra Mídia não é gravada
     (duas entradas do RAWG na mesma appid: cada uma tem a sua Mídia, a appid fica com a primeira).
     """
-    tabela, chave, colunas, extras = config.tabela, config.chave_fonte, config.colunas, config.chaves_extras
+    tabela, chave, extras = config.tabela, config.chave_fonte, config.chaves_extras
+    colunas = (*config.colunas, *config.colunas_fonte)
+    gravaveis = (*config.colunas_gravaveis, *config.colunas_fonte)
     achar = ' OR '.join([
         f'{chave} = %({chave})s',
         *(f'({e} = %({e})s AND ({chave} IS NULL OR %({chave})s::text IS NULL))' for e in extras),
@@ -72,8 +75,8 @@ def _midia(config: TipoMidia) -> str:
             WHERE nome_tipo = %(tipo)s AND NOT EXISTS (SELECT 1 FROM existente)
             RETURNING id_midia
         ), filha_criada AS (
-            INSERT INTO {tabela} (id_midia, {', '.join((*config.colunas_gravaveis, *extras))})
-            SELECT id_midia, {', '.join([_marcadores(config.colunas_gravaveis), *map(livre, extras)])} FROM criada
+            INSERT INTO {tabela} (id_midia, {', '.join((*gravaveis, *extras))})
+            SELECT id_midia, {', '.join([_marcadores(gravaveis), *map(livre, extras)])} FROM criada
             RETURNING id_midia
         ), resultado AS (
             SELECT id_midia, true AS ja_existia, atualizar AS atualizada FROM existente
@@ -134,7 +137,7 @@ def _salvar(tipo: str, dados: dict, generos: list[str], t: Transacao | None = No
         raise ValueError(f'{tipo} sem {" nem ".join(chaves)}: não há como reimportar sem duplicar')
 
     valores = {c: valor_de_coluna(c, dados.get(c))
-               for c in (*_BASE, *config.colunas_gravaveis, *config.chaves_extras)}
+               for c in (*_BASE, *config.colunas_gravaveis, *config.colunas_fonte, *config.chaves_extras)}
     if t is None:
         with autocommit() as t:
             return _gravar_ou_de_novo(t, tipo, valores, generos)

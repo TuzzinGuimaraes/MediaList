@@ -3,7 +3,8 @@ import { useRef } from 'react';
 
 import { useSessao } from '../auth/SessaoContext';
 import { diaIso } from '@dominio/datas';
-import { aplicarProgresso, type DadosItem, totalDoItem } from '@dominio/itemLista';
+import type { TipoMidia } from '@dominio/estadoConsumo';
+import { aplicarProgresso, type DadosItem, rotuloInicial, totalDoItem } from '@dominio/itemLista';
 import { useCache } from './consulta';
 import type { ItemLista, RespostaLista } from './tipos';
 
@@ -63,6 +64,20 @@ export function useSalvarItem() {
       idLista
         ? cliente.requisitar(`/lista/${encodeURIComponent(idLista)}`, { metodo: 'PUT', corpo: dados })
         : cliente.requisitar('/lista/adicionar', { metodo: 'POST', corpo: { id_midia: idMidia, ...dados } }),
+    onSuccess: (_r, { idMidia }) => invalidar(idMidia),
+  });
+}
+
+/** Põe a Mídia na Lista pessoal em Planejado num toque (POST /lista/adicionar só com o Estado). */
+export function useAdicionarComoPlanejado() {
+  const { cliente } = useSessao();
+  const invalidar = useInvalidarLista();
+  return useMutation({
+    mutationFn: ({ idMidia, tipo }: { idMidia: string; tipo: TipoMidia }) =>
+      cliente.requisitar('/lista/adicionar', {
+        metodo: 'POST',
+        corpo: { id_midia: idMidia, status_consumo: rotuloInicial(tipo) },
+      }),
     onSuccess: (_r, { idMidia }) => invalidar(idMidia),
   });
 }
