@@ -8,20 +8,18 @@ vazio (negativo ou ignorado); casado com outra Mídia, o Vincular recusa. Desfaz
 negativo, então a próxima sincronização volta a tratar o jogo como Não encontrado. Desfazer
 nunca apaga Itens.
 
-Só SQL e a troca do `catalogo` dos itens; as regras ficam no `servico.vincular`, a ordem do
-casamento no `integracoes.casamento` e o formato do resultado guardado, no `integracoes.resultado`.
+Só SQL de `vinculos_origem` e a troca do `catalogo` dos itens; as regras ficam no
+`servico.vincular`, a ordem do casamento no `integracoes.casamento`, o resultado e as prévias
+guardados no `integracoes.repositorio` (formato do `integracoes.resultado`).
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
 
-from psycopg.types.json import Jsonb
-
 import banco
 from integracoes import steam_appids
 from integracoes.plataforma import ItemDeOrigem, RefCatalogo, uuid_valido
-from integracoes.resultado import Resultado
 from integracoes.steam import link_da_loja
 
 #: Tipos de Mídia a que cada plataforma pode vincular (Q116).
@@ -120,35 +118,6 @@ def gravar(db, plataforma: str, origem_id: str, tipo: str, id_midia: str, id_usu
         if casada != id_midia:
             raise JaNoCatalogo(casada)
     return vinculo
-
-
-def ultimo_resultado_travado(db, id_usuario: str, plataforma: str) -> dict[str, Any] | None:
-    """O último resultado guardado da conta, travado até o fim da transação `db`."""
-    conta = db.consultar_um(
-        'SELECT ultimo_resultado FROM integracoes WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-    return (conta or {}).get('ultimo_resultado')
-
-
-def trocar_ultimo_resultado(db, id_usuario: str, plataforma: str, resultado: Resultado) -> None:
-    """Regrava o último resultado (sem mexer na hora da sincronização)."""
-    db.executar(
-        'UPDATE integracoes SET ultimo_resultado = %s WHERE id_usuario = %s AND plataforma = %s',
-        (Jsonb(resultado.guardado()), id_usuario, plataforma),
-    )
-
-
-def previas_travadas(db, id_usuario: str, plataforma: str) -> list[dict[str, Any]]:
-    """As prévias do Usuário na plataforma (`id_previa`, `conteudo`), travadas até o fim da transação."""
-    return db.consultar(
-        'SELECT id_previa, conteudo FROM importacao_previas WHERE id_usuario = %s AND plataforma = %s FOR UPDATE',
-        (id_usuario, plataforma),
-    )
-
-
-def trocar_conteudo_da_previa(db, id_previa: str, conteudo: dict[str, Any]) -> None:
-    db.executar('UPDATE importacao_previas SET conteudo = %s WHERE id_previa = %s', (Jsonb(conteudo), id_previa))
 
 
 def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:

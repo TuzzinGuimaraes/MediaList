@@ -103,3 +103,44 @@ def test_pendentes_da_steam_vao_na_resposta_e_no_guardado():
     assert com_pendentes.resposta()['pendentes'] == 4
     assert resultado.de_guardado(com_pendentes.guardado()) == com_pendentes
     assert 'pendentes' not in resultado.criar().resposta()
+
+
+
+# ============================================
+# Prévia guardada (`importacao_previas.conteudo`)
+# ============================================
+
+def _item(n, tipo='anime'):
+    from integracoes.plataforma import ItemDeOrigem, RefCatalogo
+    return ItemDeOrigem(str(n), tipo, f'Obra {n}', None, status='concluido',
+                        catalogo=RefCatalogo('anilist', str(n), {'obra': n}))
+
+
+def test_previa_guarda_os_itens_e_os_nao_encontrados_sem_a_obra_e_volta_igual():
+    guardada = resultado.previa(itens=[_item(1)], nao_encontrados=[_item(2)]).guardada()
+
+    assert [i['origem_id'] for i in guardada['itens']] == ['1']
+    assert guardada['itens'][0]['catalogo']['dados'] == {'obra': 1}
+    assert [(n['origem_id'], n['catalogo']) for n in guardada['nao_encontrados']] == [('2', None)]
+    lida = resultado.previa_de_guardada(guardada)
+    assert lida.guardada() == guardada
+    assert [i.origem_id for i in lida.itens_de_origem()] == ['1']
+
+
+def test_tirar_o_item_da_previa_e_do_resultado_pela_mesma_regra():
+    nao_encontrados = [_item(1), _item(1, 'manga'), _item(2)]
+    previa = resultado.previa(itens=[_item(3)], nao_encontrados=nao_encontrados)
+    ultimo = resultado.criar(nao_encontrados=[resultado.nao_encontrado(i) for i in nao_encontrados])
+
+    sem = previa.sem_o_item('1', 'anime')
+
+    assert sem.guardada()['nao_encontrados'] == ultimo.sem_o_item('1', 'anime').guardado()['nao_encontrados']
+    assert [i['origem_id'] for i in sem.guardada()['itens']] == ['3']
+    assert previa.sem_o_item('9', 'anime') is previa
+
+
+def test_previa_antiga_sem_nao_encontrados_vale():
+    lida = resultado.previa_de_guardada({'itens': []})
+
+    assert lida.nao_encontrados == ()
+    assert lida.sem_o_item('1', 'anime') is lida
