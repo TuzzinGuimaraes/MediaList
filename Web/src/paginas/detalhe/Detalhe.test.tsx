@@ -31,6 +31,8 @@ function midia(parcial: Partial<MidiaDetalhe> = {}): MidiaDetalhe {
     total_usuarios: 40,
     total_concluidos: 12,
     numero_episodios: 28,
+    episodios_lancados: null,
+    proximo_episodio_em: null,
     duracao_episodio: 24,
     estudio: 'Madhouse',
     status_anime: 'em_exibicao',

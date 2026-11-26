@@ -29,6 +29,7 @@ def linha_de_midia(**campos):
         'titulo_portugues': None, 'sinopse': None, 'data_lancamento': date(2023, 9, 29),
         'nota_media': None, 'total_avaliacoes': None, 'nota_fonte': Decimal('8.9'), 'origem_nota': 'AniList',
         'poster_url': None, 'banner_url': None, 'status_anime': 'finalizado', 'numero_episodios': 28,
+        'episodios_lancados': 28, 'proximo_episodio_em': None,
         'duracao_episodio': 24, 'classificacao_etaria': None, 'anime_trailer_url': None, 'estudio': 'Madhouse',
         'fonte_original': None, 'anime_anilist_id': 154587, 'status_manga': None, 'numero_capitulos': None,
         'numero_volumes': None, 'autor': None, 'manga_artista': None, 'publicadora_original': None,

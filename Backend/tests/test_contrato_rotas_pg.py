@@ -24,9 +24,11 @@ pytestmark = pytest.mark.skipif(
 CHAVES_MIDIA = {
     'anime_anilist_id', 'anime_trailer_url', 'autor', 'banner_url', 'classificacao', 'classificacao_etaria',
     'codigo_anime', 'codigo_midia', 'data_lancamento', 'demografia', 'desenvolvedor', 'duracao_episodio',
-    'estudio', 'fonte_original', 'generos', 'generos_lista', 'id_anime', 'id_midia', 'jogo_trailer_url',
+    'episodios_lancados', 'estudio', 'fonte_original', 'generos', 'generos_lista', 'id_anime', 'id_midia',
+    'jogo_trailer_url',
     'manga_anilist_id', 'manga_artista', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
+    'proximo_episodio_em',
     'publicadora', 'publicadora_original', 'rawg_slug', 'revista', 'sinopse', 'status_anime', 'status_catalogo',
     'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues',
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
@@ -34,7 +36,8 @@ CHAVES_MIDIA = {
 #: Chaves de cada Item de GET /lista (modelo `ItemLista`). Explícitas, e não
 #: `CHAVES_MIDIA | ...`: a parte da Mídia no Item é `CamposDaMidia`, sem os campos só do detalhe.
 CHAVES_ITEM = {
-    'autor', 'banner_url', 'data_lancamento', 'demografia', 'desenvolvedor', 'estudio', 'fonte_original',
+    'autor', 'banner_url', 'data_lancamento', 'demografia', 'desenvolvedor', 'episodios_lancados', 'estudio',
+    'fonte_original', 'proximo_episodio_em',
     'generos', 'generos_lista', 'id_midia', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url',
     'publicadora', 'sinopse', 'status_anime', 'status_catalogo', 'status_jogo', 'status_manga', 'tipo',
@@ -339,3 +342,32 @@ def test_notas_da_midia_por_faixa_e_a_avaliacao_de_quem_esta_logado(client, cata
     sem_avaliacao = client.get(f'/api/midias/{anime}/notas', headers=entrar(_usuario(pg))).get_json()
     assert sem_avaliacao['minha_avaliacao'] is None
     assert sem_avaliacao['distribuicao'] == sem_login['distribuicao']
+
+
+
+def test_episodios_lancados_do_anime_na_midia_e_no_item(client, catalogo, pg, entrar):  # noqa: F811
+    """O que o job de episódios grava sai na Mídia de anime e no Item da Lista (ticket 48)."""
+    anime = catalogo['anime']
+    banco.executar(
+        "UPDATE animes SET status_anime = 'em_exibicao', episodios_lancados = 7, "
+        "proximo_episodio_em = '2026-11-27 15:00+00' WHERE id_midia = %s", (anime,),
+    )
+    eu = entrar(_usuario(pg))
+    for id_midia in (anime, catalogo['manga']):
+        corpo = {'id_midia': id_midia, 'status_consumo': 'planejado'}
+        assert client.post('/api/lista/adicionar', headers=eu, json=corpo).status_code == 201
+
+    detalhe = client.get(f'/api/midias/{anime}').get_json()
+    assert (detalhe['episodios_lancados'], detalhe['proximo_episodio_em']) == (7, '2026-11-27T15:00:00Z')
+    listagem = client.get(f'/api/midias?tipo=anime&busca={detalhe["titulo_original"]}').get_json()
+    assert [(m['episodios_lancados'], m['proximo_episodio_em']) for m in listagem['itens']] == [
+        (7, '2026-11-27T15:00:00Z'),
+    ]
+    itens = {i['tipo']: i for i in client.get('/api/lista', headers=eu).get_json()['lista']}
+    assert (itens['anime']['episodios_lancados'], itens['anime']['proximo_episodio_em']) == (
+        7, '2026-11-27T15:00:00Z',
+    )
+    # Nulos nos outros Tipos.
+    assert (itens['manga']['episodios_lancados'], itens['manga']['proximo_episodio_em']) == (None, None)
+    manga = client.get(f'/api/midias/{catalogo["manga"]}').get_json()
+    assert (manga['episodios_lancados'], manga['proximo_episodio_em']) == (None, None)
