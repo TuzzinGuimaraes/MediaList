@@ -171,12 +171,20 @@ def importar_animes(
         return anilist.buscar_pagina(session, rate_limiter, 'ANIME', pagina, sort, filtros)
 
     try:
-        cursor.importar_anilist('anime', stats, buscar, importar_pagina, paginas, paginas_atualizacao, do_inicio)
+        falha_principal = None
+        try:
+            cursor.importar_anilist('anime', stats, buscar, importar_pagina, paginas, paginas_atualizacao, do_inicio)
+        except Exception as exc:
+            # As Temporadas não dependem das passadas com cursor; a falha volta depois delas.
+            logger.exception('Falha nas passadas do crescimento e da atualização de animes; seguem as Temporadas.')
+            falha_principal = exc
         for estacao, ano in anilist.temporadas_a_frente(hoje(), temporadas):
             cursor.importar(
                 'anime', 'AniList', stats, anilist.temporada(buscar, estacao, ano), importar_pagina,
                 lambda pagina: None,
             )
+        if falha_principal is not None:
+            raise falha_principal
 
         logger.info('Importação de animes concluída. %s', stats.to_dict())
         if stats.falhas:
