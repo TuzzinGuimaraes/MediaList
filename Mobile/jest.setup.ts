@@ -69,3 +69,61 @@ jest.mock('expo-updates', () => {
 beforeEach(() => {
   require('expo-updates').__limpar();
 });
+
+
+
+// expo-notifications de mentira: por padrão a permissão está negada e o sistema não deixa pedir
+// de novo, então as telas não registram token. O teste dos avisos muda com `__definir` e dispara
+// o toque no aviso com `__tocar` (app aberto) ou com `ultimaResposta` (app aberto pelo aviso).
+jest.mock('expo-notifications', () => {
+  const negada = { status: 'denied', granted: false, canAskAgain: false, expires: 'never' };
+  const padrao = {
+    permissao: negada as typeof negada,
+    respostaAoPedido: negada as typeof negada,
+    token: 'ExponentPushToken[aparelho-da-ana]',
+    ultimaResposta: null as unknown,
+  };
+  let mockEstado = { ...padrao };
+  let mockOuvintesDeToque: ((resposta: unknown) => void)[] = [];
+  const assinar = (lista: () => ((r: unknown) => void)[], definir: (l: ((r: unknown) => void)[]) => void) =>
+    (ouvinte: (r: unknown) => void) => {
+      definir([...lista(), ouvinte]);
+      return { remove: () => definir(lista().filter((o) => o !== ouvinte)) };
+    };
+  return {
+    AndroidImportance: { DEFAULT: 3, HIGH: 4 },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => mockEstado.permissao),
+    requestPermissionsAsync: jest.fn(async () => {
+      mockEstado.permissao = mockEstado.respostaAoPedido;
+      return mockEstado.respostaAoPedido;
+    }),
+    getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: mockEstado.token })),
+    addPushTokenListener: jest.fn(() => ({ remove: () => {} })),
+    addNotificationResponseReceivedListener: jest.fn(
+      assinar(
+        () => mockOuvintesDeToque,
+        (l) => {
+          mockOuvintesDeToque = l;
+        },
+      ),
+    ),
+    getLastNotificationResponse: jest.fn(() => mockEstado.ultimaResposta),
+    clearLastNotificationResponse: jest.fn(() => {
+      mockEstado.ultimaResposta = null;
+    }),
+    __definir: (estado: Partial<typeof padrao>) => {
+      mockEstado = { ...padrao, ...estado };
+    },
+    __tocar: (resposta: unknown) => mockOuvintesDeToque.forEach((o) => o(resposta)),
+    __limpar: () => {
+      mockEstado = { ...padrao };
+      mockOuvintesDeToque = [];
+    },
+  };
+});
+
+beforeEach(() => {
+  require('expo-notifications').__limpar();
+});
