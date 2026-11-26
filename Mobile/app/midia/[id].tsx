@@ -9,6 +9,7 @@ import { useItemDaLista } from '@/api/lista';
 import { useDistribuicao, useMidia } from '@/api/midias';
 import { useSessao } from '@/auth/SessaoContext';
 import { Barra } from '@/components/Barras';
+import { DestaqueDoEpisodio } from '@/components/AssistirAgora';
 import { Botao } from '@/components/Botao';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, FalhaParcial } from '@/components/EstadoTela';
@@ -112,6 +113,7 @@ function DetalheMidia() {
               onPress={() => setEditor(true)}
             />
           ) : null}
+          <DestaqueDoEpisodio item={item.data} />
 
           <View className="flex-row flex-wrap items-center gap-x-5 gap-y-1">
             {notasDaObra.map((n) => (

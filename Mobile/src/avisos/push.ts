@@ -78,7 +78,8 @@ export async function removerAparelho(cliente: Cliente): Promise<void> {
 
 /**
  * Para onde o toque no aviso leva, ou null se o aviso não é conhecido: a Notícia (`noticia`), o
- * anime (`episodio`) ou as Notificações (`episodios`, 3 ou mais de uma vez).
+ * anime (`episodio`) ou o Início (`episodios`, 3 ou mais de uma vez), onde está a faixa
+ * "Para assistir agora" com os atrasados.
  */
 export function destinoDoAviso(resposta: Notifications.NotificationResponse | null): Href | null {
   const data = resposta?.notification.request.content.data;
@@ -93,7 +94,7 @@ export function destinoDoAviso(resposta: Notifications.NotificationResponse | nu
       return idMidia ? rotaDaMidia(idMidia) : null;
     }
     case 'episodios':
-      return { pathname: '/noticias', params: { aba: 'notificacoes' } };
+      return '/';
     default:
       return null;
   }

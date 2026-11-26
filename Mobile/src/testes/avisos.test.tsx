@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import type { Noticia } from '../api/tipos';
 import { paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
+import { rotasDoInicio } from './inicio';
 import { anime } from './midias';
 import { aba, abrirLogado, entrarPeloLogin } from './sessao';
 
@@ -203,35 +204,18 @@ describe('toque no aviso', () => {
     expect(app.getPathname()).toBe(`/midia/${frieren.id_midia}`);
   });
 
-  it('o aviso de vários episódios abre as Notificações', async () => {
+  it('o aviso de vários episódios abre o Início, onde estão os atrasados', async () => {
     simularFetch({
-      'GET /notificacoes': {
-        status: 200,
-        corpo: {
-          notificacoes: [
-            {
-              origem: 'atualizacao',
-              id_noticia: null,
-              id_midia: 'MID-ANM-2026-20053',
-              tipo_midia: 'anime',
-              tipo: 'episodio',
-              titulo: 'Episódio 12 de Sousou no Frieren foi ao ar',
-              midia_nome: 'Sousou no Frieren',
-              mensagem: 'Novidade em anime da sua lista: Sousou no Frieren',
-              lida: false,
-              data_criacao: '2026-11-06T10:00:00Z',
-            },
-          ],
-        },
-      },
+      ...rotasDoInicio(),
+      'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
       'GET /noticias?por_pagina=20': { status: 200, corpo: vazio },
     } as never);
-    await abrirLogado('/');
-    await aba('Início');
+    const app = await abrirLogado('/noticias');
+    await aba('Notícias');
 
     await act(async () => avisos.__tocar(resposta({ tipo: 'episodios' })));
 
-    expect(await screen.findByText('Episódio 12 de Sousou no Frieren foi ao ar')).toBeOnTheScreen();
-    expect(screen.getByRole('tab', { name: 'Notificações' })).toBeSelected();
+    await waitFor(() => expect(app.getPathname()).toBe('/'));
+    expect(await screen.findByTestId('inicio')).toBeOnTheScreen();
   });
 });

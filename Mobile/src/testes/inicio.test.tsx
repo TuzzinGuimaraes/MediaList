@@ -1,9 +1,9 @@
 import { userEvent } from '@testing-library/react-native';
-import { fireEvent, screen, within } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 import { AccessibilityInfo } from 'react-native';
 
 import { POR_CARROSSEL } from '../api/inicio';
-import type { Midia } from '../api/tipos';
+import type { ItemLista, Midia } from '../api/tipos';
 import { pagina, rotasSemAvaliacoes } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
@@ -419,4 +419,128 @@ describe('Início: destaques e carrosséis', () => {
     expect(api.para(rotaCarrossel('jogo', 'nota_media', 'Ação'))).toHaveLength(1);
     expect(screen.queryByLabelText('Mais concluídos')).not.toBeOnTheScreen();
   });
+});
+
+
+describe('Início: Para assistir agora', () => {
+  const HORA = 3_600_000;
+  const daqui = (ms: number) => new Date(Date.now() + ms).toISOString();
+  // Animes em exibição: Dandadan 3 atrás, Kaiju 1 atrás, Apothecary e Sakamoto em dia.
+  const emExibicao = (id: string, titulo: string, dados: Partial<Midia> = {}) =>
+    anime({ id_midia: id, titulo_portugues: titulo, status_anime: 'em_exibicao', numero_episodios: 12, ...dados });
+  const dandadan = emExibicao('MID-ANM-1', 'Dandadan', { episodios_lancados: 7 });
+  const kaiju = emExibicao('MID-ANM-2', 'Kaiju No. 8', { episodios_lancados: 5 });
+  const apothecary = emExibicao('MID-ANM-3', 'Apothecary Diaries', {
+    episodios_lancados: 4,
+    proximo_episodio_em: daqui(5 * 24 * HORA + HORA),
+  });
+  const sakamoto = emExibicao('MID-ANM-4', 'Sakamoto Days', {
+    episodios_lancados: 6,
+    proximo_episodio_em: daqui(2 * 24 * HORA + HORA),
+  });
+  const semJob = emExibicao('MID-ANM-5', 'Anime Sem Job', { episodios_lancados: null });
+
+  function comLista() {
+    return {
+      ...catalogo(),
+      'GET /lista': {
+        status: 200,
+        corpo: {
+          lista: [
+            item(apothecary, { status_consumo: 'assistindo', progresso_atual: 4, progresso_total: 12 }),
+            item(dandadan, { status_consumo: 'assistindo', progresso_atual: 4, progresso_total: 12 }),
+            item(frieren, { status_consumo: 'assistindo', progresso_atual: 10, progresso_total: 28 }),
+            item(kaiju, { status_consumo: 'assistindo', progresso_atual: 4, progresso_total: 12 }),
+            item(sakamoto, { status_consumo: 'assistindo', progresso_atual: 6, progresso_total: 12 }),
+            item(semJob, { status_consumo: 'assistindo', progresso_atual: 1, progresso_total: 12 }),
+            item(fma, { status_consumo: 'planejado', progresso_atual: 0 }),
+            item(jojo, { status_consumo: 'lendo', progresso_atual: 3 }),
+          ],
+        },
+      },
+    };
+  }
+
+  const faixa = () => within(screen.getByLabelText('Para assistir agora'));
+  const cartoes = () => faixa().getAllByRole('link').map((c) => c.props.accessibilityLabel);
+
+  it('mostra os atrasados, do mais atrasado ao menos, depois os em dia pelo próximo episódio', async () => {
+    simularFetch(comLista());
+
+    await abrirLogado();
+
+    await screen.findByLabelText('Para assistir agora');
+    expect(cartoes()).toEqual([
+      'Dandadan, Anime',
+      'Kaiju No. 8, Anime',
+      'Sakamoto Days, Anime',
+      'Apothecary Diaries, Anime',
+    ]);
+    expect(faixa().getByText('3 episódios atrás')).toBeOnTheScreen();
+    expect(faixa().getByText('1 episódio atrás')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 2 d')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 5 d')).toBeOnTheScreen();
+    // A faixa vem acima da Continuar, que não muda.
+    const secoes = screen.getAllByRole('header').map((h) => h.props.children);
+    expect(secoes.slice(0, 2)).toEqual(['Para assistir agora', 'Continuar']);
+    expect(nomesDe('Continuar')).toContain('Sousou no Frieren, Anime');
+  });
+
+  it('+1 no cartão grava o Progresso; ao alcançar o último lançado, o cartão sai dos atrasados', async () => {
+    let lista: ItemLista[] = comLista()['GET /lista'].corpo.lista;
+    const api = simularFetch({
+      ...comLista(),
+      'GET /lista': () => ({ status: 200, corpo: { lista } }),
+      'PUT /lista/LST-MID-ANM-2/progresso': (req) => {
+        lista = lista.map((i) => (i.id_lista === 'LST-MID-ANM-2' ? { ...i, ...req.corpo } : i));
+        return { status: 200, corpo: { mensagem: 'Progresso atualizado com sucesso!' } };
+      },
+    });
+
+    await abrirLogado();
+    await screen.findByLabelText('Para assistir agora');
+    expect(faixa().queryByRole('button', { name: 'Mais um em Sakamoto Days' })).not.toBeOnTheScreen();
+
+    await fireEvent.press(faixa().getByRole('button', { name: 'Mais um em Kaiju No. 8' }));
+
+    await waitFor(() => expect(faixa().queryByText('1 episódio atrás')).not.toBeOnTheScreen());
+    expect(api.para('PUT /lista/LST-MID-ANM-2/progresso')[0].corpo).toEqual({ progresso_atual: 5 });
+    await waitFor(() => expect(api.para('GET /lista').length).toBeGreaterThan(1));
+    expect(cartoes()).toEqual([
+      'Dandadan, Anime',
+      'Sakamoto Days, Anime',
+      'Apothecary Diaries, Anime',
+      'Kaiju No. 8, Anime',
+    ]);
+    expect(faixa().queryByRole('button', { name: 'Mais um em Kaiju No. 8' })).not.toBeOnTheScreen();
+  });
+
+  it('some sem anime em exibição sendo assistido', async () => {
+    simularFetch({
+      ...catalogo(),
+      'GET /lista': {
+        status: 200,
+        corpo: { lista: [item(frieren, { status_consumo: 'assistindo', progresso_atual: 10, progresso_total: 28 })] },
+      },
+    });
+
+    await abrirLogado();
+
+    await screen.findByLabelText('Continuar');
+    expect(screen.queryByLabelText('Para assistir agora')).not.toBeOnTheScreen();
+  });
+
+  it('não aparece no catálogo Jogos', async () => {
+    simularFetch(comLista());
+    await abrirLogado();
+    await screen.findByLabelText('Para assistir agora');
+
+    await trocarRecorte('Jogos');
+
+    expect(await pilulaRecorte('Jogos')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Para assistir agora')).not.toBeOnTheScreen();
+  });
+
+  const nomesDe = (rotulo: string) =>
+    within(screen.getByLabelText(rotulo)).getAllByRole('link').map((c) => c.props.accessibilityLabel);
 });
