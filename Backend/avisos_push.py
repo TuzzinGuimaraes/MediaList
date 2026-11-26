@@ -130,7 +130,8 @@ def enviar(mensagens: list[dict], cliente, *, prazo: float = PRAZO_SEGUNDOS) -> 
         for mensagem, ticket in zip(lote, tickets, strict=True):
             if not isinstance(ticket, dict) or ticket.get('status') == 'ok':
                 continue
-            codigo = (ticket.get('details') or {}).get('error') or 'desconhecido'
+            detalhes = ticket.get('details')
+            codigo = (detalhes.get('error') if isinstance(detalhes, dict) else None) or 'desconhecido'
             if codigo == 'DeviceNotRegistered':
                 invalidos.append(mensagem['to'])
             else:

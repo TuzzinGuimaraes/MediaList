@@ -323,3 +323,7 @@ da obra. Diferente da **Notícia**, que é geral.
 A entrega de uma **Atualização de mídia** ou de uma **Notícia** a um Usuário, com a marca de
 lida ou não lida. A Atualização (ou a Notícia) é o fato; a Notificação é o fato chegando a
 alguém. A de Notícia vai a todo Usuário ativo, menos o autor.
+
+No app, a Notificação de Notícia também chega como **push**, para quem deixou ligado "Avisar
+sobre Notícias" (`avisar_noticias`). O antigo `notificacoes_ativas` das preferências não tem
+efeito.

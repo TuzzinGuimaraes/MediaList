@@ -35,6 +35,20 @@ def test_devolve_os_tokens_device_not_registered_de_todos_os_lotes():
     assert avisos_push.enviar(_mensagens(200), expo) == [_token(3), _token(150)]
 
 
+def test_ticket_com_details_fora_do_formato_nao_interrompe_o_lote():
+    """`details` que não é objeto conta como erro desconhecido; o token inválido do lado ainda sai."""
+
+    class ExpoEstranho(FakeExpo):
+        def post(self, url, json=None, headers=None, timeout=None):
+            resposta = super().post(url, json=json, headers=headers, timeout=timeout)
+            resposta._corpo['data'][0] = {'status': 'error', 'details': 'texto'}
+            return resposta
+
+    expo = ExpoEstranho(nao_registrados={_token(1)})
+
+    assert avisos_push.enviar(_mensagens(2), expo) == [_token(1)]
+
+
 def test_access_token_do_expo_vai_no_cabecalho_so_quando_configurado(monkeypatch):
     monkeypatch.delenv('EXPO_ACCESS_TOKEN', raising=False)
     sem = FakeExpo()
