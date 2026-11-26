@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 
 import type { Cliente } from '../api/cliente';
 import type { CorpoRegistrarToken, CorpoRemoverToken } from '../api/tipos';
+import { rotaDaMidia, rotaDaNoticia } from '../rotas';
 
 /** O canal que o Backend manda no payload (`channelId: 'default'`). */
 const CANAL = 'default';
@@ -85,11 +86,11 @@ export function destinoDoAviso(resposta: Notifications.NotificationResponse | nu
   switch (data?.tipo) {
     case 'noticia': {
       const idNoticia = id('id_noticia');
-      return idNoticia ? { pathname: '/noticia/[id]', params: { id: idNoticia } } : null;
+      return idNoticia ? rotaDaNoticia(idNoticia) : null;
     }
     case 'episodio': {
       const idMidia = id('id_midia');
-      return idMidia ? { pathname: '/midia/[id]', params: { id: idMidia } } : null;
+      return idMidia ? rotaDaMidia(idMidia) : null;
     }
     case 'episodios':
       return { pathname: '/noticias', params: { aba: 'notificacoes' } };

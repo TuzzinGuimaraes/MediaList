@@ -5,10 +5,12 @@ import { Switch, Text, View } from 'react-native';
 
 import { mensagemDeErro } from '../api/erros';
 import { usePreferencias, useSalvarPreferencias } from '../api/preferencias';
+import type { RespostaPreferencias } from '../api/tipos';
 import { useCores } from '../tema/TemaContext';
 import { FalhaParcial } from './EstadoTela';
 
-type Aviso = 'avisar_noticias' | 'avisar_episodios';
+/** Os push do app: as chaves `avisar_*` das Preferências do contrato. */
+type Aviso = Extract<keyof RespostaPreferencias['preferencias'], `avisar_${string}`>;
 
 const avisos: { chave: Aviso; titulo: string; explicacao: string }[] = [
   { chave: 'avisar_noticias', titulo: 'Avisar sobre Notícias', explicacao: 'Push no aparelho quando sair uma Notícia.' },

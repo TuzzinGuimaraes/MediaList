@@ -7,6 +7,7 @@ import { Botao } from '@/components/Botao';
 import { CartaoNoticia } from '@/components/CartaoNoticia';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { useAtualizar } from '@/components/useAtualizar';
+import { rotaDaMidia, rotaDaNoticia } from '@/rotas';
 import { formatarData } from '@dominio/datas';
 
 type SubAba = 'noticias' | 'notificacoes';
@@ -57,11 +58,7 @@ function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
     </>
   );
   // A de Notícia abre a Notícia; a de Atualização abre a Mídia.
-  const destino: Href | null = id_noticia
-    ? { pathname: '/noticia/[id]', params: { id: id_noticia } }
-    : id_midia
-      ? { pathname: '/midia/[id]', params: { id: id_midia } }
-      : null;
+  const destino: Href | null = id_noticia ? rotaDaNoticia(id_noticia) : id_midia ? rotaDaMidia(id_midia) : null;
   if (destino) {
     return (
       <Pressable
