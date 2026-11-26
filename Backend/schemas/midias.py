@@ -44,7 +44,7 @@ Ano = Annotated[int, Field(ge=1, le=9999)]
 #: Ordens de `GET /midias` (`ORDENS` em `repositories/catalogo.py`).
 OrdemCatalogo = Literal[
     'nota_media', 'data_lancamento', 'titulo', 'mais_adicionados', 'popularidade', 'mais_concluidos',
-    'popularidade_fonte',
+    'popularidade_fonte', 'estreia',
 ]
 
 
@@ -79,7 +79,8 @@ class ConsultaMidias(ConsultaPaginada):
         default=None, description='Com `temporada_estacao`, só os animes da Temporada',
     )
     ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = Field(
-        default='nota_media', description='`popularidade_fonte`: os mais esperados (Popularidade da fonte)',
+        default='nota_media', description='`popularidade_fonte`: os mais esperados (Popularidade da fonte); '
+        '`estreia`: data de lançamento crescente, sem data no fim',
     )
 
     @model_validator(mode='after')
