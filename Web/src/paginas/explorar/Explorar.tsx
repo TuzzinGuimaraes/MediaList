@@ -22,6 +22,7 @@ import { Paginacao } from '../../componentes/Paginacao';
 import { Selo } from '../../componentes/Selo';
 import { useTelaLarga } from '../../layout/telaLarga';
 import { useApi } from '../../sessao/SessaoContext';
+import { LinkTemporada } from '../temporada/Temporada';
 import { type BuscaExplorar, consultaDaBusca, FILTROS_DO_TIPO, filtrosAtivos, validarBuscaExplorar } from './busca';
 import { CampoAtrasado } from './CampoAtrasado';
 import { Filtros, type Mudar } from './Filtros';
@@ -140,6 +141,7 @@ export function Explorar() {
         className="lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:self-start lg:overflow-y-auto lg:pr-2"
       >
         <h1 className="mb-5 text-[28px] font-bold text-texto-forte">Explorar</h1>
+        {tipos.includes('anime') ? <LinkTemporada className="mb-5" /> : null}
         <div className="flex items-center gap-3">
           <label className="flex flex-1 items-center gap-2 rounded-md border border-borda bg-superficie-alta px-3 focus-within:border-marca-texto">
             <Icone nome="busca" tamanho={16} className="text-texto-suave" />
