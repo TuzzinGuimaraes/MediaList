@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { criarQueryClient, ligarFocoAoAppState } from '@/api/consulta';
 import { SessaoProvider } from '@/auth/SessaoContext';
+import { useRegistroDoAparelho, useToqueNoAviso } from '@/avisos/useAvisos';
 import { RecorteProvider } from '@/recorte/RecorteContext';
 import { useReduzirMovimento } from '@/tema/movimento';
 import { TemaProvider, useTema } from '@/tema/TemaContext';
@@ -58,8 +59,16 @@ function Navegacao() {
               animationDuration: 280,
             }}
           />
+          <Avisos />
         </RecorteProvider>
       </SessaoProvider>
     </ThemeProvider>
   );
+}
+
+/** Push das Notícias: registro do aparelho e toque no aviso. Depois do Stack, para navegar já montado. */
+function Avisos() {
+  useRegistroDoAparelho();
+  useToqueNoAviso();
+  return null;
 }
