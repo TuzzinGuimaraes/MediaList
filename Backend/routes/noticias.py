@@ -6,6 +6,10 @@ de Usuário apagado sai com 'Admin', o autor padrão de antes. Publicar uma Not�
 grava, na mesma transação, a Notificação de cada Usuário ativo menos o autor, e
 depois avisa por push os aparelhos de quem quer ser avisado (`avisos_push`), antes de
 responder: na Vercel o que roda depois da resposta pode ser congelado.
+
+Editar e excluir (Q130) são do admin, sobre qualquer Notícia. Editar troca o conteúdo e grava
+`data_edicao`, sem Notificação nem push; excluir apaga de vez, e as Notificações vão junto
+(cascade da migração 0012).
 """
 from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -19,6 +23,7 @@ from contrato import (
     CodigoErro,
     ConsultaPaginada,
     Erro,
+    Mensagem,
     Pagina,
     contrato,
     deslocamento,
@@ -32,7 +37,7 @@ noticias_bp = Blueprint('noticias', __name__)
 
 SELECT_NOTICIA = """
     SELECT n.id_noticia, n.titulo, n.conteudo, COALESCE(u.nome_completo, 'Admin') AS autor,
-           n.categoria, n.tags, n.imagem_url, n.data_publicacao
+           n.categoria, n.tags, n.imagem_url, n.data_publicacao, n.data_edicao
     FROM noticias n
     LEFT JOIN usuarios u ON u.id_usuario = n.id_autor
 """
@@ -64,6 +69,11 @@ def obter_noticia(id_noticia):
     return noticia
 
 
+def _campos_opcionais(json: CorpoNoticia):
+    """categoria, tags e imagem_url com os padrões de quando faltam."""
+    return json.categoria or 'geral', json.tags or [], json.imagem_url or None
+
+
 @noticias_bp.route('', methods=['POST'])
 @jwt_required()
 @admin_required
@@ -81,14 +91,7 @@ def criar_noticia(json: CorpoNoticia):
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id_noticia
             """,
-            (
-                json.titulo,
-                json.conteudo or '',
-                id_autor,
-                json.categoria or 'geral',
-                json.tags or [],
-                json.imagem_url or None,
-            ),
+            (json.titulo, json.conteudo or '', id_autor, *_campos_opcionais(json)),
         )
         t.executar(
             """
@@ -100,3 +103,40 @@ def criar_noticia(json: CorpoNoticia):
     # A Notícia já está gravada: o push tem prazo curto e nunca levanta.
     avisos_push.avisar_noticia(criada['id_noticia'], json.titulo, json.conteudo or '', id_autor)
     return {'mensagem': 'Notícia criada!', 'id_noticia': criada['id_noticia']}, 201
+
+
+@noticias_bp.route('/<string:id_noticia>', methods=['PUT'])
+@jwt_required()
+@admin_required
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA), tags=['noticias'], security=AUTENTICADO,
+)
+def editar_noticia(id_noticia, json: CorpoNoticia):
+    """Editar Notícia (só admin, qualquer uma): troca título, conteúdo, categoria, tags e imagem e grava
+    `data_edicao`. O autor fica; não gera Notificação nem push."""
+    editada = consultar_um(
+        """
+        UPDATE noticias
+        SET titulo = %s, conteudo = %s, categoria = %s, tags = %s, imagem_url = %s, data_edicao = now()
+        WHERE id_noticia = %s
+        RETURNING id_noticia
+        """,
+        (json.titulo, json.conteudo or '', *_campos_opcionais(json), id_noticia),
+    )
+    if not editada:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Notícia não encontrada')
+    return {'mensagem': 'Notícia atualizada!'}
+
+
+@noticias_bp.route('/<string:id_noticia>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA), tags=['noticias'], security=AUTENTICADO,
+)
+def excluir_noticia(id_noticia):
+    """Excluir Notícia (só admin, qualquer uma), de vez: as Notificações dela somem de todos."""
+    excluida = consultar_um('DELETE FROM noticias WHERE id_noticia = %s RETURNING id_noticia', (id_noticia,))
+    if not excluida:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, 'Notícia não encontrada')
+    return {'mensagem': 'Notícia excluída!'}

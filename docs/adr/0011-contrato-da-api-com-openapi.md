@@ -108,6 +108,12 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   pode congelar o que roda depois dela (ADR-0013); por isso tem prazo total de 8 s, timeout de
   3 s por requisição e lotes de 100. Falha só vai para o log, sem tokens, e não afeta a
   publicação; ticket `DeviceNotRegistered` apaga o token. `EXPO_ACCESS_TOKEN` é opcional.
+- **Editar e excluir Notícias (ticket 42 da revisão, Q130):** só admin, sobre qualquer Notícia.
+  `PUT /noticias/<id>` recebe o mesmo `CorpoNoticia` do POST, validado igual, troca título,
+  conteúdo, categoria, tags e imagem (o autor fica) e grava `data_edicao`; não gera Notificação
+  nem push. `DELETE /noticias/<id>` apaga de vez, e as Notificações dela somem de todos (cascade
+  da migração 0012). As duas respondem `Mensagem`, ou 404 `nao_encontrado`. `Noticia` ganha
+  `data_edicao` (instante da última edição; null se nunca foi editada), mudança aditiva.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no

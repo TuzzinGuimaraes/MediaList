@@ -17,10 +17,12 @@ class Noticia(BaseModel):
     tags: list[str]
     imagem_url: str | None
     data_publicacao: Instante
+    data_edicao: Instante | None = Field(description='Última edição; null se nunca foi editada')
 
 
 class CorpoNoticia(BaseModel):
-    """O autor é o Usuário logado; `autor` no corpo é ignorado."""
+    """Corpo de criar e de editar. O autor é o Usuário logado na criação e não muda na edição;
+    `autor` no corpo é ignorado."""
 
     titulo: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     conteudo: str | None = None

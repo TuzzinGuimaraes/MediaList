@@ -21,6 +21,7 @@ NOTICIA = {
     'tags': ['anime', 'estreia'],
     'imagem_url': None,
     'data_publicacao': datetime(2026, 11, 13, 10, 0, tzinfo=timezone.utc),
+    'data_edicao': None,
 }
 
 
