@@ -6,7 +6,9 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Noticia } from '../api/tipos';
+import { paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
+import { anime } from './midias';
 import { aba, abrirLogado, entrarPeloLogin } from './sessao';
 
 const avisos = Notifications as unknown as {
@@ -135,7 +137,7 @@ describe('permissão e token', () => {
       'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [], resumo: { total_midias: 0, concluidos: 0, em_andamento: 0, favoritos: 0 } } },
       'GET /lista': { status: 200, corpo: { lista: [] } },
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
-      'GET /preferencias': { status: 200, corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias: true } } },
+      'GET /preferencias': { status: 200, corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias: true, avisar_episodios: true } } },
     });
 
     await abrirLogado('/perfil');
@@ -179,5 +181,57 @@ describe('toque no aviso', () => {
     await act(async () => avisos.__tocar(resposta({ tipo: 'outro' })));
 
     expect(fetch.para('GET /noticias/NOT-0001')).toHaveLength(0);
+  });
+
+  it('o aviso de episódio abre o anime', async () => {
+    const frieren = anime();
+    simularFetch({
+      'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
+      'GET /noticias?por_pagina=20': { status: 200, corpo: vazio },
+      [`GET /midias/${frieren.id_midia}`]: { status: 200, corpo: frieren },
+      [`GET /midias/${frieren.id_midia}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+      [rotaAvaliacoes(frieren.id_midia)]: paginaAvaliacoes([]),
+      [rotaNotas(frieren.id_midia)]: respostaNotas(),
+      'GET /lista': { status: 200, corpo: { lista: [] } },
+    } as never);
+    const app = await abrirLogado('/');
+    await aba('Início');
+
+    await act(async () => avisos.__tocar(resposta({ tipo: 'episodio', id_midia: frieren.id_midia })));
+
+    expect(await screen.findByRole('header', { name: 'Sousou no Frieren' })).toBeOnTheScreen();
+    expect(app.getPathname()).toBe(`/midia/${frieren.id_midia}`);
+  });
+
+  it('o aviso de vários episódios abre as Notificações', async () => {
+    simularFetch({
+      'GET /notificacoes': {
+        status: 200,
+        corpo: {
+          notificacoes: [
+            {
+              origem: 'atualizacao',
+              id_noticia: null,
+              id_midia: 'MID-ANM-2026-20053',
+              tipo_midia: 'anime',
+              tipo: 'episodio',
+              titulo: 'Episódio 12 de Sousou no Frieren foi ao ar',
+              midia_nome: 'Sousou no Frieren',
+              mensagem: 'Novidade em anime da sua lista: Sousou no Frieren',
+              lida: false,
+              data_criacao: '2026-11-06T10:00:00Z',
+            },
+          ],
+        },
+      },
+      'GET /noticias?por_pagina=20': { status: 200, corpo: vazio },
+    } as never);
+    await abrirLogado('/');
+    await aba('Início');
+
+    await act(async () => avisos.__tocar(resposta({ tipo: 'episodios' })));
+
+    expect(await screen.findByText('Episódio 12 de Sousou no Frieren foi ao ar')).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: 'Notificações' })).toBeSelected();
   });
 });

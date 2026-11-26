@@ -1,5 +1,4 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { useMarcarTodasLidas, useNoticias, useNotificacoes } from '@/api/noticias';
@@ -38,7 +37,7 @@ function ListaNoticias() {
 
 function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
   const router = useRouter();
-  const { id_noticia } = notificacao;
+  const { id_noticia, id_midia } = notificacao;
   const classe = `flex-row gap-3 rounded-md p-4 ${notificacao.lida ? 'bg-superficie' : 'bg-superficie-alta'}`;
   const conteudo = (
     <>
@@ -57,13 +56,18 @@ function ItemNotificacao({ notificacao }: { notificacao: Notificacao }) {
       </View>
     </>
   );
-  // A de Notícia abre a Notícia; a de Atualização é só texto.
-  if (id_noticia) {
+  // A de Notícia abre a Notícia; a de Atualização abre a Mídia.
+  const destino: Href | null = id_noticia
+    ? { pathname: '/noticia/[id]', params: { id: id_noticia } }
+    : id_midia
+      ? { pathname: '/midia/[id]', params: { id: id_midia } }
+      : null;
+  if (destino) {
     return (
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={`${notificacao.titulo}, Notícia${notificacao.lida ? '' : ', não lida'}`}
-        onPress={() => router.push({ pathname: '/noticia/[id]', params: { id: id_noticia } })}
+        accessibilityLabel={`${notificacao.titulo}, ${id_noticia ? 'Notícia' : notificacao.midia_nome}${notificacao.lida ? '' : ', não lida'}`}
+        onPress={() => router.push(destino)}
         className={classe}
       >
         {conteudo}
@@ -113,7 +117,10 @@ function ListaNotificacoes() {
 }
 
 export default function Noticias() {
-  const [atual, setAtual] = useState<SubAba>('noticias');
+  // A sub-aba vem da rota, para o aviso de vários episódios abrir direto as Notificações.
+  const { aba: param } = useLocalSearchParams<{ aba?: string }>();
+  const router = useRouter();
+  const atual: SubAba = param === 'notificacoes' ? 'notificacoes' : 'noticias';
   return (
     <View className="flex-1 bg-fundo">
       <View accessibilityRole="tablist" className="flex-row border-b border-borda">
@@ -125,7 +132,7 @@ export default function Noticias() {
               accessibilityRole="tab"
               accessibilityLabel={aba.titulo}
               accessibilityState={{ selected: selecionada }}
-              onPress={() => setAtual(aba.chave)}
+              onPress={() => router.setParams({ aba: aba.chave })}
               className={`flex-1 items-center border-b-2 py-3 ${
                 selecionada ? 'border-marca-texto' : 'border-transparent'
               }`}
