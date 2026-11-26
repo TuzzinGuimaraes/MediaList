@@ -96,6 +96,18 @@ de cada blueprint, em `Backend/schemas/<blueprint>.py`.
   `tipo_midia` e `midia_nome` vêm nulos, `tipo` é `noticia` e `titulo` é o da Notícia. O link
   abre `GET /noticias/<id>` (pública, 404 `nao_encontrado`). A contagem de não lidas segue no
   cliente, sobre a mesma lista.
+- **Push de Notícias (spec `noticias-avisos`, Q129):** `PUT /push/token {token, plataforma}`
+  (`android` | `ios`) registra ou renova o token Expo do aparelho (`ExponentPushToken[...]` ou
+  `ExpoPushToken[...]`, senão 400 `dados_invalidos`); um token já registrado passa para o Usuário
+  logado. `DELETE /push/token {token}` remove o token do próprio Usuário (de outro, nada muda);
+  as duas respondem `Mensagem`. "Avisar sobre Notícias" é `avisar_noticias` em
+  `GET`/`PUT /preferencias` (ligado por padrão; no banco, coluna de `usuarios`). Publicar uma
+  Notícia envia o push pelo Expo Push Service aos tokens dos Usuários ativos com
+  `avisar_noticias`, menos o autor: título da Notícia, corpo curto e
+  `data: {tipo: 'noticia', id_noticia}`. O envio é síncrono, antes da resposta, porque a Vercel
+  pode congelar o que roda depois dela (ADR-0013); por isso tem prazo total de 8 s, timeout de
+  3 s por requisição e lotes de 100. Falha só vai para o log, sem tokens, e não afeta a
+  publicação; ticket `DeviceNotRegistered` apaga o token. `EXPO_ACCESS_TOKEN` é opcional.
 - **Formatos:** notas como `number`, IDs como `string`, datas `YYYY-MM-DD`, instantes ISO 8601
   com fuso. A resposta sai serializada pelo modelo: campo fora do modelo não sai. Campo sem
   leitor no web e no app sai do contrato, seja legado ou dado de domínio (cada um listado no
