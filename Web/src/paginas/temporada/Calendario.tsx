@@ -283,9 +283,9 @@ function Faixa({ dias, ativo, irPara, ref }: PropsFaixa) {
     }
   }, [ativo]);
   return (
-    <div ref={ref} className="sticky z-20 -mx-6 bg-fundo/95 px-6 py-2 backdrop-blur md:mx-0 md:px-0" style={{ top: ALTURA_NAV }}>
+    <div ref={ref} className="sticky z-20 -mx-6 bg-fundo/95 py-2 backdrop-blur md:mx-0" style={{ top: ALTURA_NAV }}>
       <nav aria-label="Dias">
-        <div ref={trilho} className="sem-barra -mx-6 flex gap-2 overflow-x-auto px-6 md:mx-0 md:px-0">
+        <div ref={trilho} className="sem-barra flex gap-2 overflow-x-auto px-6 md:px-0">
           {dias.map((d, i) => (
             <button
               key={d.chave}
