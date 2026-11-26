@@ -48,9 +48,15 @@ const lista = {
   },
 };
 
-/** GET /preferencias, com "Avisar sobre Notícias" ligado ou desligado. */
-function preferencias(avisar_noticias: boolean): { status: 200; corpo: RespostaPreferencias } {
-  return { status: 200, corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias } } };
+/** GET /preferencias, com "Avisar sobre Notícias" e "Avisar sobre episódios novos" ligados ou desligados. */
+function preferencias(
+  avisar_noticias: boolean,
+  avisar_episodios = true,
+): { status: 200; corpo: RespostaPreferencias } {
+  return {
+    status: 200,
+    corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias, avisar_episodios } },
+  };
 }
 
 // No Jest o manifesto vem vazio; no APK e no Expo Go a versão vem do app.json.
@@ -210,8 +216,12 @@ describe('versão do app no Perfil', () => {
   });
 });
 
-describe('"Avisar sobre Notícias" no Perfil', () => {
-  function api(avisar: boolean, put: (corpo: unknown) => { status: number; corpo?: unknown }) {
+describe('Avisos no Perfil', () => {
+  function api(
+    avisar: boolean,
+    put: (corpo: unknown) => { status: number; corpo?: unknown },
+    avisarEpisodios = true,
+  ) {
     return simularFetch({
       'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
       'GET /auth/me': me,
@@ -219,10 +229,38 @@ describe('"Avisar sobre Notícias" no Perfil', () => {
       'GET /usuario/estatisticas': estatisticas,
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
-      'GET /preferencias': preferencias(avisar),
+      'GET /preferencias': preferencias(avisar, avisarEpisodios),
       'PUT /preferencias': (req) => put(req.corpo),
     });
   }
+
+  it('"Avisar sobre episódios novos" mostra o estado salvo e desliga sem mexer nas Notícias', async () => {
+    const fetch = api(true, () => ({ status: 200, corpo: { mensagem: 'ok', modificado: true } }));
+    await abrirPerfil();
+
+    const chave = await screen.findByRole('switch', { name: 'Avisar sobre episódios novos' });
+    expect(chave).toBeChecked();
+    await fireEvent(chave, 'valueChange', false);
+
+    await waitFor(() => expect(fetch.para('PUT /preferencias')).toHaveLength(1));
+    expect(fetch.para('PUT /preferencias')[0].corpo).toEqual({ avisar_episodios: false });
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: 'Avisar sobre episódios novos' })).not.toBeChecked(),
+    );
+    expect(screen.getByRole('switch', { name: 'Avisar sobre Notícias' })).toBeChecked();
+  });
+
+  it('"Avisar sobre episódios novos" desligado liga com PUT /preferencias', async () => {
+    const fetch = api(true, () => ({ status: 200, corpo: { mensagem: 'ok', modificado: true } }), false);
+    await abrirPerfil();
+
+    const chave = await screen.findByRole('switch', { name: 'Avisar sobre episódios novos' });
+    expect(chave).not.toBeChecked();
+    await fireEvent(chave, 'valueChange', true);
+
+    await waitFor(() => expect(fetch.para('PUT /preferencias')).toHaveLength(1));
+    expect(fetch.para('PUT /preferencias')[0].corpo).toEqual({ avisar_episodios: true });
+  });
 
   it('mostra o estado salvo e desliga com PUT /preferencias', async () => {
     const fetch = api(true, () => ({ status: 200, corpo: { mensagem: 'ok', modificado: true } }));
