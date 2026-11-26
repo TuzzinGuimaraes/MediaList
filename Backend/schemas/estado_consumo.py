@@ -7,6 +7,7 @@ rótulo só é válido para o tipo a que pertence — um anime nunca está `plat
 """
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 PLANEJADO = 'planejado'
@@ -100,6 +101,21 @@ def rotulo_para(estado: str, tipo: str) -> str | None:
 def e_terminal(rotulo: str | None, tipo: str | None = None) -> bool:
     """Diz se o rótulo representa um estado terminal (Concluído ou Platinado)."""
     return estado_de(rotulo, tipo) in ESTADOS_TERMINAIS
+
+
+def sql_rotulos(*estados: str) -> str:
+    """Rótulos desses estados em todos os Tipos, como lista SQL (`'completo', 'lido', ...`).
+
+    Constante do código, nunca entrada do cliente: entra no texto da query como literal. O
+    ValueError barra um rótulo fora de `[a-z_]`, que quebraria o literal.
+    """
+    rotulos = sorted({
+        rotulo for rotulos in ROTULOS_POR_TIPO.values()
+        for estado, rotulo in rotulos.items() if estado in estados
+    })
+    if not all(re.fullmatch(r'[a-z_]+', rotulo) for rotulo in rotulos):
+        raise ValueError(f'Rótulo de estado fora de [a-z_]: {rotulos}')
+    return ', '.join(f"'{rotulo}'" for rotulo in rotulos)
 
 
 def erro_de_rotulo(rotulo: str | None, tipo: str | None) -> str | None:
