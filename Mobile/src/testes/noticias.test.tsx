@@ -57,6 +57,7 @@ const inverno: Noticia = {
   tags: ['anime'],
   imagem_url: null,
   data_publicacao: '2026-11-06T10:00:00Z',
+  data_edicao: null,
 };
 
 /** Item de GET /notificacoes que entrega uma Notícia. */
@@ -180,6 +181,7 @@ describe('Notícias', () => {
           tags: ['anime'],
           imagem_url: null,
           data_publicacao: '2026-11-06T10:00:00Z',
+          data_edicao: null,
         },
       ]),
     });

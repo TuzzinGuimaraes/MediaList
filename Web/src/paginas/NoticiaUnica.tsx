@@ -1,15 +1,20 @@
-// Uma Notícia sozinha: o destino do link da Notificação de Notícia.
+// Uma Notícia sozinha: o destino do link da Notificação de Notícia. O admin edita ou exclui daqui;
+// excluída, volta para a lista.
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 
 import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
 import { Carregando, ErroTela } from '../componentes/Estados';
-import { useApi } from '../sessao/SessaoContext';
+import { ehAdmin } from '../sessao/sessao';
+import { useApi, useUsuario } from '../sessao/SessaoContext';
+import { AcoesNoticia } from './AcoesNoticia';
 import { CartaoNoticia } from './Noticias';
 
 export function NoticiaUnica() {
   const api = useApi();
+  const admin = ehAdmin(useUsuario());
+  const navigate = useNavigate();
   const { id } = useParams({ from: '/autenticado/noticias/$id' });
   const consulta = useQuery({
     queryKey: chaves.noticias.uma(id),
@@ -22,7 +27,10 @@ export function NoticiaUnica() {
         Todas as Notícias
       </Link>
       {consulta.data ? (
-        <CartaoNoticia noticia={consulta.data} />
+        <CartaoNoticia
+          noticia={consulta.data}
+          acoes={admin ? <AcoesNoticia noticia={consulta.data} excluida={() => navigate({ to: '/noticias' })} /> : null}
+        />
       ) : consulta.isError ? (
         <ErroTela erro={consulta.error} />
       ) : (

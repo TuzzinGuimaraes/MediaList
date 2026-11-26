@@ -46,6 +46,7 @@ const inverno: Noticia = {
   tags: ['anime'],
   imagem_url: null,
   data_publicacao: '2026-11-06T10:00:00Z',
+  data_edicao: null,
 };
 
 const vazio = { itens: [], pagina: 1, por_pagina: 20, total: 0 };

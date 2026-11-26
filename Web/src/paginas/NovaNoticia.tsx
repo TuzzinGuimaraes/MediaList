@@ -1,8 +1,9 @@
-// Formulário de Notícia do admin. O autor é o Usuário logado: a API não lê `autor` do corpo.
+// Formulário de Notícia do admin, para publicar ou, com `noticia`, editar (Q130). O autor é o
+// Usuário logado na publicação e não muda na edição: a API não lê `autor` do corpo.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 
-import { CATEGORIAS_NOTICIA, type CategoriaNoticia } from '@dominio/noticia';
+import { CATEGORIAS_NOTICIA } from '@dominio/noticia';
 
 import { chaves } from '../api/chaves';
 import { exigir } from '../api/cliente';
@@ -14,11 +15,16 @@ import { AreaTexto, Campo } from '../componentes/Campo';
 import { Opcoes } from '../componentes/Opcoes';
 import { useApi } from '../sessao/SessaoContext';
 
-type Formulario = { titulo: string; conteudo: string; categoria: CategoriaNoticia; tags: string; imagem_url: string };
+/** `categoria` é texto: a API aceita qualquer uma, e editar preserva a que não está na lista. */
+type Formulario = { titulo: string; conteudo: string; categoria: string; tags: string; imagem_url: string };
 
 const VAZIO: Formulario = { titulo: '', conteudo: '', categoria: 'geral', tags: '', imagem_url: '' };
 
-/** Corpo do POST /noticias: tags separadas por vírgula, campos vazios como null. */
+function formularioDa(n: Esquemas['Noticia']): Formulario {
+  return { titulo: n.titulo, conteudo: n.conteudo, categoria: n.categoria, tags: n.tags.join(', '), imagem_url: n.imagem_url ?? '' };
+}
+
+/** Corpo do POST e do PUT /noticias: tags separadas por vírgula, campos vazios como null. */
 function corpoDaNoticia(f: Formulario): Esquemas['CorpoNoticia'] {
   return {
     titulo: f.titulo.trim(),
@@ -32,18 +38,28 @@ function corpoDaNoticia(f: Formulario): Esquemas['CorpoNoticia'] {
   };
 }
 
-type Props = { aberto: boolean; fechar(): void; publicada(): void };
+type Props = {
+  aberto: boolean;
+  fechar(): void;
+  publicada(): void;
+  /** Editar esta Notícia: o formulário vem preenchido e salvar faz o PUT. */
+  noticia?: Esquemas['Noticia'];
+};
 
-export function NovaNoticia({ aberto, fechar, publicada }: Props) {
+export function NovaNoticia({ aberto, fechar, publicada, noticia }: Props) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<Formulario>(VAZIO);
+  const inicial = noticia ? formularioDa(noticia) : VAZIO;
+  const [form, setForm] = useState<Formulario>(inicial);
   const [erroTitulo, setErroTitulo] = useState<string | null>(null);
 
   const publicar = useMutation({
-    mutationFn: (corpo: Esquemas['CorpoNoticia']) => exigir(api.POST('/api/noticias', { body: corpo })),
+    mutationFn: (corpo: Esquemas['CorpoNoticia']) =>
+      noticia
+        ? exigir(api.PUT('/api/noticias/{id_noticia}', { params: { path: { id_noticia: noticia.id_noticia } }, body: corpo }))
+        : exigir(api.POST('/api/noticias', { body: corpo })),
     onSuccess: async () => {
-      setForm(VAZIO);
+      if (!noticia) setForm(VAZIO);
       await queryClient.invalidateQueries({ queryKey: chaves.noticias.todas });
       publicada();
     },
@@ -51,6 +67,7 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
 
   const detalhes = publicar.error instanceof ErroApi ? (publicar.error.detalhes ?? {}) : {};
   const erroGeral = publicar.error && !Object.keys(detalhes).length ? mensagemDeErro(publicar.error) : null;
+  const idForm = noticia ? `editar-noticia-${noticia.id_noticia}` : 'nova-noticia';
   const mudar = <K extends keyof Formulario>(campo: K, valor: Formulario[K]) => setForm((f) => ({ ...f, [campo]: valor }));
 
   const enviar = (e: FormEvent) => {
@@ -67,12 +84,14 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
     if (publicar.isPending) return;
     publicar.reset();
     setErroTitulo(null);
+    // Editar de novo começa do que está publicado, não do rascunho abandonado.
+    if (noticia) setForm(formularioDa(noticia));
     fechar();
   };
 
   return (
     <Modal
-      titulo="Nova notícia"
+      titulo={noticia ? 'Editar notícia' : 'Nova notícia'}
       aberto={aberto}
       fechar={sair}
       rodape={
@@ -80,13 +99,13 @@ export function NovaNoticia({ aberto, fechar, publicada }: Props) {
           <Botao variante="secundario" onClick={sair} disabled={publicar.isPending}>
             Cancelar
           </Botao>
-          <Botao type="submit" form="nova-noticia" carregando={publicar.isPending}>
-            Publicar
+          <Botao type="submit" form={idForm} carregando={publicar.isPending}>
+            {noticia ? 'Salvar' : 'Publicar'}
           </Botao>
         </>
       }
     >
-      <form id="nova-noticia" noValidate onSubmit={enviar} className="flex flex-col gap-4">
+      <form id={idForm} noValidate onSubmit={enviar} className="flex flex-col gap-4">
         {erroGeral ? (
           <p role="alert" className="rounded-md border border-erro/40 bg-erro/10 p-3 text-[14px] text-erro">
             {erroGeral}

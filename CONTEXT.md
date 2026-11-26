@@ -144,7 +144,7 @@ fica para o ticket 25.
 O que o Usuário pode fazer além do uso comum, em ordem crescente: `usuario` < `admin`. Todo
 cadastro novo é `usuario`.
 
-O `admin` pode tudo: moderar Avaliações, ativar ou desativar Usuários, criar Notícias,
+O `admin` pode tudo: moderar Avaliações, ativar ou desativar Usuários, criar, editar e excluir Notícias,
 registrar Atualizações de mídia, editar e excluir Mídias e mudar o Nível dos outros. O
 `usuario` não pode nada disso. Ninguém ativa, desativa ou muda o Nível de si mesmo, nem de
 outro `admin`.
@@ -312,6 +312,9 @@ e mal avaliada é popular.
 
 Uma publicação editorial dirigida a todos os Usuários, escrita por quem tem poder de criar
 conteúdo. Não pertence a nenhuma Mídia específica.
+
+Qualquer `admin` edita ou exclui qualquer Notícia. Editar não gera Notificação: a Notícia só
+passa a mostrar "editada em <data>". Excluir apaga de vez, com as Notificações dela.
 
 ## Atualização de mídia
 

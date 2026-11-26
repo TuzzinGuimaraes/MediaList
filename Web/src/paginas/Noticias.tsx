@@ -1,6 +1,6 @@
-// Notícias: paginadas pelo `total` da resposta; criar uma é só do admin (ADR 0012).
+// Notícias: paginadas pelo `total` da resposta; criar, editar e excluir são só do admin (ADR 0012, Q130).
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { formatarData } from '@dominio/datas';
 
@@ -14,12 +14,15 @@ import { Icone } from '../componentes/Icone';
 import { Paginacao } from '../componentes/Paginacao';
 import { ehAdmin } from '../sessao/sessao';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
+import { AcoesNoticia } from './AcoesNoticia';
 import { NovaNoticia } from './NovaNoticia';
 
 export const NOTICIAS_POR_PAGINA = 10;
 
-export function CartaoNoticia({ noticia }: { noticia: Esquemas['Noticia'] }) {
+/** `acoes`: o Editar e Excluir do admin, no rodapé do card. */
+export function CartaoNoticia({ noticia, acoes }: { noticia: Esquemas['Noticia']; acoes?: ReactNode }) {
   const data = formatarData(noticia.data_publicacao);
+  const edicao = formatarData(noticia.data_edicao);
   return (
     <article aria-label={noticia.titulo} className="overflow-hidden rounded-xl bg-superficie">
       {noticia.imagem_url ? <img src={noticia.imagem_url} alt="" loading="lazy" className="h-56 w-full object-cover" /> : null}
@@ -28,6 +31,7 @@ export function CartaoNoticia({ noticia }: { noticia: Esquemas['Noticia'] }) {
         <p className="text-[13px] text-texto-suave">
           Por {noticia.autor}
           {data ? ` · ${data}` : ''}
+          {edicao ? ` · editada em ${edicao}` : ''}
         </p>
         {noticia.conteudo ? <p className="whitespace-pre-line leading-relaxed text-texto">{noticia.conteudo}</p> : null}
         {noticia.tags.length ? (
@@ -39,6 +43,7 @@ export function CartaoNoticia({ noticia }: { noticia: Esquemas['Noticia'] }) {
             ))}
           </ul>
         ) : null}
+        {acoes}
       </div>
     </article>
   );
@@ -77,7 +82,7 @@ export function Noticias() {
           <>
             <div className="flex flex-col gap-5">
               {consulta.data.itens.map((n) => (
-                <CartaoNoticia key={n.id_noticia} noticia={n} />
+                <CartaoNoticia key={n.id_noticia} noticia={n} acoes={admin ? <AcoesNoticia noticia={n} /> : null} />
               ))}
             </div>
             <Paginacao paginacao={paginacao(consulta.data)} ir={mudar} />

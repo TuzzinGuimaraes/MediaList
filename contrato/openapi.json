@@ -1392,7 +1392,7 @@
         "type": "object"
       },
       "CorpoNoticia": {
-        "description": "O autor é o Usuário logado; `autor` no corpo é ignorado.",
+        "description": "Corpo de criar e de editar. O autor é o Usuário logado na criação e não muda na edição;\n`autor` no corpo é ignorado.",
         "properties": {
           "categoria": {
             "anyOf": [
@@ -3855,6 +3855,19 @@
             "title": "Conteudo",
             "type": "string"
           },
+          "data_edicao": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Última edição; null se nunca foi editada",
+            "title": "Data Edicao"
+          },
           "data_publicacao": {
             "format": "date-time",
             "title": "Data Publicacao",
@@ -3895,7 +3908,8 @@
           "categoria",
           "tags",
           "imagem_url",
-          "data_publicacao"
+          "data_publicacao",
+          "data_edicao"
         ],
         "title": "Noticia",
         "type": "object"
@@ -9460,6 +9474,92 @@
       }
     },
     "/api/noticias/{id_noticia}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_noticias_{id_noticia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_noticia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Excluir Notícia (só admin, qualquer uma), de vez: as Notificações dela somem de todos.",
+        "tags": [
+          "noticias"
+        ]
+      },
       "get": {
         "description": "",
         "operationId": "get__api_noticias_{id_noticia}",
@@ -9507,6 +9607,102 @@
           }
         },
         "summary": "Uma Notícia, para o link da Notificação.",
+        "tags": [
+          "noticias"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_noticias_{id_noticia}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_noticia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpoNoticia"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar Notícia (só admin, qualquer uma): troca título, conteúdo, categoria, tags e imagem e grava `data_edicao`. O autor fica; não gera Notificação nem push.",
         "tags": [
           "noticias"
         ]

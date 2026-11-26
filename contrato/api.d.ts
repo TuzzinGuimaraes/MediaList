@@ -737,9 +737,11 @@ export interface paths {
         };
         /** Uma Notícia, para o link da Notificação. */
         get: operations["get__api_noticias_{id_noticia}"];
-        put?: never;
+        /** Editar Notícia (só admin, qualquer uma): troca título, conteúdo, categoria, tags e imagem e grava `data_edicao`. O autor fica; não gera Notificação nem push. */
+        put: operations["put__api_noticias_{id_noticia}"];
         post?: never;
-        delete?: never;
+        /** Excluir Notícia (só admin, qualquer uma), de vez: as Notificações dela somem de todos. */
+        delete: operations["delete__api_noticias_{id_noticia}"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1469,7 +1471,8 @@ export interface components {
         };
         /**
          * CorpoNoticia
-         * @description O autor é o Usuário logado; `autor` no corpo é ignorado.
+         * @description Corpo de criar e de editar. O autor é o Usuário logado na criação e não muda na edição;
+         *     `autor` no corpo é ignorado.
          */
         CorpoNoticia: {
             /**
@@ -2192,6 +2195,11 @@ export interface components {
             categoria: string;
             /** Conteudo */
             conteudo: string;
+            /**
+             * Data Edicao
+             * @description Última edição; null se nunca foi editada
+             */
+            data_edicao: string | null;
             /**
              * Data Publicacao
              * Format: date-time
@@ -5699,6 +5707,144 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_noticias_{id_noticia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_noticia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpoNoticia"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_noticias_{id_noticia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_noticia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
