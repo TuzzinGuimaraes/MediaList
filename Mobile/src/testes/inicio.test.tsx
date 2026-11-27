@@ -259,6 +259,7 @@ describe('Início', () => {
       ...catalogo(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+      'GET /midias/MID-ANM-2026-20053/relacoes': { status: 200, corpo: { relacoes: [] } },
       ...rotasSemAvaliacoes('MID-ANM-2026-20053'),
       'GET /lista': { status: 200, corpo: { lista: [] } },
     });

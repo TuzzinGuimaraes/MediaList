@@ -47,6 +47,7 @@ function rotas(avaliacoes: Avaliacao[], extras: Record<string, Resposta | ((r: a
   return {
     [`GET /midias/${ID}`]: { status: 200, corpo: frieren },
     [`GET /midias/${ID}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+    [`GET /midias/${ID}/relacoes`]: { status: 200, corpo: { relacoes: [] } },
     [rotaAvaliacoes(ID)]: paginaAvaliacoes(avaliacoes),
     [rotaNotas(ID)]: notasPara(avaliacoes),
     'GET /lista': { status: 200, corpo: { lista: [] } },

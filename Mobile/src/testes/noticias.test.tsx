@@ -244,6 +244,7 @@ describe('Notificação de Atualização', () => {
       'GET /notificacoes': { status: 200, corpo: { notificacoes: [notificacao('Episódio 12 de Frieren foi ao ar', false)] } },
       'GET /midias/ANI-0001': { status: 200, corpo: frieren },
       'GET /midias/ANI-0001/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+      'GET /midias/ANI-0001/relacoes': { status: 200, corpo: { relacoes: [] } },
       [rotaAvaliacoes('ANI-0001')]: paginaAvaliacoes([]),
       [rotaNotas('ANI-0001')]: respostaNotas(),
       'GET /lista': { status: 200, corpo: { lista: [] } },
