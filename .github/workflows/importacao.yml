@@ -12,8 +12,8 @@ name: importacao
 # `anilist_id` do Catálogo em lotes de 50 e grava só as Relações, a ~30 consultas por minuto
 # (~160 lotes por Tipo, ~6 min cada); ignora os outros inputs e não roda a Sincronização da Steam.
 # `serie_jogos`: depois da Importação de jogos, a passada lenta da Mesma série (spec `relacoes`) lê
-# o detalhe de até N jogos do Catálogo sem contagem da série, dos mais populares para os menos, com
-# cursor próprio; no fim, para. ~300 detalhes por dia, mais as séries (quota do RAWG).
+# o detalhe de até N jogos do Catálogo sem contagem da série, dos mais populares para os menos;
+# sem candidatos, não faz nada. ~300 detalhes por dia, mais as séries (quota do RAWG).
 on:
   schedule:
     - cron: "0 6 * * *"

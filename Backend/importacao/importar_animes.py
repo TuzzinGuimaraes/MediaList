@@ -149,7 +149,7 @@ def importar_animes(
         if not pagina['itens']:
             return
         # Uma conexão por página; cada Mídia é um comando (a sua transação), e as Relações da
-        # página mais um.
+        # página, mais uma.
         with autocommit() as t:
             relacoes_por_midia = {}
             for item in pagina['itens']:

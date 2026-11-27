@@ -26,15 +26,6 @@ def test_inversa(relacao, nome_inverso):
     assert inversa(relacao) == nome_inverso
 
 
-def test_o_contrato_lista_as_relacoes_que_a_leitura_mostra():
-    from typing import get_args
-
-    from dominio.relacoes import VISIVEIS
-    from schemas.midias import NomeRelacao
-
-    assert get_args(NomeRelacao) == VISIVEIS
-
-
 def test_a_relacao_de_outra_midia_volta_com_o_nome_inverso():
     # A Mídia 2 tem a Sequência 1 (a de que se lê as Relações): para a 1, a 2 é o Prequel.
     [relacao] = relacoes_da_midia([], [_linha('SEQUEL', 2, id_midia='m2', status='assistindo')])

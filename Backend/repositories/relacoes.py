@@ -41,17 +41,13 @@ _PROPRIAS = """
 """
 
 #: As Relações das outras Mídias do Catálogo que apontam para esta, com o código gravado na
-#: origem. A origem é adulta se o anime é (`classificacao_etaria` 18) ou se alguma Relação
-#: gravada diz que ela é.
+#: origem. A origem é adulta pelo que a Importação gravou nela: o anime com `classificacao_etaria`
+#: 18, o mangá com `adulto` (o `isAdult` do AniList) e o jogo ESRB Adults Only.
 _DE_OUTRAS = """
     SELECT r.relacao, tm.nome_tipo AS tipo, COALESCE(a.anilist_id, ma.anilist_id) AS anilist_id,
            j.rawg_slug, o.id_midia, COALESCE(o.titulo_portugues, o.titulo_original) AS titulo,
            o.poster_url, o.data_lancamento, lu.status_consumo,
-           (a.classificacao_etaria = '18' OR EXISTS (
-               SELECT 1 FROM relacoes_midia x
-               WHERE x.adulto AND x.tipo_destino = tm.nome_tipo
-                 AND (x.destino_anilist_id = COALESCE(a.anilist_id, ma.anilist_id) OR x.destino_rawg_slug = j.rawg_slug)
-           )) IS TRUE AS adulto
+           (a.classificacao_etaria = '18' OR ma.adulto OR j.classificacao = 'ESRB: Adults Only') IS TRUE AS adulto
     FROM relacoes_midia r
     JOIN midias o ON o.id_midia = r.id_midia
     JOIN tipo_midia tm ON tm.id_tipo = o.id_tipo

@@ -5,82 +5,65 @@ Os jogos que já estavam no Catálogo antes da série (com `rawg_slug` e sem `ga
 não passam de novo pela Importação tão cedo. A passada lê o detalhe de cada um para gravar a
 contagem e, só quando ela é maior que zero, busca a série (`game-series`, no máximo 80 jogos).
 
-- Ordem: a Popularidade do Catálogo (Usuários com o jogo na Lista; a Nota média, senão a da
-  fonte, desempata; o id por último), dos mais populares para os menos.
-- Cursor próprio (`importacao.cursor.ler_serie`): a posição do último jogo passado. Cada execução
-  passa no máximo `limite` jogos (300 por dia no workflow `importacao`), em páginas de 40, cada
-  uma gravada num comando para as contagens e outro para as Relações. Quando não sobra jogo, a
-  passada marca o fim e não roda mais.
-- Jogo que o RAWG não tem mais (404) fica sem contagem e é passado. Falha da fonte numa página
-  encerra a passada sem avançar o cursor: a próxima execução tenta a mesma página.
+- Candidatos: os jogos com `rawg_slug` e contagem nula, na ordem de Popularidade do Catálogo
+  (Usuários com o jogo na Lista; a Nota média, senão a da fonte, desempata; o id por último),
+  no máximo `limite` por execução (300 por dia no workflow `importacao`), em páginas de 40.
+  Sem cursor: o jogo passado ganha a contagem e deixa de ser candidato, e o que subiu na
+  Popularidade entra na vez dele. Sem candidatos, a passada não faz nada.
+- A contagem é gravada na mesma transação das Relações do jogo, uma transação por página. Jogo
+  que o RAWG não tem mais (404) fica com 0, para não voltar. A falha da série de um jogo deixa
+  ele sem contagem (a próxima execução tenta de novo) e a passada segue; a do detalhe (a fonte
+  fora) encerra a passada.
 """
 from __future__ import annotations
 
-from psycopg.types.json import Jsonb
-
 from banco import Indisponivel, autocommit, consultar
-from importacao import cursor, importar_jogos, relacoes
-from importacao.db import salvar_relacoes
+from importacao import importar_jogos, relacoes
 from importacao.utils import ImportStats, logger, registrar_falha_importacao
 
 #: Jogos por execução no workflow `importacao`.
 LIMITE = 300
-#: Jogos gravados por comando.
+#: Jogos gravados por transação.
 POR_PAGINA = 40
 
-#: Os jogos ainda sem contagem depois da posição, na ordem de Popularidade do Catálogo.
+#: Os jogos ainda sem contagem, na ordem de Popularidade do Catálogo.
 _CANDIDATOS = """
-    SELECT id_midia, rawg_slug, usuarios, nota FROM (
-        SELECT j.id_midia, j.rawg_slug, count(DISTINCT lu.id_usuario)::integer AS usuarios,
-               COALESCE(n.nota_media, m.nota_fonte, -1)::numeric AS nota
-        FROM jogos j
-        JOIN midias m ON m.id_midia = j.id_midia
-        JOIN vw_notas_midia n ON n.id_midia = j.id_midia
-        LEFT JOIN lista_usuarios lu ON lu.id_midia = j.id_midia
-        WHERE j.rawg_slug IS NOT NULL AND j.game_series_count IS NULL
-        GROUP BY j.id_midia, j.rawg_slug, n.nota_media, m.nota_fonte
-    ) p
-    WHERE %(id)s::uuid IS NULL
-       OR (-p.usuarios, -p.nota, p.id_midia) > (-%(usuarios)s::integer, -%(nota)s::numeric, %(id)s::uuid)
-    ORDER BY p.usuarios DESC, p.nota DESC, p.id_midia
-    LIMIT %(limite)s
+    SELECT j.id_midia, j.rawg_slug
+    FROM jogos j
+    JOIN midias m ON m.id_midia = j.id_midia
+    JOIN vw_notas_midia n ON n.id_midia = j.id_midia
+    LEFT JOIN lista_usuarios lu ON lu.id_midia = j.id_midia
+    WHERE j.rawg_slug IS NOT NULL AND j.game_series_count IS NULL
+    GROUP BY j.id_midia, j.rawg_slug, n.nota_media, m.nota_fonte
+    ORDER BY count(DISTINCT lu.id_usuario) DESC, COALESCE(n.nota_media, m.nota_fonte, -1) DESC, j.id_midia
+    LIMIT %s
 """
 
-_GRAVAR_CONTAGENS = """
-    UPDATE jogos j SET game_series_count = c.contagem
-    FROM jsonb_to_recordset(%s::jsonb) AS c(id_midia uuid, contagem integer)
-    WHERE j.id_midia = c.id_midia
-"""
-
-
-def _candidatos(posicao: tuple | None, limite: int) -> list[dict]:
-    usuarios, nota, id_midia = posicao or (None, None, None)
-    return consultar(_CANDIDATOS, {'usuarios': usuarios, 'nota': nota, 'id': id_midia, 'limite': limite})
+#: A série do jogo que o RAWG não tem mais: contagem 0, sem Relações.
+_SEM_SERIE = {'contagem': 0, 'relacoes': []}
 
 
 def passada(limite: int = LIMITE) -> ImportStats:
-    """Passa até `limite` jogos a partir do cursor. Sem RAWG_API_KEY, pula com aviso."""
+    """Passa até `limite` jogos sem contagem. Sem RAWG_API_KEY, pula com aviso."""
     stats = ImportStats(tipo_midia='jogo', origem='RAWG (série)')
     # A chave é a da Importação de jogos (os testes a trocam lá).
     if not importar_jogos.RAWG_API_KEY:
         stats.pulado = 'RAWG_API_KEY não configurada'
         return stats
-    estado = cursor.ler_serie()
-    if estado and estado['fim']:
-        stats.pulado = 'passada da série já chegou ao fim'
+    jogos = consultar(_CANDIDATOS, (limite,)) if limite > 0 else []
+    if not jogos:
+        stats.pulado = 'nenhum jogo sem a contagem da série'
         return stats
 
     # A sessão e o ritmo são os da Importação de jogos (os testes os trocam lá).
     session = importar_jogos.criar_sessao_http(total_retries=3, backoff_factor=1.0)
     rate_limiter = importar_jogos.RateLimiter(0.25)
     try:
-        jogos = _candidatos(estado and estado['posicao'], limite) if limite > 0 else []
         logger.info('Passada da série dos jogos: %s jogos', len(jogos))
         for inicio in range(0, len(jogos), POR_PAGINA):
             numero = inicio // POR_PAGINA + 1
-            pagina = jogos[inicio:inicio + POR_PAGINA]
             try:
-                contagens, series = _ler_pagina(pagina, session, rate_limiter, stats)
+                series = _ler_pagina(jogos[inicio:inicio + POR_PAGINA], session, rate_limiter, stats, numero)
             except Indisponivel:
                 raise
             except Exception as exc:
@@ -91,32 +74,38 @@ def passada(limite: int = LIMITE) -> ImportStats:
                 )
                 return stats
             with autocommit() as t:
-                if contagens:
-                    t.executar(_GRAVAR_CONTAGENS, (Jsonb(contagens),))
-                salvar_relacoes(t, series)
-            ultimo = pagina[-1]
-            cursor.gravar_serie((ultimo['usuarios'], ultimo['nota'], ultimo['id_midia']))
-        if len(jogos) < limite:
-            cursor.gravar_serie(None, fim=True)
-            logger.info('Passada da série dos jogos chegou ao fim.')
+                if relacoes.gravar_series(t, series, numero):
+                    for _ in series:
+                        stats.registrar_sucesso()
+                else:
+                    stats.registrar_falha_pagina(numero)
         logger.info('Passada da série dos jogos. %s', stats.to_dict())
         return stats
     finally:
         session.close()
 
 
-def _ler_pagina(pagina: list[dict], session, rate_limiter, stats) -> tuple[list[dict], dict[str, list[dict]]]:
-    """(as contagens lidas, as Relações dos jogos com série) de uma página; a falha da fonte sobe."""
-    contagens, series = [], {}
+def _ler_pagina(pagina: list[dict], session, rate_limiter, stats, numero: int) -> dict[str, dict]:
+    """A série a gravar de cada jogo da página (`relacoes.serie_do_jogo`); a falha do detalhe sobe."""
+    series = {}
     for jogo in pagina:
-        detalhe = importar_jogos.buscar_detalhe_jogo(jogo['rawg_slug'], session, rate_limiter)
-        contagem = relacoes.contagem_da_serie(detalhe)
-        if contagem is None:
-            stats.registrar_pulados(1)
+        slug, id_midia = jogo['rawg_slug'], str(jogo['id_midia'])
+        detalhe = importar_jogos.buscar_detalhe_jogo(slug, session, rate_limiter)
+        if detalhe is None:
+            series[id_midia] = _SEM_SERIE
             continue
-        contagens.append({'id_midia': str(jogo['id_midia']), 'contagem': contagem})
-        if relacoes.precisa_da_serie(contagem, None):
-            series[str(jogo['id_midia'])] = relacoes.da_serie(
-                importar_jogos.buscar_serie_jogo(jogo['rawg_slug'], session, rate_limiter), jogo['rawg_slug'])
-        stats.registrar_sucesso(ja_existia=True)
-    return contagens, series
+        try:
+            serie = relacoes.serie_do_jogo(
+                detalhe, None, lambda s: importar_jogos.buscar_serie_jogo(s, session, rate_limiter))
+        except Exception as exc:
+            stats.registrar_falha()
+            registrar_falha_importacao(
+                tipo_midia='jogo', origem='RAWG', exc=exc, identificador=slug,
+                extra={'pagina': numero, 'etapa': 'passada_serie'},
+            )
+            continue
+        if serie is None:
+            stats.registrar_pulados(1)
+        else:
+            series[id_midia] = serie
+    return series

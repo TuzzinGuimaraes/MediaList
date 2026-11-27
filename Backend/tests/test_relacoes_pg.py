@@ -182,6 +182,29 @@ def test_a_reimportacao_substitui_as_relacoes(client, importar):  # noqa: F811
     }
 
 
+def test_a_reimportacao_com_a_mesma_relacao_a_mantem(client, importar):  # noqa: F811
+    obra = _obra(BASE + 1, _aresta('SEQUEL', 'ANIME', BASE + 2), _aresta('SOURCE', 'MANGA', BASE + 900))
+    _importar_obras(importar, 'anime', [obra])
+
+    _importar_obras(importar, 'anime', [obra])
+
+    assert {(r['relacao'], r['tipo']) for r in _relacoes(client, _id_midia('anime', BASE + 1))} == {
+        ('SEQUEL', 'anime'), ('SOURCE', 'manga'),
+    }
+
+
+def test_manga_adulto_do_catalogo_nao_aparece_no_anime_para_o_qual_aponta(client, importar):  # noqa: F811
+    _importar_obras(importar, 'manga', [
+        _obra(BASE + 10, _aresta('ADAPTATION', 'ANIME', BASE + 1), isAdult=True),
+        _obra(BASE + 11, _aresta('ADAPTATION', 'ANIME', BASE + 1)),
+    ])
+    _importar_obras(importar, 'anime', [_obra(BASE + 1)])
+
+    assert [(r['relacao'], r['id_midia']) for r in _relacoes(client, _id_midia('anime', BASE + 1))] == [
+        ('SOURCE', _id_midia('manga', BASE + 11)),
+    ]
+
+
 def test_dado_da_fonte_e_validado_antes_de_gravar(client, importar):  # noqa: F811
     _importar_obras(importar, 'anime', [_obra(
         BASE + 1,

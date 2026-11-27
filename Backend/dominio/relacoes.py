@@ -11,7 +11,7 @@ não conhece) e as obras adultas.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal, get_args
 
 #: Nome inverso de cada Relação. `PARENT` volta como `SIDE_STORY` (a fonte não diz se é
 #: História paralela ou Spin-off). As que não estão aqui são simétricas ou ficam com o mesmo nome.
@@ -25,11 +25,13 @@ INVERSAS = {
     'PARENT': 'SIDE_STORY',
 }
 
-#: As Relações que a leitura mostra (o contrato as lista em `schemas.midias.NomeRelacao`).
-VISIVEIS = (
+#: As Relações que a leitura mostra, pelo código da fonte: os do AniList e `MESMA_SERIE` nos jogos
+#: (o contrato, `schemas.midias.RelacaoDaMidia`, usa este tipo).
+NomeRelacao = Literal[
     'PREQUEL', 'SEQUEL', 'ADAPTATION', 'SOURCE', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY',
     'COMPILATION', 'CONTAINS', 'MESMA_SERIE',
-)
+]
+VISIVEIS: tuple[str, ...] = get_args(NomeRelacao)
 
 #: Link da obra na fonte, por Tipo, para a obra que não está no Catálogo.
 LINKS_DA_FONTE = {

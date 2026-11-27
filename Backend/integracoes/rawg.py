@@ -93,15 +93,8 @@ class Rawg:
         return self._get(_caminho_do_jogo(slug))
 
     def serie(self, slug: str) -> list[dict]:
-        """Os jogos de `GET /games/<slug>/game-series`, no máximo 2 páginas de 40 (80 jogos)."""
-        jogos: list[dict] = []
-        for pagina in range(1, relacoes.SERIE_PAGINAS + 1):
-            corpo = self._get(_caminho_do_jogo(slug, '/game-series'),
-                              {'page': pagina, 'page_size': relacoes.SERIE_POR_PAGINA}) or {}
-            jogos.extend(corpo.get('results') or [])
-            if not corpo.get('next'):
-                break
-        return jogos
+        """Os jogos de `GET /games/<slug>/game-series` (`relacoes.ler_serie`, até 80)."""
+        return relacoes.ler_serie(lambda params: self._get(_caminho_do_jogo(slug, '/game-series'), params))
 
     def fechar(self) -> None:
         if self._sessao is not None:
