@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import re
 
-from importacao.anilist import CAMPOS_MEDIA
+from importacao.anilist import CAMPOS_MEDIA, titulo_exibido
 from importacao.config import ANILIST_URL
 from integracoes import prazo
 from integracoes.mapeamento import estado_da_origem, nota_anilist
@@ -95,8 +95,7 @@ def _data(parcial: dict | None) -> str | None:
 
 
 def _titulo(media: dict) -> str:
-    titulo = media.get('title') or {}
-    return titulo.get('english') or titulo.get('romaji') or titulo.get('native') or f"AniList {media.get('id')}"
+    return titulo_exibido(media.get('title')) or f"AniList {media.get('id')}"
 
 
 def item_de_entrada(entrada: dict, tipo: str) -> ItemDeOrigem:

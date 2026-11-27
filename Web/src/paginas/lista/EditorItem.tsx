@@ -14,7 +14,7 @@ import {
   temProgresso,
   validarItem,
 } from '@dominio/itemLista';
-import { tituloDaMidia } from '@dominio/midia';
+import { tituloDaMidia, type TitulosDaMidia } from '@dominio/midia';
 import type { Midia } from '@dominio/tipos';
 
 import { mensagemDeErro } from '../../api/erros';
@@ -30,10 +30,7 @@ import { EscolhaStatus } from './editor/EscolhaStatus';
 import { textos } from './editor/textos';
 
 /** O que o editor lê da Mídia: a da listagem, a do detalhe ou o próprio Item servem. */
-export type MidiaDoEditor = Pick<
-  Midia,
-  'id_midia' | 'tipo' | 'titulo_original' | 'titulo_ingles' | 'titulo_romaji' | 'numero_episodios' | 'numero_capitulos'
->;
+export type MidiaDoEditor = TitulosDaMidia & Pick<Midia, 'id_midia' | 'tipo' | 'numero_episodios' | 'numero_capitulos'>;
 
 /** O rodapé no lugar dos botões enquanto confirma a remoção do Item. */
 function ConfirmarRemocao({ manter, remover, removendo }: { manter(): void; remover(): void; removendo: boolean }) {

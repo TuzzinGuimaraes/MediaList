@@ -4,6 +4,7 @@
 
 import type { components } from '../../../contrato/api';
 import type { TipoMidia } from '@dominio/estadoConsumo';
+import type { TitulosDaMidia } from '@dominio/midia';
 import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia } from '@dominio/tipos';
 
 type Esquemas = components['schemas'];
@@ -67,8 +68,7 @@ export type RespostaCalendario = Esquemas['RespostaCalendario'];
 export type OrdemCatalogo = Exclude<NonNullable<Esquemas['ConsultaMidias']['ordem']>, 'popularidade'>;
 
 /** O que o card de Mídia lê: serve para qualquer listagem (Mídia, populares, Item de lista). */
-export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_ingles' | 'titulo_romaji' | 'poster_url'> &
-  NotasDaMidia;
+export type CartaoMidia = TitulosDaMidia & Pick<Midia, 'id_midia' | 'tipo' | 'poster_url'> & NotasDaMidia;
 
 // Avaliações
 
