@@ -40,8 +40,9 @@ export function useItemDaMidia(idMidia: string) {
 }
 
 /**
- * Refaz o que deriva da Lista: ['lista'], as estatísticas do Perfil e o que o detalhe da
- * Mídia mostra (distribuição por Status, atividade).
+ * Refaz o que deriva da Lista: ['lista'], as estatísticas do Perfil, o que o detalhe da
+ * Mídia mostra (distribuição por Status, atividade) e as Relações (o Status em cada obra, e o
+ * destaque da Sequência some quando ela entra na Lista).
  */
 function useInvalidarLista() {
   const queryClient = useQueryClient();
@@ -49,6 +50,7 @@ function useInvalidarLista() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: CHAVE_LISTA }),
       queryClient.invalidateQueries({ queryKey: chaves.usuario.estatisticas }),
+      queryClient.invalidateQueries({ queryKey: chaves.relacoes.todas }),
       idMidia ? queryClient.invalidateQueries({ queryKey: chaves.midias.detalhe(idMidia) }) : null,
     ]);
 }

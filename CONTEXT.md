@@ -33,6 +33,18 @@ quais **Rótulos de estado** são válidos na lista de um usuário.
 O Tipo é imutável: uma Mídia não muda de tipo. A adaptação de um mangá em anime são duas
 Mídias distintas, não uma que mudou.
 
+## Relação
+
+A ligação entre duas Mídias da mesma obra ou franquia, como a fonte a descreve. Vale nos dois
+sentidos, cada um com o seu nome: Sequência ↔ Prequel, Adaptação ↔ Original, Principal ↔ História
+paralela ou Spin-off; Versão alternativa, Resumo, Compilação e Contém completam as de anime e mangá,
+que vêm do AniList e podem cruzar Tipos (a Adaptação de um mangá em anime). Entre jogos há uma só,
+**Mesma série**, porque o RAWG não diz qual veio antes nem de que jeito; a ordem é a de lançamento.
+
+A Relação vem da **Importação** e ninguém a edita: cada reimportação de uma Mídia troca as Relações
+dela pelas da fonte. Uma obra relacionada que ainda não está no Catálogo aparece só com título, Tipo
+e o link da fonte; obra adulta não aparece.
+
 ## Catálogo
 
 O conjunto de todas as Mídias conhecidas pelo sistema. O Catálogo é populado por

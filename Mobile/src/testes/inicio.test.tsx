@@ -259,6 +259,7 @@ describe('Início', () => {
       ...catalogo(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+      'GET /midias/MID-ANM-2026-20053/relacoes': { status: 200, corpo: { relacoes: [] } },
       ...rotasSemAvaliacoes('MID-ANM-2026-20053'),
       'GET /lista': { status: 200, corpo: { lista: [] } },
     });
@@ -428,15 +429,19 @@ describe('Início: Para assistir agora', () => {
   // Animes em exibição: Dandadan 3 atrás, Kaiju 1 atrás, Apothecary e Sakamoto em dia.
   const emExibicao = (id: string, titulo: string, dados: Partial<Midia> = {}) =>
     anime({ id_midia: id, titulo_portugues: titulo, status_anime: 'em_exibicao', numero_episodios: 12, ...dados });
-  const dandadan = emExibicao('MID-ANM-1', 'Dandadan', { episodios_lancados: 7 });
+  // Os 30 s de folga seguram o minuto da contagem enquanto o teste roda.
+  const dandadan = emExibicao('MID-ANM-1', 'Dandadan', {
+    episodios_lancados: 7,
+    proximo_episodio_em: daqui(4 * HORA + 10 * 60_000 + 30_000),
+  });
   const kaiju = emExibicao('MID-ANM-2', 'Kaiju No. 8', { episodios_lancados: 5 });
   const apothecary = emExibicao('MID-ANM-3', 'Apothecary Diaries', {
     episodios_lancados: 4,
-    proximo_episodio_em: daqui(5 * 24 * HORA + HORA),
+    proximo_episodio_em: daqui(5 * 24 * HORA + HORA + 30_000),
   });
   const sakamoto = emExibicao('MID-ANM-4', 'Sakamoto Days', {
     episodios_lancados: 6,
-    proximo_episodio_em: daqui(2 * 24 * HORA + HORA),
+    proximo_episodio_em: daqui(2 * 24 * HORA + HORA + 30_000),
   });
   const semJob = emExibicao('MID-ANM-5', 'Anime Sem Job', { episodios_lancados: null });
 
@@ -476,10 +481,10 @@ describe('Início: Para assistir agora', () => {
       'Sakamoto Days, Anime',
       'Apothecary Diaries, Anime',
     ]);
-    expect(faixa().getByText('3 episódios atrás')).toBeOnTheScreen();
+    expect(faixa().getByText('3 episódios atrás · próximo em 4 h 10 min')).toBeOnTheScreen();
     expect(faixa().getByText('1 episódio atrás')).toBeOnTheScreen();
-    expect(faixa().getByText('próximo em 2 d')).toBeOnTheScreen();
-    expect(faixa().getByText('próximo em 5 d')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 2 d 1 h 0 min')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 5 d 1 h 0 min')).toBeOnTheScreen();
     // A faixa vem acima da Continuar, que não muda.
     const secoes = screen.getAllByRole('header').map((h) => h.props.children);
     expect(secoes.slice(0, 2)).toEqual(['Para assistir agora', 'Continuar']);

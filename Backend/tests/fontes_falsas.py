@@ -125,7 +125,8 @@ class AniListFalso:
     `obras` é [(id, popularidade)] por Tipo (`ANIME`/`MANGA`), ou (id, popularidade, campos), com
     outros campos de `Media` (`season`, `seasonYear`, `format`, `isAdult`, `startDate`...). Entende
     os argumentos que a Importação manda (`sort` [POPULARITY_DESC, ID] ou [ID], `popularity`,
-    `popularity_lesser`, `season`, `seasonYear`, `isAdult`) e recusa com o 400 de limite a página
+    `popularity_lesser`, `season`, `seasonYear`, `isAdult` e o `id_in` da carga das Relações) e
+    recusa com o 400 de limite a página
     acima de `limite`, como a API pública acima de 100. `falha_em`: chamadas (contadas de 1) que
     respondem 502 e `quebra_em`, as que respondem 200 sem `pageInfo` (resposta que a Importação não
     entende e que derruba a passada). Guarda as variáveis em `pedidos`.
@@ -158,6 +159,8 @@ class AniListFalso:
                 'message': 'Page exceeds maximum allowed for public API requests', 'status': 400,
             }], 'data': None})
         obras = self.obras[variaveis['tipo']]
+        if 'idIn' in variaveis:
+            obras = [o for o in obras if o[0] in variaveis['idIn']]
         if 'popularity' in variaveis:
             obras = [o for o in obras if o[1] == variaveis['popularity']]
         if 'popularityLesser' in variaveis:

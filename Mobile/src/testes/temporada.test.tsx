@@ -194,6 +194,7 @@ describe('Temporada', () => {
         },
         'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [] } },
         'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
+        'GET /midias/MID-ANM-2026-20053/relacoes': { status: 200, corpo: { relacoes: [] } },
       }),
     );
     await abrirTemporada();

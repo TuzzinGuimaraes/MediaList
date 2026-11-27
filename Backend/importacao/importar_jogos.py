@@ -6,6 +6,13 @@ por capa, então jogo sem capa (`background_image`) ou sem data (`released`) é 
 do detalhe, e contado à parte (`pulados`). Jogo do RAWG com o mesmo título normalizado e ano de
 um jogo criado pela loja da Steam (sem `rawg_slug`) tem a appid confirmada em
 `/games/<slug>/stores` e vira a mesma Mídia (ticket 40).
+
+A Mesma série (spec `relacoes`): o detalhe traz o `game_series_count`, e
+`/games/<slug>/game-series` (até 80 jogos) só é chamado quando a contagem é maior que zero e
+diferente da gravada (o jogo novo não tem). A contagem é gravada na mesma transação das Relações
+do jogo, depois dele; as séries de uma página vão numa transação só. A falha da série (na fonte ou
+ao gravar) fica no log e não é falha do jogo: a contagem não muda e a próxima importação tenta de
+novo. Os jogos de antes disso são cobertos pela passada lenta (`importacao.serie_jogos`).
 """
 from __future__ import annotations
 
@@ -14,10 +21,10 @@ import re
 import unicodedata
 from datetime import date
 from threading import local
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote
 
 from banco import Indisponivel, autocommit, consultar
-from importacao import cursor
+from importacao import cursor, relacoes
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.db import salvar_jogo
 from importacao.utils import (
@@ -26,6 +33,7 @@ from importacao.utils import (
     RateLimiter,
     criar_sessao_http,
     executar_em_paralelo,
+    imagem_https,
     logger,
     nota_fonte_rawg,
     registrar_falha_importacao,
@@ -172,6 +180,28 @@ def buscar_appids_steam(slug: str, session, rate_limiter: RateLimiter) -> set[in
     }
 
 
+def buscar_serie_jogo(slug: str, session, rate_limiter: RateLimiter) -> list[dict]:
+    """Os jogos de `GET /games/<slug>/game-series` (`relacoes.ler_serie`, até 80)."""
+    def pagina(params: dict) -> dict | None:
+        rate_limiter.wait()
+        response = session.get(
+            f"{RAWG_BASE_URL}/games/{quote(str(slug), safe='')}/game-series",
+            params={'key': RAWG_API_KEY, **params}, timeout=30,
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json() or {}
+
+    return relacoes.ler_serie(pagina)
+
+
+def contagens_gravadas(slugs: list[str]) -> dict[str, int | None]:
+    """O `game_series_count` gravado de cada slug que já está no Catálogo."""
+    return {linha['rawg_slug']: linha['game_series_count'] for linha in consultar(
+        'SELECT rawg_slug, game_series_count FROM jogos WHERE rawg_slug = ANY(%s)', (slugs,))}
+
+
 def _obter_sessao_rawg_worker():
     session = getattr(RAWG_THREAD_LOCAL, 'session', None)
     if session is None:
@@ -215,6 +245,20 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None, steam_appid: i
 
     result = salvar_jogo(dados, generos, t)
     logger.info("Jogo importado: %s (%s)", dados['titulo_original'], result['id_midia'])
+    return result
+
+
+def processar_e_inserir_jogo_do_detalhe(detalhe: dict) -> dict:
+    """O jogo que uma Integração traz pelo RAWG (`GET /games/<slug>`, o básico e o resto).
+
+    `game_series`, se veio, é a série que a Integração buscou (`relacoes.serie_do_jogo`): o jogo
+    é gravado e depois ganha as Relações `MESMA_SERIE` e a contagem. A falha ao gravá-las fica
+    no log e não desfaz o jogo.
+    """
+    result = processar_e_inserir_jogo(detalhe, detalhe)
+    if detalhe.get('game_series') is not None:
+        with autocommit() as t:
+            relacoes.gravar_series(t, {result['id_midia']: detalhe['game_series']})
     return result
 
 
@@ -270,16 +314,7 @@ def _primeiro(lista) -> str | None:
 
 def imagem_da_steam(url) -> str | None:
     """A URL, se for `https://` de um host de imagem da Steam; senão None (a loja é dado de fora)."""
-    if not isinstance(url, str):
-        return None
-    try:
-        partes = urlsplit(url.strip())
-    except ValueError:
-        return None
-    host = (partes.hostname or '').lower()
-    if partes.scheme != 'https' or partes.username or partes.password or not host.endswith(HOSTS_DE_IMAGEM_STEAM):
-        return None
-    return url.strip()
+    return imagem_https(url, HOSTS_DE_IMAGEM_STEAM)
 
 
 def dados_do_jogo_steam(loja: dict) -> tuple[dict, list[str]]:
@@ -341,6 +376,7 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
     rate_limiter = RateLimiter(0.25)
     loja: dict[tuple[str, int], set[int]] = {}
     loja_lida = False
+    gravadas: dict[str, int | None] = {}
 
     def buscar_paginas(inicio: int):
         """Páginas da listagem da RAWG; `next` nulo é o fim da fonte."""
@@ -372,7 +408,15 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
         if detalhe and candidatas:
             confirmadas = buscar_appids_steam(jogo_basico['slug'], worker_session, rate_limiter) & candidatas
             appid = min(confirmadas, default=None)
-        return {'detalhe': detalhe, 'steam_appid': appid}
+        serie, erro_serie = None, None
+        try:
+            serie = relacoes.serie_do_jogo(
+                detalhe, gravadas.get(jogo_basico['slug']),
+                lambda slug: buscar_serie_jogo(slug, worker_session, rate_limiter))
+        except Exception as exc:
+            # A série não é o jogo: ele é gravado, a contagem não muda e a próxima importação tenta de novo.
+            erro_serie = exc
+        return {'detalhe': detalhe, 'steam_appid': appid, 'serie': serie, 'erro_serie': erro_serie}
 
     def importar_pagina(pagina: dict):
         nonlocal loja_lida
@@ -384,7 +428,11 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
             # Uma vez por execução, na primeira página com jogos.
             loja.update(jogos_da_loja())
             loja_lida = True
-        # Uma conexão por página; cada Mídia é um comando (a sua transação).
+        # A contagem da série gravada de cada jogo da página (só leitura nos workers).
+        gravadas.clear()
+        gravadas.update(contagens_gravadas([jogo['slug'] for jogo in itens]))
+        series: dict[str, dict] = {}
+        # Uma conexão por página; cada Mídia é um comando (a sua transação), e as séries da página, uma.
         with autocommit() as t:
             for jogo_basico, detalhe_result, detalhe_exc in executar_em_paralelo(
                 itens,
@@ -405,6 +453,14 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
                     if appid:
                         # O jogo da loja ganhou o `rawg_slug`: não é mais candidato.
                         loja[chave_na_loja(jogo_basico)].discard(appid)
+                    if detalhe_result.get('serie') is not None:
+                        series[result['id_midia']] = detalhe_result['serie']
+                    if detalhe_result.get('erro_serie') is not None:
+                        registrar_falha_importacao(
+                            tipo_midia='jogo', origem='RAWG', exc=detalhe_result['erro_serie'],
+                            identificador=jogo_basico.get('slug'), titulo=jogo_basico.get('name'),
+                            extra={'pagina': pagina['pagina'], 'etapa': 'serie'},
+                        )
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                 except Indisponivel:
                     # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.
@@ -420,6 +476,7 @@ def importar_jogos(paginas: int = 25, workers: int = 4, do_inicio: bool = False)
                         payload={'basico': jogo_basico, 'detalhe': detalhe},
                         extra={'pagina': pagina['pagina']},
                     )
+            relacoes.gravar_series(t, series, pagina['pagina'])
 
     try:
         cursor.importar_paginas('jogo', 'RAWG', stats, buscar_paginas, importar_pagina, do_inicio)

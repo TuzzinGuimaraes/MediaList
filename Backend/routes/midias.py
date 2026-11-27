@@ -1,7 +1,7 @@
 """
 Blueprint de mídias: adaptador HTTP do Catálogo (`repositories.catalogo`) e das
-Atualizações de mídia (`repositories.atualizacoes`), e as notas das Avaliações
-(`repositories.avaliacoes`).
+Atualizações de mídia (`repositories.atualizacoes`), as notas das Avaliações
+(`repositories.avaliacoes`) e as Relações (`repositories.relacoes`, `dominio.relacoes`).
 
 A rota lê os parâmetros, chama o módulo e responde; entrada e saída seguem os
 modelos de `schemas/midias.py` (ADR 0011). Os testes trocam `catalogo` e
@@ -26,9 +26,11 @@ from contrato import (
     resposta_erro,
 )
 from decorators import admin_required
+from dominio.relacoes import relacoes_da_midia
 from repositories.atualizacoes import Atualizacoes
 from repositories.avaliacoes import AvaliacaoRepository
 from repositories.catalogo import Catalogo
+from repositories.relacoes import Relacoes
 from schemas.midias import (
     AtualizacaoPublicada,
     ConsultaCalendario,
@@ -46,6 +48,7 @@ from schemas.midias import (
     RespostaFacetas,
     RespostaNotas,
     RespostaPopulares,
+    RespostaRelacoes,
     RespostaTrending,
 )
 
@@ -54,6 +57,7 @@ midias_bp = Blueprint('midias', __name__)
 catalogo = Catalogo()
 atualizacoes = Atualizacoes()
 avaliacoes = AvaliacaoRepository()
+relacoes = Relacoes()
 
 #: Filtros de GET /midias, repassados ao Catálogo com o mesmo nome.
 FILTROS = (
@@ -202,3 +206,18 @@ def notas_midia(id_midia):
         'distribuicao': avaliacoes.distribuicao(id_midia),
         'minha_avaliacao': avaliacoes.do_usuario(id_midia, id_usuario) if id_usuario else None,
     }
+
+
+
+@midias_bp.route('/<string:id_midia>/relacoes', methods=['GET'])
+@jwt_required(optional=True)
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaRelacoes, HTTP_404=Erro, **ERROS_AUTENTICADA),
+    tags=['midias'], security=AUTENTICACAO_OPCIONAL,
+)
+def relacoes_midia(id_midia):
+    """As Relações da Mídia nos dois sentidos e, com login, o Estado de consumo do Usuário em cada obra."""
+    lidas = relacoes.da_midia(id_midia, get_jwt_identity())
+    if lidas is None:
+        return midia_nao_encontrada()
+    return {'relacoes': relacoes_da_midia(*lidas)}

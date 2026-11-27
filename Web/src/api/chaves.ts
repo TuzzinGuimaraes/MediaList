@@ -39,6 +39,11 @@ export const chaves = {
     /** O RespostaLista inteiro: Lista, Início, detalhe e Perfil leem esta chave. */
     toda: ['lista'] as const,
   },
+  /** As Relações de uma Mídia (GET /midias/<id>/relacoes): trazem o Status da Lista em cada obra. */
+  relacoes: {
+    todas: ['relacoes'] as const,
+    daMidia: (id: string) => ['relacoes', id] as const,
+  },
   usuario: {
     perfil: ['usuario', 'perfil'] as const,
     estatisticas: ['usuario', 'estatisticas'] as const,

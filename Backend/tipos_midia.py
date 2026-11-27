@@ -61,6 +61,8 @@ TIPOS: dict[str, TipoMidia] = {
                  'publicadora_original', 'revista', 'demografia'),
         coluna_status='status_manga', coluna_total='numero_capitulos', unidade_progresso='capitulos',
         aplicavel_a=['anime', 'manga'],
+        # O `isAdult` do AniList (spec `relacoes`): tira o mangá adulto das Relações das outras Mídias.
+        colunas_fonte=('adulto',),
     ),
     'jogo': TipoMidia(
         tabela='jogos', apelido='j', chave_fonte='rawg_slug', origem_nota='RAWG',
@@ -84,10 +86,11 @@ def _plataformas(valor: Any) -> list[str]:
 
 
 #: Colunas cujo valor muda antes de gravar: coluna → conversão. `temporada_estimada` não é nula:
-#: sem valor, a Temporada não é estimada.
+#: sem valor, a Temporada não é estimada; `adulto` (mangá) também não é nulo.
 CONVERSOES: dict[str, Callable[[Any], Any]] = {
     'plataformas': _plataformas,
     'temporada_estimada': bool,
+    'adulto': bool,
 }
 
 

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from threading import Lock
+from urllib.parse import urlsplit
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -253,6 +254,21 @@ def registrar_falha_importacao(
         origem,
         record['erro'],
     )
+
+
+def imagem_https(url, hosts: tuple[str, ...]) -> str | None:
+    """A URL sem espaços nas pontas, se for `https://` sem credenciais num host que termina num dos
+    `hosts` (`.steamstatic.com`, `.anilist.co`); senão None. A imagem vem da fonte e vai para a tela."""
+    if not isinstance(url, str):
+        return None
+    try:
+        partes = urlsplit(url.strip())
+    except ValueError:
+        return None
+    host = (partes.hostname or '').lower()
+    if partes.scheme != 'https' or partes.username or partes.password or not host.endswith(hosts):
+        return None
+    return url.strip()
 
 
 def remover_html(texto: str | None) -> str | None:

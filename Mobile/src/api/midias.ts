@@ -10,6 +10,7 @@ import type {
   MidiaPopular,
   RespostaDistribuicao,
   RespostaPopulares,
+  RespostaRelacoes,
   RespostaTrending,
 } from './tipos';
 
@@ -84,5 +85,19 @@ export function useDistribuicao(id: string) {
     queryFn: () =>
       cliente.requisitar<RespostaDistribuicao>(`/midias/${encodeURIComponent(id)}/distribuicao`),
     select: (r) => r.distribuicao,
+  });
+}
+
+/** Prefixo das Relações de todas as Mídias: a escrita da Lista refaz todas (lista.ts). */
+export const CHAVE_RELACOES = ['relacoes'] as const;
+
+/** As Relações da Mídia (GET /midias/<id>/relacoes), com o Status do Usuário em cada obra. */
+export function useRelacoes(id: string) {
+  const { cliente, sessao } = useSessao();
+  return useQuery({
+    enabled: sessao.estado === 'autenticada',
+    queryKey: [...CHAVE_RELACOES, id],
+    queryFn: () => cliente.requisitar<RespostaRelacoes>(`/midias/${encodeURIComponent(id)}/relacoes`),
+    select: (r) => r.relacoes,
   });
 }
