@@ -4,12 +4,12 @@
 
 import type { components } from '../../../contrato/api';
 import type { TipoMidia } from '@dominio/estadoConsumo';
-import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia } from '@dominio/tipos';
+import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia } from '@dominio/tipos';
 
 type Esquemas = components['schemas'];
 
 // Os recortes que o domínio também lê moram em dominio/tipos.ts.
-export type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, TipoMidia };
+export type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia, TipoMidia };
 
 // Erro
 
@@ -50,6 +50,8 @@ export type Pagina<T> = { itens: T[]; pagina: number; por_pagina: number; total:
 export type PaginaMidias = Esquemas['PaginaMidia'];
 /** GET /midias/<id>/distribuicao: quantos Usuários têm a Mídia em cada Rótulo de estado. */
 export type RespostaDistribuicao = Esquemas['RespostaDistribuicao'];
+/** GET /midias/<id>/relacoes: as Relações já nos dois sentidos, com o Status do Usuário em cada obra. */
+export type RespostaRelacoes = Esquemas['RespostaRelacoes'];
 export type Genero = Esquemas['Genero'];
 export type RespostaGeneros = Esquemas['RespostaGeneros'];
 /** GET /midias/facetas: os valores dos filtros e a Temporada mais antiga do Catálogo. */

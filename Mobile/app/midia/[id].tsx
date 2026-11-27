@@ -14,6 +14,7 @@ import { Botao } from '@/components/Botao';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, FalhaParcial } from '@/components/EstadoTela';
 import { Info } from '@/components/Info';
+import { SecaoRelacoes, SugestaoDeSequencia } from '@/components/Relacoes';
 import { Secao } from '@/components/Secao';
 import { SecaoAvaliacoes } from '@/components/SecaoAvaliacoes';
 import { Banner, PosterDoDetalhe, Voltar } from '@/components/TopoDetalhe';
@@ -114,6 +115,7 @@ function DetalheMidia() {
             />
           ) : null}
           <DestaqueDoEpisodio item={item.data} />
+          <SugestaoDeSequencia midia={m} item={item.data} />
 
           <View className="flex-row flex-wrap items-center gap-x-5 gap-y-1">
             {notasDaObra.map((n) => (
@@ -150,6 +152,7 @@ function DetalheMidia() {
           ) : null}
 
           {m.sinopse ? <Text className="text-corpo text-texto">{m.sinopse}</Text> : null}
+          <SecaoRelacoes midia={m} />
 
           {m.atualizacoes.length ? (
             <Secao titulo={textos.atualizacoes}>

@@ -212,6 +212,7 @@ describe('Calendário', () => {
         },
         'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [] } },
         [`GET /midias/${dandadan.id_midia}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+        [`GET /midias/${dandadan.id_midia}/relacoes`]: { status: 200, corpo: { relacoes: [] } },
       }),
     );
     await abrirCalendario();
