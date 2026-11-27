@@ -659,6 +659,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/midias/{id_midia}/relacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As Relações da Mídia nos dois sentidos e, com login, o Estado de consumo do Usuário em cada obra. */
+        get: operations["get__api_midias_{id_midia}_relacoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/moderacao/avaliacoes": {
         parameters: {
             query?: never;
@@ -2680,6 +2697,44 @@ export interface components {
             /** Progresso Atual */
             progresso_atual: number;
         };
+        /**
+         * RelacaoDaMidia
+         * @description Uma obra ligada à Mídia, já com o nome visto da Mídia (o inverso, quando veio do outro lado).
+         */
+        RelacaoDaMidia: {
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /**
+             * Id Midia
+             * @description A obra no Catálogo; nulo quando ela ainda não está nele
+             */
+            id_midia: string | null;
+            /**
+             * Link Fonte
+             * @description `https://` da obra na fonte (AniList ou RAWG), só fora do Catálogo
+             */
+            link_fonte: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Relacao
+             * @enum {string}
+             */
+            relacao: "PREQUEL" | "SEQUEL" | "ADAPTATION" | "SOURCE" | "PARENT" | "SIDE_STORY" | "SPIN_OFF" | "ALTERNATIVE" | "SUMMARY" | "COMPILATION" | "CONTAINS" | "MESMA_SERIE";
+            /**
+             * Status Consumo
+             * @description O Estado de consumo do Usuário na obra; nulo sem sessão, fora do Catálogo ou fora da Lista
+             */
+            status_consumo: ("planejado" | "assistindo" | "lendo" | "na_fila" | "jogando" | "pausado" | "abandonado" | "completo" | "lido" | "zerado" | "platinado") | null;
+            /**
+             * Tipo
+             * @description O Tipo da obra relacionada, que pode ser outro (a Adaptação de um mangá)
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo */
+            titulo: string;
+        };
         /** RespostaAtividade */
         RespostaAtividade: {
             /**
@@ -2827,6 +2882,14 @@ export interface components {
              * @description Nulo no web (`X-Cliente: web`): o refresh vai no cookie httpOnly
              */
             refresh_token: string | null;
+        };
+        /** RespostaRelacoes */
+        RespostaRelacoes: {
+            /**
+             * Relacoes
+             * @description Sem `CHARACTER`, `OTHER` e obras adultas; por estreia (sem ela, no fim) e título
+             */
+            relacoes: components["schemas"]["RelacaoDaMidia"][];
         };
         /** RespostaTrending */
         RespostaTrending: {
@@ -5526,6 +5589,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RespostaNotas"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_midias_{id_midia}_relacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_midia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaRelacoes"];
                 };
             };
             /** @description Bad Request */

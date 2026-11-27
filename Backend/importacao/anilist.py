@@ -64,6 +64,29 @@ CAMPOS_MEDIA = """
       popularity
 """
 
+#: As Relações da obra (`dominio.relacoes`), só na consulta da Importação: as Integrações pedem
+#: `CAMPOS_MEDIA` e a obra que elas importam fica sem Relações até a próxima reimportação.
+#: Medido em 2026-11-29: a página de 50 animes com elas cabe no limite de complexidade da API
+#: pública (200, 366 Relações, até 65 numa obra).
+CAMPOS_RELACOES = """
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            type
+            format
+            title { romaji english native }
+            startDate { year month day }
+            isAdult
+            coverImage { large }
+          }
+        }
+      }
+"""
+
+#: Campos de `Media` que a Importação pede: os que a rotina grava e as Relações.
+CAMPOS_IMPORTACAO = CAMPOS_MEDIA + CAMPOS_RELACOES
 POR_PAGINA = 50
 #: Páginas da atualização das populares por execução (500 obras).
 PAGINAS_ATUALIZACAO = 10
@@ -105,7 +128,7 @@ def _consulta(filtros: dict) -> tuple[str, dict]:
         f'query ($page: Int, $perPage: Int, $tipo: MediaType, $sort: [MediaSort]{declaracoes}) {{\n'
         '  Page(page: $page, perPage: $perPage) {\n'
         '    pageInfo { hasNextPage }\n'
-        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_MEDIA + '    }\n'
+        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_IMPORTACAO + '    }\n'
         '  }\n}\n'
     )
     return query, {_FILTROS[nome][0]: valor for nome, valor in filtros.items()}
@@ -151,6 +174,32 @@ def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str]
 
 
 Buscar = Callable[[int, list[str], dict], dict]
+
+
+def buscar_relacoes(session, rate_limiter, tipo: str, ids: list[int]) -> dict:
+    """As Relações das obras `ids` (até 50, uma página): `{'itens', 'erro', 'payload'}`.
+
+    Cada item é `{'id', 'relations'}`; obra que o AniList não tem mais não volta.
+    """
+    query = (
+        'query ($page: Int, $perPage: Int, $idIn: [Int], $tipo: MediaType, $sort: [MediaSort]) {\n'
+        '  Page(page: $page, perPage: $perPage) {\n'
+        '    pageInfo { hasNextPage }\n'
+        '    media(id_in: $idIn, type: $tipo, sort: $sort) {\n      id' + CAMPOS_RELACOES + '    }\n'
+        '  }\n}\n'
+    )
+    payload = {'query': query, 'variables': {
+        'page': 1, 'perPage': len(ids), 'idIn': list(ids), 'tipo': tipo, 'sort': POR_ID,
+    }}
+    try:
+        rate_limiter.wait()
+        response = session.post(ANILIST_URL, json=payload, timeout=30)
+        response.raise_for_status()
+        itens = response.json()['data']['Page']['media']
+    except Exception as exc:
+        logger.warning('Falha ao buscar as Relações de %s obras do AniList (%s): %s', len(ids), tipo, exc)
+        return {'itens': [], 'erro': exc, 'payload': payload}
+    return {'itens': itens, 'erro': None, 'payload': payload}
 
 
 def crescimento(buscar: Buscar, paginas: int, fronteira: Fronteira | None, pagina_topo: int = 1) -> Iterator[dict]:
