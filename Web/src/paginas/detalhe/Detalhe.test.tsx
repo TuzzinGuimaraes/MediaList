@@ -462,6 +462,26 @@ describe('Detalhe: Relações', () => {
     expect(nomes[2]).toMatch(/^Original/);
   });
 
+  it('erro nas Relações: a falha fica na seção, com "Tentar de novo", e o resto do Detalhe aparece', async () => {
+    let falhar = true;
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas(),
+        [`GET /midias/${ID}/relacoes`]: () =>
+          falhar ? erro(400, 'dados_invalidos', 'Relações indisponíveis.') : { status: 200, corpo: { relacoes: [relacao('Frieren 2')] } },
+      },
+    });
+
+    const secao = await screen.findByRole('region', { name: 'Relações' });
+    expect(within(secao).getByRole('alert')).toHaveTextContent('Relações indisponíveis.');
+    expect(screen.getByRole('region', { name: 'Sinopse' })).toBeInTheDocument();
+
+    falhar = false;
+    await user.click(within(secao).getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByRole('link', { name: 'Sequência: Frieren 2, Anime' })).toBeInTheDocument();
+  });
+
   it('jogo com série grande: 12 cartões e "e mais N", que abre a lista completa', async () => {
     const serie = Array.from({ length: 15 }, (_, i) =>
       relacao(`Jogo ${2000 + i}`, { relacao: 'MESMA_SERIE', tipo: 'jogo', data_lancamento: `${2000 + i}-06-01` }),
@@ -504,6 +524,8 @@ describe('Detalhe: sugestão de Sequência', () => {
 
     const destaque = await screen.findByRole('region', { name: 'Continue com a Sequência' });
     expect(within(destaque).getByRole('link', { name: 'Sequência: Frieren 2, Anime' })).toBeInTheDocument();
+    // Junto do bloco do Item: na coluna do botão da Lista.
+    expect(screen.getByRole('button', { name: 'Editar na Lista' }).parentElement).toContainElement(destaque);
 
     await user.click(within(destaque).getByRole('button', { name: 'Pôr Frieren 2 em Planejado' }));
 

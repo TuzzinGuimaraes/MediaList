@@ -7,13 +7,15 @@ import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import { useRelacoes } from '../api/midias';
-import type { RelacaoDaMidia, TipoMidia } from '../api/tipos';
+import type { RelacaoDaMidia } from '../api/tipos';
 import { estadoDe, nomeDoTipo } from '@dominio/estadoConsumo';
 import {
   carrosselDeRelacoes,
+  chaveDaRelacao,
   descricaoDaRelacao,
+  destinoDaRelacao,
   LIMITE_DE_JOGOS,
-  linkDaFonte,
+  type MidiaComRelacoes,
   nomeDaRelacao,
   ordenarRelacoes,
   sugestoesDeSequencia,
@@ -34,21 +36,13 @@ const textos = { fechar: 'Fechar' };
 /** Largura do cartão na lista completa, duas ou três por linha. */
 const LARGURA_NA_LISTA = 100;
 
-type Midia = { id_midia: string; tipo: TipoMidia; data_lancamento: string | null };
-
-function chave(r: RelacaoDaMidia): string {
-  return `${r.relacao}-${r.id_midia ?? r.link_fonte ?? r.titulo}`;
-}
-
 /** O toque da obra relacionada: o Detalhe dela, o link `https://` da fonte ou nada. */
 function useAbrirRelacao(relacao: RelacaoDaMidia): (() => void) | null {
   const router = useRouter();
-  if (relacao.id_midia !== null) {
-    const id = relacao.id_midia;
-    return () => router.push(rotaDaMidia(id));
-  }
-  const link = linkDaFonte(relacao);
-  return link ? () => void Linking.openURL(link).catch(() => {}) : null;
+  const destino = destinoDaRelacao(relacao);
+  if (!destino) return null;
+  if (destino.abre === 'detalhe') return () => router.push(rotaDaMidia(destino.idMidia));
+  return () => void Linking.openURL(destino.link).catch(() => {});
 }
 
 /** Link (interno ou externo) com a descrição para o leitor de tela; sem destino, só o bloco. */
@@ -84,7 +78,7 @@ function Poster({ relacao }: { relacao: RelacaoDaMidia }) {
       contentFit="cover"
       cachePolicy="disk"
       transition={150}
-      recyclingKey={chave(relacao)}
+      recyclingKey={chaveDaRelacao(relacao)}
       accessibilityIgnoresInvertColors
     />
   ) : null;
@@ -115,7 +109,7 @@ function CartaoDaRelacao({ relacao, largura }: { relacao: RelacaoDaMidia; largur
 }
 
 /** A seção "Relações"; some sem nenhuma. Nos jogos de série grande, o "e mais N" abre a lista completa. */
-export function SecaoRelacoes({ midia }: { midia: Midia }) {
+export function SecaoRelacoes({ midia }: { midia: MidiaComRelacoes }) {
   const relacoes = useRelacoes(midia.id_midia);
   const [todas, setTodas] = useState(false);
   if (relacoes.isError && !relacoes.data) {
@@ -138,7 +132,7 @@ export function SecaoRelacoes({ midia }: { midia: Midia }) {
       <Fileira
         titulo={TEXTOS_DAS_RELACOES.secao}
         itens={cartoes}
-        chave={chave}
+        chave={chaveDaRelacao}
         renderizar={(r) => <CartaoDaRelacao relacao={r} largura={LARGURA_CARD} />}
         acao={acao}
         inicial={LIMITE_DE_JOGOS}
@@ -157,7 +151,7 @@ export function SecaoRelacoes({ midia }: { midia: Midia }) {
         >
           <View className="flex-row flex-wrap gap-3">
             {ordenarRelacoes(lista).map((r) => (
-              <CartaoDaRelacao key={chave(r)} relacao={r} largura={LARGURA_NA_LISTA} />
+              <CartaoDaRelacao key={chaveDaRelacao(r)} relacao={r} largura={LARGURA_NA_LISTA} />
             ))}
           </View>
         </BottomSheet>
@@ -167,7 +161,7 @@ export function SecaoRelacoes({ midia }: { midia: Midia }) {
 }
 
 /** O destaque do anime ou mangá Concluído: cada Sequência fora da Lista, com "Planejado" se está no Catálogo. */
-export function SugestaoDeSequencia({ midia, item }: { midia: Midia; item: { status_consumo: string } | null | undefined }) {
+export function SugestaoDeSequencia({ midia, item }: { midia: MidiaComRelacoes; item: { status_consumo: string } | null | undefined }) {
   const relacoes = useRelacoes(midia.id_midia);
   const sugestoes = sugestoesDeSequencia(midia, item, relacoes.data ?? []);
   if (!sugestoes.length) return null;
@@ -177,7 +171,7 @@ export function SugestaoDeSequencia({ midia, item }: { midia: Midia; item: { sta
         {TEXTOS_DAS_RELACOES.sugestao}
       </Text>
       {sugestoes.map(({ relacao, planejavel }) => (
-        <View key={chave(relacao)} className="flex-row items-center gap-3">
+        <View key={chaveDaRelacao(relacao)} className="flex-row items-center gap-3">
           <TocavelDaRelacao relacao={relacao} caixa={{ flex: 1 }} className="flex-row items-center gap-3">
             <View className="h-[60px] w-10 overflow-hidden rounded bg-superficie-alta">
               <Poster relacao={relacao} />

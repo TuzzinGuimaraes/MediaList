@@ -45,6 +45,12 @@ describe('paraAssistirAgora', () => {
     expect([emDia?.atraso, emDia?.atrasado, emDia?.texto]).toEqual([0, false, 'próximo em 2 d 0 h 0 min']);
   });
 
+  it('atrasado com o próximo episódio a menos de 1 min: próximo em instantes', () => {
+    const [atrasado] = paraAssistirAgora([anime('a', { progresso_atual: 2, proximo_episodio_em: '2026-11-27T12:00:30Z' })], AGORA);
+
+    expect(atrasado?.texto).toBe('3 episódios atrás · próximo em instantes');
+  });
+
   it('atrasado sem data futura do próximo episódio: só o atraso', () => {
     const [semData, passou] = paraAssistirAgora(
       [
@@ -131,9 +137,9 @@ describe('textoDoProximo', () => {
     expect(textoDoProximo(quando, AGORA)).toBe(texto);
   });
 
-  it('menos de 1 min: em instantes', () => {
-    expect(textoDoProximo(daqui(20_000), AGORA)).toBe('em instantes');
-    expect(textoDoProximo(daqui(1), AGORA)).toBe('em instantes');
+  it('menos de 1 min: próximo em instantes', () => {
+    expect(textoDoProximo(daqui(20_000), AGORA)).toBe('próximo em instantes');
+    expect(textoDoProximo(daqui(1), AGORA)).toBe('próximo em instantes');
   });
 
   it('já passou (o job ainda não viu o episódio): sai a qualquer momento', () => {

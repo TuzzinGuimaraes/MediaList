@@ -45,14 +45,14 @@ export function textoDoAtraso(atraso: number): string {
 /**
  * Contagem até o próximo episódio em dias, horas e minutos, arredondando para baixo: as unidades
  * zero à esquerda somem ("4 h 10 min"), as do meio ficam ("2 d 0 h 5 min"). Abaixo de 1 min,
- * "em instantes". Data já passada é episódio que saiu e o job ainda não viu. Sem data legível, null.
+ * "próximo em instantes". Data já passada é episódio que saiu e o job ainda não viu. Sem data legível, null.
  */
 export function textoDoProximo(proximoEm: string | null, agora: Date): string | null {
   const quando = instante(proximoEm);
   if (quando === null) return null;
   const falta = quando - agora.getTime();
   if (falta <= 0) return 'saindo agora';
-  if (falta < MINUTO) return 'em instantes';
+  if (falta < MINUTO) return 'próximo em instantes';
   const partes = [
     [Math.floor(falta / DIA), 'd'],
     [Math.floor((falta % DIA) / HORA), 'h'],

@@ -45,3 +45,17 @@ export function ErroTela({ erro, tentarDeNovo, telaCheia = false }: { erro: unkn
     </div>
   );
 }
+
+/** Erro numa parte da tela que não impede o resto de aparecer: a mensagem e "Tentar de novo". */
+export function FalhaParcial({ erro, tentarDeNovo }: { erro: unknown; tentarDeNovo(): void }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p role="alert" className="text-[14px] text-erro">
+        {mensagemDeErro(erro)}
+      </p>
+      <Botao variante="secundario" onClick={tentarDeNovo}>
+        Tentar de novo
+      </Botao>
+    </div>
+  );
+}

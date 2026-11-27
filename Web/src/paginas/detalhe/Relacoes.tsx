@@ -6,15 +6,17 @@ import { useState } from 'react';
 
 import { CardA, CardAFora } from '../../componentes/Cards';
 import { Modal } from '../../componentes/Camada';
-import { ErroTela } from '../../componentes/Estados';
-import { Fileira } from '../../componentes/Fileira';
+import { FalhaParcial } from '../../componentes/Estados';
+import { Fileira, TituloSecao } from '../../componentes/Fileira';
 import { Monograma } from '../../componentes/Monograma';
 import { SeloStatus } from '../../componentes/Selo';
 import { nomeDoTipo } from '@dominio/estadoConsumo';
 import {
   carrosselDeRelacoes,
+  chaveDaRelacao,
   descricaoDaRelacao,
-  linkDaFonte,
+  destinoDaRelacao,
+  type MidiaComRelacoes,
   nomeDaRelacao,
   ordenarRelacoes,
   sugestoesDeSequencia,
@@ -25,12 +27,6 @@ import { PlanejadoOuNaLista } from '../temporada/PlanejadoOuNaLista';
 import { useRelacoes } from './consultas';
 
 const LARGURA = 140;
-
-type Midia = { id_midia: string; tipo: string; data_lancamento: string | null };
-
-function chave(r: RelacaoDaMidia): string {
-  return `${r.relacao}-${r.id_midia ?? r.link_fonte ?? r.titulo}`;
-}
 
 /** Card A da obra relacionada: a Relação na linha de baixo e o Status sobre o pôster. */
 function CartaoDaRelacao({ relacao }: { relacao: RelacaoDaMidia }) {
@@ -43,18 +39,28 @@ function CartaoDaRelacao({ relacao }: { relacao: RelacaoDaMidia }) {
     largura: LARGURA,
     rotulo: descricaoDaRelacao(relacao),
   };
-  return relacao.id_midia !== null ? (
-    <CardA idMidia={relacao.id_midia} {...conteudo} />
+  const destino = destinoDaRelacao(relacao);
+  return destino?.abre === 'detalhe' ? (
+    <CardA idMidia={destino.idMidia} {...conteudo} />
   ) : (
-    <CardAFora link={linkDaFonte(relacao)} {...conteudo} />
+    <CardAFora link={destino?.link ?? null} {...conteudo} />
   );
 }
 
 /** A seção "Relações"; some sem nenhuma. */
-export function Relacoes({ midia }: { midia: Midia }) {
+export function Relacoes({ midia }: { midia: MidiaComRelacoes }) {
   const relacoes = useRelacoes(midia.id_midia);
   const [todas, setTodas] = useState(false);
-  if (relacoes.isError) return <ErroTela erro={relacoes.error} tentarDeNovo={() => void relacoes.refetch()} />;
+  if (relacoes.isError && !relacoes.data) {
+    return (
+      <section aria-labelledby="titulo-relacoes">
+        <TituloSecao>
+          <span id="titulo-relacoes">{TEXTOS_DAS_RELACOES.secao}</span>
+        </TituloSecao>
+        <FalhaParcial erro={relacoes.error} tentarDeNovo={() => void relacoes.refetch()} />
+      </section>
+    );
+  }
   const lista = relacoes.data ?? [];
   const { cartoes, mais } = carrosselDeRelacoes(lista, midia);
   const acao =
@@ -67,13 +73,13 @@ export function Relacoes({ midia }: { midia: Midia }) {
     <>
       <Fileira titulo={TEXTOS_DAS_RELACOES.secao} vazia={!cartoes.length} acao={acao} recuo="">
         {cartoes.map((r) => (
-          <CartaoDaRelacao key={chave(r)} relacao={r} />
+          <CartaoDaRelacao key={chaveDaRelacao(r)} relacao={r} />
         ))}
       </Fileira>
       <Modal titulo={TEXTOS_DAS_RELACOES.listaCompleta} aberto={todas} fechar={() => setTodas(false)}>
         <div className="flex flex-wrap gap-3">
           {ordenarRelacoes(lista).map((r) => (
-            <CartaoDaRelacao key={chave(r)} relacao={r} />
+            <CartaoDaRelacao key={chaveDaRelacao(r)} relacao={r} />
           ))}
         </div>
       </Modal>
@@ -82,7 +88,7 @@ export function Relacoes({ midia }: { midia: Midia }) {
 }
 
 /** O destaque do anime ou mangá Concluído: cada Sequência fora da Lista, com "Planejado" se está no Catálogo. */
-export function SugestaoDeSequencia({ midia, item }: { midia: Midia; item: { status_consumo: string } | null | undefined }) {
+export function SugestaoDeSequencia({ midia, item }: { midia: MidiaComRelacoes; item: { status_consumo: string } | null | undefined }) {
   const relacoes = useRelacoes(midia.id_midia);
   const sugestoes = sugestoesDeSequencia(midia, item, relacoes.data ?? []);
   if (!sugestoes.length) return null;
@@ -96,7 +102,7 @@ export function SugestaoDeSequencia({ midia, item }: { midia: Midia; item: { sta
       </h2>
       <ul className="flex flex-col gap-2">
         {sugestoes.map(({ relacao, planejavel }) => (
-          <li key={chave(relacao)} className="flex items-center justify-between gap-4">
+          <li key={chaveDaRelacao(relacao)} className="flex items-center justify-between gap-4">
             <LinkDaSugestao relacao={relacao} />
             {planejavel && relacao.id_midia !== null ? (
               <PlanejadoOuNaLista
@@ -136,16 +142,16 @@ function LinkDaSugestao({ relacao }: { relacao: RelacaoDaMidia }) {
   );
   const classe = 'flex min-w-0 items-center gap-3 rounded-md outline-none hover:underline focus-visible:ring-2 focus-visible:ring-marca-texto';
   const rotulo = descricaoDaRelacao(relacao);
-  if (relacao.id_midia !== null) {
+  const destino = destinoDaRelacao(relacao);
+  if (destino?.abre === 'detalhe') {
     return (
-      <Link to="/midia/$id" params={{ id: relacao.id_midia }} aria-label={rotulo} className={classe}>
+      <Link to="/midia/$id" params={{ id: destino.idMidia }} aria-label={rotulo} className={classe}>
         {corpo}
       </Link>
     );
   }
-  const link = linkDaFonte(relacao);
-  return link ? (
-    <a href={link} target="_blank" rel="noopener noreferrer" aria-label={rotulo} className={classe}>
+  return destino ? (
+    <a href={destino.link} target="_blank" rel="noopener noreferrer" aria-label={rotulo} className={classe}>
       {corpo}
     </a>
   ) : (
