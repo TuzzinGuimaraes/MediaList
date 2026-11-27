@@ -4961,6 +4961,127 @@
         "title": "ProgressoItemLista",
         "type": "object"
       },
+      "RelacaoDaMidia": {
+        "description": "Uma obra ligada à Mídia, já com o nome visto da Mídia (o inverso, quando veio do outro lado).",
+        "properties": {
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Lancamento"
+          },
+          "id_midia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A obra no Catálogo; nulo quando ela ainda não está nele",
+            "title": "Id Midia"
+          },
+          "link_fonte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`https://` da obra na fonte (AniList ou RAWG), só fora do Catálogo",
+            "title": "Link Fonte"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "relacao": {
+            "enum": [
+              "PREQUEL",
+              "SEQUEL",
+              "ADAPTATION",
+              "SOURCE",
+              "PARENT",
+              "SIDE_STORY",
+              "SPIN_OFF",
+              "ALTERNATIVE",
+              "SUMMARY",
+              "COMPILATION",
+              "CONTAINS",
+              "MESMA_SERIE"
+            ],
+            "title": "Relacao",
+            "type": "string"
+          },
+          "status_consumo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "planejado",
+                  "assistindo",
+                  "lendo",
+                  "na_fila",
+                  "jogando",
+                  "pausado",
+                  "abandonado",
+                  "completo",
+                  "lido",
+                  "zerado",
+                  "platinado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O Estado de consumo do Usuário na obra; nulo sem sessão, fora do Catálogo ou fora da Lista",
+            "title": "Status Consumo"
+          },
+          "tipo": {
+            "description": "O Tipo da obra relacionada, que pode ser outro (a Adaptação de um mangá)",
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relacao",
+          "tipo",
+          "titulo",
+          "poster_url",
+          "data_lancamento",
+          "id_midia",
+          "link_fonte",
+          "status_consumo"
+        ],
+        "title": "RelacaoDaMidia",
+        "type": "object"
+      },
       "RespostaAtividade": {
         "properties": {
           "dias": {
@@ -5324,6 +5445,23 @@
           "refresh_token"
         ],
         "title": "RespostaRefresh",
+        "type": "object"
+      },
+      "RespostaRelacoes": {
+        "properties": {
+          "relacoes": {
+            "description": "Sem `CHARACTER`, `OTHER` e obras adultas; por estreia (sem ela, no fim) e título",
+            "items": {
+              "$ref": "#/components/schemas/RelacaoDaMidia"
+            },
+            "title": "Relacoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "relacoes"
+        ],
+        "title": "RespostaRelacoes",
         "type": "object"
       },
       "RespostaTrending": {
@@ -9563,6 +9701,95 @@
           }
         ],
         "summary": "Distribuição das notas das Avaliações e, com login, a Avaliação do Usuário.",
+        "tags": [
+          "midias"
+        ]
+      }
+    },
+    "/api/midias/{id_midia}/relacoes": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_midias_{id_midia}_relacoes",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "id_midia",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaRelacoes"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "As Relações da Mídia nos dois sentidos e, com login, o Estado de consumo do Usuário em cada obra.",
         "tags": [
           "midias"
         ]

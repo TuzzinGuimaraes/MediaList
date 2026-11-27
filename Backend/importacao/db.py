@@ -10,9 +10,12 @@ Avaliações e Itens não são tocados. A Nota média não é gravada: é calcul
 leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`) e, nos animes, as
 colunas da fonte do Tipo (`colunas_fonte`: Temporada, formato, Popularidade da fonte).
 
-O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo.
+O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo. As Relações das Mídias
+de uma página vão numa transação à parte (`salvar_relacoes`), que troca as que elas tinham.
 """
 from __future__ import annotations
+
+from psycopg.types.json import Jsonb
 
 from banco import Conflito, Transacao, autocommit
 from tipos_midia import COLUNAS_BASE, TIPOS, TipoMidia, valor_de_coluna
@@ -166,3 +169,48 @@ def salvar_manga(dados: dict, generos: list[str], t: Transacao | None = None) ->
 def salvar_jogo(dados: dict, generos: list[str], t: Transacao | None = None) -> dict:
     """Upsert do jogo pelo `rawg_slug` ou pelo `steam_appid`; `plataformas` é uma lista (text[])."""
     return _salvar('jogo', dados, generos, t)
+
+
+#: Colunas de `relacoes_midia` que a Importação grava, com o tipo de cada uma.
+_COLUNAS_RELACAO = {
+    'id_midia': 'uuid', 'relacao': 'text', 'fonte': 'text', 'tipo_destino': 'text', 'destino_anilist_id': 'integer',
+    'destino_rawg_slug': 'text', 'titulo': 'text', 'data_lancamento': 'date', 'adulto': 'boolean',
+    'poster_url': 'text',
+}
+
+# O mesmo destino duas vezes na mesma Mídia: vale o primeiro (ON CONFLICT DO NOTHING).
+_INSERIR_RELACOES = f"""
+    INSERT INTO relacoes_midia ({', '.join(_COLUNAS_RELACAO)})
+    SELECT {', '.join(_COLUNAS_RELACAO)} FROM jsonb_to_recordset(%s::jsonb)
+        AS r({', '.join(f'{c} {t}' for c, t in _COLUNAS_RELACAO.items())})
+    ON CONFLICT DO NOTHING
+"""
+
+_GRAVAR_CONTAGENS = """
+    UPDATE jogos j SET game_series_count = c.contagem
+    FROM jsonb_to_recordset(%s::jsonb) AS c(id_midia uuid, contagem integer)
+    WHERE j.id_midia = c.id_midia
+"""
+
+
+def salvar_relacoes(t: Transacao, relacoes_por_midia: dict[str, list[dict]],
+                    contagens_da_serie: dict[str, int] | None = None) -> None:
+    """Troca as Relações das Mídias pelas dadas numa transação só (uma página da Importação).
+
+    `relacoes_por_midia`: id_midia → Relações (`importacao.relacoes.da_obra`/`da_serie`). Mídia
+    com lista vazia fica sem Relações. `contagens_da_serie`: id_midia → `game_series_count` dos
+    jogos, gravada junto: se a gravação falha, nem as Relações nem a contagem mudam.
+    """
+    if not relacoes_por_midia:
+        return
+    linhas = [{**relacao, 'id_midia': id_midia}
+              for id_midia, relacoes in relacoes_por_midia.items() for relacao in relacoes]
+    contagens = [{'id_midia': i, 'contagem': c} for i, c in (contagens_da_serie or {}).items()]
+    # Dois comandos, não um com o DELETE numa CTE: o INSERT do mesmo comando ainda veria a linha
+    # apagada e, com ON CONFLICT DO NOTHING, a Relação igual à de antes sumiria.
+    with t.bloco():
+        if contagens:
+            t.executar(_GRAVAR_CONTAGENS, (Jsonb(contagens),))
+        t.executar('DELETE FROM relacoes_midia WHERE id_midia = ANY(%s::uuid[])', (list(relacoes_por_midia),))
+        if linhas:
+            t.executar(_INSERIR_RELACOES, (Jsonb(linhas),))

@@ -7,7 +7,7 @@ from datetime import date
 from typing import get_args
 
 from banco import Indisponivel, autocommit
-from importacao import anilist, cursor
+from importacao import anilist, cursor, relacoes
 from importacao.db import salvar_anime
 from importacao.utils import (
     ERROR_LOG_PATH,
@@ -148,12 +148,15 @@ def importar_animes(
     def importar_pagina(pagina: dict):
         if not pagina['itens']:
             return
-        # Uma conexão por página; cada Mídia é um comando (a sua transação).
+        # Uma conexão por página; cada Mídia é um comando (a sua transação), e as Relações da
+        # página, mais uma.
         with autocommit() as t:
+            relacoes_por_midia = {}
             for item in pagina['itens']:
                 try:
                     result = processar_e_inserir_anime(item, t)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
+                    relacoes_por_midia[result['id_midia']] = relacoes.da_obra(item)
                 except Indisponivel:
                     # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.
                     raise
@@ -168,6 +171,7 @@ def importar_animes(
                         payload=item,
                         extra={'pagina': pagina['pagina']},
                     )
+            relacoes.gravar_da_pagina(t, 'anime', relacoes_por_midia, pagina['pagina'])
 
     def buscar(pagina, sort, filtros):
         return anilist.buscar_pagina(session, rate_limiter, 'ANIME', pagina, sort, filtros)

@@ -37,8 +37,30 @@ describe('paraAssistirAgora', () => {
       AGORA,
     );
 
-    expect([atrasado?.atraso, atrasado?.atrasado, atrasado?.texto]).toEqual([3, true, '3 episódios atrás']);
-    expect([emDia?.atraso, emDia?.atrasado, emDia?.texto]).toEqual([0, false, 'próximo em 2 d']);
+    expect([atrasado?.atraso, atrasado?.atrasado, atrasado?.texto]).toEqual([
+      3,
+      true,
+      '3 episódios atrás · próximo em 2 d 0 h 0 min',
+    ]);
+    expect([emDia?.atraso, emDia?.atrasado, emDia?.texto]).toEqual([0, false, 'próximo em 2 d 0 h 0 min']);
+  });
+
+  it('atrasado com o próximo episódio a menos de 1 min: próximo em instantes', () => {
+    const [atrasado] = paraAssistirAgora([anime('a', { progresso_atual: 2, proximo_episodio_em: '2026-11-27T12:00:30Z' })], AGORA);
+
+    expect(atrasado?.texto).toBe('3 episódios atrás · próximo em instantes');
+  });
+
+  it('atrasado sem data futura do próximo episódio: só o atraso', () => {
+    const [semData, passou] = paraAssistirAgora(
+      [
+        anime('a', { progresso_atual: 1, proximo_episodio_em: null }),
+        anime('b', { progresso_atual: 3, proximo_episodio_em: '2026-11-27T11:00:00Z' }),
+      ],
+      AGORA,
+    );
+
+    expect([semData?.texto, passou?.texto]).toEqual(['4 episódios atrás', '2 episódios atrás']);
   });
 
   it('em dia sem data do próximo episódio vai para o fim, como "em dia"', () => {
@@ -81,7 +103,7 @@ describe('paraAssistirAgora', () => {
     const depois = { ...antes, progresso_atual: 7 };
 
     expect(paraAssistirAgora([antes], AGORA)[0]?.atraso).toBe(1);
-    expect(paraAssistirAgora([depois], AGORA)[0]?.texto).toBe('próximo em 2 d');
+    expect(paraAssistirAgora([depois], AGORA)[0]?.texto).toBe('próximo em 2 d 0 h 0 min');
   });
 
   it('sem anime em exibição Em progresso, a faixa é vazia', () => {
@@ -103,16 +125,21 @@ describe('textoDoProximo', () => {
   const DIA = 24 * HORA;
 
   it.each([
-    ['menos de 1 h: minutos', daqui(45 * MIN), 'próximo em 45 min'],
-    ['menos de 1 min: 1 min', daqui(20_000), 'próximo em 1 min'],
-    ['59 min e pouco: 59 min', daqui(59 * MIN + 59_000), 'próximo em 59 min'],
-    ['1 h em ponto: horas', daqui(HORA), 'próximo em 1 h'],
-    ['menos de 1 d: horas, para baixo', daqui(5 * HORA + 50 * MIN), 'próximo em 5 h'],
-    ['23 h e pouco: 23 h', daqui(23 * HORA + 59 * MIN), 'próximo em 23 h'],
-    ['1 d em ponto: dias', daqui(DIA), 'próximo em 1 d'],
-    ['dias, para baixo', daqui(2 * DIA + 23 * HORA), 'próximo em 2 d'],
+    ['só minutos', daqui(45 * MIN), 'próximo em 45 min'],
+    ['59 min e pouco: para baixo', daqui(59 * MIN + 59_000), 'próximo em 59 min'],
+    ['1 min em ponto', daqui(MIN), 'próximo em 1 min'],
+    ['horas e minutos', daqui(4 * HORA + 10 * MIN), 'próximo em 4 h 10 min'],
+    ['1 h em ponto: os minutos zero ficam', daqui(HORA), 'próximo em 1 h 0 min'],
+    ['dias, horas e minutos', daqui(2 * DIA + 4 * HORA + 10 * MIN), 'próximo em 2 d 4 h 10 min'],
+    ['dias com zero no meio', daqui(2 * DIA + 5 * MIN), 'próximo em 2 d 0 h 5 min'],
+    ['1 d em ponto', daqui(DIA), 'próximo em 1 d 0 h 0 min'],
   ])('%s', (_caso, quando, texto) => {
     expect(textoDoProximo(quando, AGORA)).toBe(texto);
+  });
+
+  it('menos de 1 min: próximo em instantes', () => {
+    expect(textoDoProximo(daqui(20_000), AGORA)).toBe('próximo em instantes');
+    expect(textoDoProximo(daqui(1), AGORA)).toBe('próximo em instantes');
   });
 
   it('já passou (o job ainda não viu o episódio): sai a qualquer momento', () => {

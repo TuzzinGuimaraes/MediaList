@@ -191,6 +191,7 @@ describe('toque no aviso', () => {
       'GET /noticias?por_pagina=20': { status: 200, corpo: vazio },
       [`GET /midias/${frieren.id_midia}`]: { status: 200, corpo: frieren },
       [`GET /midias/${frieren.id_midia}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+      [`GET /midias/${frieren.id_midia}/relacoes`]: { status: 200, corpo: { relacoes: [] } },
       [rotaAvaliacoes(frieren.id_midia)]: paginaAvaliacoes([]),
       [rotaNotas(frieren.id_midia)]: respostaNotas(),
       'GET /lista': { status: 200, corpo: { lista: [] } },

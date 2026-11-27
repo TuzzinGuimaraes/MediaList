@@ -5,7 +5,7 @@ import { CardMidia } from './CardMidia';
 import { TituloSecao } from './Secao';
 
 /** Largura do card A nos carrosséis. */
-const LARGURA_CARD = 115;
+export const LARGURA_CARD = 115;
 
 type PropsFileira<T> = {
   titulo: string;
@@ -15,19 +15,31 @@ type PropsFileira<T> = {
   /** Espaço entre os cards (classe de gap). */
   espaco?: string;
   className?: string;
+  /** Ação ao lado do título (o "e mais N" das Relações). */
+  acao?: React.ReactNode;
+  /** Quantos cards a FlatList monta de saída (padrão dela: 10). */
+  inicial?: number;
 };
 
 /** Fileira horizontal com título (Início, Sugestões da Lista); sem itens, não aparece. */
-export function Fileira<T>({ titulo, itens, chave, renderizar, espaco = 'gap-3', className = '' }: PropsFileira<T>) {
+export function Fileira<T>({ titulo, itens, chave, renderizar, espaco = 'gap-3', className = '', acao, inicial }: PropsFileira<T>) {
   if (!itens.length) return null;
   return (
     <View accessibilityLabel={titulo} className={`gap-3 ${className}`}>
-      <TituloSecao className="px-4">{titulo}</TituloSecao>
+      {acao ? (
+        <View className="flex-row items-center justify-between gap-3 px-4">
+          <TituloSecao>{titulo}</TituloSecao>
+          {acao}
+        </View>
+      ) : (
+        <TituloSecao className="px-4">{titulo}</TituloSecao>
+      )}
       <FlatList
         horizontal
         data={itens}
         keyExtractor={chave}
         renderItem={({ item, index }) => renderizar(item, index)}
+        initialNumToRender={inicial}
         contentContainerClassName={`${espaco} px-4`}
         showsHorizontalScrollIndicator={false}
       />

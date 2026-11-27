@@ -27,6 +27,8 @@ export type PropsCartao = {
   /** Fio de progresso: ausente sem Item na Lista; null com Item sem total conhecido. */
   progresso?: number | null;
   largura?: number;
+  /** Nome acessível do card, quando o título sozinho não basta. */
+  rotulo?: string;
 };
 
 function Poster({ url, titulo }: { url?: string | null; titulo: string }) {
@@ -67,15 +69,10 @@ export function SeloTop({ posicao }: { posicao: number }) {
   );
 }
 
-/** Card A (denso): pôster 2:3 com selos e fio; título, Tipo e notas abaixo. */
-export function CardA({ idMidia, titulo, posterUrl, tipo, notas, selos, posicaoTop, progresso, largura }: PropsCartao) {
+/** Pôster, selos, fio, título, Tipo e notas do card A, dentro de um link interno, externo ou de nada. */
+function ConteudoCardA({ titulo, posterUrl, tipo, notas, selos, posicaoTop, progresso }: Omit<PropsCartao, 'idMidia'>) {
   return (
-    <Link
-      to="/midia/$id"
-      params={{ id: idMidia }}
-      className="group/card flex shrink-0 flex-col gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-marca-texto"
-      style={largura ? { width: largura } : undefined}
-    >
+    <>
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md bg-superficie-alta transition motion-safe:group-hover/card:-translate-y-1 group-hover/card:shadow-lg">
         <Poster url={posterUrl} titulo={titulo} />
         {posicaoTop ? (
@@ -89,7 +86,42 @@ export function CardA({ idMidia, titulo, posterUrl, tipo, notas, selos, posicaoT
       <span className="line-clamp-2 text-[13px] leading-tight text-texto group-hover/card:text-texto-forte">{titulo}</span>
       <Selo texto={tipo} />
       {notas}
+    </>
+  );
+}
+
+const CLASSE_CARD_A =
+  'group/card flex shrink-0 flex-col gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-marca-texto';
+
+/** Card A (denso): pôster 2:3 com selos e fio; título, Tipo e notas abaixo. */
+export function CardA({ idMidia, largura, rotulo, ...conteudo }: PropsCartao) {
+  return (
+    <Link
+      to="/midia/$id"
+      params={{ id: idMidia }}
+      aria-label={rotulo}
+      className={CLASSE_CARD_A}
+      style={largura ? { width: largura } : undefined}
+    >
+      <ConteudoCardA {...conteudo} />
     </Link>
+  );
+}
+
+/**
+ * Card A de uma obra fora do Catálogo: link externo para a fonte (`link`, já conferido como
+ * `https://` por quem chama) numa aba nova; sem link, só o cartão.
+ */
+export function CardAFora({ link, largura, rotulo, ...conteudo }: Omit<PropsCartao, 'idMidia'> & { link: string | null }) {
+  const estilo = largura ? { width: largura } : undefined;
+  return link ? (
+    <a href={link} target="_blank" rel="noopener noreferrer" aria-label={rotulo} className={CLASSE_CARD_A} style={estilo}>
+      <ConteudoCardA {...conteudo} />
+    </a>
+  ) : (
+    <article aria-label={rotulo} className={CLASSE_CARD_A} style={estilo}>
+      <ConteudoCardA {...conteudo} />
+    </article>
   );
 }
 

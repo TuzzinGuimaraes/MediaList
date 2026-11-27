@@ -413,6 +413,7 @@ describe('adicionar pelo detalhe', () => {
     return {
       [`GET /midias/${id}`]: { status: 200, corpo: midia },
       [`GET /midias/${id}/distribuicao`]: { status: 200, corpo: { distribuicao: [] } },
+      [`GET /midias/${id}/relacoes`]: { status: 200, corpo: { relacoes: [] } },
       ...rotasSemAvaliacoes(id),
     };
   }

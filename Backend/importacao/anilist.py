@@ -64,6 +64,28 @@ CAMPOS_MEDIA = """
       popularity
 """
 
+#: As Relações da obra (`dominio.relacoes`), só na consulta da Importação: as Integrações pedem
+#: `CAMPOS_MEDIA` e a obra que elas importam fica sem Relações até a próxima reimportação.
+#: Medido em 2026-11-29: a página de 50 animes com elas cabe no limite de complexidade da API
+#: pública (200, 366 Relações, até 65 numa obra).
+CAMPOS_RELACOES = """
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            type
+            title { romaji english native }
+            startDate { year month day }
+            isAdult
+            coverImage { large }
+          }
+        }
+      }
+"""
+
+#: Campos de `Media` que a Importação pede: os que a rotina grava e as Relações.
+CAMPOS_IMPORTACAO = CAMPOS_MEDIA + CAMPOS_RELACOES
 POR_PAGINA = 50
 #: Páginas da atualização das populares por execução (500 obras).
 PAGINAS_ATUALIZACAO = 10
@@ -105,7 +127,7 @@ def _consulta(filtros: dict) -> tuple[str, dict]:
         f'query ($page: Int, $perPage: Int, $tipo: MediaType, $sort: [MediaSort]{declaracoes}) {{\n'
         '  Page(page: $page, perPage: $perPage) {\n'
         '    pageInfo { hasNextPage }\n'
-        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_MEDIA + '    }\n'
+        f'    media(type: $tipo, sort: $sort{argumentos}) {{' + CAMPOS_IMPORTACAO + '    }\n'
         '  }\n}\n'
     )
     return query, {_FILTROS[nome][0]: valor for nome, valor in filtros.items()}
@@ -122,18 +144,11 @@ def _limite_de_paginas(response) -> bool:
     return any(re.search(r'page exceeds maximum', str(e.get('message', '')), re.I) for e in erros)
 
 
-def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str], filtros: dict) -> dict:
+def _pedir_pagina(session, rate_limiter, payload: dict, descricao: str) -> dict:
     """Uma página de `Page.media`: `{'itens', 'fim', 'erro', 'limite', 'payload'}`.
 
     `limite`: o AniList recusou a página por passar do máximo da API pública.
     """
-    if not 1 <= pagina <= ULTIMA_PAGINA:
-        raise ValueError(f'página {pagina} fora de 1..{ULTIMA_PAGINA}')
-    query, variaveis = _consulta(filtros)
-    payload = {
-        'query': query,
-        'variables': {'page': pagina, 'perPage': POR_PAGINA, 'tipo': tipo, 'sort': sort, **variaveis},
-    }
     try:
         rate_limiter.wait()
         # O 429 é tratado pelo Retry da sessão (respeita Retry-After, com limite de
@@ -144,13 +159,43 @@ def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str]
         response.raise_for_status()
         data = response.json()['data']['Page']
     except Exception as exc:
-        logger.warning('Falha ao buscar página %s do AniList (%s, %s): %s', pagina, tipo, filtros, exc)
+        logger.warning('Falha ao buscar %s do AniList: %s', descricao, exc)
         return {'itens': [], 'fim': False, 'erro': exc, 'limite': False, 'payload': payload}
     fim = not data['pageInfo']['hasNextPage']
     return {'itens': data['media'], 'fim': fim, 'erro': None, 'limite': False, 'payload': payload}
 
 
+def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str], filtros: dict) -> dict:
+    """Uma página da Importação (`_pedir_pagina`)."""
+    if not 1 <= pagina <= ULTIMA_PAGINA:
+        raise ValueError(f'página {pagina} fora de 1..{ULTIMA_PAGINA}')
+    query, variaveis = _consulta(filtros)
+    payload = {
+        'query': query,
+        'variables': {'page': pagina, 'perPage': POR_PAGINA, 'tipo': tipo, 'sort': sort, **variaveis},
+    }
+    return _pedir_pagina(session, rate_limiter, payload, f'a página {pagina} ({tipo}, {filtros})')
+
+
 Buscar = Callable[[int, list[str], dict], dict]
+
+
+def buscar_relacoes(session, rate_limiter, tipo: str, ids: list[int]) -> dict:
+    """As Relações das obras `ids` (até 50, uma página), na página de `_pedir_pagina`.
+
+    Cada item é `{'id', 'relations'}`; obra que o AniList não tem mais não volta.
+    """
+    query = (
+        'query ($page: Int, $perPage: Int, $idIn: [Int], $tipo: MediaType, $sort: [MediaSort]) {\n'
+        '  Page(page: $page, perPage: $perPage) {\n'
+        '    pageInfo { hasNextPage }\n'
+        '    media(id_in: $idIn, type: $tipo, sort: $sort) {\n      id' + CAMPOS_RELACOES + '    }\n'
+        '  }\n}\n'
+    )
+    payload = {'query': query, 'variables': {
+        'page': 1, 'perPage': len(ids), 'idIn': list(ids), 'tipo': tipo, 'sort': POR_ID,
+    }}
+    return _pedir_pagina(session, rate_limiter, payload, f'as Relações de {len(ids)} obras ({tipo})')
 
 
 def crescimento(buscar: Buscar, paginas: int, fronteira: Fronteira | None, pagina_topo: int = 1) -> Iterator[dict]:

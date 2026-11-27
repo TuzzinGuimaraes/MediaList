@@ -8,6 +8,7 @@ import { erro, type Requisicao, type Rotas } from '../../testes/fetchSimulado';
 
 type MidiaDetalhe = Esquemas['MidiaDetalhe'];
 type Avaliacao = Esquemas['AvaliacaoDaMidia'];
+type Relacao = Esquemas['RelacaoDaMidia'];
 
 const ID = 'MID-frieren';
 
@@ -98,9 +99,17 @@ function rotas({
   lista = [] as Esquemas['ItemLista'][],
   avaliacoes = [avaliacao()],
   minha = null as Avaliacao | null,
-}: { detalhe?: MidiaDetalhe; lista?: Esquemas['ItemLista'][]; avaliacoes?: Avaliacao[]; minha?: Avaliacao | null } = {}): Rotas {
+  relacoes = [] as Relacao[],
+}: {
+  detalhe?: MidiaDetalhe;
+  lista?: Esquemas['ItemLista'][];
+  avaliacoes?: Avaliacao[];
+  minha?: Avaliacao | null;
+  relacoes?: Relacao[];
+} = {}): Rotas {
   return {
     [`GET /midias/${ID}`]: { status: 200, corpo: detalhe },
+    [`GET /midias/${ID}/relacoes`]: { status: 200, corpo: { relacoes } },
     'GET /lista': { status: 200, corpo: { lista } },
     [`GET /midias/${ID}/notas`]: { status: 200, corpo: { distribuicao, minha_avaliacao: minha } },
     [`GET /avaliacoes/${ID}`]: {
@@ -394,5 +403,154 @@ describe('Detalhe: episódio novo', () => {
 
     expect(await screen.findByRole('button', { name: 'Editar na Lista' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Episódio novo' })).not.toBeInTheDocument();
+  });
+});
+
+
+function relacao(titulo: string, dados: Partial<Relacao> = {}): Relacao {
+  return {
+    relacao: 'SEQUEL',
+    tipo: 'anime',
+    titulo,
+    poster_url: null,
+    data_lancamento: null,
+    id_midia: `MID-${titulo.replace(/\s+/g, '-')}`,
+    link_fonte: null,
+    status_consumo: null,
+    ...dados,
+  };
+}
+
+describe('Detalhe: Relações', () => {
+  it('sem Relações, a seção some', async () => {
+    const { api } = await abrirLogado(`/midia/${ID}`, { rotas: rotas() });
+
+    await screen.findByRole('region', { name: 'Sinopse' });
+    await waitFor(() => expect(api.para(`GET /midias/${ID}/relacoes`)).toHaveLength(1));
+    expect(screen.queryByRole('region', { name: 'Relações' })).not.toBeInTheDocument();
+  });
+
+  it('cartão do Catálogo abre o Detalhe; fora dele, o link https da fonte; cada um diz Relação, título, Tipo e Status', async () => {
+    const relacoes = [
+      relacao('Mangá de Frieren', {
+        relacao: 'SOURCE',
+        tipo: 'manga',
+        id_midia: null,
+        link_fonte: 'https://anilist.co/manga/118586',
+      }),
+      relacao('Frieren 2', { status_consumo: 'assistindo', data_lancamento: '2026-01-10' }),
+      relacao('Prequel inseguro', { relacao: 'PREQUEL', id_midia: null, link_fonte: 'http://anilist.co/anime/1' }),
+    ];
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ relacoes }) });
+
+    const secao = await screen.findByRole('region', { name: 'Relações' });
+    const interno = within(secao).getByRole('link', { name: 'Sequência: Frieren 2, Anime, Em progresso' });
+    expect(interno).toHaveAttribute('href', '/midia/MID-Frieren-2');
+    const externo = within(secao).getByRole('link', { name: 'Original · mangá: Mangá de Frieren, Mangá, fora do Catálogo' });
+    expect(externo).toHaveAttribute('href', 'https://anilist.co/manga/118586');
+    expect(externo).toHaveAttribute('target', '_blank');
+    expect(externo).toHaveAttribute('rel', 'noopener noreferrer');
+    // Sem https, o cartão fica sem link.
+    expect(within(secao).queryByRole('link', { name: /Prequel inseguro/ })).not.toBeInTheDocument();
+    expect(within(secao).getByLabelText('Prequel: Prequel inseguro, Anime, fora do Catálogo')).toBeInTheDocument();
+    // Prequel e Sequência antes do Original (ordem do domínio).
+    const nomes = within(secao)
+      .getAllByLabelText(/: /)
+      .map((c) => c.getAttribute('aria-label'));
+    expect(nomes[0]).toMatch(/^Prequel/);
+    expect(nomes[1]).toMatch(/^Sequência/);
+    expect(nomes[2]).toMatch(/^Original/);
+  });
+
+  it('erro nas Relações: a falha fica na seção, com "Tentar de novo", e o resto do Detalhe aparece', async () => {
+    let falhar = true;
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas(),
+        [`GET /midias/${ID}/relacoes`]: () =>
+          falhar ? erro(400, 'dados_invalidos', 'Relações indisponíveis.') : { status: 200, corpo: { relacoes: [relacao('Frieren 2')] } },
+      },
+    });
+
+    const secao = await screen.findByRole('region', { name: 'Relações' });
+    expect(within(secao).getByRole('alert')).toHaveTextContent('Relações indisponíveis.');
+    expect(screen.getByRole('region', { name: 'Sinopse' })).toBeInTheDocument();
+
+    falhar = false;
+    await user.click(within(secao).getByRole('button', { name: 'Tentar de novo' }));
+
+    expect(await screen.findByRole('link', { name: 'Sequência: Frieren 2, Anime' })).toBeInTheDocument();
+  });
+
+  it('jogo com série grande: 12 cartões e "e mais N", que abre a lista completa', async () => {
+    const serie = Array.from({ length: 15 }, (_, i) =>
+      relacao(`Jogo ${2000 + i}`, { relacao: 'MESMA_SERIE', tipo: 'jogo', data_lancamento: `${2000 + i}-06-01` }),
+    );
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: rotas({ detalhe: midia({ tipo: 'jogo', data_lancamento: '2001-01-01' }), relacoes: serie }),
+    });
+
+    const secao = await screen.findByRole('region', { name: 'Relações' });
+    expect(within(secao).getAllByRole('link', { name: /^Mesma série/ })).toHaveLength(12);
+    expect(within(secao).queryByRole('link', { name: /Jogo 2014/ })).not.toBeInTheDocument();
+
+    await user.click(within(secao).getByRole('button', { name: 'e mais 3' }));
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Todos os jogos da série' });
+    expect(within(dialogo).getAllByRole('link', { name: /^Mesma série/ })).toHaveLength(15);
+    expect(within(dialogo).getByRole('link', { name: 'Mesma série: Jogo 2014, Jogo' })).toBeInTheDocument();
+  });
+});
+
+describe('Detalhe: sugestão de Sequência', () => {
+  const concluido = { ...itemAssistindo, status_consumo: 'completo', progresso_atual: 28 } as Esquemas['ItemLista'];
+
+  it('anime Concluído: a Sequência fora da Lista em destaque; "Planejado" grava na Lista e o destaque some', async () => {
+    let planejada = false;
+    const { user, api } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ lista: [concluido] }),
+        [`GET /midias/${ID}/relacoes`]: () => ({
+          status: 200,
+          corpo: { relacoes: [relacao('Frieren 2', { status_consumo: planejada ? 'planejado' : null })] },
+        }),
+        'POST /lista/adicionar': () => {
+          planejada = true;
+          return { status: 201, corpo: { mensagem: 'ok', id_lista: 'LST-2' } };
+        },
+        'GET /midias/MID-Frieren-2': { status: 200, corpo: midia({ id_midia: 'MID-Frieren-2' }) },
+      },
+    });
+
+    const destaque = await screen.findByRole('region', { name: 'Continue com a Sequência' });
+    expect(within(destaque).getByRole('link', { name: 'Sequência: Frieren 2, Anime' })).toBeInTheDocument();
+    // Junto do bloco do Item: na coluna do botão da Lista.
+    expect(screen.getByRole('button', { name: 'Editar na Lista' }).parentElement).toContainElement(destaque);
+
+    await user.click(within(destaque).getByRole('button', { name: 'Pôr Frieren 2 em Planejado' }));
+
+    expect(api.para('POST /lista/adicionar').map((c: Requisicao) => c.corpo)).toEqual([
+      { id_midia: 'MID-Frieren-2', status_consumo: 'planejado' },
+    ]);
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Continue com a Sequência' })).not.toBeInTheDocument());
+  });
+
+  it('Sequência fora do Catálogo: no destaque com o link da fonte, sem o botão', async () => {
+    const fora = relacao('Frieren 3', { id_midia: null, link_fonte: 'https://anilist.co/anime/3' });
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ lista: [concluido], relacoes: [fora] }) });
+
+    const destaque = await screen.findByRole('region', { name: 'Continue com a Sequência' });
+    expect(within(destaque).getByRole('link', { name: 'Sequência: Frieren 3, Anime, fora do Catálogo' })).toHaveAttribute(
+      'href',
+      'https://anilist.co/anime/3',
+    );
+    expect(within(destaque).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('sem Concluído, sem destaque', async () => {
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ lista: [itemAssistindo], relacoes: [relacao('Frieren 2')] }) });
+
+    await screen.findByRole('region', { name: 'Relações' });
+    expect(screen.queryByRole('region', { name: 'Continue com a Sequência' })).not.toBeInTheDocument();
   });
 });
