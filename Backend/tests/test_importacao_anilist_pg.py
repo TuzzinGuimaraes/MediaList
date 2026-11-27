@@ -90,7 +90,10 @@ def importar(pg, monkeypatch, capsys):
 
 
 def _janela(variaveis):
-    """O pedido em poucas letras: ('topo', página), ('empate', popularidade, página), ('abaixo', ...)."""
+    """O pedido em poucas letras: ('topo', página), ('empate', popularidade, página), ('abaixo', ...),
+    ('ids', ids) na carga das Relações."""
+    if 'idIn' in variaveis:
+        return ('ids', tuple(variaveis['idIn']))
     if 'popularity' in variaveis:
         assert variaveis['sort'] == ['ID']
         return ('empate', variaveis['popularity'], variaveis['page'])

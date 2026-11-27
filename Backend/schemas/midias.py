@@ -371,3 +371,32 @@ class RespostaCalendario(BaseModel):
 class AtualizacaoPublicada(BaseModel):
     mensagem: str
     notificacoes_enviadas: int
+
+
+
+#: A Relação, pelo código da fonte (`dominio.relacoes.VISIVEIS`): os do AniList e `MESMA_SERIE` nos jogos.
+NomeRelacao = Literal[
+    'PREQUEL', 'SEQUEL', 'ADAPTATION', 'SOURCE', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY',
+    'COMPILATION', 'CONTAINS', 'MESMA_SERIE',
+]
+
+
+class RelacaoDaMidia(BaseModel):
+    """Uma obra ligada à Mídia, já com o nome visto da Mídia (o inverso, quando veio do outro lado)."""
+
+    relacao: NomeRelacao
+    tipo: TipoDeMidia = Field(description='O Tipo da obra relacionada, que pode ser outro (a Adaptação de um mangá)')
+    titulo: str
+    poster_url: str | None
+    data_lancamento: Data | None
+    id_midia: Id | None = Field(description='A obra no Catálogo; nulo quando ela ainda não está nele')
+    link_fonte: str | None = Field(description='`https://` da obra na fonte (AniList ou RAWG), só fora do Catálogo')
+    status_consumo: RotuloDeEstado | None = Field(
+        description='O Estado de consumo do Usuário na obra; nulo sem sessão, fora do Catálogo ou fora da Lista',
+    )
+
+
+class RespostaRelacoes(BaseModel):
+    relacoes: list[RelacaoDaMidia] = Field(
+        description='Sem `CHARACTER`, `OTHER` e obras adultas; por estreia (sem ela, no fim) e título',
+    )

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from importacao import relacoes
 from importacao.anilist import PAGINAS_ATUALIZACAO, TEMPORADAS
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
@@ -33,6 +34,25 @@ def executar_importacao(tipo_midia: str, origem: str, funcao, *args, **kwargs) -
         return stats, True
 
 
+def carregar_relacoes(tipo: str) -> None:
+    """A carga única das Relações (`--so-relacoes`) de anime e mangá; sai com erro se um lote falhou."""
+    resumo, houve_erro_fatal = [], False
+    for tipo_midia in ('anime', 'manga'):
+        if tipo in (tipo_midia, 'todos'):
+            print(f'=== Carregando as Relações de {tipo_midia} (AniList) ===')
+            stats, erro_fatal = executar_importacao(tipo_midia, 'AniList', relacoes.carregar, tipo_midia)
+            resumo.append(stats)
+            houve_erro_fatal = houve_erro_fatal or erro_fatal
+    if tipo == 'jogo':
+        print('Jogo não tem carga única de Relações.')
+
+    print('=== Resumo da carga das Relações ===')
+    for stats in resumo:
+        print(stats.resumo())
+    if houve_erro_fatal or any(stats.paginas_com_falha for stats in resumo):
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Importador de mídias para MediaList DB')
     parser.add_argument('--tipo', choices=['anime', 'manga', 'jogo', 'todos'], default='todos')
@@ -53,8 +73,16 @@ def main():
         help='Ignora o cursor da Importação e recomeça do início (no AniList, as duas passadas)',
     )
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
+    parser.add_argument(
+        '--so-relacoes', action='store_true',
+        help='Anime e mangá: carga única das Relações de todo o Catálogo, sem gravar as Mídias (jogo: nada)',
+    )
     args = parser.parse_args()
     configurar_log()
+
+    if args.so_relacoes:
+        carregar_relacoes(args.tipo)
+        return
 
     resumo = []
     houve_erro_fatal = False
