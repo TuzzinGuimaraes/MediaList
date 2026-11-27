@@ -4,7 +4,8 @@ type Props<T extends string> = {
   /** Nome do grupo, para o leitor de tela e como legenda visível. */
   rotulo: string;
   opcoes: readonly { valor: T; nome: string }[];
-  valor: T;
+  /** A opção marcada; ausente, nenhuma. */
+  valor: T | undefined;
   mudar(valor: T): void;
   /** Esconde a legenda (o contexto já diz o que é), mantendo o nome acessível. */
   semLegenda?: boolean;
