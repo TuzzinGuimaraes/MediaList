@@ -5055,6 +5055,7 @@
               "SUMMARY",
               "COMPILATION",
               "CONTAINS",
+              "SAME_UNIVERSE",
               "MESMA_SERIE"
             ],
             "title": "Relacao",

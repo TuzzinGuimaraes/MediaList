@@ -29,7 +29,7 @@ INVERSAS = {
 #: (o contrato, `schemas.midias.RelacaoDaMidia`, usa este tipo).
 NomeRelacao = Literal[
     'PREQUEL', 'SEQUEL', 'ADAPTATION', 'SOURCE', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY',
-    'COMPILATION', 'CONTAINS', 'MESMA_SERIE',
+    'COMPILATION', 'CONTAINS', 'SAME_UNIVERSE', 'MESMA_SERIE',
 ]
 VISIVEIS: tuple[str, ...] = get_args(NomeRelacao)
 

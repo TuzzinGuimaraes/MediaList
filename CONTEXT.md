@@ -44,8 +44,8 @@ Mídias distintas, não uma que mudou.
 
 A ligação entre duas Mídias da mesma obra ou franquia, como a fonte a descreve. Vale nos dois
 sentidos, cada um com o seu nome: Sequência ↔ Prequel, Adaptação ↔ Original, Principal ↔ História
-paralela ou Spin-off; Versão alternativa, Resumo, Compilação e Contém completam as de anime e mangá,
-que vêm do AniList e podem cruzar Tipos (a Adaptação de um mangá em anime). Entre jogos há uma só,
+paralela ou Spin-off; Versão alternativa, Resumo, Compilação, Contém e Mesmo universo completam as
+de anime e mangá, que vêm do AniList e podem cruzar Tipos (a Adaptação de um mangá em anime). Entre jogos há uma só,
 **Mesma série**, porque o RAWG não diz qual veio antes nem de que jeito; a ordem é a de lançamento.
 
 A Relação vem da **Importação** e ninguém a edita: cada reimportação de uma Mídia troca as Relações

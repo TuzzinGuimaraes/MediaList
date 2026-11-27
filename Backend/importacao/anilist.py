@@ -83,11 +83,13 @@ CAMPOS_MEDIA = """
 #: As Relações da obra (`dominio.relacoes`), só na consulta da Importação: as Integrações pedem
 #: `CAMPOS_MEDIA` e a obra que elas importam fica sem Relações até a próxima reimportação.
 #: Medido em 2026-11-29: a página de 50 animes com elas cabe no limite de complexidade da API
-#: pública (200, 366 Relações, até 65 numa obra).
+#: pública (200, 366 Relações, até 65 numa obra). Sem `version: 3` o enum é o antigo: o anime
+#: vindo de mangá chega como `ADAPTATION` (e não `SOURCE`), e somem `COMPILATION`, `CONTAINS`
+#: e `SAME_UNIVERSE`.
 CAMPOS_RELACOES = """
       relations {
         edges {
-          relationType
+          relationType(version: 3)
           node {
             id
             type

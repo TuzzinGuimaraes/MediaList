@@ -42,6 +42,7 @@ describe('nomeDaRelacao', () => {
     ['SUMMARY', 'anime', 'Resumo'],
     ['COMPILATION', 'anime', 'Compilação'],
     ['CONTAINS', 'manga', 'Contém'],
+    ['SAME_UNIVERSE', 'anime', 'Mesmo universo'],
     ['MESMA_SERIE', 'jogo', 'Mesma série'],
   ] as const)('%s de %s: %s', (nome, tipo, esperado) => {
     expect(nomeDaRelacao({ relacao: nome, tipo })).toBe(esperado);

@@ -22,6 +22,7 @@ export const NOMES_RELACAO: Record<NomeRelacao, string> = {
   SUMMARY: 'Resumo',
   COMPILATION: 'Compilação',
   CONTAINS: 'Contém',
+  SAME_UNIVERSE: 'Mesmo universo',
   MESMA_SERIE: 'Mesma série',
 };
 
