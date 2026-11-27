@@ -31,24 +31,30 @@ describe('paraAssistirAgora', () => {
     expect(ids(paraAssistirAgora(itens, AGORA))).toEqual(['atras-3', 'atras-1', 'em-dia-perto', 'em-dia-longe']);
   });
 
-  it('cada cartão traz o atraso, se está atrasado e o texto', () => {
+  it('cada cartão traz o atraso, se está atrasado e os textos: o atraso e, em linha própria, o próximo', () => {
     const [atrasado, emDia] = paraAssistirAgora(
       [anime('a', { progresso_atual: 2 }), anime('b', { proximo_episodio_em: '2026-11-29T12:00:00Z' })],
       AGORA,
     );
 
-    expect([atrasado?.atraso, atrasado?.atrasado, atrasado?.texto]).toEqual([
+    expect([atrasado?.atraso, atrasado?.atrasado, atrasado?.texto, atrasado?.proximo]).toEqual([
       3,
       true,
-      '3 episódios atrás · próximo em 2 d 0 h 0 min',
+      '3 episódios atrás',
+      'próximo em 2 d 0 h 0 min',
     ]);
-    expect([emDia?.atraso, emDia?.atrasado, emDia?.texto]).toEqual([0, false, 'próximo em 2 d 0 h 0 min']);
+    expect([emDia?.atraso, emDia?.atrasado, emDia?.texto, emDia?.proximo]).toEqual([
+      0,
+      false,
+      'próximo em 2 d 0 h 0 min',
+      null,
+    ]);
   });
 
   it('atrasado com o próximo episódio a menos de 1 min: próximo em instantes', () => {
     const [atrasado] = paraAssistirAgora([anime('a', { progresso_atual: 2, proximo_episodio_em: '2026-11-27T12:00:30Z' })], AGORA);
 
-    expect(atrasado?.texto).toBe('3 episódios atrás · próximo em instantes');
+    expect([atrasado?.texto, atrasado?.proximo]).toEqual(['3 episódios atrás', 'próximo em instantes']);
   });
 
   it('atrasado sem data futura do próximo episódio: só o atraso', () => {
@@ -60,7 +66,12 @@ describe('paraAssistirAgora', () => {
       AGORA,
     );
 
-    expect([semData?.texto, passou?.texto]).toEqual(['4 episódios atrás', '2 episódios atrás']);
+    expect([semData?.texto, semData?.proximo, passou?.texto, passou?.proximo]).toEqual([
+      '4 episódios atrás',
+      null,
+      '2 episódios atrás',
+      null,
+    ]);
   });
 
   it('em dia sem data do próximo episódio vai para o fim, como "em dia"', () => {

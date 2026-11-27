@@ -481,7 +481,10 @@ describe('Início: Para assistir agora', () => {
       'Sakamoto Days, Anime',
       'Apothecary Diaries, Anime',
     ]);
-    expect(faixa().getByText('3 episódios atrás · próximo em 4 h 10 min')).toBeOnTheScreen();
+    // O atraso e o "próximo em" em linhas separadas, cada um inteiro.
+    expect(faixa().getByText('3 episódios atrás')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 4 h 10 min')).toBeOnTheScreen();
+    expect(faixa().queryByText(/·/)).not.toBeOnTheScreen();
     expect(faixa().getByText('1 episódio atrás')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 2 d 1 h 0 min')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 5 d 1 h 0 min')).toBeOnTheScreen();

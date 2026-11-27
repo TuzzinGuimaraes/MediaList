@@ -58,3 +58,22 @@ describe('pílula do catálogo (Recorte) na nav', () => {
     expect(await screen.findByRole('group', { name: 'Catálogo' })).toBeInTheDocument();
   });
 });
+
+
+describe('busca da nav', () => {
+  it('o X aparece só com texto, limpa o campo, devolve o foco e não navega', async () => {
+    const { user, historico } = await abrirLogado('/lista', { rotas: rotasDaLista });
+
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    const campo = screen.getByRole('searchbox', { name: 'Buscar' });
+    expect(screen.queryByRole('button', { name: 'Limpar busca' })).not.toBeInTheDocument();
+
+    await user.type(campo, 'frieren');
+    await user.click(screen.getByRole('button', { name: 'Limpar busca' }));
+
+    expect(campo).toHaveValue('');
+    expect(campo).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Limpar busca' })).not.toBeInTheDocument();
+    expect(historico.location.pathname).toBe('/lista');
+  });
+});
