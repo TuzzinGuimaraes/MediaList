@@ -1,7 +1,8 @@
 // Detalhe da Mídia (Resolution do 19 e do 29): banner largo com o pôster sobreposto; à
 // esquerda, o botão carmesim da Lista e a ficha; à direita, título, sinopse, Atualizações,
 // distribuição das notas, mapa de atividade e Avaliações. Anime atrasado (Resolution do 48):
-// o destaque do episódio novo com +1, acima da sinopse.
+// o destaque do episódio novo com +1, acima da sinopse. Concluído: o destaque da Sequência
+// (spec `relacoes`); a seção Relações logo depois da Sinopse.
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -26,6 +27,7 @@ import { Avaliacoes } from './Avaliacoes';
 import { useMidia } from './consultas';
 import { DistribuicaoNotas } from './DistribuicaoNotas';
 import { MapaAtividade } from './MapaAtividade';
+import { Relacoes, SugestaoDeSequencia } from './Relacoes';
 
 type MidiaDetalhe = Esquemas['MidiaDetalhe'];
 type Item = Esquemas['ItemLista'];
@@ -247,7 +249,9 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
         <div className="flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
           <EpisodioNovo item={item.data} />
+          <SugestaoDeSequencia midia={midia} item={item.data} />
           <Sinopse texto={midia.sinopse} />
+          <Relacoes midia={midia} />
           <Atualizacoes atualizacoes={midia.atualizacoes} />
           <DistribuicaoNotas idMidia={midia.id_midia} />
           <MapaAtividade idMidia={midia.id_midia} />
