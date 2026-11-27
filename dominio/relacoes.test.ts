@@ -2,9 +2,11 @@ import {
   carrosselDeRelacoes,
   descricaoDaRelacao,
   LIMITE_DE_JOGOS,
+  linkDaFonte,
   nomeDaRelacao,
   ordenarRelacoes,
   sugestoesDeSequencia,
+  TEXTOS_DAS_RELACOES,
 } from './relacoes';
 import type { RelacaoDaMidia } from './tipos';
 
@@ -56,6 +58,27 @@ describe('descricaoDaRelacao', () => {
     expect(
       descricaoDaRelacao(relacao('Mangá', { relacao: 'SOURCE', tipo: 'manga', id_midia: null, link_fonte: 'https://anilist.co/manga/1' })),
     ).toBe('Original · mangá: Mangá, Mangá, fora do Catálogo');
+  });
+});
+
+describe('linkDaFonte', () => {
+  it('fora do Catálogo, o link https da fonte', () => {
+    expect(linkDaFonte(relacao('X', { id_midia: null, link_fonte: 'https://anilist.co/anime/9' }))).toBe(
+      'https://anilist.co/anime/9',
+    );
+  });
+
+  it.each([
+    ['http', 'http://anilist.co/anime/9'],
+    ['javascript', 'javascript:alert(1)'],
+    ['relativo', '/midia/1'],
+    ['sem link', null],
+  ])('%s: nenhum', (_, link) => {
+    expect(linkDaFonte(relacao('X', { id_midia: null, link_fonte: link }))).toBeNull();
+  });
+
+  it('no Catálogo, nenhum (o cartão abre o Detalhe)', () => {
+    expect(linkDaFonte(relacao('X', { link_fonte: 'https://anilist.co/anime/9' }))).toBeNull();
   });
 });
 
@@ -191,5 +214,13 @@ describe('sugestoesDeSequencia', () => {
 
     expect(sugestoesDeSequencia({ tipo: 'jogo' }, { status_consumo: 'zerado' }, serie)).toEqual([]);
     expect(sugestoesDeSequencia({ tipo: 'jogo' }, { status_consumo: 'platinado' }, serie)).toEqual([]);
+  });
+});
+
+
+describe('TEXTOS_DAS_RELACOES', () => {
+  it('"e mais N" e o rótulo do botão de cada Sequência', () => {
+    expect(TEXTOS_DAS_RELACOES.mais(29)).toBe('e mais 29');
+    expect(TEXTOS_DAS_RELACOES.planejar('Frieren 2')).toBe('Pôr Frieren 2 em Planejado');
   });
 });

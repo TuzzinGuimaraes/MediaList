@@ -30,6 +30,22 @@ const GRUPOS = Object.keys(NOMES_RELACAO) as NomeRelacao[];
 /** Quantos jogos da Mesma série o carrossel mostra; o resto vai para o "e mais N". */
 export const LIMITE_DE_JOGOS = 12;
 
+/** Os textos que o web e o app mostram iguais. */
+export const TEXTOS_DAS_RELACOES = {
+  secao: 'Relações',
+  sugestao: 'Continue com a Sequência',
+  planejado: 'Planejado',
+  listaCompleta: 'Todos os jogos da série',
+  mais: (n: number) => `e mais ${n}`,
+  planejar: (titulo: string) => `Pôr ${titulo} em Planejado`,
+} as const;
+
+/** O link externo do cartão fora do Catálogo: só `https://` (a API já filtra; aqui não se confia só nela). */
+export function linkDaFonte(relacao: Pick<RelacaoDaMidia, 'id_midia' | 'link_fonte'>): string | null {
+  if (relacao.id_midia !== null || !relacao.link_fonte) return null;
+  return /^https:\/\/[^/]/i.test(relacao.link_fonte) ? relacao.link_fonte : null;
+}
+
 /** "Sequência", "Adaptação · mangá". */
 export function nomeDaRelacao(relacao: Pick<RelacaoDaMidia, 'relacao' | 'tipo'>): string {
   const nome = NOMES_RELACAO[relacao.relacao] ?? relacao.relacao;
