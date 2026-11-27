@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { abrirLogado } from '../../testes/app';
@@ -273,7 +273,10 @@ describe('Início: Para assistir agora', () => {
       expect.stringContaining('Em Dia'),
     ]);
     const faixa = screen.getByRole('region', { name: 'Para assistir agora' });
-    expect(within(faixa).getByText('3 episódios atrás · próximo em 4 h 10 min')).toBeInTheDocument();
+    // O atraso e o "próximo em" em linhas separadas, cada um inteiro.
+    expect(within(faixa).getByText('3 episódios atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('próximo em 4 h 10 min')).toBeInTheDocument();
+    expect(within(faixa).queryByText(/·/)).not.toBeInTheDocument();
     expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
     expect(within(faixa).getByText('próximo em 2 d 1 h 0 min')).toBeInTheDocument();
     expect(within(faixa).queryByText(/Finalizado/)).not.toBeInTheDocument();
@@ -319,10 +322,12 @@ describe('Início: Para assistir agora', () => {
     });
 
     const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
-    expect(within(faixa).getByText('1 episódio atrás · próximo em 3 h 0 min')).toBeInTheDocument();
+    expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('próximo em 3 h 0 min')).toBeInTheDocument();
     await user.click(within(faixa).getByRole('button', { name: '+1 episódio: Quase' }));
 
-    expect(await within(faixa).findByText('próximo em 3 h 0 min')).toBeInTheDocument();
+    await waitFor(() => expect(within(faixa).queryByText('1 episódio atrás')).not.toBeInTheDocument());
+    expect(within(faixa).getByText('próximo em 3 h 0 min')).toBeInTheDocument();
     expect(api.para('PUT /lista/L-ANI-14/progresso')[0]?.corpo).toEqual({ progresso_atual: 5 });
     expect(within(faixa).queryByRole('button', { name: '+1 episódio: Quase' })).not.toBeInTheDocument();
   });
