@@ -2723,7 +2723,7 @@ export interface components {
              * Relacao
              * @enum {string}
              */
-            relacao: "PREQUEL" | "SEQUEL" | "ADAPTATION" | "SOURCE" | "PARENT" | "SIDE_STORY" | "SPIN_OFF" | "ALTERNATIVE" | "SUMMARY" | "COMPILATION" | "CONTAINS" | "MESMA_SERIE";
+            relacao: "PREQUEL" | "SEQUEL" | "ADAPTATION" | "SOURCE" | "PARENT" | "SIDE_STORY" | "SPIN_OFF" | "ALTERNATIVE" | "SUMMARY" | "COMPILATION" | "CONTAINS" | "SAME_UNIVERSE" | "MESMA_SERIE";
             /**
              * Status Consumo
              * @description O Estado de consumo do Usuário na obra; nulo sem sessão, fora do Catálogo ou fora da Lista

@@ -20,7 +20,8 @@ def _linha(relacao, anilist_id=None, *, tipo='anime', slug=None, id_midia=None, 
     ('ADAPTATION', 'SOURCE'), ('SOURCE', 'ADAPTATION'),
     ('SIDE_STORY', 'PARENT'), ('SPIN_OFF', 'PARENT'), ('PARENT', 'SIDE_STORY'),
     ('ALTERNATIVE', 'ALTERNATIVE'), ('SUMMARY', 'SUMMARY'), ('COMPILATION', 'COMPILATION'),
-    ('CONTAINS', 'CONTAINS'), ('MESMA_SERIE', 'MESMA_SERIE'), ('CHARACTER', 'CHARACTER'), ('OTHER', 'OTHER'),
+    ('CONTAINS', 'CONTAINS'), ('SAME_UNIVERSE', 'SAME_UNIVERSE'), ('MESMA_SERIE', 'MESMA_SERIE'),
+    ('CHARACTER', 'CHARACTER'), ('OTHER', 'OTHER'),
 ])
 def test_inversa(relacao, nome_inverso):
     assert inversa(relacao) == nome_inverso

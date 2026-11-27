@@ -245,6 +245,8 @@ def test_relations_so_na_consulta_da_importacao():
     assert 'relations' not in anilist.CAMPOS_MEDIA
     consulta, _ = anilist._consulta({'season': 'FALL', 'seasonYear': 2026, 'isAdult': False})
     assert 'relations' in consulta
+    # Sem a versão 3 do enum o AniList devolve ADAPTATION nos dois lados e nunca SOURCE.
+    assert 'relationType(version: 3)' in consulta
 
 
 @pytest.mark.parametrize('tipo', ['anime', 'manga'])
