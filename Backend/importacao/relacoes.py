@@ -64,7 +64,8 @@ def _estreia(start_date) -> date | None:
 def _titulo(titulos) -> str | None:
     if not isinstance(titulos, dict):
         return None
-    for chave in ('romaji', 'english', 'native'):
+    # A ordem do Título mostrado (CONTEXT.md: Título).
+    for chave in ('english', 'romaji', 'native'):
         valor = titulos.get(chave)
         if isinstance(valor, str) and valor.strip():
             return truncar(valor.strip(), TETO_TITULO)

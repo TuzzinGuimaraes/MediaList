@@ -96,7 +96,7 @@ def _data(parcial: dict | None) -> str | None:
 
 def _titulo(media: dict) -> str:
     titulo = media.get('title') or {}
-    return titulo.get('romaji') or titulo.get('english') or titulo.get('native') or f"AniList {media.get('id')}"
+    return titulo.get('english') or titulo.get('romaji') or titulo.get('native') or f"AniList {media.get('id')}"
 
 
 def item_de_entrada(entrada: dict, tipo: str) -> ItemDeOrigem:

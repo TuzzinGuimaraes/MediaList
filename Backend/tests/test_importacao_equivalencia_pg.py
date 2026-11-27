@@ -190,7 +190,7 @@ def test_mesma_conexao_segue_depois_de_uma_midia_recusada(pg):
     fontes = _fontes()
     appid = _appid_da_loja(fontes)
     _limpar(fontes, appid)
-    base = {'titulo_original': 'X', 'titulo_portugues': 'X', 'status_anime': 'finalizado'}
+    base = {'titulo_original': 'X', 'titulo_romaji': 'X', 'status_anime': 'finalizado'}
     ids = [fontes.chaves()['anime'][i] for i in range(3)]
     try:
         with banco.autocommit() as t:

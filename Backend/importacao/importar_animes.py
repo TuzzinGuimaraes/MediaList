@@ -104,7 +104,7 @@ def processar_e_inserir_anime(anime: dict, t=None):
     dados = {
         'titulo_original': anime['title'].get('native') or anime['title'].get('romaji'),
         'titulo_ingles': anime['title'].get('english'),
-        'titulo_portugues': anime['title'].get('romaji') or anime['title'].get('english'),
+        'titulo_romaji': anime['title'].get('romaji') or anime['title'].get('english'),
         'sinopse': truncar(remover_html(anime.get('description')), 1000),
         'data_lancamento': formatar_data_anilist(anime.get('startDate')),
         'status_anime': STATUS_MAP.get(anime.get('status'), 'aguardando'),

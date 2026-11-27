@@ -30,7 +30,7 @@ CHAVES_MIDIA = {
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url', 'progresso_total_padrao',
     'proximo_episodio_em', 'temporada_estacao', 'temporada_ano', 'temporada_estimada', 'formato',
     'publicadora', 'publicadora_original', 'rawg_slug', 'revista', 'sinopse', 'status_anime', 'status_catalogo',
-    'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_portugues',
+    'status_jogo', 'status_manga', 'tipo', 'tipo_label', 'titulo_ingles', 'titulo_original', 'titulo_romaji',
     'total_avaliacoes', 'total_concluidos', 'total_usuarios', 'trailer_url', 'unidade_progresso',
 }
 #: Chaves de cada Item de GET /lista (modelo `ItemLista`). Explícitas, e não
@@ -41,7 +41,7 @@ CHAVES_ITEM = {
     'generos', 'generos_lista', 'id_midia', 'modo_jogo', 'nota_fonte', 'nota_media', 'numero_capitulos',
     'numero_episodios', 'numero_volumes', 'origem_nota', 'plataformas', 'poster_url',
     'publicadora', 'sinopse', 'status_anime', 'status_catalogo', 'status_jogo', 'status_manga', 'tipo',
-    'titulo_ingles', 'titulo_original', 'titulo_portugues', 'total_avaliacoes', 'total_concluidos',
+    'titulo_ingles', 'titulo_original', 'titulo_romaji', 'total_avaliacoes', 'total_concluidos',
     'total_usuarios',
     'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio', 'favorito', 'id_lista',
     'nota_usuario', 'privado', 'progresso_atual', 'progresso_total', 'status_consumo', 'total_rewatches',
@@ -56,7 +56,7 @@ CHAVES_MIDIA_CONTRATO = CHAVES_MIDIA - {
 } | {'artista'}
 CHAVES_POPULAR = {
     'generos', 'id_midia', 'nota_fonte', 'nota_media', 'origem_nota', 'poster_url', 'tipo', 'titulo_original',
-    'titulo_portugues', 'total_usuarios',
+    'titulo_romaji', 'total_usuarios',
 }
 # Sem `likes`, `dislikes` e `generos_lista`: campos sem leitor (contrato da API, ticket 05).
 CHAVES_AVALIACAO = {

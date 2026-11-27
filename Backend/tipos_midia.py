@@ -15,7 +15,7 @@ from typing import Any, NamedTuple
 #: das Avaliações (vw_notas_midia, ADR 0010). A Nota da fonte (`nota_fonte`)
 #: também não: só a Importação a grava.
 COLUNAS_BASE = (
-    'titulo_original', 'titulo_ingles', 'titulo_portugues', 'sinopse',
+    'titulo_original', 'titulo_ingles', 'titulo_romaji', 'sinopse',
     'data_lancamento', 'poster_url', 'banner_url',
 )
 

@@ -140,9 +140,9 @@ def test_atualizar_e_deletar_midia(pg):
     id_manga = _midia(pg, 'manga', numero_capitulos=10, autor='Urasawa')
     repo = Catalogo()
 
-    assert repo.atualizar(id_manga, {'titulo_portugues': 'Monstro', 'numero_capitulos': 162, 'generos': []})
+    assert repo.atualizar(id_manga, {'titulo_romaji': 'Monstro', 'numero_capitulos': 162, 'generos': []})
     manga = repo.obter(id_manga)
-    assert manga['titulo_portugues'] == 'Monstro' and manga['progresso_total_padrao'] == 162
+    assert manga['titulo_romaji'] == 'Monstro' and manga['progresso_total_padrao'] == 162
     assert repo.buscar('manga', filtros={'autor': 'urasawa'})
 
     assert repo.apagar(id_manga) is True
@@ -171,10 +171,10 @@ def test_lista_em_ordem_alfabetica_do_titulo_exibido(pg):
     titulos = [('banana', 'Z'), (None, 'Celeste'), ('', 'Akira'), ('Banana', 'A')]
     ids = {}
     for portugues, original in titulos:
-        id_midia = _midia(pg, 'jogo', titulo_original=original, titulo_portugues=portugues)
+        id_midia = _midia(pg, 'jogo', titulo_original=original, titulo_romaji=portugues)
         ids[original] = itens.criar_item(usuario, id_midia, {'status_consumo': 'jogando'})
 
-    ordem = [i['titulo_portugues'] or i['titulo_original'] for i in itens.listar(usuario)]
+    ordem = [i['titulo_romaji'] or i['titulo_original'] for i in itens.listar(usuario)]
 
     assert [o.casefold() for o in ordem] == ['akira', 'banana', 'banana', 'celeste']
     bananas = sorted([ids['Z'], ids['A']])

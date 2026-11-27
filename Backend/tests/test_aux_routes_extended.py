@@ -30,7 +30,8 @@ def test_moderacao_lista_avaliacoes_para_admin(client, admin_headers, monkeypatc
         'id_avaliacao': 'AVL-1', 'id_usuario': 'USR-1', 'id_midia': 'MID-1', 'nota': 7.5,
         'titulo_avaliacao': None, 'texto_avaliacao': 'Bom',
         'data_avaliacao': datetime(2026, 11, 1, tzinfo=timezone.utc),
-        'data_edicao': None, 'nome_completo': 'Ana', 'titulo_portugues': None, 'titulo_original': 'Original',
+        'data_edicao': None, 'nome_completo': 'Ana',
+        'titulo_ingles': None, 'titulo_romaji': None, 'titulo_original': 'Original',
         'tipo': 'anime',
     }
     monkeypatch.setattr('decorators.nivel_de_acesso', lambda _user_id: 'admin')

@@ -226,7 +226,7 @@ def processar_e_inserir_jogo(basico: dict, detalhe: dict, t=None, steam_appid: i
     esrb = (basico.get('esrb_rating') or {}).get('name')
     dados = {
         'titulo_original': basico['name'],
-        'titulo_portugues': basico.get('name'),
+        'titulo_romaji': basico.get('name'),
         'sinopse': truncar(detalhe.get('description_raw'), 1000),
         'data_lancamento': basico.get('released'),
         'nota_fonte': nota_fonte_rawg(basico.get('rating')),
@@ -333,7 +333,7 @@ def dados_do_jogo_steam(loja: dict) -> tuple[dict, list[str]]:
     horizontal = imagem_da_steam(loja.get('header_image'))
     dados = {
         'titulo_original': nome,
-        'titulo_portugues': nome,
+        'titulo_romaji': nome,
         'sinopse': _texto_da_loja(loja.get('short_description')),
         'data_lancamento': _data_da_loja(lancamento.get('date')),
         'nota_fonte': None,
