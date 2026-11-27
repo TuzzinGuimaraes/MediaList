@@ -2421,7 +2421,7 @@ export interface components {
             mensagem: string;
             /**
              * Midia Nome
-             * @description Título em português, ou o original; nulo na de Notícia
+             * @description O título exibido da Mídia (inglês, senão romanizado, senão original); nulo na de Notícia
              */
             midia_nome: string | null;
             /**

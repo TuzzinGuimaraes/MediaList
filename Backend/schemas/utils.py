@@ -39,7 +39,9 @@ class Notificacao(BaseModel):
     tipo_midia: TipoDeMidia | None
     tipo: str = Field(description='Tipo da Atualização (episodio, capitulo, dlc...) ou `noticia`')
     titulo: str
-    midia_nome: str | None = Field(description='Título em português, ou o original; nulo na de Notícia')
+    midia_nome: str | None = Field(
+        description='O título exibido da Mídia (inglês, senão romanizado, senão original); nulo na de Notícia',
+    )
     mensagem: str
     lida: bool
     data_criacao: Instante
