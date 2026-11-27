@@ -247,7 +247,8 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
             <Ficha midia={midia} item={item.data} />
           </div>
         </div>
-        <div className="flex flex-col gap-9 lg:-mt-28">
+        {/* `relative`: a coluna sobe sobre o pé do banner (que é posicionado) e tem de ser pintada na frente dele. */}
+        <div className="relative flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
           <EpisodioNovo item={item.data} />
           <Sinopse texto={midia.sinopse} />

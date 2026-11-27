@@ -17,7 +17,7 @@ const LARGURA_A = 160;
 const LARGURA_C = 340;
 const ALTURA_C = 136;
 /** O da faixa ganha a linha do "próximo em". */
-const ALTURA_FAIXA = 156;
+const ALTURA_FAIXA = 172;
 
 type Contexto = {
   /** Item da Mídia na Lista, se houver (selo de Status e fio). */
