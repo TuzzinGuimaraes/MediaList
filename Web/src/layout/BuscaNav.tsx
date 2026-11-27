@@ -50,8 +50,21 @@ export function BuscaNav({ sobreImagem }: { sobreImagem: boolean }) {
           onBlur={() => !texto && setAberta(false)}
           onKeyDown={(e) => e.key === 'Escape' && (setTexto(''), setAberta(false))}
           placeholder="Títulos, gêneros…"
-          className="w-36 bg-transparent lg:w-52 text-[14px] outline-none placeholder:text-current placeholder:opacity-60"
+          className="w-36 bg-transparent lg:w-52 text-[14px] outline-none placeholder:text-current placeholder:opacity-60 [&::-webkit-search-cancel-button]:appearance-none"
         />
+        {texto ? (
+          <button
+            type="button"
+            aria-label="Limpar busca"
+            onClick={() => {
+              setTexto('');
+              campo.current?.focus();
+            }}
+            className="-mr-1 flex h-7 w-7 items-center justify-center rounded-sm opacity-80 outline-none hover:opacity-100 focus-visible:ring-2 focus-visible:ring-marca-texto"
+          >
+            <Icone nome="fechar" tamanho={14} />
+          </button>
+        ) : null}
       </label>
     </form>
   );
