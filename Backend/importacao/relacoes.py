@@ -1,7 +1,10 @@
 """
-Relações de anime e mangá vindas do AniList (CONTEXT.md, Relação; spec `relacoes`).
+Relações de anime e mangá vindas do AniList, e a Mesma série dos jogos vinda do RAWG
+(CONTEXT.md, Relação; spec `relacoes`).
 
 - `da_obra`: as Relações de um item do AniList, validadas antes de gravar (ADR 0015).
+- `da_serie`, `contagem_da_serie`, `precisa_da_serie`: a série de um jogo (`game-series`), que só
+  é buscada quando o `game_series_count` do detalhe é maior que zero e mudou.
 - `gravar_da_pagina`: as Relações das Mídias de uma página da Importação, num comando só; a
   reimportação troca as da Mídia.
 - `carregar`: a carga única, que percorre os `anilist_id` do Catálogo em lotes de 50 (`id_in`)
@@ -37,9 +40,15 @@ _TIPOS = {'ANIME': 'anime', 'MANGA': 'manga'}
 _TABELAS = {'anime': 'animes', 'manga': 'mangas'}
 #: Host das capas do AniList (`s4.anilist.co`); capa fora dele fica nula.
 HOST_DE_CAPA = 'anilist.co'
+#: Host das capas do RAWG (`media.rawg.io`).
+HOST_DE_CAPA_RAWG = 'media.rawg.io'
+#: Jogos por página do `/games/<slug>/game-series` e páginas lidas no máximo (80 jogos).
+SERIE_POR_PAGINA = 40
+SERIE_PAGINAS = 2
+_SLUG = re.compile(r'^[a-z0-9][a-z0-9-]{0,199}$')
 
 
-def _capa(url) -> str | None:
+def _capa(url, host_da_fonte: str = HOST_DE_CAPA) -> str | None:
     if not isinstance(url, str):
         return None
     try:
@@ -49,7 +58,7 @@ def _capa(url) -> str | None:
     host = (partes.hostname or '').lower()
     if partes.scheme != 'https' or partes.username or partes.password:
         return None
-    return url.strip() if host == HOST_DE_CAPA or host.endswith(f'.{HOST_DE_CAPA}') else None
+    return url.strip() if host == host_da_fonte or host.endswith(f'.{host_da_fonte}') else None
 
 
 def _estreia(start_date) -> date | None:
@@ -109,7 +118,55 @@ def da_obra(obra: dict) -> list[dict]:
     return relacoes
 
 
-def gravar_da_pagina(t, tipo_midia: str, relacoes_por_midia: dict[str, list[dict]], pagina: int) -> bool:
+def contagem_da_serie(detalhe: dict | None) -> int | None:
+    """O `game_series_count` do detalhe do RAWG; None se não veio ou não é um inteiro >= 0."""
+    contagem = (detalhe or {}).get('game_series_count')
+    if not isinstance(contagem, int) or isinstance(contagem, bool) or not 0 <= contagem < 2**31:
+        return None
+    return contagem
+
+
+def precisa_da_serie(contagem: int | None, gravada: int | None) -> bool:
+    """`game-series` só é chamado com contagem maior que zero e diferente da gravada (nula no jogo novo)."""
+    return bool(contagem) and contagem != gravada
+
+
+def da_serie(jogos, slug_proprio: str | None = None) -> list[dict]:
+    """Os jogos do `/games/<slug>/game-series` como Relações `MESMA_SERIE` (sem o `id_midia`).
+
+    Jogo com slug ou título fora do esperado, o próprio jogo e o repetido ficam de fora. Adulto é o
+    ESRB `adults-only`.
+    """
+    relacoes, vistos = [], {slug_proprio}
+    for jogo in jogos or []:
+        if not isinstance(jogo, dict):
+            continue
+        slug, titulo = jogo.get('slug'), jogo.get('name')
+        if not isinstance(slug, str) or not _SLUG.match(slug) or slug in vistos \
+                or not isinstance(titulo, str) or not titulo.strip():
+            continue
+        vistos.add(slug)
+        try:
+            lancamento = date.fromisoformat(jogo.get('released')) if isinstance(jogo.get('released'), str) else None
+        except ValueError:
+            lancamento = None
+        relacoes.append({
+            'relacao': 'MESMA_SERIE',
+            'fonte': 'RAWG',
+            'tipo_destino': 'jogo',
+            'destino_anilist_id': None,
+            'destino_rawg_slug': slug,
+            'titulo': truncar(titulo.strip(), TETO_TITULO),
+            'formato': None,
+            'data_lancamento': lancamento.isoformat() if lancamento else None,
+            'adulto': ((jogo.get('esrb_rating') or {}).get('slug') == 'adults-only'),
+            'poster_url': _capa(jogo.get('background_image'), HOST_DE_CAPA_RAWG),
+        })
+    return relacoes
+
+
+def gravar_da_pagina(t, tipo_midia: str, relacoes_por_midia: dict[str, list[dict]], pagina: int,
+                     origem: str = 'AniList') -> bool:
     """Grava as Relações de uma página; a falha fica no log da Importação e não derruba a página."""
     try:
         salvar_relacoes(t, relacoes_por_midia)
@@ -118,7 +175,7 @@ def gravar_da_pagina(t, tipo_midia: str, relacoes_por_midia: dict[str, list[dict
         raise
     except Exception as exc:
         registrar_falha_importacao(
-            tipo_midia=tipo_midia, origem='AniList', exc=exc, identificador=f'relacoes-pagina-{pagina}',
+            tipo_midia=tipo_midia, origem=origem, exc=exc, identificador=f'relacoes-pagina-{pagina}',
             extra={'pagina': pagina, 'etapa': 'relacoes'},
         )
         return False

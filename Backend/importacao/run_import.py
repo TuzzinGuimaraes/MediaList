@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from importacao import relacoes
+from importacao import relacoes, serie_jogos
 from importacao.anilist import PAGINAS_ATUALIZACAO, TEMPORADAS
 from importacao.importar_animes import importar_animes
 from importacao.importar_jogos import importar_jogos
@@ -74,6 +74,10 @@ def main():
     )
     parser.add_argument('--workers', type=int, default=4, help='Concorrência para etapas paralelizáveis')
     parser.add_argument(
+        '--serie-jogos', type=int, default=serie_jogos.LIMITE,
+        help='Jogo: jogos da passada lenta da série (os do Catálogo sem contagem da série; 0 desliga)',
+    )
+    parser.add_argument(
         '--so-relacoes', action='store_true',
         help='Anime e mangá: carga única das Relações de todo o Catálogo, sem gravar as Mídias (jogo: nada)',
     )
@@ -113,6 +117,12 @@ def main():
         )
         resumo.append(stats)
         houve_erro_fatal = houve_erro_fatal or erro_fatal
+
+        if args.serie_jogos > 0:
+            print('=== Passada lenta da série dos jogos (RAWG) ===')
+            stats, erro_fatal = executar_importacao('jogo', 'RAWG', serie_jogos.passada, limite=args.serie_jogos)
+            resumo.append(stats)
+            houve_erro_fatal = houve_erro_fatal or erro_fatal
 
     print('=== Resumo da importação ===')
     for stats in resumo:

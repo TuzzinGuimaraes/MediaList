@@ -91,7 +91,8 @@ def importar(pg, monkeypatch):
         modulo = importar_jogos
         monkeypatch.setattr(modulo, 'criar_sessao_http', lambda **kw: fonte)
         monkeypatch.setattr(modulo, 'RateLimiter', _SemEspera)
-        monkeypatch.setattr(sys, 'argv', ['run_import', '--tipo', tipo, *argv])
+        # Sem a passada lenta da série dos jogos: o cursor dela é outro (test_relacoes_jogos_pg).
+        monkeypatch.setattr(sys, 'argv', ['run_import', '--tipo', tipo, '--serie-jogos', '0', *argv])
         try:
             run_import.main()
             codigo = 0

@@ -29,6 +29,7 @@ from dataclasses import replace
 from datetime import date
 from typing import Any, Callable, Collection, Literal
 
+from importacao import relacoes
 from integracoes import casamento, catalogo, repositorio, resultado, servico, steam_appids
 from integracoes.casamento import Desfecho
 from integracoes.loja_steam import LojaSteam
@@ -62,6 +63,9 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
     detalhe = rawg.detalhe(slug)
     if not detalhe:
         return None
+    # O jogo não está no Catálogo pelo slug: sem contagem gravada, a série vem pela regra da Importação.
+    if relacoes.precisa_da_serie(relacoes.contagem_da_serie(detalhe), None):
+        detalhe = {**detalhe, 'game_series': rawg.serie(slug)}
     midia = catalogo.importar(replace(item, catalogo=RefCatalogo('rawg', slug, detalhe)))
     if midia is None:
         raise OrigemIndisponivel(f'não deu para importar {slug}')

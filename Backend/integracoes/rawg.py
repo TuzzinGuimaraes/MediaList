@@ -4,7 +4,8 @@
 lista de lojas (`GET /games/<slug>/stores`, a que traz as URLs) tem
 `store.steampowered.com/app/<appid>` com o mesmo appid. Os resultados da busca já dizem
 quais lojas o jogo tem (`stores[].store.slug`), então só os que estão na Steam são conferidos.
-`detalhe(slug)` traz o jogo inteiro (`GET /games/<slug>`), o que a Importação grava.
+`detalhe(slug)` traz o jogo inteiro (`GET /games/<slug>`), o que a Importação grava, e
+`serie(slug)` os jogos da mesma série (`GET /games/<slug>/game-series`, até 80).
 
 A chave vai em `key=`; as mensagens de erro passam por `ocultar_segredos`.
 """
@@ -15,6 +16,7 @@ import re
 from typing import Callable
 from urllib.parse import quote
 
+from importacao import relacoes
 from importacao.config import RAWG_API_KEY, RAWG_BASE_URL
 from importacao.utils import ocultar_segredos
 from integracoes import prazo
@@ -89,6 +91,17 @@ class Rawg:
 
     def detalhe(self, slug: str) -> dict | None:
         return self._get(_caminho_do_jogo(slug))
+
+    def serie(self, slug: str) -> list[dict]:
+        """Os jogos de `GET /games/<slug>/game-series`, no máximo 2 páginas de 40 (80 jogos)."""
+        jogos: list[dict] = []
+        for pagina in range(1, relacoes.SERIE_PAGINAS + 1):
+            corpo = self._get(_caminho_do_jogo(slug, '/game-series'),
+                              {'page': pagina, 'page_size': relacoes.SERIE_POR_PAGINA}) or {}
+            jogos.extend(corpo.get('results') or [])
+            if not corpo.get('next'):
+                break
+        return jogos
 
     def fechar(self) -> None:
         if self._sessao is not None:
