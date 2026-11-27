@@ -14,7 +14,7 @@ from typing import Any, Callable, Iterable
 
 from banco import consultar
 from importacao.importar_animes import processar_e_inserir_anime
-from importacao.importar_jogos import processar_e_inserir_jogo, processar_e_inserir_jogo_steam
+from importacao.importar_jogos import processar_e_inserir_jogo_do_detalhe, processar_e_inserir_jogo_steam
 from importacao.importar_mangas import processar_e_inserir_manga
 from integracoes.plataforma import ItemDeOrigem, uuid_valido
 from tipos_midia import TIPOS
@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 IMPORTADORES: dict[tuple[str, str], Callable[[dict], dict]] = {
     ('anilist', 'anime'): processar_e_inserir_anime,
     ('anilist', 'manga'): processar_e_inserir_manga,
-    # O detalhe do RAWG (`GET /games/<slug>`) traz o básico da listagem e o resto.
-    ('rawg', 'jogo'): lambda detalhe: processar_e_inserir_jogo(detalhe, detalhe),
+    # O detalhe do RAWG (`GET /games/<slug>`) traz o básico da listagem e o resto; `game_series`,
+    # se veio, é a série que a Integração buscou.
+    ('rawg', 'jogo'): processar_e_inserir_jogo_do_detalhe,
     # O `data` do `appdetails` da loja da Steam (jogo que o RAWG não reconhece).
     ('steam', 'jogo'): processar_e_inserir_jogo_steam,
 }

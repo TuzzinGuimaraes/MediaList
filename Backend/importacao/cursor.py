@@ -9,6 +9,9 @@ A Importação diária continua de onde a anterior parou, em vez de recomeçar d
     `crescimento_empate`); sem ela, o topo, a partir da `proxima_pagina` (o cursor de página de
     antes da spec `anilist-sem-limite`; o novo a grava sempre em 1);
   - atualização das populares: `atualizacao_pagina`, de 1 a 100.
+- Passada lenta da série dos jogos (`importacao.serie_jogos`), na linha `jogo`: a posição do
+  último jogo passado na ordem de Popularidade (`serie_usuarios`, `serie_nota`, `serie_id`) e
+  `serie_fim`, quando ela chegou ao fim.
 """
 from __future__ import annotations
 
@@ -80,6 +83,30 @@ def gravar_atualizacao(tipo_midia: str, pagina: int) -> None:
         'ON CONFLICT (tipo_midia) DO UPDATE '
         'SET atualizacao_pagina = EXCLUDED.atualizacao_pagina, atualizado_em = now()',
         (tipo_midia, pagina),
+    )
+
+
+def ler_serie() -> dict | None:
+    """O cursor da passada lenta: `{'posicao': (usuarios, nota, id_midia) | None, 'fim'}`; None se nunca rodou."""
+    linha = consultar_um(
+        "SELECT serie_usuarios, serie_nota, serie_id, serie_fim FROM importacao_cursor WHERE tipo_midia = 'jogo'"
+    )
+    if not linha or (linha['serie_id'] is None and not linha['serie_fim']):
+        return None
+    posicao = None if linha['serie_id'] is None else (linha['serie_usuarios'], linha['serie_nota'], linha['serie_id'])
+    return {'posicao': posicao, 'fim': linha['serie_fim']}
+
+
+def gravar_serie(posicao: tuple | None, fim: bool = False) -> None:
+    """Grava a posição da passada lenta (o último jogo passado) e se ela chegou ao fim."""
+    usuarios, nota, id_midia = posicao or (None, None, None)
+    executar(
+        "INSERT INTO importacao_cursor (tipo_midia, serie_usuarios, serie_nota, serie_id, serie_fim) "
+        "VALUES ('jogo', %s, %s, %s, %s) "
+        'ON CONFLICT (tipo_midia) DO UPDATE SET serie_usuarios = EXCLUDED.serie_usuarios, '
+        'serie_nota = EXCLUDED.serie_nota, serie_id = EXCLUDED.serie_id, serie_fim = EXCLUDED.serie_fim, '
+        'atualizado_em = now()',
+        (usuarios, nota, id_midia, fim),
     )
 
 

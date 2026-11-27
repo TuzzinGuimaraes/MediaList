@@ -11,6 +11,9 @@ name: importacao
 # `so_relacoes`: a carga única das Relações de anime e mangá (spec `relacoes`). Percorre os
 # `anilist_id` do Catálogo em lotes de 50 e grava só as Relações, a ~30 consultas por minuto
 # (~160 lotes por Tipo, ~6 min cada); ignora os outros inputs e não roda a Sincronização da Steam.
+# `serie_jogos`: depois da Importação de jogos, a passada lenta da Mesma série (spec `relacoes`) lê
+# o detalhe de até N jogos do Catálogo sem contagem da série, dos mais populares para os menos, com
+# cursor próprio; no fim, para. ~300 detalhes por dia, mais as séries (quota do RAWG).
 on:
   schedule:
     - cron: "0 6 * * *"
@@ -41,6 +44,10 @@ on:
         description: "Anime e mangá: só a carga única das Relações de todo o Catálogo"
         type: boolean
         default: false
+      serie_jogos:
+        description: "Jogo: jogos da passada lenta da série (0 desliga)"
+        type: number
+        default: 300
 
 permissions:
   contents: read
@@ -95,13 +102,14 @@ jobs:
           TEMPORADAS: ${{ inputs.temporadas }}
           DO_INICIO: ${{ inputs.do_inicio || false }}
           SO_RELACOES: ${{ inputs.so_relacoes || false }}
+          SERIE_JOGOS: ${{ inputs.serie_jogos }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL ausente"
             exit 1
           fi
           args=(--tipo "$TIPO" --paginas "$PAGINAS" --paginas-atualizacao "${PAGINAS_ATUALIZACAO:-10}"
-            --temporadas "${TEMPORADAS:-5}")
+            --temporadas "${TEMPORADAS:-5}" --serie-jogos "${SERIE_JOGOS:-300}")
           if [ "$DO_INICIO" = "true" ]; then args+=(--do-inicio); fi
           if [ "$SO_RELACOES" = "true" ]; then args=(--tipo "$TIPO" --so-relacoes); fi
           python -m importacao.run_import "${args[@]}"

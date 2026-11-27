@@ -69,6 +69,8 @@ TIPOS: dict[str, TipoMidia] = {
         # Jogo não tem Progresso mensurável: horas não medem Progresso (CONTEXT.md).
         coluna_status='status_jogo', coluna_total=None, unidade_progresso='horas',
         aplicavel_a=['jogo'], chaves_extras=('steam_appid',),
+        # Quantos jogos o RAWG põe na série deste (spec `relacoes`): decide se `game-series` é chamado.
+        colunas_fonte=('game_series_count',),
     ),
 }
 
