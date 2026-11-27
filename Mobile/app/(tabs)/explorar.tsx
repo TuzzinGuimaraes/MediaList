@@ -68,7 +68,13 @@ export default function Explorar() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const generos = useGeneros(tipo);
-  const resultados = useBuscaMidias({ tipo, ordem, genero: nomeGenero, busca });
+  // A ordem padrão não vai na consulta: com busca, a API ordena por relevância.
+  const resultados = useBuscaMidias({
+    tipo,
+    ordem: ordem === ORDEM_PADRAO ? undefined : ordem,
+    genero: nomeGenero,
+    busca,
+  });
   const cabecalho = useCabecalhoQueEsconde();
   const { mostrar } = cabecalho;
 

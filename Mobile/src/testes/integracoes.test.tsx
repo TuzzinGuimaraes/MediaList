@@ -291,7 +291,7 @@ describe('Perfil: Vincular Não encontrados', () => {
       nome_exibicao: 'Fulano',
       ultimo_resultado: { novos: 0, atualizados: 0, nao_encontrados: naoEncontrados, total_nao_encontrados: naoEncontrados.length },
     });
-  const hollow = { id_midia: 'MID-9', titulo_original: 'Hollow Knight', titulo_portugues: null, tipo: 'jogo', data_lancamento: '2017-02-24' };
+  const hollow = { id_midia: 'MID-9', titulo_original: 'Hollow Knight', titulo_romaji: null, tipo: 'jogo', data_lancamento: '2017-02-24' };
   /** A busca do Catálogo só no Tipo do item. */
   const BUSCA_HOLLOW = 'GET /midias?tipo=jogo&busca=hollow&por_pagina=10';
   const paginaDeMidias = (itens: object[]) => ({ status: 200, corpo: { itens, pagina: 1, por_pagina: 10, total: itens.length } });

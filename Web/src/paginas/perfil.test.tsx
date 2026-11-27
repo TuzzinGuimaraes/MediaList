@@ -41,7 +41,7 @@ function item(extra: Partial<ItemLista>): ItemLista {
     id_midia: `MID-${seq}`,
     tipo: 'anime',
     titulo_original: `Obra ${seq}`,
-    titulo_portugues: null,
+    titulo_romaji: null,
     titulo_ingles: null,
     status_consumo: 'planejado',
     nota_usuario: null,
@@ -565,7 +565,7 @@ describe('Perfil: Vincular Não encontrados', () => {
       nome_exibicao: 'Fulano',
       ultimo_resultado: { novos: 0, atualizados: 0, nao_encontrados: naoEncontrados, total_nao_encontrados: naoEncontrados.length },
     });
-  const hollow = { id_midia: 'MID-9', titulo_original: 'Hollow Knight', titulo_portugues: null, tipo: 'jogo', data_lancamento: '2017-02-24' };
+  const hollow = { id_midia: 'MID-9', titulo_original: 'Hollow Knight', titulo_romaji: null, tipo: 'jogo', data_lancamento: '2017-02-24' };
   const paginaDeMidias = (itens: object[]) => ({ status: 200, corpo: { itens, pagina: 1, por_pagina: 10, total: itens.length } });
 
   it('busca no Catálogo só no Tipo do item, vincula e o Item vai para a Lista', async () => {

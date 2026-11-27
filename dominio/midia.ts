@@ -1,8 +1,15 @@
 import type { Midia, NotasDaMidia } from './tipos';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
-export function tituloDaMidia(midia: Pick<Midia, 'titulo_portugues' | 'titulo_original'>): string {
-  return midia.titulo_portugues || midia.titulo_original;
+/** Os títulos de uma Mídia (CONTEXT.md: Título). */
+export type TitulosDaMidia = Pick<Midia, 'titulo_ingles' | 'titulo_romaji' | 'titulo_original'>;
+
+/**
+ * O nome mostrado da Mídia (CONTEXT.md: Título): o inglês, senão o romanizado, senão o original;
+ * vazio conta como ausente. Mesma regra do `titulo_exibido` do backend.
+ */
+export function tituloDaMidia(midia: TitulosDaMidia): string {
+  return midia.titulo_ingles || midia.titulo_romaji || midia.titulo_original;
 }
 
 /** "nenhum episódio", "1 episódio", "3 episódios". */
@@ -11,15 +18,14 @@ export function contagemDeEpisodios(n: number): string {
   return n === 1 ? '1 episódio' : `${n} episódios`;
 }
 
-/**
- * O título que o detalhe mostra em texto suave abaixo do principal: o primeiro entre o
- * original e o inglês que for diferente do principal; null se nenhum for.
- */
-export function tituloAlternativo(
-  midia: Pick<Midia, 'titulo_portugues' | 'titulo_original' | 'titulo_ingles'>,
-): string | null {
+/** Os outros títulos que o Detalhe mostra abaixo do principal: o romanizado e o original, nessa
+ * ordem, sem os vazios e sem repetir o principal nem um ao outro. */
+export function outrosTitulos(midia: TitulosDaMidia): string[] {
   const principal = tituloDaMidia(midia);
-  return [midia.titulo_original, midia.titulo_ingles].find((t) => t && t !== principal) ?? null;
+  const outros = [midia.titulo_ingles, midia.titulo_romaji, midia.titulo_original].filter(
+    (t): t is string => !!t && t !== principal,
+  );
+  return [...new Set(outros)];
 }
 
 /** Uma nota pronta para a tela: rótulo inteiro (detalhe, leitor de tela) e curto (card). */

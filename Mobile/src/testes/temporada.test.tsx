@@ -39,18 +39,18 @@ function deOutono(dados: Partial<MidiaDetalhe>): MidiaDetalhe {
 const frieren = deOutono({ data_lancamento: '2026-10-03', numero_episodios: 12, estudio: 'MADHOUSE' });
 const dandadan = deOutono({
   id_midia: 'MID-ANM-2026-20100',
-  titulo_portugues: 'Dandadan',
+  titulo_romaji: 'Dandadan',
   estudio: 'Science SARU',
   numero_episodios: null,
   formato: null,
 });
 const filme = deOutono({
   id_midia: 'MID-ANM-2026-20200',
-  titulo_portugues: 'Chainsaw Man: Reze',
+  titulo_romaji: 'Chainsaw Man: Reze',
   estudio: 'MAPPA',
   formato: 'MOVIE',
 });
-const estimado = deOutono({ id_midia: 'MID-ANM-2026-20300', titulo_portugues: 'Antigo', temporada_estimada: true });
+const estimado = deOutono({ id_midia: 'MID-ANM-2026-20300', titulo_romaji: 'Antigo', temporada_estimada: true });
 
 /** A rota de uma página da Temporada, como a tela monta. */
 function rota(estacao: string, ano: number, ordem = 'popularidade_fonte', numero = 1) {
@@ -104,8 +104,8 @@ describe('Temporada', () => {
   it('os atalhos trocam a temporada; a anterior para na mais antiga e "Atual" volta', async () => {
     const api = simularFetch(
       rotas({
-        [rota('inverno', 2027)]: pagina([deOutono({ titulo_portugues: 'Do inverno' })], { por_pagina: 50 }),
-        [rota('verao', 2026)]: pagina([deOutono({ titulo_portugues: 'Do verão' })], { por_pagina: 50 }),
+        [rota('inverno', 2027)]: pagina([deOutono({ titulo_romaji: 'Do inverno' })], { por_pagina: 50 }),
+        [rota('verao', 2026)]: pagina([deOutono({ titulo_romaji: 'Do verão' })], { por_pagina: 50 }),
       }),
     );
     await abrirTemporada();
@@ -169,7 +169,7 @@ describe('Temporada', () => {
 
   it('traz todas as páginas da temporada', async () => {
     const cheia = Array.from({ length: 50 }, (_, i) =>
-      deOutono({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
+      deOutono({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_romaji: `Anime ${i + 1}` }),
     );
     simularFetch(
       rotas({

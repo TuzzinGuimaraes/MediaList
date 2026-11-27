@@ -24,8 +24,8 @@ import { temProgresso, textoDoProgresso } from '@dominio/itemLista';
 import {
   atributosDoTipo,
   notasDaMidia,
+  outrosTitulos,
   ROTULO_NOTA_MEDIA,
-  tituloAlternativo,
   tituloDaMidia,
 } from '@dominio/midia';
 import { useCores } from '@/tema/TemaContext';
@@ -85,7 +85,7 @@ function DetalheMidia() {
   const estados = somarPorEstado(distribuicao.data ?? [], m.tipo);
   const maiorEstado = Math.max(0, ...estados.map((e) => e.total));
   const titulo = tituloDaMidia(m);
-  const alternativo = tituloAlternativo(m);
+  const outros = outrosTitulos(m);
 
   return (
     <View className="flex-1 bg-fundo">
@@ -97,11 +97,11 @@ function DetalheMidia() {
             <Text accessibilityRole="header" className="text-titulo-secao font-bold text-texto-forte">
               {titulo}
             </Text>
-            {alternativo ? (
-              <Text numberOfLines={2} className="text-legenda text-texto-suave">
-                {alternativo}
+            {outros.map((t) => (
+              <Text key={t} numberOfLines={2} className="text-legenda text-texto-suave">
+                {t}
               </Text>
-            ) : null}
+            ))}
           </View>
         </View>
 

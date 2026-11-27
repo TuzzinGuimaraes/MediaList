@@ -23,7 +23,7 @@ async function editar(item: ItemLista, extra = {}) {
     ...extra,
   });
   const user = userEvent.setup();
-  const titulo = item.titulo_portugues ?? item.titulo_original;
+  const titulo = item.titulo_romaji ?? item.titulo_original;
   function Abrir() {
     const { abrirEditor } = useEditorItem();
     return (

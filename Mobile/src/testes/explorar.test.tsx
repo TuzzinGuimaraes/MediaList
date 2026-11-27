@@ -34,7 +34,7 @@ const fma = fullmetal();
 describe('Explorar', () => {
   it('abre com os animes do Recorte animanga, pela nota', async () => {
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren, fma]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren, fma]),
       'GET /generos?tipo=anime': generos('Ação', 'Drama'),
     });
 
@@ -48,11 +48,11 @@ describe('Explorar', () => {
   it('Tipo, Gênero, ordem e busca entram na requisição; a busca espera a digitação parar', async () => {
     const jojo = manga();
     const api = simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': generos('Ação', 'Drama'),
-      'GET /midias?tipo=manga&ordem=nota_media&pagina=1&por_pagina=24': pagina([jojo]),
+      'GET /midias?tipo=manga&pagina=1&por_pagina=24': pagina([jojo]),
       'GET /generos?tipo=manga': generos('Ação', 'Seinen'),
-      'GET /midias?tipo=manga&ordem=nota_media&genero=Seinen&pagina=1&por_pagina=24': pagina([jojo]),
+      'GET /midias?tipo=manga&genero=Seinen&pagina=1&por_pagina=24': pagina([jojo]),
       'GET /midias?tipo=manga&ordem=titulo&genero=Seinen&pagina=1&por_pagina=24': pagina([jojo]),
       'GET /midias?tipo=manga&ordem=titulo&genero=Seinen&busca=jojo&pagina=1&por_pagina=24': pagina([jojo]),
     });
@@ -79,9 +79,9 @@ describe('Explorar', () => {
 
   it('no Recorte jogos busca só jogos, sem escolha de Tipo; nada encontrado mostra estado vazio', async () => {
     const api = simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': generos('Drama'),
-      'GET /midias?tipo=jogo&ordem=nota_media&pagina=1&por_pagina=24': pagina([]),
+      'GET /midias?tipo=jogo&pagina=1&por_pagina=24': pagina([]),
       'GET /generos?tipo=jogo': generos('Ação'),
     });
     await abrirExplorar();
@@ -93,14 +93,14 @@ describe('Explorar', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
     expect(await screen.findByRole('radio', { name: 'Ação' })).toBeOnTheScreen();
     expect(screen.queryByRole('radio', { name: 'Anime' })).not.toBeOnTheScreen();
-    expect(api.para('GET /midias?tipo=jogo&ordem=nota_media&pagina=1&por_pagina=24')).toHaveLength(1);
+    expect(api.para('GET /midias?tipo=jogo&pagina=1&por_pagina=24')).toHaveLength(1);
   });
 
   it('"Limpar filtros" volta Tipo, Gênero e ordem ao padrão e zera o contador', async () => {
     const api = simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': generos('Ação', 'Drama'),
-      'GET /midias?tipo=anime&ordem=nota_media&genero=Drama&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&genero=Drama&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /midias?tipo=anime&ordem=data_lancamento&genero=Drama&pagina=1&por_pagina=24': pagina([frieren]),
     });
     await abrirExplorar();
@@ -118,14 +118,14 @@ describe('Explorar', () => {
     expect(screen.getByRole('button', { name: 'Filtros' })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
     expect(screen.queryByRole('button', { name: 'Ver resultados' })).not.toBeOnTheScreen();
-    expect(api.para('GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24').length).toBeGreaterThan(0);
+    expect(api.para('GET /midias?tipo=anime&pagina=1&por_pagina=24').length).toBeGreaterThan(0);
   });
 
   it('busca sem resultado diz o que foi buscado', async () => {
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': generos(),
-      'GET /midias?tipo=anime&ordem=nota_media&busca=zzz&pagina=1&por_pagina=24': pagina([]),
+      'GET /midias?tipo=anime&busca=zzz&pagina=1&por_pagina=24': pagina([]),
     });
     await abrirExplorar();
     await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
@@ -138,7 +138,7 @@ describe('Explorar', () => {
   it('erro do servidor mostra o aviso e "Tentar de novo" recarrega', async () => {
     let falhar = true;
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': () =>
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': () =>
         falhar ? erro(400, 'dados_invalidos', 'Erro ao buscar mídias') : pagina([frieren]),
       'GET /generos?tipo=anime': generos(),
     });
@@ -154,7 +154,7 @@ describe('Explorar', () => {
   it('se os Gêneros falham, avisa sem esconder os resultados e "Tentar de novo" recarrega', async () => {
     let falhando = true;
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': () =>
         falhando ? erro(500, 'erro_interno', 'Falha no servidor') : generos('Ação', 'Drama'),
     });
@@ -174,7 +174,7 @@ describe('Explorar', () => {
 
   it('tocar num resultado abre o detalhe da Mídia', async () => {
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
       'GET /generos?tipo=anime': generos(),
       'GET /midias/MID-ANM-2026-20053': { status: 200, corpo: frieren },
       'GET /midias/MID-ANM-2026-20053/distribuicao': { status: 200, corpo: { distribuicao: [] } },
@@ -192,11 +192,11 @@ describe('Explorar', () => {
 
   it('rolar até o fim pede a próxima página; uma página incompleta encerra a rolagem', async () => {
     const cheia = Array.from({ length: 24 }, (_, i) =>
-      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
+      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_romaji: `Anime ${i + 1}` }),
     );
     const api = simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina(cheia, 1, 25),
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=2&por_pagina=24': pagina([frieren], 2),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina(cheia, 1, 25),
+      'GET /midias?tipo=anime&pagina=2&por_pagina=24': pagina([frieren], 2),
       'GET /generos?tipo=anime': generos(),
     });
     await abrirExplorar();
@@ -206,7 +206,7 @@ describe('Explorar', () => {
     await rolarAteOFim(resultados);
 
     expect(await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' })).toBeOnTheScreen();
-    expect(api.para('GET /midias?tipo=anime&ordem=nota_media&pagina=2&por_pagina=24')).toHaveLength(1);
+    expect(api.para('GET /midias?tipo=anime&pagina=2&por_pagina=24')).toHaveLength(1);
 
     await rolarAteOFim(resultados);
 
@@ -215,10 +215,10 @@ describe('Explorar', () => {
 
   it('uma página cheia que já completa o total encerra a rolagem, sem pedir a seguinte', async () => {
     const cheia = Array.from({ length: 24 }, (_, i) =>
-      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
+      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_romaji: `Anime ${i + 1}` }),
     );
     const api = simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina(cheia, 1, 24),
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina(cheia, 1, 24),
       'GET /generos?tipo=anime': generos(),
     });
     await abrirExplorar();
@@ -232,12 +232,12 @@ describe('Explorar', () => {
 
   it('se a próxima página falha, o fim da lista oferece "Tentar de novo"', async () => {
     const cheia = Array.from({ length: 24 }, (_, i) =>
-      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_portugues: `Anime ${i + 1}` }),
+      anime({ id_midia: `MID-ANM-2026-${10000 + i}`, titulo_romaji: `Anime ${i + 1}` }),
     );
     let falhar = true;
     simularFetch({
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=1&por_pagina=24': pagina(cheia, 1, 25),
-      'GET /midias?tipo=anime&ordem=nota_media&pagina=2&por_pagina=24': () =>
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina(cheia, 1, 25),
+      'GET /midias?tipo=anime&pagina=2&por_pagina=24': () =>
         falhar ? erro(400, 'dados_invalidos', 'Erro ao buscar mídias') : pagina([frieren], 2),
       'GET /generos?tipo=anime': generos(),
     });

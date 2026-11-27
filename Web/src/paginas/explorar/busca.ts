@@ -92,7 +92,8 @@ export function anosInvertidos(b: BuscaExplorar): boolean {
   return b.ano_min !== undefined && b.ano_max !== undefined && b.ano_min > b.ano_max;
 }
 
-/** Query de `GET /midias` para a URL, já com o Tipo efetivo do catálogo. */
+/** Query de `GET /midias` para a URL, já com o Tipo efetivo do catálogo. Sem ordem escolhida, a
+ * `ordem` fica de fora: a API usa a padrão (`nota_media`) ou, com busca, a relevância. */
 export function consultaDaBusca(b: BuscaExplorar, tipo: TipoMidia): ConsultaMidias {
   const consulta: ConsultaMidias = {
     tipo,
@@ -101,7 +102,7 @@ export function consultaDaBusca(b: BuscaExplorar, tipo: TipoMidia): ConsultaMidi
     status: b.situacao,
     ...(anosInvertidos(b) ? {} : { ano_min: b.ano_min, ano_max: b.ano_max }),
     ...doTipo(b, tipo),
-    ordem: b.ordem ?? ORDEM_PADRAO,
+    ordem: b.ordem,
     pagina: b.pagina ?? 1,
     por_pagina: POR_PAGINA,
   };

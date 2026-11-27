@@ -16,8 +16,8 @@ function midia(parcial: Partial<MidiaDetalhe> = {}): MidiaDetalhe {
   return {
     id_midia: ID,
     tipo: 'anime',
-    titulo_portugues: 'Frieren e a Jornada para o Além',
-    titulo_original: 'Sousou no Frieren',
+    titulo_romaji: 'Sousou no Frieren',
+    titulo_original: '葬送のフリーレン',
     titulo_ingles: "Frieren: Beyond Journey's End",
     sinopse: 'A maga elfa Frieren revisita a jornada.',
     poster_url: 'https://img/poster.jpg',
@@ -131,11 +131,12 @@ function rotas({
 }
 
 describe('Detalhe da Mídia', () => {
-  it('mostra o título, o alternativo, a sinopse e a ficha do Tipo', async () => {
+  it('mostra o título em inglês, os outros títulos, a sinopse e a ficha do Tipo', async () => {
     await abrirLogado(`/midia/${ID}`, { rotas: rotas() });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Frieren e a Jornada para o Além' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: "Frieren: Beyond Journey's End" })).toBeInTheDocument();
     expect(screen.getByText('Sousou no Frieren')).toBeInTheDocument();
+    expect(screen.getByText('葬送のフリーレン')).toBeInTheDocument();
     expect(screen.getByText('A maga elfa Frieren revisita a jornada.')).toBeInTheDocument();
     const ficha = screen.getByLabelText('Ficha');
     expect(within(ficha).getByText('Episódios').nextSibling).toHaveTextContent('28');
@@ -143,6 +144,14 @@ describe('Detalhe da Mídia', () => {
     expect(within(ficha).getByText('Estúdio').nextSibling).toHaveTextContent('Madhouse');
     expect(within(ficha).getByText('Lançamento').nextSibling).toHaveTextContent('29/09/2023');
     expect(screen.getByLabelText('Nota dos Usuários: 8.7')).toBeInTheDocument();
+  });
+
+  it('sem título em inglês, o romanizado é o principal e o japonês fica abaixo, sem repetir', async () => {
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ detalhe: midia({ titulo_ingles: null }) }) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sousou no Frieren' })).toBeInTheDocument();
+    expect(screen.getAllByText('Sousou no Frieren')).toHaveLength(1);
+    expect(screen.getByText('葬送のフリーレン')).toBeInTheDocument();
   });
 
   it('fora da Lista, o botão é Adicionar e abre o editor do Item', async () => {

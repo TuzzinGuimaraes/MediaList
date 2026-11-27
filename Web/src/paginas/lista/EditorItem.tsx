@@ -32,7 +32,7 @@ import { textos } from './editor/textos';
 /** O que o editor lê da Mídia: a da listagem, a do detalhe ou o próprio Item servem. */
 export type MidiaDoEditor = Pick<
   Midia,
-  'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'numero_episodios' | 'numero_capitulos'
+  'id_midia' | 'tipo' | 'titulo_original' | 'titulo_ingles' | 'titulo_romaji' | 'numero_episodios' | 'numero_capitulos'
 >;
 
 /** O rodapé no lugar dos botões enquanto confirma a remoção do Item. */

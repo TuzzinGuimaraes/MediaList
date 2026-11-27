@@ -4,7 +4,8 @@ import { cartaoDaMidia } from './cartao';
 
 const midia = {
   id_midia: 'm1',
-  titulo_portugues: null,
+  titulo_ingles: null,
+  titulo_romaji: null,
   titulo_original: 'Frieren',
   poster_url: null,
   tipo: 'anime' as const,

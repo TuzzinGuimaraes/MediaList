@@ -10,7 +10,7 @@ export function midia(id: string, titulo: string, campos: Partial<Midia> = {}): 
   return {
     id_midia: id,
     titulo_original: titulo,
-    titulo_portugues: null,
+    titulo_romaji: null,
     titulo_ingles: null,
     tipo: 'anime',
     sinopse: null,
@@ -77,11 +77,12 @@ export function item(m: Midia, campos: Partial<ItemLista> = {}): ItemLista {
 }
 
 export function popular(m: Midia, totalUsuarios = m.total_usuarios): MidiaPopular {
-  const { id_midia, titulo_original, titulo_portugues, tipo, poster_url, generos, nota_media, nota_fonte, origem_nota } = m;
+  const { id_midia, titulo_original, titulo_ingles, titulo_romaji, tipo, poster_url, generos, nota_media, nota_fonte, origem_nota } = m;
   return {
     id_midia,
     titulo_original,
-    titulo_portugues,
+    titulo_ingles,
+    titulo_romaji,
     tipo,
     poster_url,
     generos,
