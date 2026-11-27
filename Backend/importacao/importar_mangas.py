@@ -96,6 +96,7 @@ def processar_e_inserir_manga(manga: dict, t=None):
         'autor': autor,
         'artista': artista,
         'demografia': demografia,
+        'adulto': manga.get('isAdult') is True,
         'anilist_id': manga.get('id'),
     }
 
@@ -116,7 +117,7 @@ def importar_mangas(
         if not pagina['itens']:
             return
         # Uma conexão por página; cada Mídia é um comando (a sua transação), e as Relações da
-        # página mais um.
+        # página, mais uma.
         with autocommit() as t:
             relacoes_por_midia = {}
             for item in pagina['itens']:

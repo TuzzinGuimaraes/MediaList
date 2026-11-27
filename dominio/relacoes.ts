@@ -3,8 +3,11 @@
 // nos dois sentidos, sem as vagas e sem as adultas; aqui ficam os nomes, a ordem, o corte dos
 // jogos e a sugestão.
 
-import { estadoDe, nomeDoRotulo, nomeDoTipo } from './estadoConsumo';
+import { estadoDe, nomeDoRotulo, nomeDoTipo, type TipoMidia } from './estadoConsumo';
 import type { NomeRelacao, RelacaoDaMidia } from './tipos';
+
+/** A Mídia do Detalhe, dona das Relações: o que o carrossel e o destaque da Sequência leem dela. */
+export type MidiaComRelacoes = { id_midia: string; tipo: TipoMidia; data_lancamento: string | null };
 
 /** O nome de cada Relação na interface, na ordem dos grupos da seção. */
 export const NOMES_RELACAO: Record<NomeRelacao, string> = {
@@ -42,6 +45,20 @@ export const TEXTOS_DAS_RELACOES = {
 export function linkDaFonte(relacao: Pick<RelacaoDaMidia, 'id_midia' | 'link_fonte'>): string | null {
   if (relacao.id_midia !== null || !relacao.link_fonte) return null;
   return /^https:\/\/[^/]/i.test(relacao.link_fonte) ? relacao.link_fonte : null;
+}
+
+/** Para onde o cartão leva: o Detalhe (no Catálogo), o link `https://` da fonte ou nada. */
+export type DestinoDaRelacao = { abre: 'detalhe'; idMidia: string } | { abre: 'link'; link: string } | null;
+
+export function destinoDaRelacao(relacao: Pick<RelacaoDaMidia, 'id_midia' | 'link_fonte'>): DestinoDaRelacao {
+  if (relacao.id_midia !== null) return { abre: 'detalhe', idMidia: relacao.id_midia };
+  const link = linkDaFonte(relacao);
+  return link ? { abre: 'link', link } : null;
+}
+
+/** A `key` estável do cartão: a mesma obra pode aparecer em duas Relações. */
+export function chaveDaRelacao(relacao: RelacaoDaMidia): string {
+  return `${relacao.relacao}-${relacao.id_midia ?? relacao.link_fonte ?? relacao.titulo}`;
 }
 
 /** "Sequência", "Adaptação · mangá". */
@@ -94,7 +111,7 @@ export type CarrosselDeRelacoes = { cartoes: RelacaoDaMidia[]; mais: number };
  */
 export function carrosselDeRelacoes(
   relacoes: readonly RelacaoDaMidia[],
-  midia: { tipo: string; data_lancamento: string | null },
+  midia: Pick<MidiaComRelacoes, 'tipo' | 'data_lancamento'>,
 ): CarrosselDeRelacoes {
   const ordenadas = ordenarRelacoes(relacoes);
   if (midia.tipo !== 'jogo' || ordenadas.length <= LIMITE_DE_JOGOS) return { cartoes: ordenadas, mais: 0 };
@@ -124,7 +141,7 @@ export type SugestaoDeSequencia = { relacao: RelacaoDaMidia; planejavel: boolean
  * nunca tem sugestão (a ordem por data engana com remakes).
  */
 export function sugestoesDeSequencia(
-  midia: { tipo: string },
+  midia: Pick<MidiaComRelacoes, 'tipo'>,
   item: { status_consumo: string } | null | undefined,
   relacoes: readonly RelacaoDaMidia[],
 ): SugestaoDeSequencia[] {

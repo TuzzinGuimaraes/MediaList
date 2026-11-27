@@ -1,4 +1,4 @@
-"""Migração 0018: a contagem da série nos jogos e o cursor da passada lenta (spec `relacoes`).
+"""Migração 0018: a contagem da série nos jogos e o mangá adulto (spec `relacoes`).
 
 Roda o Alembic de verdade num banco descartável (as funções de apoio são as do teste da 0007).
 Usa TEST_OWNER_DATABASE_URL (dono do banco, com CREATEDB); sem ela, pula.
@@ -46,21 +46,24 @@ def test_upgrade_cria_a_contagem_nula_nos_jogos_que_ja_estavam(banco_descartavel
         _sql(nome, 'UPDATE jogos SET game_series_count = -1 WHERE id_midia = %s', (antigo,))
 
 
-def test_upgrade_cria_o_cursor_da_passada_sem_fim(banco_descartavel):  # noqa: F811
+def test_upgrade_cria_o_adulto_falso_nos_mangas_que_ja_estavam(banco_descartavel):  # noqa: F811
     nome = banco_descartavel
+    _alembic(nome, 'upgrade', ANTERIOR)
+    [linha] = _sql(nome, "INSERT INTO midias (id_tipo, titulo_original) SELECT id_tipo, 'M' "
+                         "FROM tipo_midia WHERE nome_tipo = 'manga' RETURNING id_midia")
+    _sql(nome, 'INSERT INTO mangas (id_midia, anilist_id) VALUES (%s, 1)', (linha['id_midia'],))
+
     _alembic(nome, 'upgrade', NOVA)
 
-    _sql(nome, "INSERT INTO importacao_cursor (tipo_midia) VALUES ('jogo')")
-    [linha] = _sql(nome, "SELECT serie_usuarios, serie_nota, serie_id, serie_fim FROM importacao_cursor "
-                         "WHERE tipo_midia = 'jogo'")
-    assert linha == {'serie_usuarios': None, 'serie_nota': None, 'serie_id': None, 'serie_fim': False}
+    [manga] = _sql(nome, 'SELECT adulto FROM mangas WHERE id_midia = %s', (linha['id_midia'],))
+    assert manga['adulto'] is False
 
 
-def test_downgrade_apaga_a_contagem_e_o_cursor(banco_descartavel):  # noqa: F811
+def test_downgrade_apaga_a_contagem_e_o_adulto(banco_descartavel):  # noqa: F811
     nome = banco_descartavel
     _alembic(nome, 'upgrade', NOVA)
 
     _alembic(nome, 'downgrade', ANTERIOR)
 
     assert 'game_series_count' not in _colunas(nome, 'jogos')
-    assert not {'serie_usuarios', 'serie_nota', 'serie_id', 'serie_fim'} & _colunas(nome, 'importacao_cursor')
+    assert 'adulto' not in _colunas(nome, 'mangas')

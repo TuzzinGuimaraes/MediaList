@@ -5,8 +5,8 @@
 identidade na fonte, não uma FK: o Tipo e o `anilist_id` (AniList) ou o `rawg_slug` (RAWG). Ele
 casa com o Catálogo na leitura, então a obra que ainda não está no Catálogo vira link interno
 quando a Importação a traz, e apagar uma Mídia não derruba as Relações que apontam para ela.
-O destino guarda o título, o formato, a estreia, se é adulto e o pôster, para mostrar a obra
-fora do Catálogo. `relacao` é o código da fonte (`SEQUEL`, `PREQUEL`... e `MESMA_SERIE` nos
+O destino guarda o título, a estreia, se é adulto e o pôster, para mostrar a obra fora do
+Catálogo. `relacao` é o código da fonte (`SEQUEL`, `PREQUEL`... e `MESMA_SERIE` nos
 jogos), inclusive os que a leitura deixa de fora (`CHARACTER`, `OTHER`).
 
 O downgrade apaga a tabela.
@@ -35,7 +35,6 @@ def upgrade() -> None:
             destino_anilist_id integer,
             destino_rawg_slug text,
             titulo text NOT NULL,
-            formato text,
             data_lancamento date,
             adulto boolean NOT NULL DEFAULT false,
             poster_url text,

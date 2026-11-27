@@ -1,6 +1,8 @@
 import {
   carrosselDeRelacoes,
+  chaveDaRelacao,
   descricaoDaRelacao,
+  destinoDaRelacao,
   LIMITE_DE_JOGOS,
   linkDaFonte,
   nomeDaRelacao,
@@ -79,6 +81,40 @@ describe('linkDaFonte', () => {
 
   it('no Catálogo, nenhum (o cartão abre o Detalhe)', () => {
     expect(linkDaFonte(relacao('X', { link_fonte: 'https://anilist.co/anime/9' }))).toBeNull();
+  });
+});
+
+describe('destinoDaRelacao', () => {
+  it('no Catálogo, o Detalhe (mesmo com link da fonte)', () => {
+    expect(destinoDaRelacao(relacao('X', { id_midia: 'm1', link_fonte: 'https://anilist.co/anime/9' }))).toEqual({
+      abre: 'detalhe',
+      idMidia: 'm1',
+    });
+  });
+
+  it('fora do Catálogo com link https, o link', () => {
+    expect(destinoDaRelacao(relacao('X', { id_midia: null, link_fonte: 'https://anilist.co/anime/9' }))).toEqual({
+      abre: 'link',
+      link: 'https://anilist.co/anime/9',
+    });
+  });
+
+  it.each([
+    ['http', 'http://anilist.co/anime/9'],
+    ['javascript', 'javascript:alert(1)'],
+    ['sem link', null],
+  ])('fora do Catálogo, %s: nada', (_, link) => {
+    expect(destinoDaRelacao(relacao('X', { id_midia: null, link_fonte: link }))).toBeNull();
+  });
+});
+
+describe('chaveDaRelacao', () => {
+  it('a Relação e a Mídia, ou o link, ou o título', () => {
+    expect(chaveDaRelacao(relacao('X', { id_midia: 'm1' }))).toBe('SEQUEL-m1');
+    expect(chaveDaRelacao(relacao('X', { relacao: 'SOURCE', id_midia: null, link_fonte: 'https://a.co/1' }))).toBe(
+      'SOURCE-https://a.co/1',
+    );
+    expect(chaveDaRelacao(relacao('X', { id_midia: null }))).toBe('SEQUEL-X');
   });
 });
 

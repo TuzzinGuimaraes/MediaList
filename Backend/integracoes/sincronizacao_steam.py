@@ -63,9 +63,12 @@ def _pelo_rawg(item: ItemDeOrigem, rawg: Rawg) -> catalogo.Localizada | None:
     detalhe = rawg.detalhe(slug)
     if not detalhe:
         return None
-    # O jogo não está no Catálogo pelo slug: sem contagem gravada, a série vem pela regra da Importação.
-    if relacoes.precisa_da_serie(relacoes.contagem_da_serie(detalhe), None):
-        detalhe = {**detalhe, 'game_series': rawg.serie(slug)}
+    # O jogo não está no Catálogo pelo slug: sem contagem gravada, a série vem pela regra da
+    # Importação. A falha dela não é a do jogo: ele entra sem a contagem, para tentar de novo.
+    try:
+        detalhe = {**detalhe, 'game_series': relacoes.serie_do_jogo(detalhe, None, rawg.serie)}
+    except OrigemIndisponivel:
+        pass  # o `Rawg` já deixou o aviso no log
     midia = catalogo.importar(replace(item, catalogo=RefCatalogo('rawg', slug, detalhe)))
     if midia is None:
         raise OrigemIndisponivel(f'não deu para importar {slug}')

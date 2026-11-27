@@ -27,6 +27,7 @@ from contrato import (
     TipoDeMidia,
     VazioComoAusente,
 )
+from dominio.relacoes import NomeRelacao
 from schemas.avaliacoes import AvaliacaoDaMidia
 from schemas.estado_consumo import RotuloDeEstado
 
@@ -372,13 +373,6 @@ class AtualizacaoPublicada(BaseModel):
     mensagem: str
     notificacoes_enviadas: int
 
-
-
-#: A Relação, pelo código da fonte (`dominio.relacoes.VISIVEIS`): os do AniList e `MESMA_SERIE` nos jogos.
-NomeRelacao = Literal[
-    'PREQUEL', 'SEQUEL', 'ADAPTATION', 'SOURCE', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY',
-    'COMPILATION', 'CONTAINS', 'MESMA_SERIE',
-]
 
 
 class RelacaoDaMidia(BaseModel):

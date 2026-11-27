@@ -243,13 +243,13 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
           {/* No tablet, começa onde o banner acaba, ao lado do pôster. */}
           <div className="flex flex-col gap-4 pt-40 lg:pt-0">
             <BotaoDaLista midia={midia} />
+            <SugestaoDeSequencia midia={midia} item={item.data} />
             <Ficha midia={midia} item={item.data} />
           </div>
         </div>
         <div className="flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
           <EpisodioNovo item={item.data} />
-          <SugestaoDeSequencia midia={midia} item={item.data} />
           <Sinopse texto={midia.sinopse} />
           <Relacoes midia={midia} />
           <Atualizacoes atualizacoes={midia.atualizacoes} />

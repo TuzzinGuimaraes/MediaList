@@ -11,7 +11,7 @@ import uuid
 import pytest
 
 import banco
-from importacao import cursor, importar_jogos, serie_jogos
+from importacao import importar_jogos, serie_jogos
 from integracoes import repositorio
 from integracoes.plataforma import Conta
 
@@ -30,16 +30,18 @@ CAPA = 'https://media.rawg.io/media/games/x.jpg'
 class _Rawg:
     """`/games` (uma página), `/games/<slug>`, `/games/<slug>/game-series` e `/games/<slug>/stores`.
 
-    `contagens`: slug → `game_series_count` do detalhe; `series`: slug → jogos da série (em
-    páginas de 40; com `sem_fim`, toda página diz que há a seguinte). Slug desconhecido: 404.
+    `contagens`: slug → `game_series_count` do detalhe (None: o detalhe não a traz); `series`:
+    slug → jogos da série (em páginas de 40; com `sem_fim`, toda página diz que há a seguinte);
+    `serie_falha`: slugs cujo `game-series` responde 502. Slug desconhecido: 404.
     """
 
-    def __init__(self, jogos=(), contagens=None, series=None, sem_fim=False, lojas=None):
+    def __init__(self, jogos=(), contagens=None, series=None, sem_fim=False, lojas=None, serie_falha=()):
         self.jogos = {j['slug']: j for j in jogos}
         self.contagens = contagens or {}
         self.series = series or {}
         self.sem_fim = sem_fim
         self.lojas = lojas or {}
+        self.serie_falha = set(serie_falha)
         self.chamadas = []
 
     def get(self, url, params=None, timeout=None):
@@ -49,6 +51,8 @@ class _Rawg:
         if caminho == '/games':
             return _Resposta(200, {'results': list(self.jogos.values()), 'next': None})
         serie = re.fullmatch(r'/games/([^/]+)/game-series', caminho)
+        if serie and serie.group(1) in self.serie_falha:
+            return _Resposta(502)
         if serie:
             jogos, pagina = self.series.get(serie.group(1), []), params['page']
             assert params['page_size'] == 40
@@ -63,8 +67,11 @@ class _Rawg:
         slug = detalhe and detalhe.group(1)
         if slug not in self.jogos:
             return _Resposta(404, {'detail': 'Not found.'})
-        return _Resposta(200, {**self.jogos[slug], 'description_raw': 'Um jogo.', 'tags': [],
-                               'game_series_count': self.contagens.get(slug, 0)})
+        detalhe = {**self.jogos[slug], 'description_raw': 'Um jogo.', 'tags': [],
+                   'game_series_count': self.contagens.get(slug, 0)}
+        if detalhe['game_series_count'] is None:
+            del detalhe['game_series_count']
+        return _Resposta(200, detalhe)
 
     def close(self):
         pass
@@ -218,18 +225,58 @@ def test_serie_sem_o_proprio_jogo_sem_adulto_e_sem_slug_invalido(client, rawg, s
     assert [(r['titulo'], r['poster_url']) for r in relacoes] == [(f'Série {b}', None)]
 
 
-def test_falha_na_serie_e_falha_do_jogo_e_a_contagem_nao_fica_gravada(client, rawg, slugs):
-    a = slugs()
-    fonte = _Rawg([_jogo(a)], contagens={a: 3})
-    original = fonte.get
-    fonte.get = lambda url, params=None, timeout=None: (
-        _Resposta(502) if url.endswith('/game-series') else original(url, params, timeout))
-    rawg(fonte)
+def test_detalhe_sem_contagem_nao_apaga_a_gravada(client, rawg, slugs):
+    a, b = slugs(), slugs()
+    rawg(_Rawg([_jogo(a)], contagens={a: 1}, series={a: [_da_serie(b)]}))
+    _importar()
+
+    sem = rawg(_Rawg([_jogo(a)], contagens={a: None}))
+    _importar()
+
+    assert sem.series_pedidas() == []
+    assert _contagem(a) == 1
+    assert [r['titulo'] for r in _relacoes(client, _id(a))] == [f'Série {b}']
+
+
+def test_falha_na_serie_nao_e_falha_do_jogo_e_a_contagem_fica_como_estava(client, rawg, slugs):
+    antigo, novo, b, c = slugs(), slugs(), slugs(), slugs()
+    rawg(_Rawg([_jogo(antigo)], contagens={antigo: 1}, series={antigo: [_da_serie(b)]}))
+    _importar()
+
+    rawg(_Rawg([_jogo(antigo), _jogo(novo)], contagens={antigo: 2, novo: 3},
+               series={antigo: [_da_serie(b), _da_serie(c)]}, serie_falha={antigo, novo}))
+    stats = _importar()
+
+    assert (stats.sucessos, stats.falhas) == (2, 0)
+    assert (_contagem(antigo), _contagem(novo)) == (1, None)
+    assert [r['titulo'] for r in _relacoes(client, _id(antigo))] == [f'Série {b}']
+    assert _relacoes(client, _id(novo)) == []
+
+    # A próxima importação tenta de novo.
+    de_novo = rawg(_Rawg([_jogo(antigo)], contagens={antigo: 2}, series={antigo: [_da_serie(b), _da_serie(c)]}))
+    _importar()
+    assert de_novo.series_pedidas() == [(antigo, 1)]
+    assert _contagem(antigo) == 2
+
+
+def _relacoes_que_o_banco_recusa(monkeypatch):
+    """`da_serie` devolve uma Relação que fere a CHECK do código: a gravação das Relações falha."""
+    from importacao import relacoes
+
+    original = relacoes.da_serie
+    monkeypatch.setattr(relacoes, 'da_serie',
+                        lambda *a, **kw: [{**r, 'relacao': 'invalida'} for r in original(*a, **kw)])
+
+
+def test_falha_ao_gravar_a_serie_nao_e_falha_do_jogo_e_a_contagem_nao_muda(client, rawg, slugs, monkeypatch):
+    a, b = slugs(), slugs()
+    rawg(_Rawg([_jogo(a)], contagens={a: 1}, series={a: [_da_serie(b)]}))
+    _relacoes_que_o_banco_recusa(monkeypatch)
 
     stats = _importar()
 
-    assert stats.falhas == 1
-    assert _id(a) is None
+    assert (stats.sucessos, stats.falhas) == (1, 0)
+    assert _id(a) is not None and _contagem(a) is None
 
 
 # ============================================
@@ -255,6 +302,47 @@ def test_jogo_que_a_steam_traz_pelo_rawg_ganha_a_serie(client, usuario, fontes, 
     assert [c for c in sessao.caminhos() if c.endswith('/game-series')]
     assert _contagem(slug) == 1
     assert [(r['relacao'], r['titulo']) for r in _relacoes(client, _id(slug))] == [('MESMA_SERIE', 'Irmão')]
+
+
+def test_falha_na_serie_do_jogo_que_a_steam_traz_pelo_rawg_nao_impede_a_importacao(client, usuario, fontes, jogo):
+    from .fontes_falsas import Resposta
+
+    id_usuario, headers = usuario
+    appid, slug, nome = jogo('Série fora do ar')
+    detalhe = {**_jogo(slug, nome), 'description_raw': 'Um jogo.', 'tags': [], 'game_series_count': 1}
+    fontes([jogo_steam(appid, nome, 120, 1_000_000_000)], {
+        r'/games$': {'results': [resultado_rawg(slug, nome)]},
+        rf'/games/{slug}/stores$': {'results': [{'url': f'https://store.steampowered.com/app/{appid}/'}]},
+        rf'/games/{slug}/game-series$': Resposta(502, {}),
+        rf'/games/{slug}$': detalhe,
+    })
+    repositorio.gravar_conta(id_usuario, 'steam', _conta())
+
+    resposta = client.post('/api/integracoes/steam/sincronizar', headers=headers)
+
+    assert resposta.status_code == 200, resposta.get_json()
+    assert _id(slug) is not None and _contagem(slug) is None
+    assert _relacoes(client, _id(slug)) == []
+
+
+def test_falha_ao_gravar_a_serie_do_jogo_que_a_steam_traz_nao_impede_a_importacao(
+        client, usuario, fontes, jogo, monkeypatch):
+    id_usuario, headers = usuario
+    appid, slug, nome = jogo('Série recusada')
+    _, irmao, _ = jogo('Irmão')
+    detalhe = {**_jogo(slug, nome), 'description_raw': 'Um jogo.', 'tags': [], 'game_series_count': 1}
+    fontes([jogo_steam(appid, nome, 120, 1_000_000_000)], {
+        r'/games$': {'results': [resultado_rawg(slug, nome)]},
+        rf'/games/{slug}/stores$': {'results': [{'url': f'https://store.steampowered.com/app/{appid}/'}]},
+        rf'/games/{slug}/game-series$': {'results': [_da_serie(irmao, 'Irmão')], 'next': None},
+        rf'/games/{slug}$': detalhe,
+    })
+    repositorio.gravar_conta(id_usuario, 'steam', _conta())
+    _relacoes_que_o_banco_recusa(monkeypatch)
+
+    assert client.post('/api/integracoes/steam/sincronizar', headers=headers).status_code == 200
+
+    assert _id(slug) is not None and _contagem(slug) is None
 
 
 def test_jogo_que_entra_so_pela_loja_da_steam_fica_sem_relacoes(client, usuario, fontes, jogo):
@@ -291,17 +379,14 @@ def _antigo(slug, usuarios=(), contagem=None, nota=None):
     return id_midia
 
 
-def _cursor_serie():
-    return banco.consultar_um("SELECT serie_fim FROM importacao_cursor WHERE tipo_midia = 'jogo'")
-
-
-def test_passada_vai_dos_mais_populares_aos_menos_avanca_e_para_no_fim(client, pg, rawg, slugs):
+def test_passada_vai_dos_mais_populares_aos_menos_e_termina_sem_candidatos(client, pg, rawg, slugs):
     pessoas = [criar_usuario(pg) for _ in range(4)]
-    a, b, c, ja_lido, irmao = slugs(), slugs(), slugs(), slugs(), slugs()
+    a, b, c, ja_lido, fora, irmao = slugs(), slugs(), slugs(), slugs(), slugs(), slugs()
     _antigo(a, pessoas[:3])
     _antigo(b, pessoas[:2], nota=9)
     _antigo(ja_lido, pessoas, contagem=0)
-    _antigo(c, pessoas[:1])
+    _antigo(c, pessoas[:1], nota=5)
+    _antigo(fora, pessoas[:1], nota=1)
     jogos = [_jogo(s) for s in (a, b, c, ja_lido)]
 
     primeira = rawg(_Rawg(jogos, contagens={a: 1, b: 0, c: 0}, series={a: [_da_serie(irmao, 'Irmão')]}))
@@ -311,22 +396,41 @@ def test_passada_vai_dos_mais_populares_aos_menos_avanca_e_para_no_fim(client, p
     assert primeira.series_pedidas() == [(a, 1)]
     assert (_contagem(a), _contagem(b), _contagem(c)) == (1, 0, None)
     assert [r['titulo'] for r in _relacoes(client, _id(a))] == ['Irmão']
-    assert stats.sucessos == 2 and _cursor_serie() == {'serie_fim': False}
+    assert stats.sucessos == 2
 
-    # A segunda vai até o fim: C e os outros jogos sem contagem do banco (no RAWG falso, 404).
+    # A segunda vai até o fim: C e os outros jogos sem contagem do banco. O que o RAWG não tem
+    # mais (404) fica com 0 e não volta.
     segunda = rawg(_Rawg(jogos, contagens={c: 0}))
     serie_jogos.passada(limite=100_000)
     assert segunda.detalhes_pedidos()[0] == c
     assert ja_lido not in segunda.detalhes_pedidos() and a not in segunda.detalhes_pedidos()
-    assert _contagem(c) == 0
-    assert _cursor_serie() == {'serie_fim': True}
+    assert (_contagem(c), _contagem(fora)) == (0, 0)
 
     terceira = rawg(_Rawg(jogos))
-    serie_jogos.passada(limite=2)
+    stats = serie_jogos.passada(limite=2)
     assert terceira.chamadas == []
+    assert stats.pulado
 
 
-def test_passada_com_falha_nao_avanca_o_cursor(client, pg, rawg, slugs):
+def test_jogo_que_sobe_na_popularidade_depois_ainda_e_visitado(client, pg, rawg, slugs):
+    pessoas = [criar_usuario(pg) for _ in range(5)]
+    a, b = slugs(), slugs()
+    _antigo(a, pessoas[:4])
+    id_b = _antigo(b, pessoas[:3])
+    rawg(_Rawg([_jogo(a), _jogo(b)]))
+    serie_jogos.passada(limite=1)
+    assert (_contagem(a), _contagem(b)) == (0, None)
+
+    banco.executar("INSERT INTO lista_usuarios (id_usuario, id_midia, status_consumo) VALUES (%s, %s, 'zerado')",
+                   (pessoas[4], id_b))
+    segunda = rawg(_Rawg([_jogo(a), _jogo(b)]))
+    serie_jogos.passada(limite=1)
+
+    assert segunda.detalhes_pedidos() == [b]
+    assert _contagem(b) == 0
+
+
+def test_passada_com_falha_no_detalhe_nao_grava_e_tenta_de_novo(client, pg, rawg, slugs):
     pessoas = [criar_usuario(pg) for _ in range(6)]
     a = slugs()
     _antigo(a, pessoas)
@@ -337,9 +441,38 @@ def test_passada_com_falha_nao_avanca_o_cursor(client, pg, rawg, slugs):
     stats = serie_jogos.passada(limite=1)
 
     assert stats.paginas_com_falha
-    assert cursor.ler_serie() is None
     assert _contagem(a) is None
+    de_novo = rawg(_Rawg([_jogo(a)]))
+    serie_jogos.passada(limite=1)
+    assert de_novo.detalhes_pedidos() == [a]
 
+
+def test_passada_com_falha_na_serie_deixa_o_jogo_sem_contagem_e_segue(client, pg, rawg, slugs):
+    pessoas = [criar_usuario(pg) for _ in range(7)]
+    a, b, irmao = slugs(), slugs(), slugs()
+    _antigo(a, pessoas)
+    _antigo(b, pessoas[:6])
+    rawg(_Rawg([_jogo(a), _jogo(b)], contagens={a: 2, b: 1}, series={b: [_da_serie(irmao)]}, serie_falha={a}))
+
+    stats = serie_jogos.passada(limite=2)
+
+    assert (_contagem(a), _contagem(b)) == (None, 1)
+    assert _relacoes(client, _id(a)) == []
+    assert [r['titulo'] for r in _relacoes(client, _id(b))] == [f'Série {irmao}']
+    assert (stats.sucessos, stats.falhas) == (1, 1)
+
+
+def test_passada_com_falha_ao_gravar_nao_muda_a_contagem(client, pg, rawg, slugs, monkeypatch):
+    pessoas = [criar_usuario(pg) for _ in range(8)]
+    a, irmao = slugs(), slugs()
+    _antigo(a, pessoas)
+    rawg(_Rawg([_jogo(a)], contagens={a: 1}, series={a: [_da_serie(irmao)]}))
+    _relacoes_que_o_banco_recusa(monkeypatch)
+
+    stats = serie_jogos.passada(limite=1)
+
+    assert stats.paginas_com_falha
+    assert _contagem(a) is None
 
 
 def test_run_import_de_jogo_roda_a_passada_depois_da_importacao(pg, rawg, slugs, monkeypatch, capsys):

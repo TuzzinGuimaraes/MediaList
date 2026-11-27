@@ -75,7 +75,6 @@ CAMPOS_RELACOES = """
           node {
             id
             type
-            format
             title { romaji english native }
             startDate { year month day }
             isAdult
@@ -145,18 +144,11 @@ def _limite_de_paginas(response) -> bool:
     return any(re.search(r'page exceeds maximum', str(e.get('message', '')), re.I) for e in erros)
 
 
-def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str], filtros: dict) -> dict:
+def _pedir_pagina(session, rate_limiter, payload: dict, descricao: str) -> dict:
     """Uma página de `Page.media`: `{'itens', 'fim', 'erro', 'limite', 'payload'}`.
 
     `limite`: o AniList recusou a página por passar do máximo da API pública.
     """
-    if not 1 <= pagina <= ULTIMA_PAGINA:
-        raise ValueError(f'página {pagina} fora de 1..{ULTIMA_PAGINA}')
-    query, variaveis = _consulta(filtros)
-    payload = {
-        'query': query,
-        'variables': {'page': pagina, 'perPage': POR_PAGINA, 'tipo': tipo, 'sort': sort, **variaveis},
-    }
     try:
         rate_limiter.wait()
         # O 429 é tratado pelo Retry da sessão (respeita Retry-After, com limite de
@@ -167,17 +159,29 @@ def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str]
         response.raise_for_status()
         data = response.json()['data']['Page']
     except Exception as exc:
-        logger.warning('Falha ao buscar página %s do AniList (%s, %s): %s', pagina, tipo, filtros, exc)
+        logger.warning('Falha ao buscar %s do AniList: %s', descricao, exc)
         return {'itens': [], 'fim': False, 'erro': exc, 'limite': False, 'payload': payload}
     fim = not data['pageInfo']['hasNextPage']
     return {'itens': data['media'], 'fim': fim, 'erro': None, 'limite': False, 'payload': payload}
+
+
+def buscar_pagina(session, rate_limiter, tipo: str, pagina: int, sort: list[str], filtros: dict) -> dict:
+    """Uma página da Importação (`_pedir_pagina`)."""
+    if not 1 <= pagina <= ULTIMA_PAGINA:
+        raise ValueError(f'página {pagina} fora de 1..{ULTIMA_PAGINA}')
+    query, variaveis = _consulta(filtros)
+    payload = {
+        'query': query,
+        'variables': {'page': pagina, 'perPage': POR_PAGINA, 'tipo': tipo, 'sort': sort, **variaveis},
+    }
+    return _pedir_pagina(session, rate_limiter, payload, f'a página {pagina} ({tipo}, {filtros})')
 
 
 Buscar = Callable[[int, list[str], dict], dict]
 
 
 def buscar_relacoes(session, rate_limiter, tipo: str, ids: list[int]) -> dict:
-    """As Relações das obras `ids` (até 50, uma página): `{'itens', 'erro', 'payload'}`.
+    """As Relações das obras `ids` (até 50, uma página), na página de `_pedir_pagina`.
 
     Cada item é `{'id', 'relations'}`; obra que o AniList não tem mais não volta.
     """
@@ -191,15 +195,7 @@ def buscar_relacoes(session, rate_limiter, tipo: str, ids: list[int]) -> dict:
     payload = {'query': query, 'variables': {
         'page': 1, 'perPage': len(ids), 'idIn': list(ids), 'tipo': tipo, 'sort': POR_ID,
     }}
-    try:
-        rate_limiter.wait()
-        response = session.post(ANILIST_URL, json=payload, timeout=30)
-        response.raise_for_status()
-        itens = response.json()['data']['Page']['media']
-    except Exception as exc:
-        logger.warning('Falha ao buscar as Relações de %s obras do AniList (%s): %s', len(ids), tipo, exc)
-        return {'itens': [], 'erro': exc, 'payload': payload}
-    return {'itens': itens, 'erro': None, 'payload': payload}
+    return _pedir_pagina(session, rate_limiter, payload, f'as Relações de {len(ids)} obras ({tipo})')
 
 
 def crescimento(buscar: Buscar, paginas: int, fronteira: Fronteira | None, pagina_topo: int = 1) -> Iterator[dict]:

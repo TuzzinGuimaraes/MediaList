@@ -165,6 +165,12 @@ class Transacao:
         with _traduzir_erros():
             return self._conn.execute(sql, params).rowcount
 
+    @contextmanager
+    def bloco(self) -> Iterator['Transacao']:
+        """Os comandos de dentro numa transação só: no autocommit, BEGIN/COMMIT; numa transação, um savepoint."""
+        with _traduzir_erros(), self._conn.transaction():
+            yield self
+
 
 @contextmanager
 def transacao() -> Iterator[Transacao]:
