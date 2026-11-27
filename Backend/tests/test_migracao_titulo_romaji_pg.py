@@ -45,6 +45,8 @@ def test_upgrade_renomeia_a_coluna_e_mantem_o_romaji_gravado(banco_descartavel):
     for view in ('vw_midias_populares', 'vw_animes_temporada_atual'):
         assert 'titulo_romaji' in _colunas(nome, view)
         assert 'titulo_portugues' not in _colunas(nome, view)
+    # A dos populares passa a trazer o inglês, para o título exibido.
+    assert 'titulo_ingles' in _colunas(nome, 'vw_midias_populares')
 
 
 def test_downgrade_volta_o_nome_antigo(banco_descartavel):  # noqa: F811
@@ -58,3 +60,4 @@ def test_downgrade_volta_o_nome_antigo(banco_descartavel):  # noqa: F811
     assert 'idx_midias_titulo_portugues' in _indices(nome)
     for view in ('vw_midias_populares', 'vw_animes_temporada_atual'):
         assert 'titulo_portugues' in _colunas(nome, view)
+    assert 'titulo_ingles' not in _colunas(nome, 'vw_midias_populares')
