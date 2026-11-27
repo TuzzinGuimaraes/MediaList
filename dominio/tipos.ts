@@ -41,3 +41,10 @@ export type ResultadoImportacao = Esquemas['ResultadoImportacao'];
 
 /** Um item que não casou com o Catálogo; `origem_id` e `tipo` são null nos resultados antigos. */
 export type NaoEncontrado = Esquemas['NaoEncontrado'];
+
+
+/** Uma Relação de GET /midias/<id>/relacoes, já com o nome visto da Mídia. */
+export type RelacaoDaMidia = Esquemas['RelacaoDaMidia'];
+
+/** O código da Relação (`SEQUEL`, `PREQUEL`... e `MESMA_SERIE` nos jogos). */
+export type NomeRelacao = RelacaoDaMidia['relacao'];
