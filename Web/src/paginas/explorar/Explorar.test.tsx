@@ -12,7 +12,7 @@ function midia(id: string, titulo: string, extra: Partial<Midia> = {}): Midia {
   return {
     id_midia: id,
     titulo_original: titulo,
-    titulo_portugues: null,
+    titulo_romaji: null,
     titulo_ingles: null,
     tipo: 'anime',
     poster_url: null,
@@ -116,7 +116,7 @@ describe('Explorar', () => {
     expect(within(lista).getByRole('link', { name: /Frieren/ })).toHaveAttribute('href', '/midia/MID-1');
     expect(within(lista).getByRole('link', { name: /Mushishi/ })).toBeInTheDocument();
     expect(screen.getByText('2 Mídias')).toBeInTheDocument();
-    expect(ultimaBusca(api)).toEqual({ tipo: 'anime', ordem: 'nota_media', pagina: '1', por_pagina: '30' });
+    expect(ultimaBusca(api)).toEqual({ tipo: 'anime', pagina: '1', por_pagina: '30' });
   });
 
   it('o link com filtros abre a mesma busca', async () => {
@@ -324,6 +324,8 @@ describe('Explorar', () => {
 
     expect(await screen.findByText('Nenhuma Mídia encontrada para "fri".')).toBeInTheDocument();
     expect(ultimaBusca(api)).toMatchObject({ busca: 'fri' });
+    // Sem ordem escolhida, a API ordena a busca por relevância.
+    expect(ultimaBusca(api)).not.toHaveProperty('ordem');
 
     const campo = screen.getByRole('searchbox', { name: 'Buscar por título' });
     expect(campo).toHaveValue('fri');
@@ -333,13 +335,33 @@ describe('Explorar', () => {
     await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ busca: 'frieren' }));
   });
 
+  it('com busca, escolher a ordem padrão manda a ordem no lugar da relevância', async () => {
+    const { api, user, historico } = await abrirLogado('/explorar?busca=fri', { rotas: rotas() });
+    const ordem = await screen.findByRole('group', { name: 'Ordem' });
+    // Sem ordem escolhida, a busca vai por relevância: nenhuma ordem aparece marcada.
+    expect(within(ordem).queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+
+    await user.click(within(ordem).getByRole('radio', { name: 'Maiores notas' }));
+
+    await waitFor(() => expect(naUrl(historico)).toEqual({ busca: 'fri', ordem: 'nota_media' }));
+    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ busca: 'fri', ordem: 'nota_media' }));
+    expect(within(ordem).getByRole('radio', { name: 'Maiores notas' })).toBeChecked();
+  });
+
+  it('a ordem padrão escolhida na URL vai para a API', async () => {
+    const { api } = await abrirLogado('/explorar?busca=fri&ordem=nota_media', { rotas: rotas() });
+
+    await waitFor(() => expect(ultimaBusca(api)).toMatchObject({ busca: 'fri', ordem: 'nota_media' }));
+  });
+
   it('Limpar filtros volta ao padrão e mantém a busca', async () => {
     const { user, historico } = await abrirLogado('/explorar?busca=fri&genero=Drama&ordem=titulo', { rotas: rotas() });
 
     await user.click(await screen.findByRole('button', { name: 'Limpar filtros (2)' }));
 
     await waitFor(() => expect(naUrl(historico)).toEqual({ busca: 'fri' }));
-    expect(screen.getByRole('radio', { name: 'Maiores notas' })).toBeChecked();
+    const ordem = screen.getByRole('group', { name: 'Ordem' });
+    expect(within(ordem).queryByRole('radio', { checked: true })).not.toBeInTheDocument();
   });
 
   it('erro da API aparece com "Tentar de novo"', async () => {

@@ -41,7 +41,7 @@ from repositories import Catalogo, ItensLista
 ANIMES = [
     {
         'anilist_id': 154587, 'titulo_original': '葬送のフリーレン', 'titulo_ingles': "Frieren: Beyond Journey's End",
-        'titulo_portugues': 'Sousou no Frieren', 'data_lancamento': '2023-09-29', 'nota_fonte': 9.1,
+        'titulo_romaji': 'Sousou no Frieren', 'data_lancamento': '2023-09-29', 'nota_fonte': 9.1,
         'status_anime': 'finalizado', 'numero_episodios': 28, 'duracao_episodio': 24, 'estudio': 'Madhouse',
         'fonte_original': 'Manga',
         'sinopse': 'A elfa Frieren sobrevive aos companheiros do grupo de heróis que derrotou o Rei Demônio '
@@ -51,7 +51,7 @@ ANIMES = [
     {
         'anilist_id': 5114, 'titulo_original': '鋼の錬金術師 FULLMETAL ALCHEMIST',
         'titulo_ingles': 'Fullmetal Alchemist: Brotherhood',
-        'titulo_portugues': 'Hagane no Renkinjutsushi: FULLMETAL ALCHEMIST', 'data_lancamento': '2009-04-05',
+        'titulo_romaji': 'Hagane no Renkinjutsushi: FULLMETAL ALCHEMIST', 'data_lancamento': '2009-04-05',
         'nota_fonte': 9.0, 'status_anime': 'finalizado', 'numero_episodios': 64, 'duracao_episodio': 24,
         'estudio': 'bones', 'fonte_original': 'Manga',
         'sinopse': 'Os irmãos Edward e Alphonse Elric buscam a Pedra Filosofal para recuperar o que perderam '
@@ -60,7 +60,7 @@ ANIMES = [
     },
     {
         'anilist_id': 9253, 'titulo_original': 'STEINS;GATE', 'titulo_ingles': 'Steins;Gate',
-        'titulo_portugues': 'Steins;Gate', 'data_lancamento': '2011-04-06', 'nota_fonte': 8.8,
+        'titulo_romaji': 'Steins;Gate', 'data_lancamento': '2011-04-06', 'nota_fonte': 8.8,
         'status_anime': 'finalizado', 'numero_episodios': 24, 'duracao_episodio': 24, 'estudio': 'WHITE FOX',
         'fonte_original': 'Visual Novel',
         'sinopse': 'Um cientista autoproclamado descobre um jeito de mandar mensagens ao passado, e cada '
@@ -69,7 +69,7 @@ ANIMES = [
     },
     {
         'anilist_id': 16498, 'titulo_original': '進撃の巨人', 'titulo_ingles': 'Attack on Titan',
-        'titulo_portugues': 'Shingeki no Kyojin', 'data_lancamento': '2013-04-07', 'nota_fonte': 8.5,
+        'titulo_romaji': 'Shingeki no Kyojin', 'data_lancamento': '2013-04-07', 'nota_fonte': 8.5,
         'status_anime': 'finalizado', 'numero_episodios': 25, 'duracao_episodio': 24, 'estudio': 'WIT STUDIO',
         'fonte_original': 'Manga',
         'sinopse': 'A humanidade vive cercada por muralhas para se proteger dos Titãs, até o dia em que '
@@ -78,7 +78,7 @@ ANIMES = [
     },
     {
         'anilist_id': 1, 'titulo_original': 'カウボーイビバップ', 'titulo_ingles': 'Cowboy Bebop',
-        'titulo_portugues': 'Cowboy Bebop', 'data_lancamento': '1998-04-03', 'nota_fonte': 8.6,
+        'titulo_romaji': 'Cowboy Bebop', 'data_lancamento': '1998-04-03', 'nota_fonte': 8.6,
         'status_anime': 'finalizado', 'numero_episodios': 26, 'duracao_episodio': 24, 'estudio': 'Sunrise',
         'fonte_original': 'Original',
         'sinopse': 'Spike Spiegel e a tripulação da nave Bebop caçam recompensas pelo sistema solar em 2071.',
@@ -86,7 +86,7 @@ ANIMES = [
     },
     {
         'anilist_id': 1535, 'titulo_original': 'デスノート', 'titulo_ingles': 'Death Note',
-        'titulo_portugues': 'Death Note', 'data_lancamento': '2006-10-04', 'nota_fonte': 8.4,
+        'titulo_romaji': 'Death Note', 'data_lancamento': '2006-10-04', 'nota_fonte': 8.4,
         'status_anime': 'finalizado', 'numero_episodios': 37, 'duracao_episodio': 23, 'estudio': 'MADHOUSE',
         'fonte_original': 'Manga',
         'sinopse': 'Light Yagami encontra um caderno que mata quem tiver o nome escrito nele e decide '
@@ -98,7 +98,7 @@ ANIMES = [
 MANGAS = [
     {
         'anilist_id': 30013, 'titulo_original': 'ONE PIECE', 'titulo_ingles': 'One Piece',
-        'titulo_portugues': 'ONE PIECE', 'data_lancamento': '1997-07-22', 'nota_fonte': 9.0,
+        'titulo_romaji': 'ONE PIECE', 'data_lancamento': '1997-07-22', 'nota_fonte': 9.0,
         'status_manga': 'em_publicacao', 'numero_capitulos': None, 'numero_volumes': None,
         'autor': 'Eiichiro Oda', 'artista': 'Eiichiro Oda', 'publicadora_original': 'Shueisha',
         'revista': 'Weekly Shounen Jump', 'demografia': 'shounen',
@@ -107,7 +107,7 @@ MANGAS = [
     },
     {
         'anilist_id': 30002, 'titulo_original': 'ベルセルク', 'titulo_ingles': 'Berserk',
-        'titulo_portugues': 'Berserk', 'data_lancamento': '1989-08-25', 'nota_fonte': 9.3,
+        'titulo_romaji': 'Berserk', 'data_lancamento': '1989-08-25', 'nota_fonte': 9.3,
         'status_manga': 'hiato', 'numero_capitulos': None, 'numero_volumes': None,
         'autor': 'Kentarou Miura', 'artista': 'Kentarou Miura', 'publicadora_original': 'Hakusensha',
         'revista': 'Young Animal', 'demografia': 'seinen',
@@ -116,7 +116,7 @@ MANGAS = [
     },
     {
         'anilist_id': 30001, 'titulo_original': 'MONSTER', 'titulo_ingles': 'Monster',
-        'titulo_portugues': 'MONSTER', 'data_lancamento': '1994-12-05', 'nota_fonte': 8.9,
+        'titulo_romaji': 'MONSTER', 'data_lancamento': '1994-12-05', 'nota_fonte': 8.9,
         'status_manga': 'finalizado', 'numero_capitulos': 162, 'numero_volumes': 18,
         'autor': 'Naoki Urasawa', 'artista': 'Naoki Urasawa', 'publicadora_original': 'Shogakukan',
         'revista': 'Big Comic Original', 'demografia': 'seinen',
@@ -126,7 +126,7 @@ MANGAS = [
     },
     {
         'anilist_id': 30011, 'titulo_original': 'NARUTO -ナルト-', 'titulo_ingles': 'Naruto',
-        'titulo_portugues': 'NARUTO', 'data_lancamento': '1999-09-21', 'nota_fonte': 8.0,
+        'titulo_romaji': 'NARUTO', 'data_lancamento': '1999-09-21', 'nota_fonte': 8.0,
         'status_manga': 'finalizado', 'numero_capitulos': 700, 'numero_volumes': 72,
         'autor': 'Masashi Kishimoto', 'artista': 'Masashi Kishimoto', 'publicadora_original': 'Shueisha',
         'revista': 'Weekly Shounen Jump', 'demografia': 'shounen',
@@ -135,7 +135,7 @@ MANGAS = [
     },
     {
         'anilist_id': 30656, 'titulo_original': 'バガボンド', 'titulo_ingles': 'Vagabond',
-        'titulo_portugues': 'Vagabond', 'data_lancamento': '1998-09-03', 'nota_fonte': 9.0,
+        'titulo_romaji': 'Vagabond', 'data_lancamento': '1998-09-03', 'nota_fonte': 9.0,
         'status_manga': 'hiato', 'numero_capitulos': 327, 'numero_volumes': 37,
         'autor': 'Takehiko Inoue, Eiji Yoshikawa', 'artista': 'Takehiko Inoue', 'publicadora_original': 'Kodansha',
         'revista': 'Morning', 'demografia': 'seinen',
@@ -147,7 +147,7 @@ MANGAS = [
 JOGOS = [
     {
         'rawg_slug': 'the-witcher-3-wild-hunt', 'titulo_original': 'The Witcher 3: Wild Hunt',
-        'titulo_portugues': 'The Witcher 3: Wild Hunt', 'data_lancamento': '2015-05-18', 'nota_fonte': 9.3,
+        'titulo_romaji': 'The Witcher 3: Wild Hunt', 'data_lancamento': '2015-05-18', 'nota_fonte': 9.3,
         'desenvolvedor': 'CD PROJEKT RED', 'publicadora': 'CD PROJEKT RED',
         'plataformas': ['PC', 'PlayStation 4', 'Xbox One', 'Nintendo Switch'], 'status_jogo': 'lancado',
         'modo_jogo': 'single', 'classificacao': 'ESRB: Mature',
@@ -155,7 +155,7 @@ JOGOS = [
         'generos': ['Ação', 'Aventura', 'RPG'],
     },
     {
-        'rawg_slug': 'hollow-knight', 'titulo_original': 'Hollow Knight', 'titulo_portugues': 'Hollow Knight',
+        'rawg_slug': 'hollow-knight', 'titulo_original': 'Hollow Knight', 'titulo_romaji': 'Hollow Knight',
         'data_lancamento': '2017-02-23', 'nota_fonte': 8.8, 'desenvolvedor': 'Team Cherry',
         'publicadora': 'Team Cherry', 'plataformas': ['PC', 'Nintendo Switch', 'PlayStation 4', 'Xbox One'],
         'status_jogo': 'lancado', 'modo_jogo': 'single', 'classificacao': 'ESRB: Everyone 10+',
@@ -163,7 +163,7 @@ JOGOS = [
         'generos': ['Ação', 'Aventura', 'Plataforma'],
     },
     {
-        'rawg_slug': 'elden-ring', 'titulo_original': 'Elden Ring', 'titulo_portugues': 'Elden Ring',
+        'rawg_slug': 'elden-ring', 'titulo_original': 'Elden Ring', 'titulo_romaji': 'Elden Ring',
         'data_lancamento': '2022-02-25', 'nota_fonte': 8.8, 'desenvolvedor': 'FromSoftware',
         'publicadora': 'Bandai Namco Entertainment', 'plataformas': ['PC', 'PlayStation 5', 'Xbox Series S/X'],
         'status_jogo': 'lancado', 'modo_jogo': 'ambos', 'classificacao': 'ESRB: Mature',
@@ -171,7 +171,7 @@ JOGOS = [
         'generos': ['Ação', 'RPG'],
     },
     {
-        'rawg_slug': 'celeste', 'titulo_original': 'Celeste', 'titulo_portugues': 'Celeste',
+        'rawg_slug': 'celeste', 'titulo_original': 'Celeste', 'titulo_romaji': 'Celeste',
         'data_lancamento': '2018-01-25', 'nota_fonte': 8.4, 'desenvolvedor': 'Maddy Makes Games',
         'publicadora': 'Maddy Makes Games', 'plataformas': ['PC', 'Nintendo Switch', 'PlayStation 4'],
         'status_jogo': 'lancado', 'modo_jogo': 'single', 'classificacao': 'ESRB: Everyone 10+',
@@ -179,7 +179,7 @@ JOGOS = [
         'generos': ['Plataforma', 'Aventura'],
     },
     {
-        'rawg_slug': 'stardew-valley', 'titulo_original': 'Stardew Valley', 'titulo_portugues': 'Stardew Valley',
+        'rawg_slug': 'stardew-valley', 'titulo_original': 'Stardew Valley', 'titulo_romaji': 'Stardew Valley',
         'data_lancamento': '2016-02-26', 'nota_fonte': 8.6, 'desenvolvedor': 'ConcernedApe',
         'publicadora': 'ConcernedApe', 'plataformas': ['PC', 'Nintendo Switch', 'Android', 'iOS'],
         'status_jogo': 'lancado', 'modo_jogo': 'ambos', 'classificacao': 'ESRB: Everyone 10+',
@@ -188,7 +188,7 @@ JOGOS = [
     },
     {
         'rawg_slug': 'red-dead-redemption-2', 'titulo_original': 'Red Dead Redemption 2',
-        'titulo_portugues': 'Red Dead Redemption 2', 'data_lancamento': '2018-10-26', 'nota_fonte': 9.2,
+        'titulo_romaji': 'Red Dead Redemption 2', 'data_lancamento': '2018-10-26', 'nota_fonte': 9.2,
         'desenvolvedor': 'Rockstar Games', 'publicadora': 'Rockstar Games',
         'plataformas': ['PC', 'PlayStation 4', 'Xbox One'], 'status_jogo': 'lancado', 'modo_jogo': 'ambos',
         'classificacao': 'ESRB: Mature',

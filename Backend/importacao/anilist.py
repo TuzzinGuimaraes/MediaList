@@ -28,6 +28,22 @@ from datetime import date
 from importacao.config import ANILIST_URL
 from importacao.utils import logger
 
+#: As chaves de `Media.title`, na ordem em que uma vira o título exibido (CONTEXT.md: Título).
+CHAVES_TITULO = ('english', 'romaji', 'native')
+
+
+def titulo_exibido(title: object) -> str | None:
+    """O título exibido de um `Media.title` do AniList: o inglês, senão o romanizado, senão o
+    original, aparado; vazio conta como ausente. None sem nenhum, ou se `title` não é objeto.
+    A mesma regra do `titulo_exibido` SQL (`repositories.titulos`)."""
+    if not isinstance(title, dict):
+        return None
+    for chave in CHAVES_TITULO:
+        valor = title.get(chave)
+        if isinstance(valor, str) and valor.strip():
+            return valor.strip()
+    return None
+
 #: Campos de `Media` que `processar_e_inserir_anime`/`_manga` gravam. As Integrações
 #: (`integracoes.anilist`) pedem os mesmos, para importar sob demanda pela mesma rotina.
 CAMPOS_MEDIA = """

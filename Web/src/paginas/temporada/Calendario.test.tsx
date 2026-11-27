@@ -29,7 +29,7 @@ function episodio(id: string, titulo: string, numero: number, quando: Date, exib
     tipo: 'anime',
     titulo_original: titulo,
     titulo_ingles: null,
-    titulo_portugues: null,
+    titulo_romaji: null,
     poster_url: null,
     episodio: numero,
     instante: quando.toISOString(),

@@ -99,7 +99,8 @@ class VinculoAdmin(BaseModel):
     link: str | None = Field(description='Página do item na plataforma')
     id_midia: Id
     titulo_original: str
-    titulo_portugues: str | None
+    titulo_ingles: str | None
+    titulo_romaji: str | None
     id_usuario: Id | None = Field(description='Autor; null se a conta foi apagada')
     nome_completo: str | None
     criado_em: Instante

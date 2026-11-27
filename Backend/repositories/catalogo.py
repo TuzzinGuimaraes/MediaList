@@ -13,6 +13,7 @@ from typing import Any, get_args
 
 from banco import consultar, consultar_um, executar, transacao
 from repositories.rotulos import sql_rotulos
+from repositories.titulos import COLUNAS_TITULO, sem_caixa_nem_acento, titulo_exibido
 from schemas.estado_consumo import ESTADOS_TERMINAIS
 from schemas.midias import Estacao
 from tipos_midia import COLUNAS_BASE, TIPOS, joins_das_filhas, origem_nota, por_tipo, valor_de_coluna
@@ -40,7 +41,8 @@ SELECT_MIDIA = f"""
         tm.label AS tipo_label,
         m.titulo_original,
         m.titulo_ingles,
-        m.titulo_portugues,
+        m.titulo_romaji,
+        {titulo_exibido('m')} AS titulo_exibido,
         m.sinopse,
         m.data_lancamento,
         n.nota_media,
@@ -120,7 +122,7 @@ ORDENS = {
     'data_lancamento': 'm.data_lancamento DESC NULLS LAST',
     # A Temporada da estreia mais cedo para a mais tarde.
     'estreia': 'm.data_lancamento ASC NULLS LAST',
-    'titulo': 'COALESCE(m.titulo_portugues, m.titulo_original) ASC',
+    'titulo': 'titulo_exibido ASC',
     'mais_adicionados': f'total_usuarios DESC, {NOTA_DE_RANKING}',
     'popularidade': f'total_usuarios DESC, {NOTA_DE_RANKING}',
     # Itens em Concluído ou Platinado (o Platinado também conta como Concluído).
@@ -161,6 +163,26 @@ def com_generos_lista(linha: dict[str, Any]) -> dict[str, Any]:
     return {**linha, 'generos_lista': [g.strip() for g in generos.split(',')] if generos else []}
 
 
+def _algum_titulo_casa(padrao: str, busca: str) -> tuple[str, list[Any]]:
+    """SQL e parâmetros: algum dos três Títulos, sem caixa nem acento, casa com o LIKE `padrao`,
+    montado em volta de `{termo}` (a `busca`, também sem caixa nem acento)."""
+    termo = sem_caixa_nem_acento('%s')
+    sql = '(' + ' OR '.join(
+        f'{sem_caixa_nem_acento(f"m.{c}")} LIKE {padrao.format(termo=termo)}' for c in COLUNAS_TITULO
+    ) + ')'
+    return sql, [busca] * len(COLUNAS_TITULO)
+
+
+def _ordem(filtros: dict[str, Any]) -> tuple[str, list[Any]]:
+    """ORDER BY de `buscar` e os parâmetros dele. Sem ordem escolhida, uma busca vai por relevância
+    (o Título que começa pelo termo antes do que só o contém) e desempata como a ordem padrão."""
+    ordem = filtros.get('ordem')
+    if not ordem and filtros.get('busca'):
+        prefixo, params = _algum_titulo_casa("{termo} || '%%'", filtros['busca'])
+        return f"CASE WHEN {prefixo} THEN 0 ELSE 1 END, {ORDENS['nota_media']}", params
+    return ORDENS.get(ordem or 'nota_media', ORDENS['nota_media']), []
+
+
 def _filtros(tipo: str | None, filtros: dict[str, Any]) -> tuple[str, list[Any]]:
     clausulas: list[str] = []
     params: list[Any] = []
@@ -170,8 +192,9 @@ def _filtros(tipo: str | None, filtros: dict[str, Any]) -> tuple[str, list[Any]]
         params.append(tipo)
 
     if filtros.get('busca'):
-        clausulas.append('(m.titulo_portugues ILIKE %s OR m.titulo_original ILIKE %s OR m.sinopse ILIKE %s)')
-        params.extend([f"%{filtros['busca']}%"] * 3)
+        casa, params_busca = _algum_titulo_casa("'%%' || {termo} || '%%'", filtros['busca'])
+        clausulas.append(casa)
+        params.extend(params_busca)
 
     if filtros.get('genero'):
         clausulas.append("""
@@ -241,14 +264,14 @@ class Catalogo:
     ) -> list[dict[str, Any]]:
         """Uma página de Mídias. `filtros`: busca, genero, status, autor, estudio,
         demografia, plataforma, desenvolvedor, modo_jogo, artista, ano_min, ano_max, temporada_estacao com
-        temporada_ano e ordem (ver ORDENS;
-        desconhecida ou ausente vale 'nota_media')."""
+        temporada_ano e ordem (ver ORDENS; desconhecida vale 'nota_media', e ausente também, salvo
+        com busca, que vai por relevância)."""
         filtros = filtros or {}
         where, params = _filtros(tipo, filtros)
-        ordem = ORDENS.get(filtros.get('ordem') or 'nota_media', ORDENS['nota_media'])
+        ordem, params_ordem = _ordem(filtros)
         linhas = consultar(
             f'{SELECT_MIDIA} {FROM_MIDIA} {where} ORDER BY {ordem}, m.id_midia LIMIT %s OFFSET %s',
-            (*params, limite, max(pagina - 1, 0) * limite),
+            (*params, *params_ordem, limite, max(pagina - 1, 0) * limite),
         )
         return [com_generos_lista(linha) for linha in linhas]
 
@@ -332,7 +355,7 @@ class Catalogo:
         Atualização e ainda apontado como próximo sai uma vez, como exibido. Pelo instante."""
         return consultar(
             """
-            SELECT m.id_midia, 'anime' AS tipo, m.titulo_original, m.titulo_ingles, m.titulo_portugues,
+            SELECT m.id_midia, 'anime' AS tipo, m.titulo_original, m.titulo_ingles, m.titulo_romaji,
                    m.poster_url, e.episodio, e.instante, e.exibido
             FROM (
                 SELECT DISTINCT ON (id_midia, episodio) id_midia, episodio, instante, exibido

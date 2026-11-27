@@ -13,6 +13,7 @@ import json
 from typing import Any
 
 from banco import consultar, executar, transacao
+from repositories.titulos import titulo_exibido
 
 #: Rótulos de estado de quem recebe a Notificação, por Tipo de mídia.
 ROTULOS_NOTIFICADOS = {
@@ -115,15 +116,15 @@ class Atualizacoes:
         título é o da Notícia e os campos da Mídia saem nulos.
         """
         return consultar(
-            """
+            f"""
             SELECT CASE WHEN n.id_noticia IS NULL THEN 'atualizacao' ELSE 'noticia' END AS origem,
                    n.id_noticia, a.id_midia, t.nome_tipo AS tipo_midia,
                    COALESCE(a.tipo_atualizacao, 'noticia') AS tipo,
                    COALESCE(a.titulo, nt.titulo) AS titulo,
-                   COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS midia_nome,
+                   {titulo_exibido('m')} AS midia_nome,
                    CASE WHEN n.id_noticia IS NULL
                         THEN 'Novidade em ' || t.nome_tipo || ' da sua lista: '
-                             || COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original)
+                             || {titulo_exibido('m')}
                         ELSE 'Nova Notícia no MediaList' END AS mensagem,
                    n.lida, n.data_criacao
             FROM notificacoes n

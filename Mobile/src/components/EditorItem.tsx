@@ -18,7 +18,7 @@ import {
   temProgresso,
   validarItem,
 } from '@dominio/itemLista';
-import { tituloDaMidia } from '@dominio/midia';
+import { tituloDaMidia, type TitulosDaMidia } from '@dominio/midia';
 import { vibrarConfirmacao } from '../tema/haptics';
 import { useCores } from '../tema/TemaContext';
 import { BottomSheet } from './BottomSheet';
@@ -49,7 +49,7 @@ const textos = {
 
 type Props = {
   /** A Mídia do detalhe ou o próprio Item (que traz a parte da Mídia que o editor lê). */
-  midia: Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'numero_episodios' | 'numero_capitulos'>;
+  midia: TitulosDaMidia & Pick<Midia, 'id_midia' | 'tipo' | 'numero_episodios' | 'numero_capitulos'>;
   /** Ausente ao adicionar. */
   item: ItemLista | null;
   aoFechar: () => void;

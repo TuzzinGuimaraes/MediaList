@@ -19,7 +19,7 @@ import { destaqueDoItem } from '@dominio/assistirAgora';
 import { formatarData } from '@dominio/datas';
 import { nomeDoRotulo, nomeDoTipo } from '@dominio/estadoConsumo';
 import { passoDeProgresso, proporcaoDoFio, temProgresso, textoDoProgresso } from '@dominio/itemLista';
-import { atributosDoTipo, notasDaMidia, ROTULO_NOTA_MEDIA, tituloAlternativo, tituloDaMidia } from '@dominio/midia';
+import { atributosDoTipo, notasDaMidia, outrosTitulos, ROTULO_NOTA_MEDIA, tituloDaMidia } from '@dominio/midia';
 import { emLancamento } from '@dominio/situacao';
 import { useItemDaMidia, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
@@ -124,7 +124,7 @@ function BotaoDaLista({ midia }: { midia: MidiaDetalhe }) {
 }
 
 function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
-  const alternativo = tituloAlternativo(midia);
+  const outros = outrosTitulos(midia);
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap gap-1.5">
@@ -134,7 +134,11 @@ function Cabecalho({ midia }: { midia: MidiaDetalhe }) {
         ))}
       </div>
       <h1 className="text-[32px] font-bold leading-tight lg:text-[40px] text-texto-forte">{tituloDaMidia(midia)}</h1>
-      {alternativo ? <p className="-mt-1 text-[16px] text-texto-suave">{alternativo}</p> : null}
+      {outros.map((t) => (
+        <p key={t} className="-mt-1 text-[16px] text-texto-suave">
+          {t}
+        </p>
+      ))}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         {notasDaMidia(midia).map((n) => (
           <span key={n.rotulo} aria-label={`${n.rotulo}: ${n.valor}`} className="inline-flex items-center gap-1.5">
@@ -247,7 +251,8 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
             <Ficha midia={midia} item={item.data} />
           </div>
         </div>
-        <div className="flex flex-col gap-9 lg:-mt-28">
+        {/* `relative`: a coluna sobe sobre o pé do banner (que é posicionado) e tem de ser pintada na frente dele. */}
+        <div className="relative flex flex-col gap-9 lg:-mt-28">
           <Cabecalho midia={midia} />
           <EpisodioNovo item={item.data} />
           <Sinopse texto={midia.sinopse} />

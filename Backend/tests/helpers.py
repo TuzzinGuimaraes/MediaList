@@ -26,7 +26,7 @@ def linha_de_midia(**campos):
     return {
         'id_midia': 'MID-1', 'id_anime': 'MID-1', 'codigo_midia': 'ANI-1', 'codigo_anime': 'ANI-1',
         'tipo': 'anime', 'tipo_label': 'Anime', 'titulo_original': 'Frieren', 'titulo_ingles': None,
-        'titulo_portugues': None, 'sinopse': None, 'data_lancamento': date(2023, 9, 29),
+        'titulo_romaji': None, 'sinopse': None, 'data_lancamento': date(2023, 9, 29),
         'nota_media': None, 'total_avaliacoes': None, 'nota_fonte': Decimal('8.9'), 'origem_nota': 'AniList',
         'poster_url': None, 'banner_url': None, 'status_anime': 'finalizado', 'numero_episodios': 28,
         'episodios_lancados': 28, 'proximo_episodio_em': None, 'temporada_estacao': 'outono', 'temporada_ano': 2023,

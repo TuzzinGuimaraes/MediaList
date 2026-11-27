@@ -84,7 +84,7 @@ def processar_e_inserir_manga(manga: dict, t=None):
     dados = {
         'titulo_original': manga['title'].get('native') or manga['title'].get('romaji'),
         'titulo_ingles': manga['title'].get('english'),
-        'titulo_portugues': manga['title'].get('romaji') or manga['title'].get('english'),
+        'titulo_romaji': manga['title'].get('romaji') or manga['title'].get('english'),
         'sinopse': truncar(remover_html(manga.get('description')), 1000),
         'data_lancamento': formatar_data_anilist(manga.get('startDate')),
         'nota_fonte': nota_fonte_anilist(manga.get('meanScore')),

@@ -84,6 +84,21 @@ def test_a_importacao_grava_as_relacoes_e_a_rota_as_devolve(client, importar):  
     }
 
 
+def test_relacao_mostra_o_titulo_em_ingles_dentro_e_fora_do_catalogo(client, importar):  # noqa: F811
+    fora = _aresta('SOURCE', 'MANGA', BASE + 900, formato='MANGA')
+    fora['node']['title'] = {'romaji': 'Hagane no Renkinjutsushi', 'english': 'Fullmetal Alchemist', 'native': '鋼'}
+    _importar_obras(importar, 'anime', [
+        _obra(BASE + 1, _aresta('SEQUEL', 'ANIME', BASE + 2), fora),
+        _obra(BASE + 2, title={'romaji': 'Zoku', 'english': 'Brotherhood', 'native': '続'}),
+    ])
+
+    relacoes = _relacoes(client, _id_midia('anime', BASE + 1))
+
+    assert _resumo(relacoes) == {('SEQUEL', 'anime', 'Brotherhood'), ('SOURCE', 'manga', 'Fullmetal Alchemist')}
+    [prequel] = _relacoes(client, _id_midia('anime', BASE + 2))
+    assert prequel['titulo'] == f'Obra {BASE + 1}'
+
+
 def test_relacao_aparece_nos_dois_sentidos(client, importar):  # noqa: F811
     _importar_obras(importar, 'anime', [_obra(BASE + 1, _aresta('SEQUEL', 'ANIME', BASE + 2)), _obra(BASE + 2)])
 

@@ -38,6 +38,7 @@ from importacao.config import ANILIST_URL
 from importacao.importar_animes import STATUS_MAP
 from importacao.utils import RateLimiter, configurar_log, criar_sessao_http, logger
 from repositories.atualizacoes import Atualizacoes
+from repositories.titulos import titulo_exibido
 
 POR_PAGINA = 50
 #: A maior página que a API pública aceita.
@@ -191,8 +192,8 @@ def buscar_janela(session, rate_limiter, inicio: datetime, fim: datetime) -> tup
 
 def _animes_do_catalogo(anilist_ids) -> dict[int, dict]:
     return {linha['anilist_id']: linha for linha in consultar(
-        """
-        SELECT a.anilist_id, a.id_midia, COALESCE(NULLIF(m.titulo_portugues, ''), m.titulo_original) AS nome
+        f"""
+        SELECT a.anilist_id, a.id_midia, {titulo_exibido('m')} AS nome
         FROM animes a
         JOIN midias m ON m.id_midia = a.id_midia
         WHERE a.anilist_id = ANY(%s)

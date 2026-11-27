@@ -56,9 +56,9 @@ function umDe<T extends string>(v: unknown, valores: readonly T[]): T | undefine
   return valores.find((valor) => valor === v);
 }
 
-/** `validateSearch` da rota: só os valores válidos ficam; os padrões não vão para a URL. */
+/** `validateSearch` da rota: só os valores válidos ficam; os padrões não vão para a URL, menos a
+ * ordem: a escolhida, mesmo a padrão, fica, porque sem ordem a busca vai por relevância. */
 export function validarBuscaExplorar(s: Record<string, unknown>): BuscaExplorar {
-  const ordem = umDe(s.ordem, ORDENS);
   const pagina = inteiro(s.pagina, 1, Number.MAX_SAFE_INTEGER);
   const busca: BuscaExplorar = {
     busca: texto(s.busca),
@@ -67,7 +67,7 @@ export function validarBuscaExplorar(s: Record<string, unknown>): BuscaExplorar 
     situacao: texto(s.situacao),
     ano_min: inteiro(s.ano_min, ANO_MINIMO, ANO_MAXIMO),
     ano_max: inteiro(s.ano_max, ANO_MINIMO, ANO_MAXIMO),
-    ordem: ordem === ORDEM_PADRAO ? undefined : ordem,
+    ordem: umDe(s.ordem, ORDENS),
     plataforma: texto(s.plataforma),
     modo_jogo: umDe(s.modo_jogo, MODOS_DE_JOGO.map((m) => m.valor)),
     estudio: texto(s.estudio),
@@ -92,7 +92,8 @@ export function anosInvertidos(b: BuscaExplorar): boolean {
   return b.ano_min !== undefined && b.ano_max !== undefined && b.ano_min > b.ano_max;
 }
 
-/** Query de `GET /midias` para a URL, já com o Tipo efetivo do catálogo. */
+/** Query de `GET /midias` para a URL, já com o Tipo efetivo do catálogo. Sem ordem escolhida, a
+ * `ordem` fica de fora: a API usa a padrão (`nota_media`) ou, com busca, a relevância. */
 export function consultaDaBusca(b: BuscaExplorar, tipo: TipoMidia): ConsultaMidias {
   const consulta: ConsultaMidias = {
     tipo,
@@ -101,14 +102,19 @@ export function consultaDaBusca(b: BuscaExplorar, tipo: TipoMidia): ConsultaMidi
     status: b.situacao,
     ...(anosInvertidos(b) ? {} : { ano_min: b.ano_min, ano_max: b.ano_max }),
     ...doTipo(b, tipo),
-    ordem: b.ordem ?? ORDEM_PADRAO,
+    ordem: b.ordem,
     pagina: b.pagina ?? 1,
     por_pagina: POR_PAGINA,
   };
   return Object.fromEntries(Object.entries(consulta).filter(([, v]) => v !== undefined)) as ConsultaMidias;
 }
 
-/** Quantos filtros estão fora do padrão (o Tipo inicial do catálogo não conta). */
+/** A ordem marcada nos filtros: a escolhida; sem ela, a padrão, ou nenhuma numa busca (relevância). */
+export function ordemMarcada(b: BuscaExplorar): OrdemExplorar | undefined {
+  return b.ordem ?? (b.busca ? undefined : ORDEM_PADRAO);
+}
+
+/** Quantos filtros estão fora do padrão (o Tipo inicial do catálogo não conta; a ordem escolhida conta). */
 export function filtrosAtivos(b: BuscaExplorar, tipo: TipoMidia, tipoPadrao: TipoMidia): number {
   const extras = Object.values(doTipo(b, tipo)).filter(Boolean).length;
   const anos = b.ano_min !== undefined || b.ano_max !== undefined ? 1 : 0;

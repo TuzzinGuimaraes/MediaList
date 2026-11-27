@@ -56,7 +56,7 @@ def _nossos(corpo, ids):
 def test_traz_exibidos_e_proximos_da_janela_em_ordem(client, pg, usuario):
     _, headers = usuario
     exibido = _anime(pg, lancados=4, proximo_em=INICIO + timedelta(days=8),
-                     titulo_portugues='Exibido', poster_url='https://s4.anilist.co/capa.jpg')
+                     titulo_romaji='Exibido', poster_url='https://s4.anilist.co/capa.jpg')
     _exibido(exibido, 4, INICIO + timedelta(hours=5))
     proximo = _anime(pg, lancados=9, proximo_em=INICIO + timedelta(hours=2))
     estreia = _anime(pg, lancados=None, proximo_em=INICIO + timedelta(days=6))
@@ -71,7 +71,7 @@ def test_traz_exibidos_e_proximos_da_janela_em_ordem(client, pg, usuario):
     episodio = next(e for e in corpo['episodios'] if e['id_midia'] == exibido)
     assert episodio == {
         'id_midia': exibido, 'tipo': 'anime', 'titulo_original': episodio['titulo_original'],
-        'titulo_ingles': None, 'titulo_portugues': 'Exibido', 'poster_url': 'https://s4.anilist.co/capa.jpg',
+        'titulo_ingles': None, 'titulo_romaji': 'Exibido', 'poster_url': 'https://s4.anilist.co/capa.jpg',
         'episodio': 4, 'instante': '2700-03-01T08:00:00Z', 'exibido': True,
     }
 

@@ -222,7 +222,7 @@ describe('Início', () => {
       ...catalogo(),
       'GET /midias/trending?tipo=anime&limite=10': () => ({
         status: 200,
-        corpo: { midias: [anime({ titulo_portugues: `Frieren ${nota}`, nota_media: nota })] },
+        corpo: { midias: [anime({ titulo_romaji: `Frieren ${nota}`, nota_media: nota })] },
       }),
     });
     await abrirLogado();
@@ -277,10 +277,10 @@ describe('Início', () => {
 });
 
 describe('Início: destaques e carrosséis', () => {
-  const berserk = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Berserk', nota_media: 8.7, generos: 'Ação' });
-  const futuro = anime({ id_midia: 'MID-ANM-2099-1', titulo_portugues: 'Anime do Futuro', data_lancamento: '2099-01-01' });
-  const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Monster', generos: 'Drama' });
-  const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_portugues: 'Vagabond', generos: 'Ação' });
+  const berserk = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Berserk', nota_media: 8.7, generos: 'Ação' });
+  const futuro = anime({ id_midia: 'MID-ANM-2099-1', titulo_romaji: 'Anime do Futuro', data_lancamento: '2099-01-01' });
+  const monster = anime({ id_midia: 'MID-ANM-2026-20100', titulo_romaji: 'Monster', generos: 'Drama' });
+  const vagabond = manga({ id_midia: 'MID-MNG-2026-30100', titulo_romaji: 'Vagabond', generos: 'Ação' });
 
   const midias = (...lista: Midia[]) => pagina(lista, { por_pagina: POR_CARROSSEL });
 
@@ -428,7 +428,7 @@ describe('Início: Para assistir agora', () => {
   const daqui = (ms: number) => new Date(Date.now() + ms).toISOString();
   // Animes em exibição: Dandadan 3 atrás, Kaiju 1 atrás, Apothecary e Sakamoto em dia.
   const emExibicao = (id: string, titulo: string, dados: Partial<Midia> = {}) =>
-    anime({ id_midia: id, titulo_portugues: titulo, status_anime: 'em_exibicao', numero_episodios: 12, ...dados });
+    anime({ id_midia: id, titulo_romaji: titulo, status_anime: 'em_exibicao', numero_episodios: 12, ...dados });
   // Os 30 s de folga seguram o minuto da contagem enquanto o teste roda.
   const dandadan = emExibicao('MID-ANM-1', 'Dandadan', {
     episodios_lancados: 7,
@@ -481,7 +481,12 @@ describe('Início: Para assistir agora', () => {
       'Sakamoto Days, Anime',
       'Apothecary Diaries, Anime',
     ]);
-    expect(faixa().getByText('3 episódios atrás · próximo em 4 h 10 min')).toBeOnTheScreen();
+    // O atraso e o "próximo em" em linhas separadas, cada um inteiro.
+    expect(faixa().getByText('3 episódios atrás')).toBeOnTheScreen();
+    expect(faixa().getByText('próximo em 4 h 10 min')).toBeOnTheScreen();
+    // A linha é do "próximo em": com fonte grande ela quebra, nunca vira reticências.
+    expect(faixa().getByText('próximo em 4 h 10 min').props.numberOfLines).toBeUndefined();
+    expect(faixa().queryByText(/·/)).not.toBeOnTheScreen();
     expect(faixa().getByText('1 episódio atrás')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 2 d 1 h 0 min')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 5 d 1 h 0 min')).toBeOnTheScreen();

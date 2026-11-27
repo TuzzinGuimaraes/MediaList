@@ -50,4 +50,4 @@ def test_avaliacoes_da_moderacao_com_a_midia(client, pg, entrar):  # noqa: F811
     assert resposta.status_code == 200
     [avaliacao] = [a for a in resposta.get_json()['avaliacoes'] if a['id_midia'] == id_midia]
     assert (avaliacao['id_usuario'], avaliacao['nota'], avaliacao['tipo']) == (autora, 7.5, 'anime')
-    assert avaliacao['titulo_portugues'] is None
+    assert avaliacao['titulo_romaji'] is None

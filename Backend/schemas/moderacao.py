@@ -9,7 +9,8 @@ from schemas.avaliacoes import CamposDaAvaliacao
 
 
 class AvaliacaoModeracao(CamposDaAvaliacao):
-    titulo_portugues: str | None
+    titulo_ingles: str | None
+    titulo_romaji: str | None
     titulo_original: str
     tipo: TipoDeMidia
 

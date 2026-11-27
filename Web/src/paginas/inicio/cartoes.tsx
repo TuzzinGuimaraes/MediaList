@@ -16,6 +16,8 @@ type MidiaDoCartao = Esquemas['MidiaPopular'] & Partial<ComSituacao>;
 const LARGURA_A = 160;
 const LARGURA_C = 340;
 const ALTURA_C = 136;
+/** O da faixa ganha a linha do "próximo em". */
+const ALTURA_FAIXA = 172;
 
 type Contexto = {
   /** Item da Mídia na Lista, se houver (selo de Status e fio). */
@@ -84,10 +86,10 @@ export function CartaoContinuar({ item, posicaoTop }: Contexto & { item: ItemLis
 
 /**
  * Card C do Para assistir agora: o atraso ou a contagem até o próximo episódio e, se atrasado,
- * o +1 (fora do link do card: botão não vai dentro de link).
+ * a contagem numa linha só dela e o +1 (fora do link do card: botão não vai dentro de link).
  */
 export function CartaoAssistirAgora({
-  cartao: { item, atrasado, texto },
+  cartao: { item, atrasado, texto, proximo },
   posicaoTop,
   maisUm,
 }: Omit<Contexto, 'item'> & { cartao: CartaoDaFaixa<ItemLista>; maisUm: (item: ItemLista) => void }) {
@@ -99,11 +101,16 @@ export function CartaoAssistirAgora({
         {...dados}
         bannerUrl={item.banner_url}
         notas={<NotasCartao midia={item} />}
-        status={<Selo texto={texto} tom={atrasado ? 'marca' : undefined} />}
+        status={
+          <>
+            <Selo texto={texto} tom={atrasado ? 'marca' : undefined} />
+            {proximo ? <span className="text-[12px] font-semibold text-texto-suave">{proximo}</span> : null}
+          </>
+        }
         detalhe={`${nomeDoProgresso(item.tipo)}: ${textoDoProgresso(item)}`}
         posicaoTop={posicaoTop}
         largura={LARGURA_C}
-        altura={ALTURA_C}
+        altura={ALTURA_FAIXA}
       />
       {podeSomar ? (
         <Botao

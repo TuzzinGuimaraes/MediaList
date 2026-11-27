@@ -69,7 +69,7 @@ def rodar(cursor_limpo, monkeypatch):
 
 
 def _anime(pg, anilist_id=None, titulo='Anime PG', **campos):
-    id_midia = Catalogo().criar('anime', {'titulo_original': f'PG {uuid.uuid4().hex}', 'titulo_portugues': titulo,
+    id_midia = Catalogo().criar('anime', {'titulo_original': f'PG {uuid.uuid4().hex}', 'titulo_romaji': titulo,
                                           **campos})
     pg['midias'].append(id_midia)
     anilist_id = anilist_id or 880000 + uuid.uuid4().int % 100000
@@ -150,6 +150,22 @@ def test_estreia_vai_a_assistindo_planejado_e_favorito(pg, rodar, expo):
     assert atualizacao['dados_adicionais'] == {
         'episodio': 1, 'exibido_em': (AGORA - timedelta(minutes=30)).isoformat(),
     }
+
+
+def test_push_e_atualizacao_usam_o_titulo_em_ingles_e_caem_para_o_romaji(pg, rodar, expo):
+    com_ingles, anilist_ingles = _anime(pg, titulo='Sousou no Frieren', titulo_ingles="Frieren: Beyond Journey's End")
+    sem_ingles, anilist_romaji = _anime(pg, titulo='Kusuriya no Hitorigoto', titulo_ingles='')
+    assistindo = _usuario(pg)
+    _na_lista(assistindo, com_ingles, 'assistindo')
+    _na_lista(assistindo, sem_ingles, 'assistindo')
+
+    rodar(AiringFalso([exibicao(anilist_ingles, 3, _ha(30)), exibicao(anilist_romaji, 3, _ha(20))]))
+
+    assert [a['titulo'] for a in _atualizacoes(com_ingles)] == ["Episódio 3 de Frieren: Beyond Journey's End foi ao ar"]
+    assert [a['titulo'] for a in _atualizacoes(sem_ingles)] == ['Episódio 3 de Kusuriya no Hitorigoto foi ao ar']
+    assert sorted(m['title'] for m in _mensagens(expo, assistindo)) == [
+        "Frieren: Beyond Journey's End", 'Kusuriya no Hitorigoto',
+    ]
 
 
 def test_episodio_2_em_diante_vai_so_a_assistindo_e_favorito(pg, rodar, expo):

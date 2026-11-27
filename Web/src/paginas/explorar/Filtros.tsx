@@ -8,7 +8,7 @@ import { rotuloMaisConcluidos } from '@dominio/inicio';
 import type { Esquemas } from '../../api/tipos';
 import { Opcoes } from '../../componentes/Opcoes';
 import { OpcoesComTodos } from '../../componentes/OpcoesComTodos';
-import { type BuscaExplorar, ORDEM_PADRAO, type OrdemExplorar, resumoDoAno } from './busca';
+import { type BuscaExplorar, ordemMarcada, type OrdemExplorar, resumoDoAno } from './busca';
 import { Anos } from './filtros/Anos';
 import { PilulasDaApi } from './filtros/PilulasLimitadas';
 import { Secao } from './filtros/Secao';
@@ -127,12 +127,12 @@ export function Filtros({ busca, tipo, tipos, generos, facetas, mudar, trocarTip
       <Secao titulo="Ano" resumo={resumoDoAno(busca)}>
         <Anos busca={busca} mudar={mudar} />
       </Secao>
-      <Secao titulo="Ordem" resumo={nomeEm(opcoesOrdem, busca.ordem ?? ORDEM_PADRAO)}>
+      <Secao titulo="Ordem" resumo={nomeEm(opcoesOrdem, ordemMarcada(busca)) ?? 'Relevância'}>
         <Opcoes
           rotulo="Ordem"
           semLegenda
           opcoes={opcoesOrdem}
-          valor={busca.ordem ?? ORDEM_PADRAO}
+          valor={ordemMarcada(busca)}
           mudar={(ordem) => mudar({ ordem })}
         />
       </Secao>

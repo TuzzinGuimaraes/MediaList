@@ -1066,10 +1066,12 @@ export interface components {
             tipo: "anime" | "manga" | "jogo";
             /** Titulo Avaliacao */
             titulo_avaliacao: string | null;
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
         };
         /**
          * CodigoErro
@@ -1194,11 +1196,10 @@ export interface components {
             modo_jogo?: string | null;
             /**
              * Ordem
-             * @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim
-             * @default nota_media
-             * @enum {string}
+             * @description Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim
+             * @default null
              */
-            ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte";
+            ordem?: ("nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte") | null;
             /**
              * Pagina
              * @default 1
@@ -1524,10 +1525,10 @@ export interface components {
              */
             titulo_original?: string | null;
             /**
-             * Titulo Portugues
+             * Titulo Romaji
              * @default null
              */
-            titulo_portugues?: string | null;
+            titulo_romaji?: string | null;
             /**
              * Trailer Url
              * @default null
@@ -1757,8 +1758,8 @@ export interface components {
             titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
         };
         /**
          * Erro
@@ -1983,8 +1984,8 @@ export interface components {
             titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
             /**
              * Total Avaliacoes
              * @description Nulo quando a Mídia não tem Avaliações
@@ -2135,8 +2136,8 @@ export interface components {
             titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
             /**
              * Total Avaliacoes
              * @description Nulo quando a Mídia não tem Avaliações
@@ -2278,8 +2279,8 @@ export interface components {
             titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
             /**
              * Total Avaliacoes
              * @description Nulo quando a Mídia não tem Avaliações
@@ -2323,10 +2324,12 @@ export interface components {
              * @enum {string}
              */
             tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
             /** Total Usuarios */
             total_usuarios: number;
         };
@@ -2418,7 +2421,7 @@ export interface components {
             mensagem: string;
             /**
              * Midia Nome
-             * @description Título em português, ou o original; nulo na de Notícia
+             * @description O título exibido da Mídia (inglês, senão romanizado, senão original); nulo na de Notícia
              */
             midia_nome: string | null;
             /**
@@ -3069,10 +3072,12 @@ export interface components {
              * @enum {string}
              */
             tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
             /** Titulo Original */
             titulo_original: string;
-            /** Titulo Portugues */
-            titulo_portugues: string | null;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
         };
         /**
          * VinculoCriado
@@ -5065,8 +5070,8 @@ export interface operations {
                 temporada_estacao?: ("inverno" | "primavera" | "verao" | "outono") | null;
                 /** @description Com `temporada_estacao`, só os animes da Temporada */
                 temporada_ano?: number | null;
-                /** @description `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim */
-                ordem?: "nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte";
+                /** @description Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim */
+                ordem?: ("nota_media" | "data_lancamento" | "titulo" | "mais_adicionados" | "popularidade" | "mais_concluidos" | "popularidade_fonte" | "estreia" | "nota_fonte") | null;
             };
             header?: never;
             path?: never;

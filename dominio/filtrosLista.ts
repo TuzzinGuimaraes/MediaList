@@ -3,7 +3,7 @@
 // (ticket 39); o app, as quatro Ordens antigas com a alfabética como padrão.
 import { type EstadoConsumo, TIPOS, type TipoMidia } from './estadoConsumo';
 import { itensDoEstado } from './itemLista';
-import { tituloDaMidia } from './midia';
+import { tituloDaMidia, type TitulosDaMidia } from './midia';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
 /**
@@ -26,11 +26,9 @@ export type FiltrosLista = {
 
 export const FILTROS_PADRAO: FiltrosLista = { genero: null, situacao: null, ordem: 'titulo' };
 
-type ItemFiltravel = {
+type ItemFiltravel = TitulosDaMidia & {
   id_lista: string;
   tipo: TipoMidia;
-  titulo_portugues: string | null;
-  titulo_original: string;
   generos_lista: string[];
   status_anime: string | null;
   status_manga: string | null;
@@ -115,17 +113,17 @@ function normalizar(texto: string): string {
 }
 
 /**
- * Busca da Lista: os Itens com o termo em algum dos títulos (português, original ou inglês),
+ * Busca da Lista: os Itens com o termo em algum dos títulos (inglês, romanizado ou original),
  * na ordem recebida. O termo é aparado; vazio acha tudo.
  */
-export function buscarNaLista<T extends ItemFiltravel & { titulo_ingles?: string | null }>(
+export function buscarNaLista<T extends ItemFiltravel>(
   itens: readonly T[],
   termo: string,
 ): T[] {
   const busca = normalizar(termo.trim());
   if (!busca) return [...itens];
   return itens.filter((i) =>
-    [i.titulo_portugues, i.titulo_original, i.titulo_ingles].some((t) => t && normalizar(t).includes(busca)),
+    [i.titulo_ingles, i.titulo_romaji, i.titulo_original].some((t) => t && normalizar(t).includes(busca)),
   );
 }
 

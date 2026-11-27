@@ -11,8 +11,12 @@ export type ItemAssistirAgora = Pick<
   'tipo' | 'status_consumo' | 'status_anime' | 'progresso_atual' | 'episodios_lancados' | 'proximo_episodio_em'
 >;
 
-/** Um cartão da faixa: o Item, o Atraso (0: em dia), se está atrasado e o texto. */
-export type CartaoDaFaixa<T> = { item: T; atraso: number; atrasado: boolean; texto: string };
+/**
+ * Um cartão da faixa: o Item, o Atraso (0: em dia), se está atrasado e os textos. `texto` é a
+ * primeira linha (o atraso, ou no em dia a contagem ou "Em dia"); `proximo`, a contagem do
+ * atrasado, que as telas mostram numa linha só dela.
+ */
+export type CartaoDaFaixa<T> = { item: T; atraso: number; atrasado: boolean; texto: string; proximo: string | null };
 
 /** O destaque do Detalhe de um anime atrasado. */
 export type DestaqueDeEpisodio = { atraso: number; texto: string };
@@ -65,11 +69,10 @@ export function textoDoProximo(proximoEm: string | null, agora: Date): string | 
     .join(' ')}`;
 }
 
-/** Atrasado: o atraso e, com o próximo episódio no futuro, a contagem até ele. */
-function textoDoAtrasado(atraso: number, proximoEm: string | null, agora: Date): string {
+/** Atrasado: a contagem até o próximo episódio, só com ele no futuro. */
+function proximoDoAtrasado(proximoEm: string | null, agora: Date): string | null {
   const quando = instante(proximoEm);
-  const proximo = quando !== null && quando > agora.getTime() ? textoDoProximo(proximoEm, agora) : null;
-  return proximo ? `${textoDoAtraso(atraso)} · ${proximo}` : textoDoAtraso(atraso);
+  return quando !== null && quando > agora.getTime() ? textoDoProximo(proximoEm, agora) : null;
 }
 
 /**
@@ -80,17 +83,17 @@ export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T
   const cartoes = itens.flatMap((item) => {
     const atraso = atrasoDe(item);
     if (atraso === null) return [];
-    const texto =
+    const [texto, proximo] =
       atraso > 0
-        ? textoDoAtrasado(atraso, item.proximo_episodio_em, agora)
-        : (textoDoProximo(item.proximo_episodio_em, agora) ?? 'Em dia');
-    return [{ item, atraso, texto, proximo: instante(item.proximo_episodio_em) ?? Number.POSITIVE_INFINITY }];
+        ? [textoDoAtraso(atraso), proximoDoAtrasado(item.proximo_episodio_em, agora)]
+        : [textoDoProximo(item.proximo_episodio_em, agora) ?? 'Em dia', null];
+    return [{ item, atraso, texto, proximo, quando: instante(item.proximo_episodio_em) ?? Number.POSITIVE_INFINITY }];
   });
-  const ordemDoProximo = (a: { proximo: number }, b: { proximo: number }) =>
-    a.proximo === b.proximo ? 0 : a.proximo < b.proximo ? -1 : 1;
+  const ordemDoProximo = (a: { quando: number }, b: { quando: number }) =>
+    a.quando === b.quando ? 0 : a.quando < b.quando ? -1 : 1;
   return cartoes
     .sort((a, b) => b.atraso - a.atraso || (a.atraso === 0 ? ordemDoProximo(a, b) : 0))
-    .map(({ item, atraso, texto }) => ({ item, atraso, atrasado: atraso > 0, texto }));
+    .map(({ item, atraso, texto, proximo }) => ({ item, atraso, atrasado: atraso > 0, texto, proximo }));
 }
 
 /**

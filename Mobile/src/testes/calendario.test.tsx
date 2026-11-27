@@ -35,15 +35,15 @@ beforeEach(() => {
 afterEach(() => jest.useRealTimers());
 
 const frieren = anime({ temporada_estacao: 'outono', temporada_ano: 2026 });
-const dandadan = anime({ id_midia: 'MID-ANM-2026-20100', titulo_portugues: 'Dandadan' });
-const kaiju = anime({ id_midia: 'MID-ANM-2026-20400', titulo_portugues: 'Kaiju nº 8' });
+const dandadan = anime({ id_midia: 'MID-ANM-2026-20100', titulo_romaji: 'Dandadan' });
+const kaiju = anime({ id_midia: 'MID-ANM-2026-20400', titulo_romaji: 'Kaiju nº 8' });
 
 function episodio(midia: MidiaDetalhe, episodio: number, instante: string, exibido = false): EpisodioDoCalendario {
   return {
     id_midia: midia.id_midia,
     tipo: 'anime',
     titulo_original: midia.titulo_original,
-    titulo_portugues: midia.titulo_portugues,
+    titulo_romaji: midia.titulo_romaji,
     titulo_ingles: midia.titulo_ingles,
     poster_url: midia.poster_url,
     episodio,

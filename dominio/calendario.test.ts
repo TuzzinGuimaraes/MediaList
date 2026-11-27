@@ -26,7 +26,7 @@ function episodio(id_midia: string, instante: string, campos: Partial<EpisodioDo
     tipo: 'anime',
     titulo_original: `Anime ${id_midia}`,
     titulo_ingles: null,
-    titulo_portugues: null,
+    titulo_romaji: null,
     poster_url: null,
     episodio: 1,
     instante,
