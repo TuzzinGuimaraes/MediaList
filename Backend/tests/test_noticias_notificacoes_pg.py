@@ -51,10 +51,10 @@ def _usuario(pg, nivel='usuario', nome='PG'):
     return id_usuario
 
 
-def _anime(pg):
-    id_midia = Catalogo().criar(
-        'anime', {'titulo_original': f'PG {uuid.uuid4().hex}', 'titulo_portugues': 'Anime PG'},
-    )
+def _anime(pg, titulo_ingles='Anime EN'):
+    id_midia = Catalogo().criar('anime', {
+        'titulo_original': f'PG {uuid.uuid4().hex}', 'titulo_romaji': 'Anime PG', 'titulo_ingles': titulo_ingles,
+    })
     pg['midias'].append(id_midia)
     return id_midia
 
@@ -125,8 +125,8 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     assert {k: v for k, v in notificacao.items() if k != 'data_criacao'} == {
         'origem': 'atualizacao', 'id_noticia': None,
         'id_midia': id_midia, 'tipo_midia': 'anime', 'tipo': 'episodio',
-        'titulo': 'Episódio 12', 'midia_nome': 'Anime PG',
-        'mensagem': 'Novidade em anime da sua lista: Anime PG', 'lida': False,
+        'titulo': 'Episódio 12', 'midia_nome': 'Anime EN',
+        'mensagem': 'Novidade em anime da sua lista: Anime EN', 'lida': False,
     }
     assert len(client.get('/api/notificacoes', headers=entrar(favorito_completo)).get_json()['notificacoes']) == 1
     assert client.get('/api/notificacoes', headers=entrar(completo)).get_json()['notificacoes'] == []
@@ -135,6 +135,20 @@ def test_atualizacao_notifica_so_quem_tem_a_midia_na_lista(pg, client, entrar):
     [atualizacao] = client.get(f'/api/midias/{id_midia}').get_json()['atualizacoes']
     assert atualizacao['titulo'] == 'Episódio 12'
     assert atualizacao['dados_adicionais'] == {'episodio': 12}
+
+
+def test_notificacao_sem_titulo_em_ingles_mostra_o_romaji(pg, client, entrar):
+    admin, assistindo = _usuario(pg, 'admin'), _usuario(pg)
+    id_midia = _anime(pg, titulo_ingles='')
+    _na_lista(assistindo, id_midia, 'assistindo')
+
+    corpo = {'tipo': 'episodio', 'titulo': 'Ep 1', 'dados_adicionais': {'episodio': 1}}
+    client.post(f'/api/midias/{id_midia}/atualizacoes', headers=entrar(admin), json=corpo)
+
+    [notificacao] = client.get('/api/notificacoes', headers=entrar(assistindo)).get_json()['notificacoes']
+    assert (notificacao['midia_nome'], notificacao['mensagem']) == (
+        'Anime PG', 'Novidade em anime da sua lista: Anime PG',
+    )
 
 
 def test_episodio_que_ja_tem_atualizacao_nao_se_repete_na_publicacao_manual(pg, client, entrar):

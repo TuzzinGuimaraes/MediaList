@@ -80,8 +80,10 @@ class ConsultaMidias(ConsultaPaginada):
     temporada_ano: Annotated[Ano | None, VazioComoAusente] = Field(
         default=None, description='Com `temporada_estacao`, só os animes da Temporada',
     )
-    ordem: Annotated[OrdemCatalogo, BeforeValidator(lambda v: v or 'nota_media')] = Field(
-        default='nota_media', description='`popularidade_fonte`: os mais esperados (Popularidade da fonte); '
+    ordem: Annotated[OrdemCatalogo | None, VazioComoAusente] = Field(
+        default=None, description='Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes '
+        'do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. '
+        '`popularidade_fonte`: os mais esperados (Popularidade da fonte); '
         '`estreia`: data de lançamento crescente, sem data no fim; '
         '`nota_fonte`: Nota da fonte decrescente, sem nota no fim',
     )
@@ -133,7 +135,7 @@ class _CorpoMidiaBase(BaseModel):
 
     titulo_original: Preenchido | None = None
     titulo_ingles: TextoOpcional = None
-    titulo_portugues: TextoOpcional = None
+    titulo_romaji: TextoOpcional = None
     sinopse: TextoOpcional = None
     data_lancamento: Annotated[Data | None, VazioComoAusente] = None
     poster_url: TextoOpcional = None
@@ -208,7 +210,7 @@ class CamposDaMidia(BaseModel):
     tipo: TipoDeMidia
     titulo_original: str
     titulo_ingles: str | None
-    titulo_portugues: str | None
+    titulo_romaji: str | None
     sinopse: str | None
     data_lancamento: Data | None
     nota_media: Nota | None = Field(description='Média das Avaliações; nula sem elas')
@@ -290,7 +292,8 @@ class MidiaPopular(BaseModel):
     id_midia: Id
     tipo: TipoDeMidia
     titulo_original: str
-    titulo_portugues: str | None
+    titulo_ingles: str | None
+    titulo_romaji: str | None
     poster_url: str | None
     nota_media: Nota | None
     nota_fonte: Nota | None
@@ -356,7 +359,7 @@ class EpisodioDoCalendario(BaseModel):
     tipo: Literal['anime']
     titulo_original: str
     titulo_ingles: str | None
-    titulo_portugues: str | None
+    titulo_romaji: str | None
     poster_url: str | None
     episodio: int = Field(ge=1)
     instante: Instante = Field(description='Quando foi ao ar (exibido) ou quando sai (próximo)')

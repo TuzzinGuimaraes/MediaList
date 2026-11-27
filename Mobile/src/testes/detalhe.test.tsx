@@ -215,18 +215,29 @@ describe('detalhe da Mídia', () => {
     expect(screen.queryByRole('button', { name: 'Adicionar à Lista' })).not.toBeOnTheScreen();
   });
 
-  it('sem título em português, o alternativo é o inglês', async () => {
-    const frieren = anime({ titulo_portugues: null, titulo_ingles: "Frieren: Beyond Journey's End" });
+  it('o título é o inglês, com o romanizado e o japonês abaixo', async () => {
+    const frieren = anime({ titulo_ingles: "Frieren: Beyond Journey's End" });
+    simularFetch(detalhe(frieren));
+
+    await abrirDetalhe(frieren.id_midia);
+
+    expect(await screen.findByRole('header', { name: "Frieren: Beyond Journey's End" })).toBeOnTheScreen();
+    expect(screen.getByText('Sousou no Frieren')).toBeOnTheScreen();
+    expect(screen.getByText('葬送のフリーレン')).toBeOnTheScreen();
+  });
+
+  it('sem inglês nem romanizado, o título é o japonês', async () => {
+    const frieren = anime({ titulo_romaji: null, titulo_ingles: null });
     simularFetch(detalhe(frieren));
 
     await abrirDetalhe(frieren.id_midia);
 
     expect(await screen.findByRole('header', { name: '葬送のフリーレン' })).toBeOnTheScreen();
-    expect(screen.getByText("Frieren: Beyond Journey's End")).toBeOnTheScreen();
+    expect(screen.getAllByText('葬送のフリーレン')).toHaveLength(1);
   });
 
   it('título igual em todas as línguas não se repete', async () => {
-    const hollow = jogo({ titulo_portugues: 'Hollow Knight', titulo_ingles: 'Hollow Knight' });
+    const hollow = jogo({ titulo_romaji: 'Hollow Knight', titulo_ingles: 'Hollow Knight' });
     simularFetch(detalhe(hollow));
 
     await abrirDetalhe(hollow.id_midia);
@@ -425,7 +436,7 @@ describe('detalhe: Relações', () => {
     ];
     simularFetch({
       ...detalhe(frieren, { relacoes }),
-      ...detalhe(anime({ id_midia: 'MID-Frieren-2', titulo_original: 'Frieren 2', titulo_portugues: null, titulo_ingles: null })),
+      ...detalhe(anime({ id_midia: 'MID-Frieren-2', titulo_original: 'Frieren 2', titulo_romaji: null, titulo_ingles: null })),
     });
 
     await abrirDetalhe(frieren.id_midia);

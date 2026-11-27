@@ -169,7 +169,7 @@ describe('aba Lista', () => {
   });
 
   it('− num Concluído no total o leva a Em progresso na hora, antes da resposta (ADR 0009)', async () => {
-    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Ataque dos Titãs', numero_episodios: 10 });
+    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Ataque dos Titãs', numero_episodios: 10 });
     const { api } = servidor([item(aot, { status_consumo: 'completo', progresso_atual: 10, data_conclusao: '2026-01-02' })], {
       'PUT /lista/LST-MID-ANM-2026-20099/progresso': () => new Promise<Resposta>(() => {}),
     });
@@ -213,7 +213,7 @@ describe('aba Lista', () => {
   });
 
   it('editor: sair de Concluído devolve o Progresso de antes; Item que abriu concluído zera', async () => {
-    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Ataque dos Titãs', numero_episodios: 10 });
+    const aot = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Ataque dos Titãs', numero_episodios: 10 });
     servidor([
       item(frieren, { status_consumo: 'assistindo', progresso_atual: 3 }),
       item(aot, { status_consumo: 'completo', progresso_atual: 10 }),
@@ -510,8 +510,8 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
   });
 
   it('Gênero no sheet filtra todas as páginas e as contagens; Ordem por Nota pessoal', async () => {
-    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Naruto', generos_lista: ['Ação'] });
-    const akira = anime({ id_midia: 'MID-ANM-2026-20098', titulo_portugues: 'Akira', generos_lista: ['Ação'] });
+    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Naruto', generos_lista: ['Ação'] });
+    const akira = anime({ id_midia: 'MID-ANM-2026-20098', titulo_romaji: 'Akira', generos_lista: ['Ação'] });
     servidor([
       item(frieren, { status_consumo: 'assistindo', nota_usuario: 9 }),
       item(naruto, { status_consumo: 'assistindo', nota_usuario: 6 }),
@@ -589,7 +589,7 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
   });
 
   it('"Sugestões para você" traz Em alta do catálogo que não está na Lista', async () => {
-    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_portugues: 'Naruto' });
+    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Naruto' });
     servidor([item(frieren, { status_consumo: 'assistindo' })], trending([frieren, naruto]));
 
     await abrir('/lista');

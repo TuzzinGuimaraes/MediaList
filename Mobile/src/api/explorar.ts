@@ -7,7 +7,8 @@ export const POR_PAGINA = 24;
 
 export type FiltrosBusca = {
   tipo: TipoMidia;
-  ordem: OrdemCatalogo;
+  /** Ausente: a ordem padrão da API (`nota_media`; com busca, a relevância). */
+  ordem?: OrdemCatalogo;
   /** `nome_genero`; null para todos. */
   genero: string | null;
   /** Termo já aparado; vazio para não buscar. */
@@ -21,7 +22,8 @@ export function useBuscaMidias(filtros: FiltrosBusca) {
     queryKey: ['midias', 'busca', filtros],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ tipo: filtros.tipo, ordem: filtros.ordem });
+      const params = new URLSearchParams({ tipo: filtros.tipo });
+      if (filtros.ordem) params.set('ordem', filtros.ordem);
       if (filtros.genero) params.set('genero', filtros.genero);
       if (filtros.busca) params.set('busca', filtros.busca);
       params.set('pagina', String(pageParam));

@@ -42,7 +42,7 @@ def _anilist_id():
 def _anime(anilist_id, **extra):
     return {
         'titulo_original': 'Original',
-        'titulo_portugues': 'Primeiro título',
+        'titulo_romaji': 'Primeiro título',
         'status_anime': 'finalizado',
         'numero_episodios': 12,
         'nota_fonte': Decimal('8.7'),
@@ -59,7 +59,7 @@ def _salvar(pg, funcao, dados, generos=()):
 
 def _midia(id_midia):
     return banco.consultar_um(
-        'SELECT titulo_portugues, nota_fonte FROM midias WHERE id_midia = %s', (id_midia,)
+        'SELECT titulo_romaji, nota_fonte FROM midias WHERE id_midia = %s', (id_midia,)
     )
 
 
@@ -69,7 +69,7 @@ def test_reimportar_anime_atualiza_a_midia_sem_duplicar(pg):
     primeira = _salvar(pg, db.salvar_anime, _anime(anilist_id))
     segunda = _salvar(
         pg, db.salvar_anime,
-        _anime(anilist_id, titulo_portugues='Título novo', nota_fonte=Decimal('9.1'), numero_episodios=13),
+        _anime(anilist_id, titulo_romaji='Título novo', nota_fonte=Decimal('9.1'), numero_episodios=13),
     )
 
     assert primeira['ja_existia'] is False
@@ -77,7 +77,7 @@ def test_reimportar_anime_atualiza_a_midia_sem_duplicar(pg):
     assert banco.consultar_um(
         'SELECT count(*) AS n FROM animes WHERE anilist_id = %s', (anilist_id,)
     )['n'] == 1
-    assert _midia(primeira['id_midia']) == {'titulo_portugues': 'Título novo', 'nota_fonte': Decimal('9.1')}
+    assert _midia(primeira['id_midia']) == {'titulo_romaji': 'Título novo', 'nota_fonte': Decimal('9.1')}
     assert banco.consultar_um(
         'SELECT numero_episodios FROM animes WHERE id_midia = %s', (primeira['id_midia'],)
     )['numero_episodios'] == 13
@@ -222,10 +222,10 @@ def test_duas_importacoes_da_mesma_chave_ao_mesmo_tempo_gravam_uma_midia(pg):
     assert resultado == {'id_midia': str(id_outra), 'ja_existia': True}
     assert banco.consultar_um(
         'SELECT count(*) AS n FROM midias m JOIN tipo_midia t USING (id_tipo) '
-        "WHERE t.nome_tipo = 'anime' AND m.titulo_portugues = 'Primeiro título' AND NOT EXISTS ("
+        "WHERE t.nome_tipo = 'anime' AND m.titulo_romaji = 'Primeiro título' AND NOT EXISTS ("
         'SELECT 1 FROM animes a WHERE a.id_midia = m.id_midia)'
     )['n'] == 0
-    assert _midia(str(id_outra)) == {'titulo_portugues': 'Primeiro título', 'nota_fonte': Decimal('8.7')}
+    assert _midia(str(id_outra)) == {'titulo_romaji': 'Primeiro título', 'nota_fonte': Decimal('8.7')}
 
 
 
@@ -250,7 +250,7 @@ def test_jogo_so_com_steam_appid_grava_e_reimporta_pela_appid(pg):
     appid = _appid()
 
     primeira = _salvar(pg, db.salvar_jogo, _jogo_steam(appid))
-    segunda = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, titulo_portugues='Novo'))
+    segunda = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, titulo_romaji='Novo'))
 
     assert primeira['ja_existia'] is False
     assert segunda == {'id_midia': primeira['id_midia'], 'ja_existia': True}
@@ -261,12 +261,12 @@ def test_rawg_com_a_mesma_appid_atualiza_o_jogo_da_steam_em_vez_de_criar_outro(p
     appid, slug = _appid(), f'jogo-pg-{uuid.uuid4().hex}'
     da_steam = _salvar(pg, db.salvar_jogo, _jogo_steam(appid))
 
-    do_rawg = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=slug, titulo_portugues='Do RAWG',
+    do_rawg = _salvar(pg, db.salvar_jogo, _jogo_steam(appid, rawg_slug=slug, titulo_romaji='Do RAWG',
                                                         nota_fonte=Decimal('8.0')))
 
     assert do_rawg == {'id_midia': da_steam['id_midia'], 'ja_existia': True}
     assert _filha(da_steam['id_midia']) == {'rawg_slug': slug, 'steam_appid': appid}
-    assert _midia(da_steam['id_midia']) == {'titulo_portugues': 'Do RAWG', 'nota_fonte': Decimal('8.0')}
+    assert _midia(da_steam['id_midia']) == {'titulo_romaji': 'Do RAWG', 'nota_fonte': Decimal('8.0')}
 
 
 def test_jogo_do_rawg_ganha_a_appid_e_a_steam_depois_nao_duplica(pg):

@@ -6,7 +6,7 @@ import type { Midia } from '@dominio/tipos';
 
 import type { PropsCartao } from './Cards';
 
-type MidiaDoCartao = Pick<Midia, 'id_midia' | 'titulo_portugues' | 'titulo_original' | 'poster_url' | 'tipo'>;
+type MidiaDoCartao = Pick<Midia, 'id_midia' | 'titulo_ingles' | 'titulo_romaji' | 'titulo_original' | 'poster_url' | 'tipo'>;
 type ItemDoCartao = Parameters<typeof proporcaoDoFio>[0];
 
 /** Título, pôster e Tipo da Mídia; com Item na Lista, também o fio de progresso. */

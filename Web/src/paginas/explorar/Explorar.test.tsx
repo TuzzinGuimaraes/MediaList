@@ -12,7 +12,7 @@ function midia(id: string, titulo: string, extra: Partial<Midia> = {}): Midia {
   return {
     id_midia: id,
     titulo_original: titulo,
-    titulo_portugues: null,
+    titulo_romaji: null,
     titulo_ingles: null,
     tipo: 'anime',
     poster_url: null,
@@ -116,7 +116,7 @@ describe('Explorar', () => {
     expect(within(lista).getByRole('link', { name: /Frieren/ })).toHaveAttribute('href', '/midia/MID-1');
     expect(within(lista).getByRole('link', { name: /Mushishi/ })).toBeInTheDocument();
     expect(screen.getByText('2 Mídias')).toBeInTheDocument();
-    expect(ultimaBusca(api)).toEqual({ tipo: 'anime', ordem: 'nota_media', pagina: '1', por_pagina: '30' });
+    expect(ultimaBusca(api)).toEqual({ tipo: 'anime', pagina: '1', por_pagina: '30' });
   });
 
   it('o link com filtros abre a mesma busca', async () => {
@@ -324,6 +324,8 @@ describe('Explorar', () => {
 
     expect(await screen.findByText('Nenhuma Mídia encontrada para "fri".')).toBeInTheDocument();
     expect(ultimaBusca(api)).toMatchObject({ busca: 'fri' });
+    // Sem ordem escolhida, a API ordena a busca por relevância.
+    expect(ultimaBusca(api)).not.toHaveProperty('ordem');
 
     const campo = screen.getByRole('searchbox', { name: 'Buscar por título' });
     expect(campo).toHaveValue('fri');

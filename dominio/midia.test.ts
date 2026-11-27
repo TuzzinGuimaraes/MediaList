@@ -1,4 +1,4 @@
-import { contagemDeEpisodios, notaDeRanking, notasDaMidia, tituloAlternativo } from './midia';
+import { contagemDeEpisodios, notaDeRanking, notasDaMidia, outrosTitulos, tituloDaMidia } from './midia';
 
 describe('contagemDeEpisodios', () => {
   it.each([
@@ -53,32 +53,44 @@ describe('notaDeRanking', () => {
   });
 });
 
-describe('tituloAlternativo', () => {
-  const midia = (titulo_portugues: string | null, titulo_original: string, titulo_ingles: string | null) => ({
-    titulo_portugues,
-    titulo_original,
+describe('tituloDaMidia', () => {
+  const fma = { titulo_ingles: 'Fullmetal Alchemist: Brotherhood', titulo_romaji: 'Hagane no Renkinjutsushi', titulo_original: '鋼の錬金術師' };
+
+  it('é o inglês', () => {
+    expect(tituloDaMidia(fma)).toBe('Fullmetal Alchemist: Brotherhood');
+  });
+
+  it('sem inglês, o romanizado', () => {
+    expect(tituloDaMidia({ ...fma, titulo_ingles: null })).toBe('Hagane no Renkinjutsushi');
+    expect(tituloDaMidia({ ...fma, titulo_ingles: '' })).toBe('Hagane no Renkinjutsushi');
+  });
+
+  it('sem os dois, o original', () => {
+    expect(tituloDaMidia({ titulo_ingles: null, titulo_romaji: '', titulo_original: '鋼の錬金術師' })).toBe('鋼の錬金術師');
+  });
+});
+
+describe('outrosTitulos', () => {
+  const midia = (titulo_ingles: string | null, titulo_romaji: string | null, titulo_original: string) => ({
     titulo_ingles,
+    titulo_romaji,
+    titulo_original,
   });
 
-  it('com título em português, o alternativo é o original', () => {
-    expect(tituloAlternativo(midia('Sousou no Frieren', '葬送のフリーレン', "Frieren: Beyond Journey's End"))).toBe(
+  it('com o inglês principal, o romanizado e o japonês, nessa ordem', () => {
+    expect(outrosTitulos(midia("Frieren: Beyond Journey's End", 'Sousou no Frieren', '葬送のフリーレン'))).toEqual([
+      'Sousou no Frieren',
       '葬送のフリーレン',
-    );
+    ]);
   });
 
-  it('sem português o principal é o original, e o alternativo passa a ser o inglês', () => {
-    expect(tituloAlternativo(midia(null, '葬送のフリーレン', "Frieren: Beyond Journey's End"))).toBe(
-      "Frieren: Beyond Journey's End",
-    );
+  it('sem inglês, só o japonês', () => {
+    expect(outrosTitulos(midia(null, 'Sousou no Frieren', '葬送のフリーレン'))).toEqual(['葬送のフリーレン']);
   });
 
-  it('original igual ao principal cai para o inglês', () => {
-    expect(tituloAlternativo(midia('Hollow Knight', 'Hollow Knight', 'Hollow Knight: Edição'))).toBe('Hollow Knight: Edição');
-  });
-
-  it('sem nenhum título diferente do principal, nada', () => {
-    expect(tituloAlternativo(midia(null, 'Hollow Knight', null))).toBeNull();
-    expect(tituloAlternativo(midia('Hollow Knight', 'Hollow Knight', 'Hollow Knight'))).toBeNull();
-    expect(tituloAlternativo(midia('', 'Hollow Knight', ''))).toBeNull();
+  it('sem repetir o principal nem um igual ao outro', () => {
+    expect(outrosTitulos(midia('Hollow Knight', 'Hollow Knight', 'Hollow Knight'))).toEqual([]);
+    expect(outrosTitulos(midia('Steins;Gate', 'Steins;Gate', 'STEINS;GATE'))).toEqual(['STEINS;GATE']);
+    expect(outrosTitulos(midia('', 'Hollow Knight', ''))).toEqual([]);
   });
 });

@@ -343,11 +343,7 @@
             ],
             "title": "Titulo Avaliacao"
           },
-          "titulo_original": {
-            "title": "Titulo Original",
-            "type": "string"
-          },
-          "titulo_portugues": {
+          "titulo_ingles": {
             "anyOf": [
               {
                 "type": "string"
@@ -356,7 +352,22 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_romaji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Romaji"
           }
         },
         "required": [
@@ -369,7 +380,8 @@
           "data_avaliacao",
           "data_edicao",
           "nome_completo",
-          "titulo_portugues",
+          "titulo_ingles",
+          "titulo_romaji",
           "titulo_original",
           "tipo"
         ],
@@ -655,21 +667,28 @@
             "title": "Modo Jogo"
           },
           "ordem": {
-            "default": "nota_media",
-            "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
-            "enum": [
-              "nota_media",
-              "data_lancamento",
-              "titulo",
-              "mais_adicionados",
-              "popularidade",
-              "mais_concluidos",
-              "popularidade_fonte",
-              "estreia",
-              "nota_fonte"
+            "anyOf": [
+              {
+                "enum": [
+                  "nota_media",
+                  "data_lancamento",
+                  "titulo",
+                  "mais_adicionados",
+                  "popularidade",
+                  "mais_concluidos",
+                  "popularidade_fonte",
+                  "estreia",
+                  "nota_fonte"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Ordem",
-            "type": "string"
+            "default": null,
+            "description": "Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
+            "title": "Ordem"
           },
           "pagina": {
             "default": 1,
@@ -1424,7 +1443,7 @@
             "default": null,
             "title": "Titulo Original"
           },
-          "titulo_portugues": {
+          "titulo_romaji": {
             "anyOf": [
               {
                 "type": "string"
@@ -1434,7 +1453,7 @@
               }
             ],
             "default": null,
-            "title": "Titulo Portugues"
+            "title": "Titulo Romaji"
           },
           "trailer_url": {
             "anyOf": [
@@ -1950,7 +1969,7 @@
             "title": "Titulo Original",
             "type": "string"
           },
-          "titulo_portugues": {
+          "titulo_romaji": {
             "anyOf": [
               {
                 "type": "string"
@@ -1959,7 +1978,7 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Romaji"
           }
         },
         "required": [
@@ -1967,7 +1986,7 @@
           "tipo",
           "titulo_original",
           "titulo_ingles",
-          "titulo_portugues",
+          "titulo_romaji",
           "poster_url",
           "episodio",
           "instante",
@@ -2701,7 +2720,7 @@
             "title": "Titulo Original",
             "type": "string"
           },
-          "titulo_portugues": {
+          "titulo_romaji": {
             "anyOf": [
               {
                 "type": "string"
@@ -2710,7 +2729,7 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Romaji"
           },
           "total_avaliacoes": {
             "anyOf": [
@@ -2745,7 +2764,7 @@
           "tipo",
           "titulo_original",
           "titulo_ingles",
-          "titulo_portugues",
+          "titulo_romaji",
           "sinopse",
           "data_lancamento",
           "nota_media",
@@ -3321,7 +3340,7 @@
             "title": "Titulo Original",
             "type": "string"
           },
-          "titulo_portugues": {
+          "titulo_romaji": {
             "anyOf": [
               {
                 "type": "string"
@@ -3330,7 +3349,7 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Romaji"
           },
           "total_avaliacoes": {
             "anyOf": [
@@ -3371,7 +3390,7 @@
           "tipo",
           "titulo_original",
           "titulo_ingles",
-          "titulo_portugues",
+          "titulo_romaji",
           "sinopse",
           "data_lancamento",
           "nota_media",
@@ -3938,7 +3957,7 @@
             "title": "Titulo Original",
             "type": "string"
           },
-          "titulo_portugues": {
+          "titulo_romaji": {
             "anyOf": [
               {
                 "type": "string"
@@ -3947,7 +3966,7 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Romaji"
           },
           "total_avaliacoes": {
             "anyOf": [
@@ -3988,7 +4007,7 @@
           "tipo",
           "titulo_original",
           "titulo_ingles",
-          "titulo_portugues",
+          "titulo_romaji",
           "sinopse",
           "data_lancamento",
           "nota_media",
@@ -4114,11 +4133,7 @@
             "title": "Tipo",
             "type": "string"
           },
-          "titulo_original": {
-            "title": "Titulo Original",
-            "type": "string"
-          },
-          "titulo_portugues": {
+          "titulo_ingles": {
             "anyOf": [
               {
                 "type": "string"
@@ -4127,7 +4142,22 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_romaji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Romaji"
           },
           "total_usuarios": {
             "title": "Total Usuarios",
@@ -4138,7 +4168,8 @@
           "id_midia",
           "tipo",
           "titulo_original",
-          "titulo_portugues",
+          "titulo_ingles",
+          "titulo_romaji",
           "poster_url",
           "nota_media",
           "nota_fonte",
@@ -5851,11 +5882,7 @@
             "title": "Tipo",
             "type": "string"
           },
-          "titulo_original": {
-            "title": "Titulo Original",
-            "type": "string"
-          },
-          "titulo_portugues": {
+          "titulo_ingles": {
             "anyOf": [
               {
                 "type": "string"
@@ -5864,7 +5891,22 @@
                 "type": "null"
               }
             ],
-            "title": "Titulo Portugues"
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_romaji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Romaji"
           }
         },
         "required": [
@@ -5875,7 +5917,8 @@
           "link",
           "id_midia",
           "titulo_original",
-          "titulo_portugues",
+          "titulo_ingles",
+          "titulo_romaji",
           "id_usuario",
           "nome_completo",
           "criado_em"
@@ -8866,26 +8909,33 @@
             }
           },
           {
-            "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
+            "description": "Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
             "in": "query",
             "name": "ordem",
             "required": false,
             "schema": {
-              "default": "nota_media",
-              "description": "`popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
-              "enum": [
-                "nota_media",
-                "data_lancamento",
-                "titulo",
-                "mais_adicionados",
-                "popularidade",
-                "mais_concluidos",
-                "popularidade_fonte",
-                "estreia",
-                "nota_fonte"
+              "anyOf": [
+                {
+                  "enum": [
+                    "nota_media",
+                    "data_lancamento",
+                    "titulo",
+                    "mais_adicionados",
+                    "popularidade",
+                    "mais_concluidos",
+                    "popularidade_fonte",
+                    "estreia",
+                    "nota_fonte"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Ordem",
-              "type": "string"
+              "default": null,
+              "description": "Sem ordem: com `busca`, por relevância (o título que começa pelo termo antes do que só o contém, e depois como `nota_media`); sem `busca`, `nota_media`. `popularidade_fonte`: os mais esperados (Popularidade da fonte); `estreia`: data de lançamento crescente, sem data no fim; `nota_fonte`: Nota da fonte decrescente, sem nota no fim",
+              "title": "Ordem"
             }
           }
         ],

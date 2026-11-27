@@ -59,9 +59,8 @@ COLUNAS_DO_ITEM = """
 
 
 def _chave_alfabetica(item: dict[str, Any]) -> tuple[str, str]:
-    """Título exibido (mesma regra do `tituloDaMidia` do app e do web) sem caixa, e o id_lista."""
-    titulo = item.get('titulo_portugues') or item.get('titulo_original') or ''
-    return titulo.casefold(), str(item.get('id_lista') or '')
+    """Título exibido (`titulo_exibido` do SELECT_MIDIA) sem caixa, e o id_lista."""
+    return (item.get('titulo_exibido') or '').casefold(), str(item.get('id_lista') or '')
 
 
 def _valor(campo: str, valor: Any) -> Any:

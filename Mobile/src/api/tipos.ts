@@ -67,7 +67,7 @@ export type RespostaCalendario = Esquemas['RespostaCalendario'];
 export type OrdemCatalogo = Exclude<NonNullable<Esquemas['ConsultaMidias']['ordem']>, 'popularidade'>;
 
 /** O que o card de Mídia lê: serve para qualquer listagem (Mídia, populares, Item de lista). */
-export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_portugues' | 'poster_url'> &
+export type CartaoMidia = Pick<Midia, 'id_midia' | 'tipo' | 'titulo_original' | 'titulo_ingles' | 'titulo_romaji' | 'poster_url'> &
   NotasDaMidia;
 
 // Avaliações

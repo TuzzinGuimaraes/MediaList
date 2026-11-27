@@ -125,7 +125,7 @@ def listar(limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
     linhas = banco.consultar(
         """
         SELECT v.id AS id_vinculo, v.plataforma, v.origem_id, v.tipo, v.id_midia, v.criado_em,
-               m.titulo_original, m.titulo_portugues, v.id_usuario, u.nome_completo
+               m.titulo_original, m.titulo_ingles, m.titulo_romaji, v.id_usuario, u.nome_completo
         FROM vinculos_origem v
         JOIN midias m ON m.id_midia = v.id_midia
         LEFT JOIN usuarios u ON u.id_usuario = v.id_usuario

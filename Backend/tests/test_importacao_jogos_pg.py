@@ -120,7 +120,7 @@ def _da_loja(pg, nome, lancamento=date(2011, 4, 18)):
     appid = random.randint(10**8, 2 * 10**9)
     pg.append(appid)
     return db.salvar_jogo({
-        'titulo_original': nome, 'titulo_portugues': nome, 'data_lancamento': lancamento,
+        'titulo_original': nome, 'titulo_romaji': nome, 'data_lancamento': lancamento,
         'status_jogo': 'lancado', 'modo_jogo': 'single', 'plataformas': ['PC'],
         'rawg_slug': None, 'steam_appid': appid,
     }, [])['id_midia'], appid
@@ -128,7 +128,7 @@ def _da_loja(pg, nome, lancamento=date(2011, 4, 18)):
 
 def _filha(id_midia):
     return banco.consultar_um(
-        'SELECT j.rawg_slug, j.steam_appid, m.titulo_portugues, m.poster_url FROM jogos j '
+        'SELECT j.rawg_slug, j.steam_appid, m.titulo_romaji, m.poster_url FROM jogos j '
         'JOIN midias m USING (id_midia) WHERE id_midia = %s', (id_midia,))
 
 
@@ -176,7 +176,7 @@ def test_jogo_da_loja_com_titulo_ano_e_appid_iguais_vira_a_mesma_midia(importar,
     assert (stats.sucessos, stats.ja_existia) == (1, 1)
     assert fonte.pedidas(f"/games/{jogo['slug']}/stores")
     assert _filha(id_loja) == {'rawg_slug': jogo['slug'], 'steam_appid': appid,
-                               'titulo_portugues': jogo['name'], 'poster_url': jogo['background_image']}
+                               'titulo_romaji': jogo['name'], 'poster_url': jogo['background_image']}
 
 
 def test_jogo_da_loja_com_outra_appid_fica_e_o_do_rawg_e_outra_midia(importar, pg):

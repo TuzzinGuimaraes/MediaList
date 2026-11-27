@@ -90,7 +90,7 @@ def test_dados_do_jogo_da_loja():
     )['400']['data'])
 
     assert dados == {
-        'titulo_original': 'Portal', 'titulo_portugues': 'Portal', 'sinopse': 'Um "jogo" de portais.',
+        'titulo_original': 'Portal', 'titulo_romaji': 'Portal', 'sinopse': 'Um "jogo" de portais.',
         'data_lancamento': date(2012, 8, 21), 'nota_fonte': None,
         'poster_url': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
         'banner_url': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
@@ -197,7 +197,7 @@ def test_textos_da_loja_com_strip_teto_e_so_str():
 
     dados, _ = dados_do_jogo_steam(data)
 
-    assert dados['titulo_original'] == dados['titulo_portugues'] == 'Portal'
+    assert dados['titulo_original'] == dados['titulo_romaji'] == 'Portal'
     assert dados['desenvolvedor'] == 'V' * 300
     assert dados['publicadora'] is None
 

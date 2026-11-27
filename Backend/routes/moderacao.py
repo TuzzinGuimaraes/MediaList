@@ -85,7 +85,8 @@ def listar_avaliacoes_moderacao():
             av.id_avaliacao, av.id_usuario, av.id_midia, av.nota, av.titulo_avaliacao, av.texto_avaliacao,
             av.data_avaliacao, av.data_edicao,
             u.nome_completo,
-            m.titulo_portugues,
+            m.titulo_ingles,
+            m.titulo_romaji,
             m.titulo_original,
             tm.nome_tipo AS tipo
         FROM avaliacoes av

@@ -19,7 +19,7 @@ import {
 type Dados = Partial<{
   progresso_atual: number | null;
   status_consumo: string;
-  titulo_portugues: string | null;
+  titulo_romaji: string | null;
   titulo_original: string;
   titulo_ingles: string | null;
   tipo: 'anime' | 'manga' | 'jogo';
@@ -39,7 +39,7 @@ function item(id: string, dados: Dados = {}) {
     id_lista: id,
     tipo: 'anime' as const,
     titulo_original: id,
-    titulo_portugues: null,
+    titulo_romaji: null,
     titulo_ingles: null,
     generos_lista: [],
     status_anime: null,
@@ -94,37 +94,45 @@ describe('organizarLista: filtros', () => {
 describe('organizarLista: Ordem', () => {
   it('padrão é alfabética pelo título exibido, sem caixa; id_lista desempata', () => {
     const itens = [
-      item('z1', { titulo_portugues: 'banana' }),
-      item('a2', { titulo_portugues: null, titulo_original: 'Abacaxi' }),
-      item('c3', { titulo_portugues: 'Caju' }),
-      item('b0', { titulo_portugues: 'banana' }),
+      item('z1', { titulo_romaji: 'banana' }),
+      item('a2', { titulo_romaji: null, titulo_original: 'Abacaxi' }),
+      item('c3', { titulo_romaji: 'Caju' }),
+      item('b0', { titulo_romaji: 'banana' }),
     ];
     expect(ids(organizarLista(itens, FILTROS_PADRAO))).toEqual(['a2', 'b0', 'z1', 'c3']);
   });
 
+  it('a alfabética usa o título em inglês antes do romanizado', () => {
+    const itens = [
+      item('bleach', { titulo_romaji: 'Bleach' }),
+      item('aot', { titulo_romaji: 'Shingeki no Kyojin', titulo_ingles: 'Attack on Titan' }),
+    ];
+    expect(ids(organizarLista(itens, FILTROS_PADRAO))).toEqual(['aot', 'bleach']);
+  });
+
   it('Nota pessoal: maior primeiro, sem nota no fim, alfabética no empate', () => {
     const itens = [
-      item('a', { titulo_portugues: 'A', nota_usuario: null }),
-      item('b', { titulo_portugues: 'B', nota_usuario: 7.5 }),
-      item('c', { titulo_portugues: 'C', nota_usuario: 9 }),
-      item('d', { titulo_portugues: 'D', nota_usuario: 7.5 }),
-      item('e', { titulo_portugues: 'E', nota_usuario: 0 }),
+      item('a', { titulo_romaji: 'A', nota_usuario: null }),
+      item('b', { titulo_romaji: 'B', nota_usuario: 7.5 }),
+      item('c', { titulo_romaji: 'C', nota_usuario: 9 }),
+      item('d', { titulo_romaji: 'D', nota_usuario: 7.5 }),
+      item('e', { titulo_romaji: 'E', nota_usuario: 0 }),
     ];
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'nota' }))).toEqual(['c', 'b', 'd', 'e', 'a']);
   });
 
   it('adicionado e atualizado recentemente: o mais novo primeiro', () => {
     const itens = [
-      item('a', { titulo_portugues: 'A', data_adicao: '2026-03-01T10:00:00+00:00', data_atualizacao: '2026-11-01T08:00:00+00:00' }),
-      item('b', { titulo_portugues: 'B', data_adicao: '2026-05-01T10:00:00+00:00', data_atualizacao: '2026-05-01T10:00:00+00:00' }),
-      item('c', { titulo_portugues: 'C', data_adicao: '2026-01-01T10:00:00+00:00', data_atualizacao: '2026-11-01T09:30:00+00:00' }),
+      item('a', { titulo_romaji: 'A', data_adicao: '2026-03-01T10:00:00+00:00', data_atualizacao: '2026-11-01T08:00:00+00:00' }),
+      item('b', { titulo_romaji: 'B', data_adicao: '2026-05-01T10:00:00+00:00', data_atualizacao: '2026-05-01T10:00:00+00:00' }),
+      item('c', { titulo_romaji: 'C', data_adicao: '2026-01-01T10:00:00+00:00', data_atualizacao: '2026-11-01T09:30:00+00:00' }),
     ];
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'adicao' }))).toEqual(['b', 'a', 'c']);
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'atualizacao' }))).toEqual(['c', 'a', 'b']);
   });
 
   it('não muda a ordem de quem chamou', () => {
-    const itens = [item('b', { titulo_portugues: 'B' }), item('a', { titulo_portugues: 'A' })];
+    const itens = [item('b', { titulo_romaji: 'B' }), item('a', { titulo_romaji: 'A' })];
     organizarLista(itens, FILTROS_PADRAO);
     expect(ids(itens)).toEqual(['b', 'a']);
   });
@@ -133,9 +141,9 @@ describe('organizarLista: Ordem', () => {
 
 describe('buscarNaLista', () => {
   const itens = [
-    item('a', { titulo_portugues: 'Sousou no Frieren', titulo_original: '葬送のフリーレン', titulo_ingles: "Frieren: Beyond Journey's End" }),
-    item('b', { titulo_portugues: null, titulo_original: 'Shingeki no Kyojin', titulo_ingles: 'Attack on Titan' }),
-    item('c', { titulo_portugues: 'Pokémon', titulo_original: 'Pocket Monsters' }),
+    item('a', { titulo_romaji: 'Sousou no Frieren', titulo_original: '葬送のフリーレン', titulo_ingles: "Frieren: Beyond Journey's End" }),
+    item('b', { titulo_romaji: null, titulo_original: 'Shingeki no Kyojin', titulo_ingles: 'Attack on Titan' }),
+    item('c', { titulo_romaji: 'Pokémon', titulo_original: 'Pocket Monsters' }),
   ];
 
   it('acha pelo trecho de qualquer título, sem caixa nem acento, na ordem recebida', () => {
@@ -230,40 +238,40 @@ describe('organizarLista: Ordem padrão (Q120)', () => {
 
   it('anime e mangá pela maior Nota pessoal; empate alfabético; sem nota no fim', () => {
     const itens = [
-      item('a', { titulo_portugues: 'Akira', nota_usuario: null }),
-      item('b', { titulo_portugues: 'Berserk', tipo: 'manga', nota_usuario: 8 }),
-      item('c', { titulo_portugues: 'Cowboy Bebop', nota_usuario: 10 }),
-      item('d', { titulo_portugues: 'Dorohedoro', nota_usuario: 8 }),
+      item('a', { titulo_romaji: 'Akira', nota_usuario: null }),
+      item('b', { titulo_romaji: 'Berserk', tipo: 'manga', nota_usuario: 8 }),
+      item('c', { titulo_romaji: 'Cowboy Bebop', nota_usuario: 10 }),
+      item('d', { titulo_romaji: 'Dorohedoro', nota_usuario: 8 }),
     ];
     expect(ids(organizarLista(itens, padrao))).toEqual(['c', 'b', 'd', 'a']);
   });
 
   it('jogos pelas mais horas; 0 h conta como sem horas e vai para o fim', () => {
     const itens = [
-      item('a', { titulo_portugues: 'Celeste', tipo: 'jogo', progresso_atual: 0, nota_usuario: 10 }),
-      item('b', { titulo_portugues: 'Hades', tipo: 'jogo', progresso_atual: 80 }),
-      item('c', { titulo_portugues: 'Outer Wilds', tipo: 'jogo', progresso_atual: null }),
-      item('d', { titulo_portugues: 'Elden Ring', tipo: 'jogo', progresso_atual: 140 }),
-      item('e', { titulo_portugues: 'Balatro', tipo: 'jogo', progresso_atual: 80 }),
+      item('a', { titulo_romaji: 'Celeste', tipo: 'jogo', progresso_atual: 0, nota_usuario: 10 }),
+      item('b', { titulo_romaji: 'Hades', tipo: 'jogo', progresso_atual: 80 }),
+      item('c', { titulo_romaji: 'Outer Wilds', tipo: 'jogo', progresso_atual: null }),
+      item('d', { titulo_romaji: 'Elden Ring', tipo: 'jogo', progresso_atual: 140 }),
+      item('e', { titulo_romaji: 'Balatro', tipo: 'jogo', progresso_atual: 80 }),
     ];
     expect(ids(organizarLista(itens, padrao))).toEqual(['d', 'e', 'b', 'a', 'c']);
   });
 
   it('com Tipos misturados, a nota decide e as horas desempatam', () => {
     const itens = [
-      item('a', { titulo_portugues: 'Hades', tipo: 'jogo', nota_usuario: 9, progresso_atual: 80 }),
-      item('b', { titulo_portugues: 'Frieren', nota_usuario: 9, progresso_atual: 28 }),
-      item('c', { titulo_portugues: 'Celeste', tipo: 'jogo', nota_usuario: null, progresso_atual: 30 }),
-      item('d', { titulo_portugues: 'Monster', nota_usuario: 10 }),
+      item('a', { titulo_romaji: 'Hades', tipo: 'jogo', nota_usuario: 9, progresso_atual: 80 }),
+      item('b', { titulo_romaji: 'Frieren', nota_usuario: 9, progresso_atual: 28 }),
+      item('c', { titulo_romaji: 'Celeste', tipo: 'jogo', nota_usuario: null, progresso_atual: 30 }),
+      item('d', { titulo_romaji: 'Monster', nota_usuario: 10 }),
     ];
     expect(ids(organizarLista(itens, padrao))).toEqual(['d', 'a', 'b', 'c']);
   });
 
   it('inversa troca a direção, e quem não tem nota/horas continua no fim', () => {
     const itens = [
-      item('a', { titulo_portugues: 'A', nota_usuario: null }),
-      item('b', { titulo_portugues: 'B', nota_usuario: 7 }),
-      item('c', { titulo_portugues: 'C', nota_usuario: 9 }),
+      item('a', { titulo_romaji: 'A', nota_usuario: null }),
+      item('b', { titulo_romaji: 'B', nota_usuario: 7 }),
+      item('c', { titulo_romaji: 'C', nota_usuario: 9 }),
     ];
     expect(ids(organizarLista(itens, { ...padrao, inversa: true }))).toEqual(['b', 'c', 'a']);
   });
@@ -272,9 +280,9 @@ describe('organizarLista: Ordem padrão (Q120)', () => {
 describe('organizarLista: Ordem horas e direção', () => {
   it('horas lê as horas do jogo e o Progresso do anime/mangá, do maior para o menor', () => {
     const itens = [
-      item('a', { titulo_portugues: 'A', tipo: 'jogo', progresso_atual: 12 }),
-      item('b', { titulo_portugues: 'B', progresso_atual: 24 }),
-      item('c', { titulo_portugues: 'C', progresso_atual: 0 }),
+      item('a', { titulo_romaji: 'A', tipo: 'jogo', progresso_atual: 12 }),
+      item('b', { titulo_romaji: 'B', progresso_atual: 24 }),
+      item('c', { titulo_romaji: 'C', progresso_atual: 0 }),
     ];
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'horas' }))).toEqual(['b', 'a', 'c']);
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'horas', inversa: true }))).toEqual(['a', 'b', 'c']);
@@ -282,9 +290,9 @@ describe('organizarLista: Ordem horas e direção', () => {
 
   it('título inverso vai de Z a A; datas inversas, do mais antigo', () => {
     const itens = [
-      item('a', { titulo_portugues: 'A', data_adicao: '2026-02-01T00:00:00Z' }),
-      item('b', { titulo_portugues: 'B', data_adicao: null }),
-      item('c', { titulo_portugues: 'C', data_adicao: '2026-01-01T00:00:00Z' }),
+      item('a', { titulo_romaji: 'A', data_adicao: '2026-02-01T00:00:00Z' }),
+      item('b', { titulo_romaji: 'B', data_adicao: null }),
+      item('c', { titulo_romaji: 'C', data_adicao: '2026-01-01T00:00:00Z' }),
     ];
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, inversa: true }))).toEqual(['c', 'b', 'a']);
     expect(ids(organizarLista(itens, { ...FILTROS_PADRAO, ordem: 'adicao', inversa: true }))).toEqual(['c', 'a', 'b']);

@@ -85,12 +85,13 @@ def test_get_midias_total_conta_todas_as_paginas(client, catalogo):
     assert (len(corpo['itens']), corpo['pagina'], corpo['total']) == (1, 2, 3)
 
 
-def test_get_midias_sem_ordem_usa_nota_media(client, catalogo):
+def test_get_midias_sem_ordem_deixa_a_ordem_padrao_ao_catalogo(client, catalogo):
     falso = catalogo()
 
-    client.get('/api/midias')
+    client.get('/api/midias?ordem=')
 
-    assert falso.chamadas[0][4]['ordem'] == 'nota_media'
+    # Sem busca, o Catálogo usa `nota_media`; com busca, a relevância (test_busca_titulos_pg).
+    assert falso.chamadas[0][4]['ordem'] is None
 
 
 @pytest.mark.parametrize('consulta, campo', [('tipo=filme', 'tipo'), ('ordem=aleatoria', 'ordem')])
@@ -296,7 +297,8 @@ def test_trending_sem_tipo_e_anime(client, catalogo):
 
 POPULAR = {
     'id_midia': 'MID-POP', 'codigo_midia': None, 'tipo': 'anime', 'tipo_label': 'Anime', 'titulo_original': 'Pop',
-    'titulo_portugues': None, 'poster_url': None, 'nota_media': 8.25, 'nota_fonte': None, 'origem_nota': None,
+    'titulo_ingles': None, 'titulo_romaji': None, 'poster_url': None,
+    'nota_media': 8.25, 'nota_fonte': None, 'origem_nota': None,
     'total_usuarios': 3, 'usuarios_concluiram': 1, 'total_favoritos': 1, 'generos': 'Ação',
 }
 
@@ -309,7 +311,7 @@ def test_populares_repassa_o_tipo_ao_catalogo_e_sai_sem_campos_sem_leitor(client
 
     assert por_tipo.status_code == 200
     assert por_tipo.get_json() == {'midias': [{
-        'id_midia': 'MID-POP', 'tipo': 'anime', 'titulo_original': 'Pop', 'titulo_portugues': None,
+        'id_midia': 'MID-POP', 'tipo': 'anime', 'titulo_original': 'Pop', 'titulo_ingles': None, 'titulo_romaji': None,
         'poster_url': None, 'nota_media': 8.25, 'nota_fonte': None, 'origem_nota': None, 'total_usuarios': 3,
         'generos': 'Ação',
     }]}
