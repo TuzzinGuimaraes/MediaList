@@ -484,6 +484,8 @@ describe('Início: Para assistir agora', () => {
     // O atraso e o "próximo em" em linhas separadas, cada um inteiro.
     expect(faixa().getByText('3 episódios atrás')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 4 h 10 min')).toBeOnTheScreen();
+    // A linha é do "próximo em": com fonte grande ela quebra, nunca vira reticências.
+    expect(faixa().getByText('próximo em 4 h 10 min').props.numberOfLines).toBeUndefined();
     expect(faixa().queryByText(/·/)).not.toBeOnTheScreen();
     expect(faixa().getByText('1 episódio atrás')).toBeOnTheScreen();
     expect(faixa().getByText('próximo em 2 d 1 h 0 min')).toBeOnTheScreen();

@@ -77,8 +77,8 @@ def test_prefixo_do_titulo_vem_antes_de_quem_so_contem(client, pg, marca):
     assert _ids(client, f'{marca}', ordem='nota_fonte') == [contem, prefixo]
 
 
-def test_ordem_alfabetica_e_pelo_titulo_mostrado(client, pg, marca):
-    # Pelo romaji, `b` viria antes; pelo título mostrado (o inglês), `aa` vem antes de `b`.
+def test_ordem_alfabetica_e_pelo_titulo_exibido(client, pg, marca):
+    # Pelo romaji, `b` viria antes; pelo título exibido (o inglês), `aa` vem antes de `b`.
     b = _midia(pg, titulo_original=f'{marca} z', titulo_romaji=f'{marca} a', titulo_ingles=f'{marca} b')
     aa = _midia(pg, titulo_original=f'{marca} y', titulo_romaji=f'{marca} aa', titulo_ingles='')
 

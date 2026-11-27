@@ -3,7 +3,7 @@
 // (ticket 39); o app, as quatro Ordens antigas com a alfabética como padrão.
 import { type EstadoConsumo, TIPOS, type TipoMidia } from './estadoConsumo';
 import { itensDoEstado } from './itemLista';
-import { tituloDaMidia } from './midia';
+import { tituloDaMidia, type TitulosDaMidia } from './midia';
 import { nomeDaSituacao, situacaoDe } from './situacao';
 
 /**
@@ -26,12 +26,9 @@ export type FiltrosLista = {
 
 export const FILTROS_PADRAO: FiltrosLista = { genero: null, situacao: null, ordem: 'titulo' };
 
-type ItemFiltravel = {
+type ItemFiltravel = TitulosDaMidia & {
   id_lista: string;
   tipo: TipoMidia;
-  titulo_ingles: string | null;
-  titulo_romaji: string | null;
-  titulo_original: string;
   generos_lista: string[];
   status_anime: string | null;
   status_manga: string | null;

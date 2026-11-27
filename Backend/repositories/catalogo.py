@@ -148,9 +148,8 @@ FILTROS_EXATOS = {
 
 #: Popularidade primeiro; a nota (Nota média, senão a da fonte) desempata.
 POPULARES = f"""
-    SELECT p.*, m.titulo_ingles, {origem_nota('p.nota_fonte')} AS origem_nota
+    SELECT p.*, {origem_nota('p.nota_fonte')} AS origem_nota
     FROM vw_midias_populares p
-    JOIN midias m ON m.id_midia = p.id_midia
     {joins_das_filhas('p')}
     WHERE %(tipo)s::text IS NULL OR p.tipo = %(tipo)s
     ORDER BY p.total_usuarios DESC, COALESCE(p.nota_media, p.nota_fonte) DESC NULLS LAST, p.id_midia
@@ -164,13 +163,14 @@ def com_generos_lista(linha: dict[str, Any]) -> dict[str, Any]:
     return {**linha, 'generos_lista': [g.strip() for g in generos.split(',')] if generos else []}
 
 
-def _algum_titulo_casa(padrao: str) -> str:
-    """SQL: algum dos três Títulos, sem caixa nem acento, casa com o LIKE `padrao`, montado em volta
-    de `{termo}` (o termo da busca, também sem caixa nem acento). Um parâmetro por Título."""
+def _algum_titulo_casa(padrao: str, busca: str) -> tuple[str, list[Any]]:
+    """SQL e parâmetros: algum dos três Títulos, sem caixa nem acento, casa com o LIKE `padrao`,
+    montado em volta de `{termo}` (a `busca`, também sem caixa nem acento)."""
     termo = sem_caixa_nem_acento('%s')
-    return '(' + ' OR '.join(
+    sql = '(' + ' OR '.join(
         f'{sem_caixa_nem_acento(f"m.{c}")} LIKE {padrao.format(termo=termo)}' for c in COLUNAS_TITULO
     ) + ')'
+    return sql, [busca] * len(COLUNAS_TITULO)
 
 
 def _ordem(filtros: dict[str, Any]) -> tuple[str, list[Any]]:
@@ -178,8 +178,7 @@ def _ordem(filtros: dict[str, Any]) -> tuple[str, list[Any]]:
     (o Título que começa pelo termo antes do que só o contém) e desempata como a ordem padrão."""
     ordem = filtros.get('ordem')
     if not ordem and filtros.get('busca'):
-        prefixo = _algum_titulo_casa("{termo} || '%%'")
-        params = [filtros['busca']] * len(COLUNAS_TITULO)
+        prefixo, params = _algum_titulo_casa("{termo} || '%%'", filtros['busca'])
         return f"CASE WHEN {prefixo} THEN 0 ELSE 1 END, {ORDENS['nota_media']}", params
     return ORDENS.get(ordem or 'nota_media', ORDENS['nota_media']), []
 
@@ -193,8 +192,9 @@ def _filtros(tipo: str | None, filtros: dict[str, Any]) -> tuple[str, list[Any]]
         params.append(tipo)
 
     if filtros.get('busca'):
-        clausulas.append(_algum_titulo_casa("'%%' || {termo} || '%%'"))
-        params.extend([filtros['busca']] * len(COLUNAS_TITULO))
+        casa, params_busca = _algum_titulo_casa("'%%' || {termo} || '%%'", filtros['busca'])
+        clausulas.append(casa)
+        params.extend(params_busca)
 
     if filtros.get('genero'):
         clausulas.append("""

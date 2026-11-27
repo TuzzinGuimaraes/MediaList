@@ -25,8 +25,8 @@ Mídia, mas vem da Importação, não dos Usuários.
 ### Título
 
 Um anime ou mangá tem até três títulos, todos da fonte: o **inglês**, o **romanizado** (romaji)
-e o **original** (japonês). Onde quer que a Mídia apareça, o nome mostrado é o inglês; sem ele,
-o romanizado; sem os dois, o original. O Detalhe mostra os outros títulos abaixo do principal, e a
+e o **original** (japonês). Onde quer que a Mídia apareça, o **título exibido** é o inglês; sem
+ele, o romanizado; sem os dois, o original. O Detalhe mostra os outros títulos abaixo do principal, e a
 busca procura nos três. Um jogo tem um título só. Não existe título em português.
 
 ## Tipo de mídia

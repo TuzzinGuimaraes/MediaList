@@ -5,7 +5,7 @@ import { nomeDaSituacao, situacaoDe } from './situacao';
 export type TitulosDaMidia = Pick<Midia, 'titulo_ingles' | 'titulo_romaji' | 'titulo_original'>;
 
 /**
- * O nome mostrado da Mídia (CONTEXT.md: Título): o inglês, senão o romanizado, senão o original;
+ * O título exibido da Mídia (CONTEXT.md: Título): o inglês, senão o romanizado, senão o original;
  * vazio conta como ausente. Mesma regra do `titulo_exibido` do backend.
  */
 export function tituloDaMidia(midia: TitulosDaMidia): string {
@@ -18,13 +18,12 @@ export function contagemDeEpisodios(n: number): string {
   return n === 1 ? '1 episódio' : `${n} episódios`;
 }
 
-/** Os outros títulos que o Detalhe mostra abaixo do principal: o romanizado e o original, nessa
- * ordem, sem os vazios e sem repetir o principal nem um ao outro. */
+/** Os outros títulos que o Detalhe mostra abaixo do título exibido: o romanizado e o original,
+ * nessa ordem, sem os vazios e sem repetir o exibido nem um ao outro. O inglês nunca entra: se
+ * existe, é o exibido. */
 export function outrosTitulos(midia: TitulosDaMidia): string[] {
-  const principal = tituloDaMidia(midia);
-  const outros = [midia.titulo_ingles, midia.titulo_romaji, midia.titulo_original].filter(
-    (t): t is string => !!t && t !== principal,
-  );
+  const exibido = tituloDaMidia(midia);
+  const outros = [midia.titulo_romaji, midia.titulo_original].filter((t): t is string => !!t && t !== exibido);
   return [...new Set(outros)];
 }
 

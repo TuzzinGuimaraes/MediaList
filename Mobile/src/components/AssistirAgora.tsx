@@ -63,13 +63,14 @@ export function FaixaAssistirAgora({ itens }: { itens: ItemLista[] }) {
           <View className="gap-2" style={{ width: LARGURA_CARTAO }}>
             <CardInfo midia={item} largura={LARGURA_CARTAO} />
             <View className="min-h-9 flex-row items-center justify-between gap-3 px-1">
-              {/* O atraso em cima e o "próximo em" numa linha só dela: a frase não parte no meio. */}
+              {/* O atraso em cima e o "próximo em" numa linha dele; com fonte grande ela quebra,
+                  sem reticências. */}
               <View className="flex-1">
                 <Text className={`text-legenda font-semibold ${atrasado ? 'text-marca-texto' : 'text-texto-suave'}`}>
                   {texto}
                 </Text>
                 {proximo ? (
-                  <Text numberOfLines={1} className="text-legenda font-semibold text-texto-suave">
+                  <Text className="text-legenda font-semibold text-texto-suave">
                     {proximo}
                   </Text>
                 ) : null}

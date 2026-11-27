@@ -135,6 +135,29 @@ describe('Explorar', () => {
     expect(await screen.findByText('Nenhuma Mídia encontrada para "zzz".')).toBeOnTheScreen();
   });
 
+  it('com busca, escolher a ordem padrão manda a ordem no lugar da relevância', async () => {
+    const api = simularFetch({
+      'GET /midias?tipo=anime&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /generos?tipo=anime': generos(),
+      'GET /midias?tipo=anime&busca=fri&pagina=1&por_pagina=24': pagina([frieren]),
+      'GET /midias?tipo=anime&ordem=nota_media&busca=fri&pagina=1&por_pagina=24': pagina([frieren]),
+    });
+    await abrirExplorar();
+    await screen.findByRole('link', { name: 'Sousou no Frieren, Anime' });
+    await userEvent.setup().type(screen.getByLabelText('Buscar por título'), 'fri');
+    await waitFor(() => expect(api.para('GET /midias?tipo=anime&busca=fri&pagina=1&por_pagina=24')).toHaveLength(1));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    // Sem ordem escolhida, a busca vai por relevância: nenhuma ordem aparece marcada.
+    expect(screen.getByRole('radio', { name: 'Nota', checked: false })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Nota' }));
+
+    expect(screen.getByRole('radio', { name: 'Nota', checked: true })).toBeOnTheScreen();
+    await waitFor(() =>
+      expect(api.para('GET /midias?tipo=anime&ordem=nota_media&busca=fri&pagina=1&por_pagina=24')).toHaveLength(1),
+    );
+  });
+
   it('erro do servidor mostra o aviso e "Tentar de novo" recarrega', async () => {
     let falhar = true;
     simularFetch({

@@ -1,7 +1,7 @@
 """
 Título de uma Mídia em SQL (CONTEXT.md: Título): a regra num lugar só para o backend.
 
-O nome mostrado é o inglês, senão o romanizado, senão o original; título vazio conta como
+O título exibido é o inglês, senão o romanizado, senão o original; título vazio conta como
 ausente. É a mesma ordem do `tituloDaMidia` do `dominio/` (web e app). Push, Notificações,
 moderação, Vínculos, Relações e as ordens alfabéticas usam `titulo_exibido`; a busca do
 Catálogo procura nos três (`COLUNAS_TITULO`) com `sem_caixa_nem_acento`.
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import unicodedata
 
-#: Os títulos de uma Mídia em `midias`, na ordem em que um vira o mostrado.
+#: Os títulos de uma Mídia em `midias`, na ordem em que um vira o exibido.
 COLUNAS_TITULO = ('titulo_ingles', 'titulo_romaji', 'titulo_original')
 
 # Letras com acento ou mácron (o romaji usa ō, ū) e a letra sem eles, maiúsculas e minúsculas:
@@ -20,7 +20,7 @@ _SEM_ACENTO = ''.join(unicodedata.normalize('NFD', c)[0].lower() for c in _COM_A
 
 
 def titulo_exibido(midia: str = 'm') -> str:
-    """SQL do Título mostrado da Mídia de apelido `midia`; NULL só se ela não existe (LEFT JOIN)."""
+    """SQL do título exibido da Mídia de apelido `midia`; NULL só se ela não existe (LEFT JOIN)."""
     *preferidos, original = COLUNAS_TITULO
     return 'COALESCE(' + ', '.join(f"NULLIF({midia}.{c}, '')" for c in preferidos) + f', {midia}.{original})'
 

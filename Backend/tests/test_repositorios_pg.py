@@ -164,14 +164,28 @@ def test_generos_casam_o_tipo_inteiro_e_populares_e_distribuicao_rodam(pg):
     assert catalogo.distribuicao(anime) == [{'status_consumo': 'assistindo', 'total': 1}]
 
 
+def test_populares_trazem_os_tres_titulos(pg):
+    # Usuários bastantes para a Mídia entrar entre as 20 mais populares de anime.
+    id_midia = _midia(
+        pg, 'anime', titulo_ingles='Fullmetal Alchemist: Brotherhood', titulo_romaji='Hagane no Renkinjutsushi',
+    )
+    for _ in range(30):
+        ItensLista().criar_item(_usuario(pg), id_midia, {'status_consumo': 'assistindo'})
+
+    [popular] = [m for m in Catalogo().populares('anime') if m['id_midia'] == id_midia]
+
+    assert popular['titulo_ingles'] == 'Fullmetal Alchemist: Brotherhood'
+    assert popular['titulo_romaji'] == 'Hagane no Renkinjutsushi'
+
+
 def test_lista_em_ordem_alfabetica_do_titulo_exibido(pg):
-    """Título exibido = português, senão original; sem caixa; editar não muda a posição (ticket 28)."""
+    """Título exibido = romanizado (jogo: o nome), senão original; sem caixa; editar não muda a posição."""
     usuario = _usuario(pg)
     itens = ItensLista()
     titulos = [('banana', 'Z'), (None, 'Celeste'), ('', 'Akira'), ('Banana', 'A')]
     ids = {}
-    for portugues, original in titulos:
-        id_midia = _midia(pg, 'jogo', titulo_original=original, titulo_romaji=portugues)
+    for romaji, original in titulos:
+        id_midia = _midia(pg, 'jogo', titulo_original=original, titulo_romaji=romaji)
         ids[original] = itens.criar_item(usuario, id_midia, {'status_consumo': 'jogando'})
 
     ordem = [i['titulo_romaji'] or i['titulo_original'] for i in itens.listar(usuario)]

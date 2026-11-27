@@ -61,31 +61,29 @@ export default function Explorar() {
   // Gênero vale só para o Tipo em que foi escolhido: trocar Tipo ou Recorte o limpa.
   const [genero, setGenero] = useState<{ tipo: TipoMidia; nome: string } | null>(null);
   const nomeGenero = genero?.tipo === tipo ? genero.nome : null;
-  const [ordem, setOrdem] = useState<OrdemCatalogo>(ORDEM_PADRAO);
+  // null: o Usuário não escolheu ordem. A escolhida, mesmo a padrão, vai na consulta.
+  const [ordem, setOrdem] = useState<OrdemCatalogo | null>(null);
   const [texto, setTexto] = useState('');
   const termo = useValorAtrasado(texto.trim(), ATRASO_BUSCA_MS);
   const busca = termo.length >= MINIMO_BUSCA ? termo : '';
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const generos = useGeneros(tipo);
-  // A ordem padrão não vai na consulta: com busca, a API ordena por relevância.
-  const resultados = useBuscaMidias({
-    tipo,
-    ordem: ordem === ORDEM_PADRAO ? undefined : ordem,
-    genero: nomeGenero,
-    busca,
-  });
+  // Sem ordem escolhida, a ordem não vai na consulta: com busca, a API ordena por relevância.
+  const resultados = useBuscaMidias({ tipo, ordem: ordem ?? undefined, genero: nomeGenero, busca });
+  // A ordem marcada no sheet: a escolhida; sem ela, a padrão, ou nenhuma numa busca (relevância).
+  const ordemMarcada = ordem ?? (busca ? null : ORDEM_PADRAO);
   const cabecalho = useCabecalhoQueEsconde();
   const { mostrar } = cabecalho;
 
   // Filtros ou busca novos trazem outra lista, que começa do topo: o cabeçalho volta.
   useEffect(mostrar, [mostrar, tipo, nomeGenero, ordem, busca]);
 
-  const ativos = (tipo !== tipos[0] ? 1 : 0) + (nomeGenero ? 1 : 0) + (ordem !== ORDEM_PADRAO ? 1 : 0);
+  const ativos = (tipo !== tipos[0] ? 1 : 0) + (nomeGenero ? 1 : 0) + (ordem ? 1 : 0);
   const limpar = () => {
     setTipoEscolhido(tipos[0]);
     setGenero(null);
-    setOrdem(ORDEM_PADRAO);
+    setOrdem(null);
   };
 
   let conteudo: React.ReactNode;
@@ -184,7 +182,7 @@ export default function Explorar() {
           {generos.isError && !generos.data ? (
             <FalhaParcial erro={generos.error} tentarDeNovo={() => generos.refetch()} />
           ) : null}
-          <GrupoFiltro rotulo={textos.ordem} opcoes={ORDENS} valor={ordem} escolher={setOrdem} />
+          <GrupoFiltro rotulo={textos.ordem} opcoes={ORDENS} valor={ordemMarcada} escolher={setOrdem} />
         </SheetFiltros>
       ) : null}
     </ConteudoRecorte>
