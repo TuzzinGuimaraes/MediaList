@@ -243,7 +243,8 @@ describe('Início: Para assistir agora', () => {
 
   const dandadan = emExibicao('ANI-10', 'Dandadan', { episodios_lancados: 7 });
   const apothecary = emExibicao('ANI-11', 'Apothecary', { episodios_lancados: 4 });
-  const emDia = emExibicao('ANI-12', 'Em Dia', { episodios_lancados: 3, proximo_episodio_em: daquiA(49 * HORA) });
+  // Os 30 s de folga seguram o minuto da contagem enquanto o teste roda.
+  const emDia = emExibicao('ANI-12', 'Em Dia', { episodios_lancados: 3, proximo_episodio_em: daquiA(49 * HORA + 30_000) });
   const finalizado = midia('ANI-13', 'Finalizado', { status_anime: 'finalizado', episodios_lancados: 12, numero_episodios: 12 });
 
   const cartoesDaFaixa = () =>
@@ -257,7 +258,7 @@ describe('Início: Para assistir agora', () => {
         emAlta: [frieren],
         lista: [
           item(apothecary, { progresso_atual: 3 }),
-          item(dandadan, { progresso_atual: 4 }),
+          item({ ...dandadan, proximo_episodio_em: daquiA(4 * HORA + 10 * 60_000 + 30_000) }, { progresso_atual: 4 }),
           item(emDia, { progresso_atual: 3 }),
           item(finalizado, { progresso_atual: 5 }),
         ],
@@ -272,9 +273,9 @@ describe('Início: Para assistir agora', () => {
       expect.stringContaining('Em Dia'),
     ]);
     const faixa = screen.getByRole('region', { name: 'Para assistir agora' });
-    expect(within(faixa).getByText('3 episódios atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('3 episódios atrás · próximo em 4 h 10 min')).toBeInTheDocument();
     expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
-    expect(within(faixa).getByText('próximo em 2 d')).toBeInTheDocument();
+    expect(within(faixa).getByText('próximo em 2 d 1 h 0 min')).toBeInTheDocument();
     expect(within(faixa).queryByText(/Finalizado/)).not.toBeInTheDocument();
     expect(titulosDe('Continuar')).toContainEqual(expect.stringContaining('Finalizado'));
   });
@@ -304,7 +305,7 @@ describe('Início: Para assistir agora', () => {
   });
 
   it('+1 grava o Progresso na hora; ao alcançar o último lançado, o cartão sai dos atrasados', async () => {
-    const quase = emExibicao('ANI-14', 'Quase', { episodios_lancados: 5, proximo_episodio_em: daquiA(3 * HORA + 60_000) });
+    const quase = emExibicao('ANI-14', 'Quase', { episodios_lancados: 5, proximo_episodio_em: daquiA(3 * HORA + 30_000) });
     let progresso = 4;
     const { user, api } = await abrirLogado('/', {
       rotas: {
@@ -318,10 +319,10 @@ describe('Início: Para assistir agora', () => {
     });
 
     const faixa = await screen.findByRole('region', { name: 'Para assistir agora' });
-    expect(within(faixa).getByText('1 episódio atrás')).toBeInTheDocument();
+    expect(within(faixa).getByText('1 episódio atrás · próximo em 3 h 0 min')).toBeInTheDocument();
     await user.click(within(faixa).getByRole('button', { name: '+1 episódio: Quase' }));
 
-    expect(await within(faixa).findByText('próximo em 3 h')).toBeInTheDocument();
+    expect(await within(faixa).findByText('próximo em 3 h 0 min')).toBeInTheDocument();
     expect(api.para('PUT /lista/L-ANI-14/progresso')[0]?.corpo).toEqual({ progresso_atual: 5 });
     expect(within(faixa).queryByRole('button', { name: '+1 episódio: Quase' })).not.toBeInTheDocument();
   });

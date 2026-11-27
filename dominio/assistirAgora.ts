@@ -43,18 +43,33 @@ export function textoDoAtraso(atraso: number): string {
 }
 
 /**
- * Contagem até o próximo episódio: minutos abaixo de 1 h, horas abaixo de 1 d, dias acima,
- * sempre arredondando para baixo (no mínimo 1 min). Data já passada é episódio que saiu e o job
- * ainda não viu. Sem data legível, null.
+ * Contagem até o próximo episódio em dias, horas e minutos, arredondando para baixo: as unidades
+ * zero à esquerda somem ("4 h 10 min"), as do meio ficam ("2 d 0 h 5 min"). Abaixo de 1 min,
+ * "em instantes". Data já passada é episódio que saiu e o job ainda não viu. Sem data legível, null.
  */
 export function textoDoProximo(proximoEm: string | null, agora: Date): string | null {
   const quando = instante(proximoEm);
   if (quando === null) return null;
   const falta = quando - agora.getTime();
   if (falta <= 0) return 'saindo agora';
-  if (falta < HORA) return `próximo em ${Math.max(1, Math.floor(falta / MINUTO))} min`;
-  if (falta < DIA) return `próximo em ${Math.floor(falta / HORA)} h`;
-  return `próximo em ${Math.floor(falta / DIA)} d`;
+  if (falta < MINUTO) return 'em instantes';
+  const partes = [
+    [Math.floor(falta / DIA), 'd'],
+    [Math.floor((falta % DIA) / HORA), 'h'],
+    [Math.floor((falta % HORA) / MINUTO), 'min'],
+  ] as const;
+  const primeira = partes.findIndex(([n]) => n > 0);
+  return `próximo em ${partes
+    .slice(primeira)
+    .map(([n, unidade]) => `${n} ${unidade}`)
+    .join(' ')}`;
+}
+
+/** Atrasado: o atraso e, com o próximo episódio no futuro, a contagem até ele. */
+function textoDoAtrasado(atraso: number, proximoEm: string | null, agora: Date): string {
+  const quando = instante(proximoEm);
+  const proximo = quando !== null && quando > agora.getTime() ? textoDoProximo(proximoEm, agora) : null;
+  return proximo ? `${textoDoAtraso(atraso)} · ${proximo}` : textoDoAtraso(atraso);
 }
 
 /**
@@ -65,7 +80,10 @@ export function paraAssistirAgora<T extends ItemAssistirAgora>(itens: readonly T
   const cartoes = itens.flatMap((item) => {
     const atraso = atrasoDe(item);
     if (atraso === null) return [];
-    const texto = atraso > 0 ? textoDoAtraso(atraso) : (textoDoProximo(item.proximo_episodio_em, agora) ?? 'Em dia');
+    const texto =
+      atraso > 0
+        ? textoDoAtrasado(atraso, item.proximo_episodio_em, agora)
+        : (textoDoProximo(item.proximo_episodio_em, agora) ?? 'Em dia');
     return [{ item, atraso, texto, proximo: instante(item.proximo_episodio_em) ?? Number.POSITIVE_INFINITY }];
   });
   const ordemDoProximo = (a: { proximo: number }, b: { proximo: number }) =>
