@@ -1,5 +1,5 @@
 // Consultas e escritas do detalhe da Mídia (chaves em api/chaves.ts): o detalhe e a
-// atividade sob ['midias', id], e a 1ª página das Avaliações e as notas sob ['avaliacoes', id]. O Item da Lista vem de `useItemDaMidia` (paginas/lista/api.ts, chave ['lista']).
+// atividade sob ['midias', id], as Relações sob ['relacoes', id], e a 1ª página das Avaliações e as notas sob ['avaliacoes', id]. O Item da Lista vem de `useItemDaMidia` (paginas/lista/api.ts, chave ['lista']).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { DadosAvaliacao } from '@dominio/tipos';
@@ -26,6 +26,16 @@ export function useAtividade(id: string) {
   return useQuery({
     queryKey: chaves.midias.atividade(id),
     queryFn: () => exigir(api.GET('/api/midias/{id_midia}/atividade', caminho(id))),
+  });
+}
+
+/** As Relações da Mídia, já nos dois sentidos e com o Status do Usuário em cada obra. */
+export function useRelacoes(id: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: chaves.relacoes.daMidia(id),
+    queryFn: () => exigir(api.GET('/api/midias/{id_midia}/relacoes', caminho(id))),
+    select: (r) => r.relacoes,
   });
 }
 

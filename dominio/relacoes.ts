@@ -34,10 +34,8 @@ export const LIMITE_DE_JOGOS = 12;
 export const TEXTOS_DAS_RELACOES = {
   secao: 'Relações',
   sugestao: 'Continue com a Sequência',
-  planejado: 'Planejado',
   listaCompleta: 'Todos os jogos da série',
   mais: (n: number) => `e mais ${n}`,
-  planejar: (titulo: string) => `Pôr ${titulo} em Planejado`,
 } as const;
 
 /** O link externo do cartão fora do Catálogo: só `https://` (a API já filtra; aqui não se confia só nela). */

@@ -219,8 +219,7 @@ describe('sugestoesDeSequencia', () => {
 
 
 describe('TEXTOS_DAS_RELACOES', () => {
-  it('"e mais N" e o rótulo do botão de cada Sequência', () => {
+  it('"e mais N"', () => {
     expect(TEXTOS_DAS_RELACOES.mais(29)).toBe('e mais 29');
-    expect(TEXTOS_DAS_RELACOES.planejar('Frieren 2')).toBe('Pôr Frieren 2 em Planejado');
   });
 });
