@@ -1,10 +1,14 @@
 import {
+  consultaDoSeletor,
   descricaoAcessivel,
   descricaoDoDestaque,
   eLimiteDeDestaques,
   eRara,
+  FILTROS_INICIAIS_DO_SELETOR,
   mostraDestaquesNoPerfil,
   nomeDaConquista,
+  ORDENS_DO_SELETOR,
+  proximaPaginaDoSeletor,
   sugereMarcarPlatinado,
   TEXTOS_DAS_CONQUISTAS,
   textoDaRaridade,
@@ -170,5 +174,35 @@ describe('descricaoDoDestaque', () => {
       jogo: 'Hades',
     };
     expect(descricaoDoDestaque(destaque)).toBe('O Louco, Hades, obtida em 10/12/2020, 3,2% dos jogadores, rara');
+  });
+});
+
+
+describe('seletor de destaques', () => {
+  it('monta a query só com os filtros escolhidos', () => {
+    expect(consultaDoSeletor(FILTROS_INICIAIS_DO_SELETOR, 1)).toEqual({ ordem: 'raridade', pagina: 1 });
+    expect(
+      consultaDoSeletor({ busca: '  ação ', steamAppid: 620, soDestacadas: true, ordem: 'data' }, 3),
+    ).toEqual({ busca: 'ação', steam_appid: 620, so_destacadas: true, ordem: 'data', pagina: 3 });
+    expect(consultaDoSeletor({ ...FILTROS_INICIAIS_DO_SELETOR, busca: '   ' }, 1)).toEqual({
+      ordem: 'raridade',
+      pagina: 1,
+    });
+  });
+
+  it('a próxima página existe enquanto as lidas não somam o total', () => {
+    expect(proximaPaginaDoSeletor({ pagina: 1, por_pagina: 50, total: 120 })).toBe(2);
+    expect(proximaPaginaDoSeletor({ pagina: 3, por_pagina: 50, total: 120 })).toBeUndefined();
+    expect(proximaPaginaDoSeletor({ pagina: 1, por_pagina: 50, total: 50 })).toBeUndefined();
+    expect(proximaPaginaDoSeletor({ pagina: 1, por_pagina: 50, total: 0 })).toBeUndefined();
+  });
+
+  it('tem as duas ordens, raridade primeiro, e os textos do seletor', () => {
+    expect(ORDENS_DO_SELETOR.map((o) => o.valor)).toEqual(['raridade', 'data']);
+    expect(TEXTOS_DAS_CONQUISTAS.escolherDestaques).toBe('Escolher destaques');
+    expect(TEXTOS_DAS_CONQUISTAS.todosOsJogos).toBe('Todos os jogos');
+    expect(TEXTOS_DAS_CONQUISTAS.soDestacadas).toBe('Só as destacadas');
+    expect(TEXTOS_DAS_CONQUISTAS.carregarMais).toBe('Carregar mais');
+    expect(TEXTOS_DAS_CONQUISTAS.nenhumaNoSeletor).toMatch(/Nenhuma conquista/);
   });
 });
