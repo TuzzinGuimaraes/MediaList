@@ -40,6 +40,7 @@ def _para_o_detalhe(conquista: dict[str, Any]) -> dict[str, Any]:
     colorido_e_cinza = (conquista['icone'], conquista['icone_cinza'])
     icones = colorido_e_cinza if obtida else colorido_e_cinza[::-1]
     return {
+        'steam_appid': conquista['steam_appid'],
         'codigo': conquista['codigo'],
         'nome': None if escondida else conquista['nome'],
         'descricao': None if escondida else conquista['descricao'],

@@ -89,7 +89,7 @@ def gravar_do_item(db, id_lista: str, appid: int, total: int, horas: int,
 
 
 def do_item_do_usuario(id_usuario: str, id_lista: str) -> list[dict[str, Any]] | None:
-    """As conquistas do Item (as de `do_item` mais `destacada`), ou None se o Item não é do Usuário.
+    """As conquistas do Item (as de `do_item` mais `steam_appid` e `destacada`), ou None se o Item não é do Usuário.
 
     O Item sem leitura, ou de jogo sem conquistas, dá a lista vazia.
     """
@@ -98,8 +98,8 @@ def do_item_do_usuario(id_usuario: str, id_lista: str) -> list[dict[str, Any]] |
         return None
     return banco.consultar(
         """
-        SELECT c.codigo, c.nome, c.descricao, c.icone, c.icone_cinza, c.oculta, c.raridade, co.obtida_em,
-               (co.codigo IS NOT NULL) AS obtida, (cd.codigo IS NOT NULL) AS destacada
+        SELECT c.steam_appid, c.codigo, c.nome, c.descricao, c.icone, c.icone_cinza, c.oculta, c.raridade,
+               co.obtida_em, (co.codigo IS NOT NULL) AS obtida, (cd.codigo IS NOT NULL) AS destacada
         FROM conquistas_itens ci
         JOIN conquistas c ON c.steam_appid = ci.steam_appid
         LEFT JOIN conquistas_obtidas co ON co.id_lista = ci.id_lista AND co.codigo = c.codigo

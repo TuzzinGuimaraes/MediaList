@@ -1194,6 +1194,11 @@ export interface components {
              * @description % dos jogadores que a têm
              */
             raridade: number | null;
+            /**
+             * Steam Appid
+             * @description O jogo da conquista na Steam: com o código, diz qual destacar no Perfil
+             */
+            steam_appid: number;
         };
         /**
          * ConquistaEmDestaque

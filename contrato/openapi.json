@@ -510,9 +510,15 @@
             ],
             "description": "% dos jogadores que a têm",
             "title": "Raridade"
+          },
+          "steam_appid": {
+            "description": "O jogo da conquista na Steam: com o código, diz qual destacar no Perfil",
+            "title": "Steam Appid",
+            "type": "integer"
           }
         },
         "required": [
+          "steam_appid",
           "codigo",
           "nome",
           "descricao",
