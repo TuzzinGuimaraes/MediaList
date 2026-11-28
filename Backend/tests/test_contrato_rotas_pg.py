@@ -45,6 +45,7 @@ CHAVES_ITEM = {
     'total_usuarios',
     'comentario', 'data_adicao', 'data_atualizacao', 'data_conclusao', 'data_inicio', 'favorito', 'id_lista',
     'nota_usuario', 'privado', 'progresso_atual', 'progresso_total', 'status_consumo', 'total_rewatches',
+    'conquistas',
 }
 #: A Mídia em GET /midias, no detalhe e em trending (contrato-api 03): sem os apelidos legados
 #: (`id_anime`, `codigo_anime`, `*_trailer_url`, `*_anilist_id`, `manga_artista`), sem `codigo_midia`,

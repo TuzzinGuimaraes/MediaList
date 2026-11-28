@@ -53,6 +53,10 @@ const rotasDoPerfil = (extra: Record<string, Parameters<typeof simularFetch>[0][
     corpo: { estatisticas: [], resumo: { total_midias: 0, concluidos: 0, em_andamento: 0, favoritos: 0 } },
   },
   'GET /lista': { status: 200, corpo: { lista: [] } },
+  'GET /usuario/conquistas/destaques': {
+    status: 200,
+    corpo: { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } },
+  },
   'GET /preferencias': {
     status: 200,
     corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias: true } },

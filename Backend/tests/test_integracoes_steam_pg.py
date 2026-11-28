@@ -2,7 +2,8 @@
 
 `POST /integracoes/steam/sincronizar` (orçamento, pendentes, já casados primeiro), casamento por
 `steam_appids` (positivo e negativo, negativo retentado depois de 30 dias), regras da Q111 e o
-job diário (`integracoes.job_steam`) sem orçamento e sem vazar as chaves. Sem TEST_DATABASE_URL, pula.
+job diário (`integracoes.job_steam`) sem orçamento e sem vazar as chaves. As conquistas ficam em
+`test_conquistas_steam_pg.py`. Sem TEST_DATABASE_URL, pula.
 """
 import sys
 

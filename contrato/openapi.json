@@ -409,6 +409,7 @@
           "origem_indisponivel",
           "plataforma_indisponivel",
           "lista_grande_demais",
+          "limite_de_destaques",
           "erro_interno"
         ],
         "title": "CodigoErro",
@@ -428,6 +429,303 @@
           "identificador"
         ],
         "title": "ConexaoIntegracao",
+        "type": "object"
+      },
+      "ConquistaDoItem": {
+        "description": "Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida ou sem descrição na Steam",
+            "title": "Descricao"
+          },
+          "destacada": {
+            "description": "Está nos destaques do Perfil",
+            "title": "Destacada",
+            "type": "boolean"
+          },
+          "icone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O colorido na obtida e o cinza na que falta",
+            "title": "Icone"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida",
+            "title": "Nome"
+          },
+          "obtida": {
+            "title": "Obtida",
+            "type": "boolean"
+          },
+          "obtida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtida Em"
+          },
+          "oculta": {
+            "title": "Oculta",
+            "type": "boolean"
+          },
+          "raridade": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "% dos jogadores que a têm",
+            "title": "Raridade"
+          },
+          "steam_appid": {
+            "description": "O jogo da conquista na Steam: com o código, diz qual destacar no Perfil",
+            "title": "Steam Appid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steam_appid",
+          "codigo",
+          "nome",
+          "descricao",
+          "icone",
+          "oculta",
+          "raridade",
+          "obtida",
+          "obtida_em",
+          "destacada"
+        ],
+        "title": "ConquistaDoItem",
+        "type": "object"
+      },
+      "ConquistaDoSeletor": {
+        "description": "Uma conquista obtida do Usuário no seletor (sempre `obtida`), com o Item e o jogo dela.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida ou sem descrição na Steam",
+            "title": "Descricao"
+          },
+          "destacada": {
+            "description": "Está nos destaques do Perfil",
+            "title": "Destacada",
+            "type": "boolean"
+          },
+          "icone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O colorido na obtida e o cinza na que falta",
+            "title": "Icone"
+          },
+          "id_lista": {
+            "title": "Id Lista",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "jogo": {
+            "description": "Título exibido do jogo",
+            "title": "Jogo",
+            "type": "string"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida",
+            "title": "Nome"
+          },
+          "obtida": {
+            "title": "Obtida",
+            "type": "boolean"
+          },
+          "obtida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtida Em"
+          },
+          "oculta": {
+            "title": "Oculta",
+            "type": "boolean"
+          },
+          "raridade": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "% dos jogadores que a têm",
+            "title": "Raridade"
+          },
+          "steam_appid": {
+            "description": "O jogo da conquista na Steam: com o código, diz qual destacar no Perfil",
+            "title": "Steam Appid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steam_appid",
+          "codigo",
+          "nome",
+          "descricao",
+          "icone",
+          "oculta",
+          "raridade",
+          "obtida",
+          "obtida_em",
+          "destacada",
+          "id_lista",
+          "id_midia",
+          "jogo"
+        ],
+        "title": "ConquistaDoSeletor",
+        "type": "object"
+      },
+      "ConquistaEmDestaque": {
+        "description": "Uma conquista obtida no Perfil (`repositories.destaques`), com o jogo dela.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "icone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O ícone colorido",
+            "title": "Icone"
+          },
+          "id_lista": {
+            "title": "Id Lista",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "jogo": {
+            "description": "Título exibido do jogo",
+            "title": "Jogo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "obtida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtida Em"
+          },
+          "raridade": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "% dos jogadores que a têm",
+            "title": "Raridade"
+          },
+          "steam_appid": {
+            "title": "Steam Appid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steam_appid",
+          "codigo",
+          "nome",
+          "icone",
+          "raridade",
+          "obtida_em",
+          "id_lista",
+          "id_midia",
+          "jogo"
+        ],
+        "title": "ConquistaEmDestaque",
         "type": "object"
       },
       "ConsultaCalendario": {
@@ -451,6 +749,68 @@
           "ate"
         ],
         "title": "ConsultaCalendario",
+        "type": "object"
+      },
+      "ConsultaConquistas": {
+        "description": "`GET /usuario/conquistas`: o seletor de destaques do Perfil.",
+        "properties": {
+          "busca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "No nome da conquista, sem caixa nem acento",
+            "title": "Busca"
+          },
+          "ordem": {
+            "default": "raridade",
+            "description": "`raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro",
+            "enum": [
+              "raridade",
+              "data"
+            ],
+            "title": "Ordem",
+            "type": "string"
+          },
+          "pagina": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "default": 50,
+            "description": "Acima de 50 vira 50",
+            "minimum": 1,
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "so_destacadas": {
+            "default": false,
+            "description": "Só as que estão nos destaques do Perfil",
+            "title": "So Destacadas",
+            "type": "boolean"
+          },
+          "steam_appid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Só as desse jogo",
+            "title": "Steam Appid"
+          }
+        },
+        "title": "ConsultaConquistas",
         "type": "object"
       },
       "ConsultaFacetas": {
@@ -2282,6 +2642,18 @@
             ],
             "title": "Comentario"
           },
+          "conquistas": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResumoConquistas"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Conquistas da Steam do jogo; nulo sem leitura ou num jogo sem conquistas"
+          },
           "data_adicao": {
             "format": "date-time",
             "title": "Data Adicao",
@@ -2832,6 +3204,36 @@
           "data_atualizacao"
         ],
         "title": "ItemLista",
+        "type": "object"
+      },
+      "JogoComConquistas": {
+        "properties": {
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "jogo": {
+            "description": "Título exibido do jogo",
+            "title": "Jogo",
+            "type": "string"
+          },
+          "obtidas": {
+            "description": "Conquistas obtidas no jogo",
+            "title": "Obtidas",
+            "type": "integer"
+          },
+          "steam_appid": {
+            "title": "Steam Appid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steam_appid",
+          "id_midia",
+          "jogo",
+          "obtidas"
+        ],
+        "title": "JogoComConquistas",
         "type": "object"
       },
       "Mensagem": {
@@ -4688,6 +5090,38 @@
         "title": "Pagina[AvaliacaoDaMidia]",
         "type": "object"
       },
+      "PaginaConquistaDoSeletor": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ConquistaDoSeletor"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "por_pagina": {
+            "title": "Por Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "por_pagina",
+          "total"
+        ],
+        "title": "Pagina[ConquistaDoSeletor]",
+        "type": "object"
+      },
       "PaginaMidia": {
         "properties": {
           "itens": {
@@ -5250,6 +5684,51 @@
         "title": "RespostaCalendario",
         "type": "object"
       },
+      "RespostaConquistasDoItem": {
+        "description": "As conquistas do Item: obtidas da mais recente para a mais antiga, depois as que faltam da mais comum\npara a mais rara. Vazia sem leitura ou num jogo sem conquistas.",
+        "properties": {
+          "conquistas": {
+            "items": {
+              "$ref": "#/components/schemas/ConquistaDoItem"
+            },
+            "title": "Conquistas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "conquistas"
+        ],
+        "title": "RespostaConquistasDoItem",
+        "type": "object"
+      },
+      "RespostaDestaques": {
+        "description": "Os destaques do Perfil, da mais rara para a mais comum; sem nenhuma obtida, vazio e total zero.",
+        "properties": {
+          "automaticos": {
+            "description": "O Usuário não escolheu: são as obtidas mais raras",
+            "title": "Automaticos",
+            "type": "boolean"
+          },
+          "destaques": {
+            "description": "Até 6",
+            "items": {
+              "$ref": "#/components/schemas/ConquistaEmDestaque"
+            },
+            "title": "Destaques",
+            "type": "array"
+          },
+          "total": {
+            "$ref": "#/components/schemas/TotalDeConquistas"
+          }
+        },
+        "required": [
+          "destaques",
+          "automaticos",
+          "total"
+        ],
+        "title": "RespostaDestaques",
+        "type": "object"
+      },
       "RespostaDistribuicao": {
         "properties": {
           "distribuicao": {
@@ -5354,6 +5833,23 @@
           "integracoes"
         ],
         "title": "RespostaIntegracoes",
+        "type": "object"
+      },
+      "RespostaJogosComConquistas": {
+        "description": "Os jogos com ao menos uma conquista obtida, pelo título, para o filtro do seletor.",
+        "properties": {
+          "jogos": {
+            "items": {
+              "$ref": "#/components/schemas/JogoComConquistas"
+            },
+            "title": "Jogos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jogos"
+        ],
+        "title": "RespostaJogosComConquistas",
         "type": "object"
       },
       "RespostaLista": {
@@ -5670,6 +6166,25 @@
           "pendentes"
         ],
         "title": "ResultadoSincronizacao",
+        "type": "object"
+      },
+      "ResumoConquistas": {
+        "description": "As conquistas do jogo na Steam (última leitura da sincronização).",
+        "properties": {
+          "obtidas": {
+            "title": "Obtidas",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "obtidas",
+          "total"
+        ],
+        "title": "ResumoConquistas",
         "type": "object"
       },
       "ResumoEstatisticas": {
@@ -6361,6 +6876,26 @@
           "ano"
         ],
         "title": "Temporada",
+        "type": "object"
+      },
+      "TotalDeConquistas": {
+        "properties": {
+          "conquistas": {
+            "description": "Conquistas obtidas em todos os jogos",
+            "title": "Conquistas",
+            "type": "integer"
+          },
+          "jogos": {
+            "description": "Jogos com ao menos uma conquista obtida",
+            "title": "Jogos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conquistas",
+          "jogos"
+        ],
+        "title": "TotalDeConquistas",
         "type": "object"
       },
       "UsuarioAtual": {
@@ -9074,6 +9609,84 @@
           }
         ],
         "summary": "Gravar os campos enviados num Item.",
+        "tags": [
+          "lista"
+        ]
+      }
+    },
+    "/api/lista/{lista_id}/conquistas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_lista_{lista_id}_conquistas",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "lista_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaConquistasDoItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "As conquistas da Steam do jogo de um Item, para o Detalhe: só o dono do Item.",
         "tags": [
           "lista"
         ]
@@ -11834,6 +12447,508 @@
         "summary": "Sugestões para o Usuário: até 12 animes ou mangás do Catálogo, pelo gosto dele, com o motivo. Abaixo de 12, o Em alta do recorte completa a faixa.",
         "tags": [
           "sugestoes"
+        ]
+      }
+    },
+    "/api/usuario/conquistas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_usuario_conquistas",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Acima de 50 vira 50",
+            "in": "query",
+            "name": "por_pagina",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Acima de 50 vira 50",
+              "minimum": 1,
+              "title": "Por Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "No nome da conquista, sem caixa nem acento",
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "No nome da conquista, sem caixa nem acento",
+              "title": "Busca"
+            }
+          },
+          {
+            "description": "Só as desse jogo",
+            "in": "query",
+            "name": "steam_appid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Só as desse jogo",
+              "title": "Steam Appid"
+            }
+          },
+          {
+            "description": "Só as que estão nos destaques do Perfil",
+            "in": "query",
+            "name": "so_destacadas",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Só as que estão nos destaques do Perfil",
+              "title": "So Destacadas",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "`raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro",
+            "in": "query",
+            "name": "ordem",
+            "required": false,
+            "schema": {
+              "default": "raridade",
+              "description": "`raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro",
+              "enum": [
+                "raridade",
+                "data"
+              ],
+              "title": "Ordem",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaConquistaDoSeletor"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Seletor de destaques: uma página das conquistas obtidas do Usuário, com busca, jogo, só destacadas e ordem.",
+        "tags": [
+          "usuario"
+        ]
+      }
+    },
+    "/api/usuario/conquistas/destaques": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_usuario_conquistas_destaques",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDestaques"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Conquistas em destaque no Perfil: as escolhidas ou, sem escolha, as obtidas mais raras; e o total.",
+        "tags": [
+          "usuario"
+        ]
+      }
+    },
+    "/api/usuario/conquistas/destaques/{steam_appid}/{codigo}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "steam_appid",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "",
+            "in": "path",
+            "name": "codigo",
+            "required": true,
+            "schema": {
+              "format": "path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tirar uma conquista obtida dos destaques do Perfil.",
+        "tags": [
+          "usuario"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "steam_appid",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "",
+            "in": "path",
+            "name": "codigo",
+            "required": true,
+            "schema": {
+              "format": "path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Destacar no Perfil uma conquista obtida (appid do jogo e código da conquista); o sétimo responde 409.",
+        "tags": [
+          "usuario"
+        ]
+      }
+    },
+    "/api/usuario/conquistas/jogos": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_usuario_conquistas_jogos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaJogosComConquistas"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Os jogos com alguma conquista obtida, para o filtro do seletor de destaques.",
+        "tags": [
+          "usuario"
         ]
       }
     },

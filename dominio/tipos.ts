@@ -19,6 +19,24 @@ export type ConsultaMidias = Esquemas['ConsultaMidias'];
 /** Um Item de GET /lista: a parte da Mídia mais os campos do Item. */
 export type ItemLista = Esquemas['ItemLista'];
 
+/** O resumo das conquistas da Steam no Item ("34/50 conquistas"). */
+export type ResumoConquistas = Esquemas['ResumoConquistas'];
+
+/** Uma conquista de GET /lista/<id_lista>/conquistas (CONTEXT.md, Conquista). */
+export type ConquistaDoItem = Esquemas['ConquistaDoItem'];
+
+/** Uma conquista obtida nos destaques do Perfil (GET /usuario/conquistas/destaques). */
+export type ConquistaEmDestaque = Esquemas['ConquistaEmDestaque'];
+
+/** O total do Perfil: conquistas obtidas e jogos com alguma. */
+export type TotalDeConquistas = Esquemas['TotalDeConquistas'];
+
+/** A query do seletor de destaques (GET /usuario/conquistas). */
+export type ConsultaConquistas = Esquemas['ConsultaConquistas'];
+
+/** Uma conquista obtida no seletor de destaques: a do Item mais o Item e o jogo. */
+export type ConquistaDoSeletor = Esquemas['ConquistaDoSeletor'];
+
 /** Um episódio de GET /midias/calendario (exibido ou próximo), com o anime resumido. */
 export type EpisodioDoCalendario = Esquemas['EpisodioDoCalendario'];
 

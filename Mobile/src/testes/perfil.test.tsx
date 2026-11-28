@@ -1,6 +1,13 @@
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import type { RespostaEstatisticas, RespostaMe, RespostaPermissoes, RespostaPreferencias } from '../api/tipos';
+import type {
+  ConquistaEmDestaque,
+  RespostaDestaques,
+  RespostaEstatisticas,
+  RespostaMe,
+  RespostaPermissoes,
+  RespostaPreferencias,
+} from '../api/tipos';
 import { erro } from './contrato';
 import { loginOk, simularFetch } from './fetchSimulado';
 import { aba, entrarPeloLogin } from './sessao';
@@ -59,6 +66,27 @@ function preferencias(
   };
 }
 
+const semConquistas: RespostaDestaques = { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } };
+
+function destaques(corpo: RespostaDestaques): { status: 200; corpo: RespostaDestaques } {
+  return { status: 200, corpo };
+}
+
+function destaque(codigo: string, dados: Partial<ConquistaEmDestaque> = {}): ConquistaEmDestaque {
+  return {
+    steam_appid: 367520,
+    codigo,
+    nome: `Conquista ${codigo}`,
+    icone: `https://steamcdn-a.akamaihd.net/${codigo}.jpg`,
+    raridade: 50,
+    obtida_em: '2020-12-10T15:32:36Z',
+    id_lista: 'LST-J',
+    id_midia: 'MID-J',
+    jogo: 'Hollow Knight',
+    ...dados,
+  };
+}
+
 // No Jest o manifesto vem vazio; no APK e no Expo Go a versão vem do app.json.
 jest.mock('expo-constants', () => {
   const real = jest.requireActual('expo-constants').default;
@@ -87,6 +115,7 @@ describe('estatísticas no Perfil', () => {
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
   });
 
@@ -134,6 +163,7 @@ describe('estatísticas sem itens', () => {
       'GET /lista': { status: 200, corpo: { lista: [] } },
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
     await abrirPerfil();
 
@@ -154,6 +184,7 @@ describe('estatísticas com erro', () => {
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
     await abrirPerfil();
 
@@ -179,6 +210,7 @@ describe('versão do app no Perfil', () => {
       'GET /lista': lista,
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
   });
 
@@ -231,6 +263,7 @@ describe('Avisos no Perfil', () => {
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(avisar, avisarEpisodios),
       'PUT /preferencias': (req) => put(req.corpo),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
   }
 
@@ -285,5 +318,87 @@ describe('Avisos no Perfil', () => {
 
     expect(await screen.findByText('Erro ao salvar', {}, { timeout: 3000 })).toBeOnTheScreen();
     expect(screen.getByRole('switch', { name: 'Avisar sobre Notícias' })).not.toBeChecked();
+  });
+});
+
+describe('Conquistas em destaque no Perfil', () => {
+  function rotas(corpo: RespostaDestaques) {
+    return simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /auth/me': me,
+      'GET /usuario/permissoes': permissoes,
+      'GET /usuario/estatisticas': estatisticas,
+      'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques(corpo),
+    });
+  }
+
+  it('mostra cada destaque com nome, jogo, raridade e data, e o total', async () => {
+    rotas({
+      destaques: [destaque('Rara', { raridade: 3.24 }), destaque('Comum', { raridade: 71, jogo: 'Celeste' })],
+      automaticos: false,
+      total: { conquistas: 412, jogos: 37 },
+    });
+
+    await abrirPerfil();
+
+    expect(await screen.findByText('Conquistas em destaque')).toBeOnTheScreen();
+    expect(screen.getByText('412 conquistas em 37 jogos')).toBeOnTheScreen();
+    const rara = screen.getByLabelText('Conquista Rara, Hollow Knight, obtida em 10/12/2020, 3,2% dos jogadores, rara');
+    expect(within(rara).getByText('Hollow Knight')).toBeOnTheScreen();
+    expect(within(rara).getByText('3,2% dos jogadores')).toBeOnTheScreen();
+    expect(within(rara).getByText('Obtida em 10/12/2020')).toBeOnTheScreen();
+    expect(within(rara).getByText('Rara')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Conquista Comum, Celeste/)).toBeOnTheScreen();
+    expect(screen.queryByText(/mais raras/)).not.toBeOnTheScreen();
+  });
+
+  it('sem escolha, as automáticas vêm com a dica', async () => {
+    rotas({ destaques: [destaque('A')], automaticos: true, total: { conquistas: 1, jogos: 1 } });
+
+    await abrirPerfil();
+
+    expect(await screen.findByText('1 conquista em 1 jogo')).toBeOnTheScreen();
+    expect(screen.getByText(/Estas são as suas conquistas mais raras/)).toBeOnTheScreen();
+  });
+
+  it('"Escolher destaques" abre a tela do seletor', async () => {
+    const api = simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /auth/me': me,
+      'GET /usuario/permissoes': permissoes,
+      'GET /usuario/estatisticas': estatisticas,
+      'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques({
+        destaques: [destaque('A')],
+        automaticos: true,
+        total: { conquistas: 1, jogos: 1 },
+      }),
+      'GET /usuario/conquistas/jogos': { status: 200, corpo: { jogos: [] } },
+      'GET /usuario/conquistas?ordem=raridade&pagina=1': {
+        status: 200,
+        corpo: { itens: [], pagina: 1, por_pagina: 50, total: 0 },
+      },
+    });
+
+    await abrirPerfil();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escolher destaques' }));
+
+    expect(await screen.findByRole('header', { name: 'Escolher destaques' })).toBeOnTheScreen();
+    await waitFor(() => expect(api.para('GET /usuario/conquistas?ordem=raridade&pagina=1')).toHaveLength(1));
+  });
+
+  it('sem nenhuma conquista obtida, a seção some', async () => {
+    const api = rotas(semConquistas);
+
+    await abrirPerfil();
+
+    await screen.findByText('Ana Souza');
+    await waitFor(() => expect(api.para('GET /usuario/conquistas/destaques')).toHaveLength(1));
+    expect(screen.queryByText('Conquistas em destaque')).not.toBeOnTheScreen();
   });
 });

@@ -6,11 +6,32 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from banco import consultar, consultar_um
-from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, contrato, resposta_erro
+from contrato import (
+    AUTENTICADO,
+    ERROS_AUTENTICADA,
+    CodigoErro,
+    Erro,
+    Mensagem,
+    Pagina,
+    contrato,
+    deslocamento,
+    montar_pagina,
+    resposta_erro,
+)
 from decorators import nivel_de_acesso
+from dominio.conquistas import LIMITE_ATINGIDO, LIMITE_DE_DESTAQUES, NAO_OBTIDA, linha_do_seletor
+from repositories import destaques
 from repositories.rotulos import sql_rotulos
 from schemas.estado_consumo import CONCLUIDO, EM_PROGRESSO, PLATINADO
-from schemas.usuario import RespostaEstatisticas, RespostaPerfil, RespostaPermissoes
+from schemas.usuario import (
+    ConquistaDoSeletor,
+    ConsultaConquistas,
+    RespostaDestaques,
+    RespostaEstatisticas,
+    RespostaJogosComConquistas,
+    RespostaPerfil,
+    RespostaPermissoes,
+)
 
 usuario_bp = Blueprint('usuario', __name__)
 
@@ -75,3 +96,69 @@ def obter_estatisticas():
         'favoritos': sum(item.get('favoritos') or 0 for item in result),
     }
     return {'estatisticas': result, 'resumo': resumo}
+
+
+ERRO_NAO_OBTIDA = 'Conquista não encontrada entre as obtidas'
+ERRO_LIMITE = f'O Perfil já tem {LIMITE_DE_DESTAQUES} destaques: tire um antes de pôr outro'
+
+
+@usuario_bp.route('/conquistas', methods=['GET'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=Pagina[ConquistaDoSeletor], **ERROS_AUTENTICADA), tags=['usuario'], security=AUTENTICADO,
+)
+def listar_conquistas_obtidas(query: ConsultaConquistas):
+    """Seletor de destaques: uma página das conquistas obtidas do Usuário, com busca, jogo, só destacadas e ordem."""
+    linhas, total = destaques.do_seletor(
+        get_jwt_identity(), busca=query.busca, steam_appid=query.steam_appid, so_destacadas=query.so_destacadas,
+        ordem=query.ordem, limite=query.por_pagina, deslocamento=deslocamento(query),
+    )
+    return montar_pagina([linha_do_seletor(linha) for linha in linhas], total, query.pagina, query.por_pagina)
+
+
+@usuario_bp.route('/conquistas/jogos', methods=['GET'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaJogosComConquistas, **ERROS_AUTENTICADA), tags=['usuario'], security=AUTENTICADO,
+)
+def listar_jogos_com_conquistas():
+    """Os jogos com alguma conquista obtida, para o filtro do seletor de destaques."""
+    return {'jogos': destaques.jogos_com_obtidas(get_jwt_identity())}
+
+
+@usuario_bp.route('/conquistas/destaques', methods=['GET'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaDestaques, **ERROS_AUTENTICADA), tags=['usuario'], security=AUTENTICADO,
+)
+def obter_destaques():
+    """Conquistas em destaque no Perfil: as escolhidas ou, sem escolha, as obtidas mais raras; e o total."""
+    return destaques.do_perfil(get_jwt_identity())
+
+
+@usuario_bp.route('/conquistas/destaques/<int:steam_appid>/<path:codigo>', methods=['PUT'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, HTTP_409=Erro, **ERROS_AUTENTICADA),
+    tags=['usuario'], security=AUTENTICADO,
+)
+def destacar_conquista(steam_appid, codigo):
+    """Destacar no Perfil uma conquista obtida (appid do jogo e código da conquista); o sétimo responde 409."""
+    resultado = destaques.destacar(get_jwt_identity(), steam_appid, codigo)
+    if resultado == NAO_OBTIDA:
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, ERRO_NAO_OBTIDA)
+    if resultado == LIMITE_ATINGIDO:
+        return resposta_erro(409, CodigoErro.LIMITE_DE_DESTAQUES, ERRO_LIMITE)
+    return {'mensagem': 'Conquista destacada no Perfil'}
+
+
+@usuario_bp.route('/conquistas/destaques/<int:steam_appid>/<path:codigo>', methods=['DELETE'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=Mensagem, HTTP_404=Erro, **ERROS_AUTENTICADA), tags=['usuario'], security=AUTENTICADO,
+)
+def tirar_destaque(steam_appid, codigo):
+    """Tirar uma conquista obtida dos destaques do Perfil."""
+    if not destaques.tirar(get_jwt_identity(), steam_appid, codigo):
+        return resposta_erro(404, CodigoErro.NAO_ENCONTRADO, ERRO_NAO_OBTIDA)
+    return {'mensagem': 'Conquista tirada do Perfil'}

@@ -88,6 +88,14 @@ export type AvaliacaoEditada = Esquemas['AvaliacaoEditada'];
 /** Item de GET /lista: a Mídia (parte dos campos) mais os campos do Item de lista. */
 export type ItemLista = Esquemas['ItemLista'];
 export type RespostaLista = Esquemas['RespostaLista'];
+/** GET /lista/<id_lista>/conquistas: as conquistas da Steam do jogo do Item, na ordem do Detalhe. */
+export type RespostaConquistasDoItem = Esquemas['RespostaConquistasDoItem'];
+export type ConquistaDoItem = Esquemas['ConquistaDoItem'];
+export type RespostaDestaques = Esquemas['RespostaDestaques'];
+export type ConquistaEmDestaque = Esquemas['ConquistaEmDestaque'];
+export type ConquistaDoSeletor = Esquemas['ConquistaDoSeletor'];
+export type PaginaConquistasDoSeletor = Esquemas['PaginaConquistaDoSeletor'];
+export type RespostaJogosComConquistas = Esquemas['RespostaJogosComConquistas'];
 
 // Integrações
 

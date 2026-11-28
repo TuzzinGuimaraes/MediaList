@@ -71,10 +71,74 @@ def jogo_steam(appid, nome, minutos, ultimo=0):
     return {'appid': appid, 'name': nome, 'playtime_forever': minutos, 'rtime_last_played': ultimo}
 
 
-def rotas_steam(jogos=None, *, visibilidade=3, nome='Fulano', vanity=None, privado_jogos=False):
-    """As três chamadas da Steam. `jogos=None` com `privado_jogos` devolve `{}` (detalhes privados)."""
+#: `GetPlayerAchievements` de jogo sem conquistas (a forma real: HTTP 400).
+SEM_STATS = Resposta(400, {'playerstats': {'error': 'Requested app has no stats', 'success': False}})
+#: `GetPlayerAchievements` com os "Detalhes dos jogos" privados.
+DETALHES_PRIVADOS = Resposta(403, {'playerstats': {'error': 'Profile is not public', 'success': False}})
+
+ICONES = 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps'
+
+
+def conquista(codigo, nome=None, *, obtida_em=0, oculta=False, descricao=None, raridade='50.0'):
+    """Uma conquista do jogo falso: `obtida_em` em epoch (0: não obtida), `raridade` em texto, como a Steam."""
+    return {'codigo': codigo, 'nome': nome or f'Conquista {codigo}', 'obtida_em': obtida_em, 'oculta': oculta,
+            'descricao': descricao if descricao is not None else f'Faça {codigo}.', 'raridade': raridade}
+
+
+def rotas_conquistas(por_appid, quebrar=None):
+    """`GetPlayerAchievements`, `GetSchemaForGame` (v2) e `GetGlobalAchievementPercentagesForApp` (v2).
+
+    `por_appid`: {appid: [conquista(...)] | Resposta | Exception}; a Resposta ou a Exception é o que o
+    `GetPlayerAchievements` dá. Sem a appid, o jogo não tem stats. `quebrar`: {nome do método:
+    Resposta | Exception}, que ele dá para toda appid. Nomes e descrições já vêm "em português".
+    """
+    quebrar = quebrar or {}
+
+    def jogador(p):
+        dado = por_appid.get(int(p['appid']), SEM_STATS)
+        if not isinstance(dado, list):
+            return dado
+        return {'playerstats': {'steamID': p['steamid'], 'gameName': 'Jogo', 'success': True, 'achievements': [
+            {'apiname': c['codigo'], 'achieved': int(bool(c['obtida_em'])), 'unlocktime': c['obtida_em'],
+             'name': c['nome'], 'description': c['descricao']} for c in dado
+        ]}}
+
+    def esquema(p):
+        dado = por_appid.get(int(p['appid']))
+        if not isinstance(dado, list):
+            return {'game': {}}
+        return {'game': {'gameName': 'Jogo', 'gameVersion': '1', 'availableGameStats': {'achievements': [
+            {'name': c['codigo'], 'defaultvalue': 0, 'displayName': c['nome'], 'hidden': int(c['oculta']),
+             **({} if c['oculta'] else {'description': c['descricao']}),
+             'icon': f'{ICONES}/{p["appid"]}/{c["codigo"]}.jpg', 'icongray': f'{ICONES}/{p["appid"]}/cinza.jpg'}
+            for c in dado
+        ]}}}
+
+    def raridades(p):
+        dado = por_appid.get(int(p['gameid']))
+        if not isinstance(dado, list):
+            return Resposta(403, {})
+        return {'achievementpercentages': {'achievements': [
+            {'name': c['codigo'], 'percent': c['raridade']} for c in dado
+        ]}}
+
+    rotas = {
+        'GetPlayerAchievements': jogador,
+        'GetSchemaForGame': esquema,
+        'GetGlobalAchievementPercentagesForApp': raridades,
+    }
+    return {metodo: quebrar.get(metodo, rota) for metodo, rota in rotas.items()}
+
+
+def rotas_steam(jogos=None, *, visibilidade=3, nome='Fulano', vanity=None, privado_jogos=False, conquistas=None,
+                quebrar=None):
+    """As chamadas da Steam. `jogos=None` com `privado_jogos` devolve `{}` (detalhes privados).
+
+    `conquistas` e `quebrar` vão para `rotas_conquistas` (sem elas, nenhum jogo tem conquistas).
+    """
     vanities = vanity or {}
     return {
+        **rotas_conquistas(conquistas or {}, quebrar),
         r'ResolveVanityURL': lambda p: {'response': (
             {'steamid': vanities[p['vanityurl']], 'success': 1} if p.get('vanityurl') in vanities
             else {'success': 42, 'message': 'No match'}

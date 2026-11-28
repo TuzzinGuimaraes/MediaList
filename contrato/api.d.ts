@@ -450,6 +450,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lista/{lista_id}/conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As conquistas da Steam do jogo de um Item, para o Detalhe: só o dono do Item. */
+        get: operations["get__api_lista_{lista_id}_conquistas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lista/{lista_id}/progresso": {
         parameters: {
             query?: never;
@@ -885,6 +902,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuario/conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Seletor de destaques: uma página das conquistas obtidas do Usuário, com busca, jogo, só destacadas e ordem. */
+        get: operations["get__api_usuario_conquistas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/conquistas/destaques": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conquistas em destaque no Perfil: as escolhidas ou, sem escolha, as obtidas mais raras; e o total. */
+        get: operations["get__api_usuario_conquistas_destaques"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/conquistas/destaques/{steam_appid}/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Destacar no Perfil uma conquista obtida (appid do jogo e código da conquista); o sétimo responde 409. */
+        put: operations["put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}"];
+        post?: never;
+        /** Tirar uma conquista obtida dos destaques do Perfil. */
+        delete: operations["delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/conquistas/jogos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Os jogos com alguma conquista obtida, para o filtro do seletor de destaques. */
+        get: operations["get__api_usuario_conquistas_jogos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuario/estatisticas": {
         parameters: {
             query?: never;
@@ -1095,7 +1181,7 @@ export interface components {
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
-        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "lista_grande_demais" | "erro_interno";
+        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "lista_grande_demais" | "limite_de_destaques" | "erro_interno";
         /**
          * ConexaoIntegracao
          * @description Nome de usuário (AniList, MAL) ou URL do perfil (Steam).
@@ -1103,6 +1189,136 @@ export interface components {
         ConexaoIntegracao: {
             /** Identificador */
             identificador: string;
+        };
+        /**
+         * ConquistaDoItem
+         * @description Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição.
+         */
+        ConquistaDoItem: {
+            /** Codigo */
+            codigo: string;
+            /**
+             * Descricao
+             * @description Nulo na oculta ainda não obtida ou sem descrição na Steam
+             */
+            descricao: string | null;
+            /**
+             * Destacada
+             * @description Está nos destaques do Perfil
+             */
+            destacada: boolean;
+            /**
+             * Icone
+             * @description O colorido na obtida e o cinza na que falta
+             */
+            icone: string | null;
+            /**
+             * Nome
+             * @description Nulo na oculta ainda não obtida
+             */
+            nome: string | null;
+            /** Obtida */
+            obtida: boolean;
+            /** Obtida Em */
+            obtida_em: string | null;
+            /** Oculta */
+            oculta: boolean;
+            /**
+             * Raridade
+             * @description % dos jogadores que a têm
+             */
+            raridade: number | null;
+            /**
+             * Steam Appid
+             * @description O jogo da conquista na Steam: com o código, diz qual destacar no Perfil
+             */
+            steam_appid: number;
+        };
+        /**
+         * ConquistaDoSeletor
+         * @description Uma conquista obtida do Usuário no seletor (sempre `obtida`), com o Item e o jogo dela.
+         */
+        ConquistaDoSeletor: {
+            /** Codigo */
+            codigo: string;
+            /**
+             * Descricao
+             * @description Nulo na oculta ainda não obtida ou sem descrição na Steam
+             */
+            descricao: string | null;
+            /**
+             * Destacada
+             * @description Está nos destaques do Perfil
+             */
+            destacada: boolean;
+            /**
+             * Icone
+             * @description O colorido na obtida e o cinza na que falta
+             */
+            icone: string | null;
+            /** Id Lista */
+            id_lista: string;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Jogo
+             * @description Título exibido do jogo
+             */
+            jogo: string;
+            /**
+             * Nome
+             * @description Nulo na oculta ainda não obtida
+             */
+            nome: string | null;
+            /** Obtida */
+            obtida: boolean;
+            /** Obtida Em */
+            obtida_em: string | null;
+            /** Oculta */
+            oculta: boolean;
+            /**
+             * Raridade
+             * @description % dos jogadores que a têm
+             */
+            raridade: number | null;
+            /**
+             * Steam Appid
+             * @description O jogo da conquista na Steam: com o código, diz qual destacar no Perfil
+             */
+            steam_appid: number;
+        };
+        /**
+         * ConquistaEmDestaque
+         * @description Uma conquista obtida no Perfil (`repositories.destaques`), com o jogo dela.
+         */
+        ConquistaEmDestaque: {
+            /** Codigo */
+            codigo: string;
+            /**
+             * Icone
+             * @description O ícone colorido
+             */
+            icone: string | null;
+            /** Id Lista */
+            id_lista: string;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Jogo
+             * @description Título exibido do jogo
+             */
+            jogo: string;
+            /** Nome */
+            nome: string;
+            /** Obtida Em */
+            obtida_em: string | null;
+            /**
+             * Raridade
+             * @description % dos jogadores que a têm
+             */
+            raridade: number | null;
+            /** Steam Appid */
+            steam_appid: number;
         };
         /**
          * ConsultaCalendario
@@ -1121,6 +1337,48 @@ export interface components {
              * @description Início da janela, inclusive
              */
             de: string;
+        };
+        /**
+         * ConsultaConquistas
+         * @description `GET /usuario/conquistas`: o seletor de destaques do Perfil.
+         */
+        ConsultaConquistas: {
+            /**
+             * Busca
+             * @description No nome da conquista, sem caixa nem acento
+             * @default null
+             */
+            busca?: string | null;
+            /**
+             * Ordem
+             * @description `raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro
+             * @default raridade
+             * @enum {string}
+             */
+            ordem?: "raridade" | "data";
+            /**
+             * Pagina
+             * @default 1
+             */
+            pagina?: number;
+            /**
+             * Por Pagina
+             * @description Acima de 50 vira 50
+             * @default 50
+             */
+            por_pagina?: number;
+            /**
+             * So Destacadas
+             * @description Só as que estão nos destaques do Perfil
+             * @default false
+             */
+            so_destacadas?: boolean;
+            /**
+             * Steam Appid
+             * @description Só as desse jogo
+             * @default null
+             */
+            steam_appid?: number | null;
         };
         /** ConsultaFacetas */
         ConsultaFacetas: {
@@ -1894,6 +2152,11 @@ export interface components {
             /** Comentario */
             comentario: string | null;
             /**
+             * @description Conquistas da Steam do jogo; nulo sem leitura ou num jogo sem conquistas
+             * @default null
+             */
+            conquistas?: components["schemas"]["ResumoConquistas"] | null;
+            /**
              * Data Adicao
              * Format: date-time
              */
@@ -2032,6 +2295,23 @@ export interface components {
              * @description Usuários com a Mídia na Lista pessoal (Popularidade)
              */
             total_usuarios: number;
+        };
+        /** JogoComConquistas */
+        JogoComConquistas: {
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Jogo
+             * @description Título exibido do jogo
+             */
+            jogo: string;
+            /**
+             * Obtidas
+             * @description Conquistas obtidas no jogo
+             */
+            obtidas: number;
+            /** Steam Appid */
+            steam_appid: number;
         };
         /**
          * Mensagem
@@ -2571,6 +2851,20 @@ export interface components {
              */
             total: number;
         };
+        /** Pagina[ConquistaDoSeletor] */
+        PaginaConquistaDoSeletor: {
+            /** Itens */
+            itens: components["schemas"]["ConquistaDoSeletor"][];
+            /** Pagina */
+            pagina: number;
+            /** Por Pagina */
+            por_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+        };
         /** Pagina[Midia] */
         PaginaMidia: {
             /** Itens */
@@ -2822,6 +3116,32 @@ export interface components {
              */
             episodios: components["schemas"]["EpisodioDoCalendario"][];
         };
+        /**
+         * RespostaConquistasDoItem
+         * @description As conquistas do Item: obtidas da mais recente para a mais antiga, depois as que faltam da mais comum
+         *     para a mais rara. Vazia sem leitura ou num jogo sem conquistas.
+         */
+        RespostaConquistasDoItem: {
+            /** Conquistas */
+            conquistas: components["schemas"]["ConquistaDoItem"][];
+        };
+        /**
+         * RespostaDestaques
+         * @description Os destaques do Perfil, da mais rara para a mais comum; sem nenhuma obtida, vazio e total zero.
+         */
+        RespostaDestaques: {
+            /**
+             * Automaticos
+             * @description O Usuário não escolheu: são as obtidas mais raras
+             */
+            automaticos: boolean;
+            /**
+             * Destaques
+             * @description Até 6
+             */
+            destaques: components["schemas"]["ConquistaEmDestaque"][];
+            total: components["schemas"]["TotalDeConquistas"];
+        };
         /** RespostaDistribuicao */
         RespostaDistribuicao: {
             /** Distribuicao */
@@ -2858,6 +3178,14 @@ export interface components {
         RespostaIntegracoes: {
             /** Integracoes */
             integracoes: components["schemas"]["Integracao"][];
+        };
+        /**
+         * RespostaJogosComConquistas
+         * @description Os jogos com ao menos uma conquista obtida, pelo título, para o filtro do seletor.
+         */
+        RespostaJogosComConquistas: {
+            /** Jogos */
+            jogos: components["schemas"]["JogoComConquistas"][];
         };
         /** RespostaLista */
         RespostaLista: {
@@ -2993,6 +3321,16 @@ export interface components {
             pendentes: number;
             /** Total Nao Encontrados */
             total_nao_encontrados: number;
+        };
+        /**
+         * ResumoConquistas
+         * @description As conquistas do jogo na Steam (última leitura da sincronização).
+         */
+        ResumoConquistas: {
+            /** Obtidas */
+            obtidas: number;
+            /** Total */
+            total: number;
         };
         /** ResumoEstatisticas */
         ResumoEstatisticas: {
@@ -3166,6 +3504,19 @@ export interface components {
              * @enum {string}
              */
             estacao: "inverno" | "primavera" | "verao" | "outono";
+        };
+        /** TotalDeConquistas */
+        TotalDeConquistas: {
+            /**
+             * Conquistas
+             * @description Conquistas obtidas em todos os jogos
+             */
+            conquistas: number;
+            /**
+             * Jogos
+             * @description Jogos com ao menos uma conquista obtida
+             */
+            jogos: number;
         };
         /** UsuarioAtual */
         UsuarioAtual: {
@@ -5114,6 +5465,64 @@ export interface operations {
             };
         };
     };
+    "get__api_lista_{lista_id}_conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaConquistasDoItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     "put__api_lista_{lista_id}_progresso": {
         parameters: {
             query?: never;
@@ -6834,6 +7243,331 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RespostaSugestoes"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_conquistas: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                /** @description Acima de 50 vira 50 */
+                por_pagina?: number;
+                /** @description No nome da conquista, sem caixa nem acento */
+                busca?: string | null;
+                /** @description Só as desse jogo */
+                steam_appid?: number | null;
+                /** @description Só as que estão nos destaques do Perfil */
+                so_destacadas?: boolean;
+                /** @description `raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro */
+                ordem?: "raridade" | "data";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaConquistaDoSeletor"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_conquistas_destaques: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDestaques"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                steam_appid: number;
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                steam_appid: number;
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_conquistas_jogos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaJogosComConquistas"];
                 };
             };
             /** @description Bad Request */

@@ -16,6 +16,9 @@
    (negativo); o resto vai para "Não encontrados". A ordem é do `integracoes.casamento`: os passos
    2 e 3 são a busca da Steam (`_separar` e `pela_cadeia`). O Vincular da Steam também grava o casamento
    em `steam_appids` (só onde não havia), então em geral o jogo vinculado já casa no passo 2.
+5. Com as horas gravadas, as conquistas dos jogos casados (`integracoes.sincronizacao_conquistas`):
+   no job diário, as dos que precisam; no "Sincronizar agora", só as dos de horas que subiram,
+   com o que sobrou do orçamento.
 
 O orçamento conta do início (ler a biblioteca e aplicar os já casados entram nele) e é
 conferido antes de cada chamada ao RAWG e à loja, não só entre jogos: um jogo pode pedir a
@@ -30,7 +33,7 @@ from datetime import date
 from typing import Any, Callable, Collection, Literal
 
 from importacao import relacoes
-from integracoes import casamento, catalogo, repositorio, resultado, servico, steam_appids
+from integracoes import casamento, catalogo, repositorio, resultado, servico, sincronizacao_conquistas, steam_appids
 from integracoes.casamento import Desfecho
 from integracoes.loja_steam import LojaSteam
 from integracoes.plataforma import Conta, ItemDeOrigem, OrigemIndisponivel, RefCatalogo, conferir_tamanho
@@ -188,8 +191,11 @@ def sincronizar(
     na_midia = casamento.na_midia(casados)
     ja_casados = servico.aplicar_casados(id_usuario, na_midia.todos, na_midia.nao_encontrados, hoje=hoje)
 
+    def ha_orcamento() -> bool:
+        return orcamento is None or relogio() - inicio < orcamento
+
     def conferir_orcamento() -> None:
-        if orcamento is not None and relogio() - inicio >= orcamento:
+        if not ha_orcamento():
             raise _OrcamentoEsgotado('orçamento do Sincronizar agora esgotado')
 
     rawg = Rawg(antes_de_chamar=conferir_orcamento)
@@ -206,4 +212,9 @@ def sincronizar(
                                   pendentes=restantes.pendentes)
     final = resultado.somar(ja_casados, novos_casados, nao_casados)
     repositorio.registrar_resultado(id_usuario, 'steam', final)
+
+    jogos = [sincronizacao_conquistas.Jogo(int(item.origem_id), midia['id_midia'], item.horas or 0)
+             for item, midia in (*na_midia.todos, *restantes.todos) if midia]
+    sincronizacao_conquistas.atualizar(steam, conta['identificador'], id_usuario, jogos,
+                                       todos=orcamento is None, ha_orcamento=ha_orcamento)
     return final.resposta()

@@ -2,7 +2,8 @@
 // esquerda, o botão carmesim da Lista e a ficha; à direita, título, sinopse, Atualizações,
 // distribuição das notas, mapa de atividade e Avaliações. Anime atrasado (Resolution do 48):
 // o destaque do episódio novo com +1, acima da sinopse. Concluído: o destaque da Sequência
-// (spec `relacoes`); a seção Relações logo depois da Sinopse.
+// (spec `relacoes`); a seção Relações logo depois da Sinopse. Jogo da Steam: as conquistas e o
+// destaque de Platinado no bloco do Item (spec `conquistas-steam`).
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -24,6 +25,7 @@ import { emLancamento } from '@dominio/situacao';
 import { useItemDaMidia, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
 import { Avaliacoes } from './Avaliacoes';
+import { DestaqueDePlatinado, ResumoDasConquistas } from './Conquistas';
 import { useMidia } from './consultas';
 import { DistribuicaoNotas } from './DistribuicaoNotas';
 import { MapaAtividade } from './MapaAtividade';
@@ -247,8 +249,10 @@ function DetalheDaMidia({ midia }: { midia: MidiaDetalhe }) {
           {/* No tablet, começa onde o banner acaba, ao lado do pôster. */}
           <div className="flex flex-col gap-4 pt-40 lg:pt-0">
             <BotaoDaLista midia={midia} />
+            <DestaqueDePlatinado item={item.data} />
             <SugestaoDeSequencia midia={midia} item={item.data} />
             <Ficha midia={midia} item={item.data} />
+            <ResumoDasConquistas item={item.data} jogo={tituloDaMidia(midia)} />
           </div>
         </div>
         {/* `relative`: a coluna sobe sobre o pé do banner (que é posicionado) e tem de ser pintada na frente dele. */}
