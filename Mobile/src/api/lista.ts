@@ -61,12 +61,23 @@ function useInvalidarLista() {
     ]);
 }
 
-/** Cria o Item (POST /lista/adicionar) ou grava o existente (PUT /lista/<id_lista>). */
+/**
+ * Cria o Item (POST /lista/adicionar) ou grava o existente (PUT /lista/<id_lista>). No PUT, `dados`
+ * pode ter só os campos que mudam (ex. `mudancaDeStatus`, o "Marcar Platinado").
+ */
 export function useSalvarItem() {
   const { cliente } = useSessao();
   const invalidar = useInvalidarLista();
   return useMutation({
-    mutationFn: ({ idMidia, idLista, dados }: { idMidia: string; idLista?: string; dados: DadosItem }) =>
+    mutationFn: ({
+      idMidia,
+      idLista,
+      dados,
+    }: {
+      idMidia: string;
+      idLista?: string;
+      dados: DadosItem | (Pick<DadosItem, 'status_consumo'> & Partial<DadosItem>);
+    }) =>
       idLista
         ? cliente.requisitar(`/lista/${encodeURIComponent(idLista)}`, { metodo: 'PUT', corpo: dados })
         : cliente.requisitar('/lista/adicionar', { metodo: 'POST', corpo: { id_midia: idMidia, ...dados } }),

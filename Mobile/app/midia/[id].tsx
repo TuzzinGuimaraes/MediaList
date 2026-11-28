@@ -11,6 +11,7 @@ import { useSessao } from '@/auth/SessaoContext';
 import { Barra } from '@/components/Barras';
 import { DestaqueDoEpisodio } from '@/components/AssistirAgora';
 import { Botao } from '@/components/Botao';
+import { DestaqueDePlatinado, ResumoDasConquistas } from '@/components/Conquistas';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, FalhaParcial } from '@/components/EstadoTela';
 import { Info } from '@/components/Info';
@@ -115,6 +116,7 @@ function DetalheMidia() {
             />
           ) : null}
           <DestaqueDoEpisodio item={item.data} />
+          <DestaqueDePlatinado item={item.data} />
           <SugestaoDeSequencia midia={m} item={item.data} />
 
           <View className="flex-row flex-wrap items-center gap-x-5 gap-y-1">
@@ -147,6 +149,7 @@ function DetalheMidia() {
               <FalhaParcial erro={item.error} tentarDeNovo={() => item.refetch()} />
             </View>
           ) : null}
+          <ResumoDasConquistas item={item.data} />
           {editor && item.data !== undefined ? (
             <EditorItem midia={m} item={item.data} aoFechar={() => setEditor(false)} />
           ) : null}
