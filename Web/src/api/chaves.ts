@@ -43,10 +43,12 @@ export const chaves = {
     /** O RespostaLista inteiro: Lista, Início, detalhe e Perfil leem esta chave. */
     toda: ['lista'] as const,
   },
-  /** As conquistas da Steam (GET /lista/<id_lista>/conquistas); só a sincronização as escreve. */
+  /** As conquistas da Steam (GET /lista/<id_lista>/conquistas), que só a sincronização escreve, e os
+   *  destaques do Perfil (GET /usuario/conquistas/destaques), que o Usuário escolhe. */
   conquistas: {
     todas: ['conquistas'] as const,
     doItem: (idLista: string) => ['conquistas', 'item', idLista] as const,
+    destaques: ['conquistas', 'destaques'] as const,
   },
   /** As Relações de uma Mídia (GET /midias/<id>/relacoes): trazem o Status da Lista em cada obra. */
   relacoes: {

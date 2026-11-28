@@ -571,6 +571,7 @@ describe('Detalhe: conquistas da Steam', () => {
 
   function conquista(codigo: string, dados: Partial<Conquista> = {}): Conquista {
     return {
+      steam_appid: 1145360,
       codigo,
       nome: `Conquista ${codigo}`,
       descricao: `Faça ${codigo}.`,
@@ -674,6 +675,58 @@ describe('Detalhe: conquistas da Steam', () => {
     await user.click(screen.getByRole('button', { name: '2/2 conquistas' }));
     await screen.findByRole('dialog', { name: 'Conquistas' });
     await waitFor(() => expect(api.para('GET /lista/LST-J/conquistas')).toHaveLength(2));
+  });
+
+  it('"Destacar no Perfil" nas obtidas grava o destaque e relê a lista; a destacada ganha "Tirar do Perfil"', async () => {
+    let destacada = false;
+    const { user, api } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ detalhe: jogo, lista: [itemJogo('jogando', { obtidas: 1, total: 2 })] }),
+        'GET /lista/LST-J/conquistas': () => ({
+          status: 200,
+          corpo: { conquistas: [{ ...lista[0]!, destacada }, lista[1]!] },
+        }),
+        'PUT /usuario/conquistas/destaques/1145360/Recente': () => {
+          destacada = true;
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+        'DELETE /usuario/conquistas/destaques/1145360/Recente': () => {
+          destacada = false;
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+      },
+    });
+    await user.click(await screen.findByRole('button', { name: '1/2 conquistas' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Conquistas' });
+    const [obtida, oculta] = (await within(dialogo).findAllByRole('listitem')) as [HTMLElement, HTMLElement];
+    expect(within(oculta).queryByRole('button')).not.toBeInTheDocument();
+
+    await user.click(within(obtida).getByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(api.para('PUT /usuario/conquistas/destaques/1145360/Recente')).toHaveLength(1);
+    const tirar = await within(dialogo).findByRole('button', { name: 'Tirar do Perfil' });
+    await user.click(tirar);
+
+    expect(api.para('DELETE /usuario/conquistas/destaques/1145360/Recente')).toHaveLength(1);
+    expect(await within(dialogo).findByRole('button', { name: 'Destacar no Perfil' })).toBeInTheDocument();
+  });
+
+  it('a sétima mostra o aviso para tirar outra antes', async () => {
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ detalhe: jogo, lista: [itemJogo('jogando', { obtidas: 1, total: 2 })] }),
+        'GET /lista/LST-J/conquistas': { status: 200, corpo: { conquistas: lista } },
+        'PUT /usuario/conquistas/destaques/1145360/Recente': erro(409, 'limite_de_destaques', 'Limite'),
+      },
+    });
+    await user.click(await screen.findByRole('button', { name: '1/2 conquistas' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Conquistas' });
+
+    await user.click(await within(dialogo).findByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'O Perfil já tem 6 destaques. Tire um antes de destacar outro.',
+    );
   });
 
   it('em Platinado, ou com conquista faltando, sem destaque', async () => {
