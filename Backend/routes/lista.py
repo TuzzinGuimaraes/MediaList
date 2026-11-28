@@ -18,7 +18,7 @@ from spectree import Response
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
 from dominio.conquistas import lista_do_detalhe
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
-from integracoes import conquistas
+from repositories import conquistas
 from repositories.catalogo import Catalogo
 from repositories.itens_lista import ItensLista
 from schemas.lista import (

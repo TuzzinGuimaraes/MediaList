@@ -8,7 +8,6 @@ import { formatarData } from './datas';
 import type {
   CodigoErro,
   ConquistaDoItem,
-  ConquistaEmDestaque,
   ConsultaConquistas,
   ResumoConquistas,
   TotalDeConquistas,
@@ -46,9 +45,14 @@ export const TEXTOS_DAS_CONQUISTAS = {
   ordenarPor: 'Ordenar por',
   carregarMais: 'Carregar mais',
   nenhumaNoSeletor: 'Nenhuma conquista obtida com esses filtros.',
+  obtidas: 'Conquistas obtidas',
 } as const;
 
-/** As ordens do seletor de destaques: a mais rara primeiro (o padrão) ou a obtida mais recente. */
+/**
+ * Os rótulos das ordens do seletor de destaques: a mais rara primeiro (o padrão) ou a obtida mais recente.
+ * Como cada uma ordena é do servidor (`ORDENS_DO_SELETOR` em `Backend/repositories/destaques.py`); os
+ * valores vêm do contrato.
+ */
 export const ORDENS_DO_SELETOR = [
   { valor: 'raridade', rotulo: 'Mais raras' },
   { valor: 'data', rotulo: 'Mais recentes' },
@@ -154,9 +158,4 @@ export function eLimiteDeDestaques(erro: unknown): boolean {
   return (
     typeof erro === 'object' && erro !== null && (erro as { codigo?: unknown }).codigo === LIMITE_DE_DESTAQUES_ATINGIDO
   );
-}
-
-/** O leitor de tela da conquista em destaque no Perfil: nome, jogo, quando foi obtida e a raridade. */
-export function descricaoDoDestaque(destaque: ConquistaEmDestaque): string {
-  return descricaoAcessivel({ ...destaque, obtida: true }, destaque.jogo);
 }

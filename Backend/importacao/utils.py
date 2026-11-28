@@ -257,8 +257,11 @@ def registrar_falha_importacao(
 
 
 def imagem_https(url, hosts: tuple[str, ...]) -> str | None:
-    """A URL sem espaços nas pontas, se for `https://` sem credenciais num host que termina num dos
-    `hosts` (`.steamstatic.com`, `.anilist.co`); senão None. A imagem vem da fonte e vai para a tela."""
+    """A URL sem espaços nas pontas, se for `https://` sem credenciais num dos `hosts`; senão None.
+
+    O host com ponto na frente (`.anilist.co`) aceita os subdomínios; sem ponto, só ele mesmo. A imagem
+    vem da fonte e vai para a tela.
+    """
     if not isinstance(url, str):
         return None
     try:
@@ -266,7 +269,9 @@ def imagem_https(url, hosts: tuple[str, ...]) -> str | None:
     except ValueError:
         return None
     host = (partes.hostname or '').lower()
-    if partes.scheme != 'https' or partes.username or partes.password or not host.endswith(hosts):
+    if partes.scheme != 'https' or partes.username or partes.password:
+        return None
+    if not any(host.endswith(h) if h.startswith('.') else host == h for h in hosts):
         return None
     return url.strip()
 

@@ -1,7 +1,6 @@
 import {
   consultaDoSeletor,
   descricaoAcessivel,
-  descricaoDoDestaque,
   eLimiteDeDestaques,
   eRara,
   FILTROS_INICIAIS_DO_SELETOR,
@@ -15,7 +14,7 @@ import {
   textoDoResumo,
   textoDoTotal,
 } from './conquistas';
-import type { ConquistaDoItem, ConquistaEmDestaque } from './tipos';
+import type { ConquistaDoItem } from './tipos';
 
 function conquista(dados: Partial<ConquistaDoItem> = {}): ConquistaDoItem {
   return {
@@ -159,24 +158,6 @@ describe('textos dos destaques', () => {
     expect(eLimiteDeDestaques(null)).toBe(false);
   });
 });
-
-describe('descricaoDoDestaque', () => {
-  it('diz o nome, o jogo, quando foi obtida e a raridade', () => {
-    const destaque: ConquistaEmDestaque = {
-      steam_appid: 10,
-      codigo: 'A',
-      nome: 'O Louco',
-      icone: null,
-      raridade: 3.24,
-      obtida_em: '2020-12-10T15:32:36Z',
-      id_lista: 'l1',
-      id_midia: 'm1',
-      jogo: 'Hades',
-    };
-    expect(descricaoDoDestaque(destaque)).toBe('O Louco, Hades, obtida em 10/12/2020, 3,2% dos jogadores, rara');
-  });
-});
-
 
 describe('seletor de destaques', () => {
   it('monta a query só com os filtros escolhidos', () => {

@@ -3,7 +3,8 @@
 O esquema de cada jogo (`conquistas_esquemas` e `conquistas`) é compartilhado pela `steam_appid`;
 a leitura de cada Item de jogo (`conquistas_itens`) guarda o total do jogo e as horas da Steam
 daquela leitura, e `conquistas_obtidas`, as obtidas com a data. Trocar as obtidas apaga só as que
-a Steam deixou de listar, e a FK leva junto o destaque que apontava para elas.
+a Steam deixou de listar, e a FK leva junto o destaque que apontava para elas. A leitura para as
+rotas fica em `repositories.conquistas` e `repositories.destaques`.
 """
 from __future__ import annotations
 
@@ -46,6 +47,11 @@ def gravar_esquema(db, appid: int, total: int, esquema: list[dict[str, Any]] | N
                 'ON CONFLICT (steam_appid) DO UPDATE SET total = EXCLUDED.total, lido_em = now()', (appid, total))
     codigos = [c['codigo'] for c in esquema]
     db.executar('DELETE FROM conquistas WHERE steam_appid = %s AND NOT (codigo = ANY(%s::text[]))', (appid, codigos))
+    # A conquista que saiu do jogo sai das obtidas de todos os Usuários (e a FK leva os destaques):
+    # senão o destaque de quem ainda não releu o jogo some do Perfil e segue contando no limite.
+    db.executar('DELETE FROM conquistas_obtidas co USING conquistas_itens ci '
+                'WHERE ci.id_lista = co.id_lista AND ci.steam_appid = %s AND NOT (co.codigo = ANY(%s::text[]))',
+                (appid, codigos))
     db.executar(
         """
         INSERT INTO conquistas (steam_appid, codigo, nome, descricao, icone, icone_cinza, oculta)
@@ -87,39 +93,3 @@ def gravar_do_item(db, id_lista: str, appid: int, total: int, horas: int,
         (id_lista, codigos, list(obtidas.values())),
     )
 
-
-def do_item_do_usuario(id_usuario: str, id_lista: str) -> list[dict[str, Any]] | None:
-    """As conquistas do Item (as de `do_item` mais `steam_appid` e `destacada`), ou None se o Item não é do Usuário.
-
-    O Item sem leitura, ou de jogo sem conquistas, dá a lista vazia.
-    """
-    if not banco.consultar_um('SELECT 1 FROM lista_usuarios WHERE id_lista = %s AND id_usuario = %s',
-                              (id_lista, id_usuario)):
-        return None
-    return banco.consultar(
-        """
-        SELECT c.steam_appid, c.codigo, c.nome, c.descricao, c.icone, c.icone_cinza, c.oculta, c.raridade,
-               co.obtida_em, (co.codigo IS NOT NULL) AS obtida, (cd.codigo IS NOT NULL) AS destacada
-        FROM conquistas_itens ci
-        JOIN conquistas c ON c.steam_appid = ci.steam_appid
-        LEFT JOIN conquistas_obtidas co ON co.id_lista = ci.id_lista AND co.codigo = c.codigo
-        LEFT JOIN conquistas_destaques cd ON cd.id_lista = co.id_lista AND cd.codigo = co.codigo
-        WHERE ci.id_lista = %s
-        """,
-        (id_lista,),
-    )
-
-
-def do_item(id_lista: str) -> list[dict[str, Any]]:
-    """As conquistas do jogo do Item, pelo esquema guardado, com `obtida_em` (None: não obtida), por código."""
-    return banco.consultar(
-        """
-        SELECT c.codigo, c.nome, c.descricao, c.icone, c.icone_cinza, c.oculta, c.raridade, co.obtida_em
-        FROM conquistas_itens ci
-        JOIN conquistas c ON c.steam_appid = ci.steam_appid
-        LEFT JOIN conquistas_obtidas co ON co.id_lista = ci.id_lista AND co.codigo = c.codigo
-        WHERE ci.id_lista = %s
-        ORDER BY c.codigo
-        """,
-        (id_lista,),
-    )

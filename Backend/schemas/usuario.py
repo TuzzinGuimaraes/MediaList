@@ -1,7 +1,7 @@
 """Modelos do contrato das rotas do blueprint `usuario` (ADR 0011)."""
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field
 
@@ -16,6 +16,7 @@ from contrato import (
     TipoDeMidia,
     VazioComoAusente,
 )
+from dominio.conquistas import OrdemDoSeletor
 from schemas.auth import NivelAcesso, Permissoes
 from schemas.lista import ConquistaDoItem
 
@@ -90,7 +91,7 @@ class ConsultaConquistas(ConsultaPaginada):
     busca: TextoOpcional = Field(default=None, description='No nome da conquista, sem caixa nem acento')
     steam_appid: Annotated[int | None, VazioComoAusente] = Field(default=None, description='Só as desse jogo')
     so_destacadas: bool = Field(default=False, description='Só as que estão nos destaques do Perfil')
-    ordem: Annotated[Literal['raridade', 'data'], BeforeValidator(lambda v: v or 'raridade')] = Field(
+    ordem: Annotated[OrdemDoSeletor, BeforeValidator(lambda v: v or 'raridade')] = Field(
         default='raridade',
         description='`raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro',
     )

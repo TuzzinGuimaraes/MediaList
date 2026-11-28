@@ -24,7 +24,6 @@ import {
 } from '@dominio/conquistas';
 
 const ATRASO_BUSCA_MS = 300;
-const ROTULO_DA_LISTA = 'Conquistas obtidas';
 const ORDENS = ORDENS_DO_SELETOR.map((o) => ({ valor: o.valor, titulo: o.rotulo }));
 
 /** Fora das abas, a tela precisa do próprio guard: um deep link pode abrir sem sessão. */
@@ -61,7 +60,7 @@ function EscolherDestaques() {
     if (!conquistas.data.length) return <Vazio mensagem={TEXTOS_DAS_CONQUISTAS.nenhumaNoSeletor} />;
     return (
       <FlatList
-        accessibilityLabel={ROTULO_DA_LISTA}
+        accessibilityLabel={TEXTOS_DAS_CONQUISTAS.obtidas}
         data={conquistas.data}
         keyExtractor={(c) => `${c.id_lista}/${c.codigo}`}
         renderItem={({ item: c }) => (

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import pytest
 
 import banco
+from importacao import utils as importacao_utils
 from integracoes import conquistas, repositorio, sincronizacao_steam
 from integracoes.plataforma import Conta
 
@@ -58,8 +59,16 @@ def _id_lista(id_usuario, id_midia):
                               (id_usuario, id_midia))['id_lista']
 
 
-def _do_item(id_usuario, id_midia):
-    return {c['codigo']: c for c in conquistas.do_item(_id_lista(id_usuario, id_midia))}
+@pytest.fixture
+def do_item(client, make_token):
+    """`do_item(id_usuario, id_midia)`: as conquistas do Item por `GET /lista/<id>/conquistas`, por código."""
+    def ler(id_usuario, id_midia):
+        resposta = client.get(f'/api/lista/{_id_lista(id_usuario, id_midia)}/conquistas',
+                              headers={'Authorization': f'Bearer {make_token(id_usuario)}'})
+        assert resposta.status_code == 200, resposta.get_json()
+        return {c['codigo']: c for c in resposta.get_json()['conquistas']}
+
+    return ler
 
 
 def _lidas(sessao, metodo):
@@ -84,7 +93,7 @@ def jogos(jogo):
 # Leitura e resumo
 # ============================================
 
-def test_job_le_as_conquistas_do_jogo_novo_e_o_item_traz_o_resumo(client, usuario, fontes, jogos):
+def test_job_le_as_conquistas_do_jogo_novo_e_o_item_traz_o_resumo(client, usuario, fontes, jogos, do_item):
     id_usuario, headers = usuario
     [(appid, id_midia, nome)] = jogos(1)
     fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: [
@@ -97,14 +106,16 @@ def test_job_le_as_conquistas_do_jogo_novo_e_o_item_traz_o_resumo(client, usuari
     _job(id_usuario)
 
     assert _resumo(client, headers, id_midia) == {'obtidas': 2, 'total': 3}
-    lidas = _do_item(id_usuario, id_midia)
-    assert lidas['TheFool'] == {
-        'codigo': 'TheFool', 'nome': 'O Louco', 'descricao': None, 'oculta': True, 'raridade': 88.6,
-        'icone': f'{ICONES}/{appid}/TheFool.jpg', 'icone_cinza': f'{ICONES}/{appid}/cinza.jpg',
-        'obtida_em': datetime.fromtimestamp(QUANDO, tz=timezone.utc),
+    lidas = do_item(id_usuario, id_midia)
+    assert {**lidas['TheFool'], 'obtida_em': None} == {
+        'steam_appid': appid, 'codigo': 'TheFool', 'nome': 'O Louco', 'descricao': None, 'oculta': True,
+        'raridade': 88.6, 'icone': f'{ICONES}/{appid}/TheFool.jpg', 'obtida': True, 'obtida_em': None,
+        'destacada': False,
     }
+    assert datetime.fromisoformat(lidas['TheFool']['obtida_em']) == datetime.fromtimestamp(QUANDO, tz=timezone.utc)
     assert lidas['TheLovers']['descricao'] == 'Faça TheLovers.'
-    assert (lidas['TheTower']['obtida_em'], lidas['TheTower']['raridade']) == (None, 0.3)
+    torre = lidas['TheTower']
+    assert (torre['obtida'], torre['raridade'], torre['icone']) == (False, 0.3, f'{ICONES}/{appid}/cinza.jpg')
 
 
 def test_esquema_e_raridade_sao_pedidos_em_portugues_e_sem_a_chave_na_raridade(usuario, fontes, jogos):
@@ -195,7 +206,7 @@ def test_orcamento_esgotado_nao_le_conquistas_e_atualiza_as_horas(client, usuari
     assert _resumo(client, headers, id_midia) == {'obtidas': 0, 'total': 1}
 
 
-def test_orcamento_e_conferido_antes_de_cada_chamada_das_conquistas(usuario, fontes, jogos):
+def test_orcamento_e_conferido_antes_de_cada_chamada_das_conquistas(usuario, fontes, jogos, do_item):
     id_usuario, _ = usuario
     (a, ma, na), (b, mb, nb) = jogos(2)
     fontes([jogo_steam(a, na, 600, HORA), jogo_steam(b, nb, 600, HORA)],
@@ -210,8 +221,8 @@ def test_orcamento_e_conferido_antes_de_cada_chamada_das_conquistas(usuario, fon
     sincronizacao_steam.sincronizar(id_usuario, orcamento=25, relogio=lambda: next(tempo))
 
     assert _lidas(sessao, 'GetPlayerAchievements') == [a]
-    assert _do_item(id_usuario, ma)['A']['obtida_em'] is not None
-    assert _do_item(id_usuario, mb)['B']['obtida_em'] is None
+    assert do_item(id_usuario, ma)['A']['obtida'] is True
+    assert do_item(id_usuario, mb)['B']['obtida'] is False
 
 
 # ============================================
@@ -271,7 +282,7 @@ def test_falha_no_esquema_ou_na_raridade_mantem_o_anterior(client, usuario, font
     assert _resumo(client, headers, id_midia) is None
 
 
-def test_job_volta_a_ler_o_jogo_que_falhou(usuario, fontes, jogos):
+def test_job_volta_a_ler_o_jogo_que_falhou(usuario, fontes, jogos, do_item):
     id_usuario, _ = usuario
     [(appid, id_midia, nome)] = jogos(1)
     fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: Resposta(500, {})})
@@ -281,14 +292,14 @@ def test_job_volta_a_ler_o_jogo_que_falhou(usuario, fontes, jogos):
     fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: [conquista('A', obtida_em=QUANDO)]})
     _job(id_usuario)
 
-    assert _do_item(id_usuario, id_midia)['A']['obtida_em'] is not None
+    assert do_item(id_usuario, id_midia)['A']['obtida'] is True
 
 
 # ============================================
 # Esquema e raridade
 # ============================================
 
-def test_esquema_relido_so_quando_o_total_muda_e_raridade_a_cada_leitura(usuario, fontes, jogos):
+def test_esquema_relido_so_quando_o_total_muda_e_raridade_a_cada_leitura(usuario, fontes, jogos, do_item):
     id_usuario, _ = usuario
     [(appid, id_midia, nome)] = jogos(1)
     fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: [conquista('A', raridade='50.0')]})
@@ -298,7 +309,7 @@ def test_esquema_relido_so_quando_o_total_muda_e_raridade_a_cada_leitura(usuario
     mesma = fontes([jogo_steam(appid, nome, 900, HORA)],
                    conquistas={appid: [conquista('A', 'Nome novo', raridade='40.5')]})
     _job(id_usuario)
-    depois_da_mesma = _do_item(id_usuario, id_midia)
+    depois_da_mesma = do_item(id_usuario, id_midia)
 
     maior = fontes([jogo_steam(appid, nome, 1200, HORA)],
                    conquistas={appid: [conquista('A', 'Nome novo', raridade='30.0'), conquista('B')]})
@@ -307,11 +318,11 @@ def test_esquema_relido_so_quando_o_total_muda_e_raridade_a_cada_leitura(usuario
     assert _lidas(mesma, 'GetSchemaForGame') == []
     assert (depois_da_mesma['A']['nome'], depois_da_mesma['A']['raridade']) == ('Conquista A', 40.5)
     assert _lidas(maior, 'GetSchemaForGame') == [appid]
-    assert _do_item(id_usuario, id_midia)['A']['nome'] == 'Nome novo'
-    assert set(_do_item(id_usuario, id_midia)) == {'A', 'B'}
+    assert do_item(id_usuario, id_midia)['A']['nome'] == 'Nome novo'
+    assert set(do_item(id_usuario, id_midia)) == {'A', 'B'}
 
 
-def test_esquema_e_compartilhado_entre_usuarios_pela_appid(usuario, fontes, jogos, pg):
+def test_esquema_e_compartilhado_entre_usuarios_pela_appid(usuario, fontes, jogos, pg, do_item):
     from .test_repositorios_pg import _usuario
 
     id_usuario, _ = usuario
@@ -326,12 +337,12 @@ def test_esquema_e_compartilhado_entre_usuarios_pela_appid(usuario, fontes, jogo
     _job(outro)
 
     assert _lidas(sessao, 'GetSchemaForGame') == []
-    assert _do_item(outro, id_midia)['A']['nome'] == 'Conquista A'
-    assert _do_item(outro, id_midia)['A']['obtida_em'] is None
-    assert _do_item(id_usuario, id_midia)['A']['obtida_em'] is not None
+    assert do_item(outro, id_midia)['A']['nome'] == 'Conquista A'
+    assert do_item(outro, id_midia)['A']['obtida'] is False
+    assert do_item(id_usuario, id_midia)['A']['obtida'] is True
 
 
-def test_texto_longo_e_icone_fora_da_steam_sao_tratados(usuario, fontes, jogos):
+def test_texto_longo_e_icone_fora_da_steam_sao_tratados(usuario, fontes, jogos, do_item):
     id_usuario, _ = usuario
     [(appid, id_midia, nome)] = jogos(1)
     sessao = fontes([jogo_steam(appid, nome, 600, HORA)],
@@ -340,7 +351,9 @@ def test_texto_longo_e_icone_fora_da_steam_sao_tratados(usuario, fontes, jogos):
 
     def com_icone_estranho(p):
         corpo = esquema(p)
-        corpo['game']['availableGameStats']['achievements'][0]['icon'] = 'http://evil.example/x.jpg'
+        [lida] = corpo['game']['availableGameStats']['achievements']
+        lida['icon'] = 'http://evil.example/x.jpg'
+        lida['icongray'] = 'https://cdn.fastly.steamstatic.com/x.jpg'  # da Steam, mas fora da CSP do web
         return corpo
 
     sessao.steam.rotas['GetSchemaForGame'] = com_icone_estranho
@@ -348,7 +361,7 @@ def test_texto_longo_e_icone_fora_da_steam_sao_tratados(usuario, fontes, jogos):
 
     _job(id_usuario)
 
-    lida = _do_item(id_usuario, id_midia)['A']
+    lida = do_item(id_usuario, id_midia)['A']
     assert len(lida['nome']) <= 200 and len(lida['descricao']) <= 1000
     assert lida['icone'] is None and lida['raridade'] is None
 
@@ -375,3 +388,88 @@ def test_conquista_que_some_leva_junto_o_destaque(client, usuario, fontes, jogos
     destaques = banco.consultar('SELECT codigo FROM conquistas_destaques WHERE id_lista = %s', (id_lista,))
     assert [d['codigo'] for d in destaques] == ['A']
     assert _resumo(client, headers, id_midia) == {'obtidas': 1, 'total': 2}
+
+
+
+def test_esquema_que_perde_uma_conquista_leva_as_obtidas_e_os_destaques_de_todos(client, usuario, fontes, jogos, pg,
+                                                                                  make_token):
+    from .test_repositorios_pg import _usuario
+
+    id_usuario, headers = usuario
+    [(appid, id_midia, nome)] = jogos(1)
+    outro = _usuario(pg)
+    do_outro = {'Authorization': f'Bearer {make_token(outro)}'}
+    sete = [conquista(f'C{i}', obtida_em=QUANDO) for i in range(7)]
+    fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: sete})
+    _conectar(outro)
+    _job(outro)
+    for i in range(6):
+        assert client.put(f'/api/usuario/conquistas/destaques/{appid}/C{i}', headers=do_outro).status_code == 200
+
+    # A Steam tirou a C5 do jogo; quem lê agora é o outro Usuário, e o esquema muda para os dois.
+    fontes([jogo_steam(appid, nome, 600, HORA)], conquistas={appid: sete[:5] + sete[6:]})
+    _conectar(id_usuario)
+    _job(id_usuario)
+
+    perfil = client.get('/api/usuario/conquistas/destaques', headers=do_outro).get_json()
+    assert [d['codigo'] for d in perfil['destaques']] == ['C0', 'C1', 'C2', 'C3', 'C4']
+    assert perfil['total'] == {'conquistas': 6, 'jogos': 1}
+    assert client.put(f'/api/usuario/conquistas/destaques/{appid}/C6', headers=do_outro).status_code == 200
+
+
+# ============================================
+# Erro inesperado num jogo
+# ============================================
+
+@pytest.fixture
+def gravar_quebrado(monkeypatch):
+    """`gravar_quebrado(appid)`: gravar as conquistas desse jogo dá um erro inesperado (do banco, por exemplo)."""
+    def quebrar(alvo):
+        original = conquistas.gravar_do_item
+
+        def gravar(db, id_lista, appid, *args):
+            if appid == alvo:
+                raise RuntimeError('erro inesperado do banco')
+            return original(db, id_lista, appid, *args)
+
+        monkeypatch.setattr(conquistas, 'gravar_do_item', gravar)
+
+    return quebrar
+
+
+def test_erro_inesperado_num_jogo_no_job_vai_para_o_log_e_segue_para_o_proximo(client, usuario, fontes, jogos,
+                                                                              gravar_quebrado, caplog):
+    id_usuario, headers = usuario
+    (a, ma, na), (b, mb, nb) = jogos(2)
+    fontes([jogo_steam(a, na, 600, HORA), jogo_steam(b, nb, 600, HORA)],
+           conquistas={a: [conquista('A', obtida_em=QUANDO)], b: [conquista('B', obtida_em=QUANDO)]})
+    _conectar(id_usuario)
+    gravar_quebrado(a)
+
+    corpo = _job(id_usuario)
+
+    assert corpo['novos'] + corpo['atualizados'] == 2
+    assert _resumo(client, headers, ma) is None
+    assert _resumo(client, headers, mb) == {'obtidas': 1, 'total': 1}
+    assert 'erro inesperado do banco' in caplog.text
+    [registro] = importacao_utils.ERROR_LOG_PATH.read_text(encoding='utf-8').splitlines()
+    assert str(a) in registro and 'RuntimeError' in registro
+
+
+def test_erro_inesperado_num_jogo_no_sincronizar_agora_nao_responde_500(client, usuario, fontes, jogos,
+                                                                       gravar_quebrado):
+    id_usuario, headers = usuario
+    (a, ma, na), (b, mb, nb) = jogos(2)
+    fontes([jogo_steam(a, na, 600, HORA), jogo_steam(b, nb, 600, HORA)],
+           conquistas={a: [conquista('A')], b: [conquista('B')]})
+    _conectar(id_usuario)
+    _job(id_usuario)
+    fontes([jogo_steam(a, na, 900, HORA), jogo_steam(b, nb, 900, HORA)],
+           conquistas={a: [conquista('A', obtida_em=QUANDO)], b: [conquista('B', obtida_em=QUANDO)]})
+    gravar_quebrado(a)
+
+    corpo = _agora(client, headers)
+
+    assert corpo['atualizados'] == 2
+    assert _resumo(client, headers, ma) == {'obtidas': 0, 'total': 1}
+    assert _resumo(client, headers, mb) == {'obtidas': 1, 'total': 1}

@@ -15,6 +15,7 @@ from dominio.conquistas import (
     LIMITE_ATINGIDO,
     LIMITE_DE_DESTAQUES,
     NAO_OBTIDA,
+    OrdemDoSeletor,
     cabe_mais_um_destaque,
 )
 from repositories.titulos import sem_caixa_nem_acento, titulo_exibido
@@ -33,17 +34,19 @@ _COLUNAS = f"""
            co.obtida_em, co.id_lista, lu.id_midia, {titulo_exibido('m')} AS jogo
 """
 
-_ORDEM = 'ORDER BY c.raridade ASC NULLS LAST, co.obtida_em DESC NULLS LAST, c.steam_appid, c.codigo'
-
-#: Ordens do seletor; o Item e o código desempatam, para a paginação não repetir nem pular.
-ORDENS_DO_SELETOR = {
+#: As ordens do seletor (a fonte delas; o TS só dá os rótulos); o Item e o código desempatam, para a
+#: paginação não repetir nem pular.
+ORDENS_DO_SELETOR: dict[OrdemDoSeletor, str] = {
     'raridade': 'c.raridade ASC NULLS LAST, co.obtida_em DESC NULLS LAST',
     'data': 'co.obtida_em DESC NULLS LAST, c.raridade ASC NULLS LAST',
 }
 
+#: Os destaques do Perfil vão na ordem `raridade` do seletor.
+_ORDEM = f"ORDER BY {ORDENS_DO_SELETOR['raridade']}, c.steam_appid, c.codigo"
+
 
 def do_seletor(id_usuario: str, *, busca: str | None, steam_appid: int | None, so_destacadas: bool,
-               ordem: str, limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
+               ordem: OrdemDoSeletor, limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
     """Uma página das obtidas do Usuário (com `destacada` e o jogo) e quantas são em todas as páginas."""
     clausulas, params = ['lu.id_usuario = %s'], [id_usuario]
     if busca and busca.strip():
@@ -98,7 +101,7 @@ def do_perfil(id_usuario: str) -> dict[str, Any]:
         f'{_COLUNAS} {_OBTIDAS} WHERE lu.id_usuario = %s {_ORDEM} LIMIT %s', (id_usuario, LIMITE_DE_DESTAQUES),
     )
     total = banco.consultar_um(
-        f'SELECT count(*) AS conquistas, count(DISTINCT co.id_lista) AS jogos {_OBTIDAS} WHERE lu.id_usuario = %s',
+        f'SELECT count(*) AS conquistas, count(DISTINCT ci.steam_appid) AS jogos {_OBTIDAS} WHERE lu.id_usuario = %s',
         (id_usuario,),
     )
     return {'destaques': destaques, 'automaticos': automaticos, 'total': total}

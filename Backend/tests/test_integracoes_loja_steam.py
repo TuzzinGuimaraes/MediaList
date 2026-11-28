@@ -164,6 +164,10 @@ def test_steam_appid_diferente_do_pedido_fica_o_pedido():
     'https://user@evil.example/?.steamstatic.com',
     42,
     ['https://cdn.akamai.steamstatic.com/x.jpg'],
+    # Da Steam, mas fora da CSP do web (`img-src`): a imagem seria gravada e bloqueada na tela.
+    'https://cdn.cloudflare.steamstatic.com/steam/apps/400/header.jpg',
+    'https://cdn.fastly.steamstatic.com/steam/apps/400/header.jpg',
+    'https://xshared.akamai.steamstatic.com/steam/apps/400/header.jpg',
 ])
 def test_capa_fora_dos_hosts_da_steam_fica_nula(url):
     dados, _ = dados_do_jogo_steam({**appdetails(400, 'Portal')['400']['data'], 'header_image': url})
@@ -173,7 +177,7 @@ def test_capa_fora_dos_hosts_da_steam_fica_nula(url):
 
 @pytest.mark.parametrize('url', [
     'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
-    'https://cdn.cloudflare.steamstatic.com/steam/apps/400/header.jpg',
+    'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/400/header.jpg',
     'https://steamcdn-a.akamaihd.net/steam/apps/400/header.jpg',
 ])
 def test_capa_dos_hosts_da_steam_entra(url):
