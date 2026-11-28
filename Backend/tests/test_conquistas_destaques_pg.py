@@ -8,6 +8,7 @@ TEST_DATABASE_URL, pula.
 """
 import pytest
 
+import banco
 from integracoes import sincronizacao_steam
 
 from .fontes_falsas import ICONES, conquista, jogo_steam
@@ -195,3 +196,14 @@ def test_sem_sessao_responde_401(client):
     assert client.get(DESTAQUES).status_code == 401
     assert client.put(f'{DESTAQUES}/10/A').status_code == 401
     assert client.delete(f'{DESTAQUES}/10/A').status_code == 401
+
+
+
+def test_total_conta_os_jogos_pela_appid_e_nao_pelos_itens(client, usuario, sincronizar):
+    jogos = sincronizar({'Um': [conquista('X', obtida_em=QUANDO)], 'Dois': [conquista('X', obtida_em=QUANDO)]})
+    (um, _), (_, id_midia_dois) = jogos['Um'], jogos['Dois']
+    # Duas Mídias do Catálogo com a mesma appid da Steam: o segundo Item passa a ser do mesmo jogo.
+    banco.executar('UPDATE conquistas_itens SET steam_appid = %s WHERE id_lista = %s',
+                   (um, _id_lista(usuario[0], id_midia_dois)))
+
+    assert _destaques(client, usuario[1])['total'] == {'conquistas': 2, 'jogos': 1}

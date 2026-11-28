@@ -9,12 +9,15 @@ colorido na obtida e o cinza na que falta (o outro, se a Steam só deu um).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 _ANTES_DE_TUDO = datetime.min.replace(tzinfo=timezone.utc)
 
 #: Quantas conquistas obtidas o Usuário destaca no Perfil (e quantas automáticas saem sem escolha).
 LIMITE_DE_DESTAQUES = 6
+
+#: As ordens do seletor de destaques: a mais rara primeiro (o padrão) ou a obtida mais recente.
+OrdemDoSeletor = Literal['raridade', 'data']
 
 #: Resultados de `repositories.destaques.destacar` e `tirar`.
 DESTACADA = 'destacada'
@@ -60,5 +63,5 @@ def linha_do_seletor(conquista: dict[str, Any]) -> dict[str, Any]:
 
 
 def lista_do_detalhe(conquistas: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """As conquistas do Item (`integracoes.conquistas.do_item_do_usuario`) na ordem e na forma do Detalhe."""
+    """As conquistas do Item (`repositories.conquistas.do_item_do_usuario`) na ordem e na forma do Detalhe."""
     return [_para_o_detalhe(c) for c in sorted(conquistas, key=_ordem)]

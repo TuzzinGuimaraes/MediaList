@@ -213,7 +213,7 @@ def sincronizar(
     final = resultado.somar(ja_casados, novos_casados, nao_casados)
     repositorio.registrar_resultado(id_usuario, 'steam', final)
 
-    jogos = [(int(item.origem_id), midia['id_midia'], item.horas or 0)
+    jogos = [sincronizacao_conquistas.Jogo(int(item.origem_id), midia['id_midia'], item.horas or 0)
              for item, midia in (*na_midia.todos, *restantes.todos) if midia]
     sincronizacao_conquistas.atualizar(steam, conta['identificador'], id_usuario, jogos,
                                        todos=orcamento is None, ha_orcamento=ha_orcamento)

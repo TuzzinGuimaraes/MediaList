@@ -143,8 +143,7 @@ class Steam:
     def _get(self, metodo: str, params: dict) -> dict:
         status, corpo = self._pedir(metodo, params)
         if status != 200:
-            logger.warning('Steam sem resposta: %s respondeu %s', metodo, status)
-            raise OrigemIndisponivel(MENSAGEM_INDISPONIVEL)
+            raise _sem_resposta(metodo, status)
         return corpo.get('response') or {}
 
     def _steamid(self, identificador: str) -> str:
@@ -211,8 +210,7 @@ class Steam:
         if stats.get('success') is False:
             return SEM_CONQUISTAS if stats.get('error') == ERRO_SEM_STATS else None
         if status != 200 or stats.get('success') is not True:
-            logger.warning('Steam sem resposta: %s respondeu %s', metodo, status)
-            raise OrigemIndisponivel(MENSAGEM_INDISPONIVEL)
+            raise _sem_resposta(metodo, status)
         obtidas: dict[str, datetime | None] = {}
         total = 0
         for conquista in _lista(stats.get('achievements'))[:MAXIMO_CONQUISTAS]:
@@ -230,8 +228,7 @@ class Steam:
         metodo = 'ISteamUserStats/GetSchemaForGame/v2/'
         status, corpo = self._pedir(metodo, {'appid': appid, 'l': 'brazilian'})
         if status != 200:
-            logger.warning('Steam sem resposta: %s respondeu %s', metodo, status)
-            raise OrigemIndisponivel(MENSAGEM_INDISPONIVEL)
+            raise _sem_resposta(metodo, status)
         jogo = corpo.get('game') if isinstance(corpo.get('game'), dict) else {}
         estatisticas = jogo.get('availableGameStats') if isinstance(jogo.get('availableGameStats'), dict) else {}
         esquema = []
@@ -257,8 +254,7 @@ class Steam:
         metodo = 'ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/'
         status, corpo = self._pedir(metodo, {'gameid': appid}, com_chave=False)
         if status != 200:
-            logger.warning('Steam sem resposta: %s respondeu %s', metodo, status)
-            raise OrigemIndisponivel(MENSAGEM_INDISPONIVEL)
+            raise _sem_resposta(metodo, status)
         percentuais = corpo.get('achievementpercentages')
         percentuais = percentuais if isinstance(percentuais, dict) else {}
         raridades = {}
@@ -292,6 +288,12 @@ class ConquistasDoJogador:
 
 #: Jogo sem conquistas.
 SEM_CONQUISTAS = ConquistasDoJogador(0, {})
+
+
+def _sem_resposta(metodo: str, status: int) -> OrigemIndisponivel:
+    """Vai para o log e dá o erro que a Steam fora do ar levanta (o método e o status, nunca a URL com a chave)."""
+    logger.warning('Steam sem resposta: %s respondeu %s', metodo, status)
+    return OrigemIndisponivel(MENSAGEM_INDISPONIVEL)
 
 
 def _lista(valor) -> list[dict]:
