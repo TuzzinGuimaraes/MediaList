@@ -1,6 +1,6 @@
 // As conquistas da Steam de um jogo da Lista pessoal (spec `conquistas-steam`): aberta pelo
 // "34/50 conquistas" do Detalhe, pelo id da Mídia. A API já manda na ordem do Detalhe, com a
-// oculta não obtida sem nome nem descrição.
+// oculta não obtida sem nome nem descrição. Cada obtida tem "Destacar no Perfil" / "Tirar do Perfil".
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useConquistasDoItem } from '@/api/conquistas';
 import { useItemDaLista } from '@/api/lista';
 import { useSessao } from '@/auth/SessaoContext';
-import { LinhaDaConquista } from '@/components/Conquistas';
+import { BotaoDeDestaque, LinhaDaConquista } from '@/components/Conquistas';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { Voltar } from '@/components/TopoDetalhe';
 import { TEXTOS_DAS_CONQUISTAS, textoDoResumo } from '@dominio/conquistas';
@@ -27,7 +27,8 @@ function Conquistas() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const item = useItemDaLista(id);
-  const conquistas = useConquistasDoItem(item.data?.id_lista);
+  const idLista = item.data?.id_lista;
+  const conquistas = useConquistasDoItem(idLista);
   const voltar = () =>
     router.canGoBack() ? router.back() : router.replace({ pathname: '/midia/[id]', params: { id } });
   const jogo = item.data ? tituloDaMidia(item.data) : '';
@@ -43,7 +44,13 @@ function Conquistas() {
       <FlatList
         data={conquistas.data}
         keyExtractor={(c) => c.codigo}
-        renderItem={({ item: c }) => <LinhaDaConquista conquista={c} jogo={jogo} />}
+        renderItem={({ item: c }) => (
+          <LinhaDaConquista
+            conquista={c}
+            jogo={jogo}
+            acao={c.obtida && idLista ? <BotaoDeDestaque idLista={idLista} conquista={c} /> : undefined}
+          />
+        )}
         ItemSeparatorComponent={() => <View className="h-px bg-borda" />}
         contentContainerClassName="px-4 pb-10"
       />

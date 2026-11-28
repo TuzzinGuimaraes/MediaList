@@ -15,6 +15,7 @@ import type { ConquistaDoItem, ConquistaEmDestaque } from './tipos';
 
 function conquista(dados: Partial<ConquistaDoItem> = {}): ConquistaDoItem {
   return {
+    steam_appid: 10,
     codigo: 'A',
     nome: 'O Louco',
     descricao: 'Comece a jornada.',

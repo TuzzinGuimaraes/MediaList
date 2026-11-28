@@ -1,6 +1,7 @@
 // Conquistas da Steam no Detalhe do jogo (spec `conquistas-steam`, ticket 02): o "34/50 conquistas"
 // abre a tela da lista (app/conquistas/[id].tsx); com 100% fora de Platinado, o destaque "Você tem
 // todas as conquistas" com "Marcar Platinado", que grava pela escrita do Item (nunca automático, ADR 0015).
+// Na lista, cada obtida tem "Destacar no Perfil" / "Tirar do Perfil" (ticket 03).
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -8,13 +9,14 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
-import { chaveDasConquistasDoItem } from '../api/conquistas';
+import { chaveDasConquistasDoItem, useMudarDestaque } from '../api/conquistas';
 import { mensagemDeErro } from '../api/erros';
 import { useSalvarItem } from '../api/lista';
 import type { ConquistaDoItem, ItemLista } from '../api/tipos';
 import { useCores } from '../tema/TemaContext';
 import {
   descricaoAcessivel,
+  eLimiteDeDestaques,
   eRara,
   nomeDaConquista,
   sugereMarcarPlatinado,
@@ -71,6 +73,31 @@ export function DestaqueDePlatinado({ item }: { item: ItemLista | null | undefin
       </Text>
       <Botao titulo={TEXTOS_DAS_CONQUISTAS.marcarPlatinado} onPress={marcar} carregando={salvar.isPending} />
       {falha}
+    </View>
+  );
+}
+
+/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6. */
+export function BotaoDeDestaque({ idLista, conquista }: { idLista: string; conquista: ConquistaDoItem }) {
+  const destaque = useMudarDestaque(idLista);
+  const falha = destaque.isError
+    ? eLimiteDeDestaques(destaque.error)
+      ? TEXTOS_DAS_CONQUISTAS.limiteDeDestaques
+      : mensagemDeErro(destaque.error)
+    : null;
+  return (
+    <View className="max-w-[45%] items-end gap-1">
+      <Botao
+        titulo={conquista.destacada ? TEXTOS_DAS_CONQUISTAS.tirar : TEXTOS_DAS_CONQUISTAS.destacar}
+        variante="secundario"
+        carregando={destaque.isPending}
+        onPress={() => destaque.mutate({ conquista, destacar: !conquista.destacada })}
+      />
+      {falha ? (
+        <Text accessibilityRole="alert" className="text-right text-legenda text-erro">
+          {falha}
+        </Text>
+      ) : null}
     </View>
   );
 }
