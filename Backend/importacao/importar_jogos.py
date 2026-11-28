@@ -90,8 +90,12 @@ MESES = {nome: numero for numero, nomes in enumerate((
 ), start=1) for nome in nomes}
 _DIA_MES_ANO = re.compile(r'^(\d{1,2})\s+(?:de\s+)?([a-z]+)\.?,?\s+(?:de\s+)?(\d{4})$')
 _MES_DIA_ANO = re.compile(r'^([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$')
-#: Hosts das imagens da loja (CDNs da Steam); capa fora deles fica nula.
-HOSTS_DE_IMAGEM_STEAM = ('.steamstatic.com', '.akamaihd.net')
+#: Os hosts de imagem da Steam aceitos (capas da loja, ícones das conquistas); imagem fora deles fica
+#: nula. São os mesmos do `img-src` da CSP (`Web/nginx.conf` e `vercel.json`): mudou aqui, muda lá,
+#: senão a imagem é gravada e bloqueada no web (`tests/test_config_vercel.py` confere).
+HOSTS_DE_IMAGEM_STEAM = (
+    'shared.akamai.steamstatic.com', 'shared.cloudflare.steamstatic.com', 'steamcdn-a.akamaihd.net',
+)
 #: Teto do nome, da desenvolvedora e da publicadora vindos da loja.
 TETO_TEXTO_LOJA = 300
 

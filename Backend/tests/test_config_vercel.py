@@ -34,3 +34,13 @@ def test_csp_do_vercel_igual_a_do_nginx():
 def test_vercel_repete_todos_os_headers_do_nginx_mais_hsts():
     esperado = {**_headers_nginx(), 'Strict-Transport-Security': HSTS}
     assert _headers_vercel() == esperado
+
+
+
+def test_hosts_de_imagem_da_steam_na_csp_sao_os_que_o_backend_aceita():
+    """Ícone ou capa da Steam que o backend grava e a CSP bloqueia some no web; o contrário é CSP larga à toa."""
+    from importacao.importar_jogos import HOSTS_DE_IMAGEM_STEAM
+
+    img_src = re.search(r'img-src ([^;]*)', _headers_nginx()['Content-Security-Policy']).group(1).split()
+    da_steam = {fonte.removeprefix('https://') for fonte in img_src if 'steam' in fonte or 'akamaihd' in fonte}
+    assert da_steam == set(HOSTS_DE_IMAGEM_STEAM)
