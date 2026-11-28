@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
-import { chaveDasConquistasDoItem, useMudarDestaque } from '../api/conquistas';
+import { CHAVES_DAS_CONQUISTAS, useMudarDestaque } from '../api/conquistas';
 import { mensagemDeErro } from '../api/erros';
 import { useSalvarItem } from '../api/lista';
 import type { ConquistaDoItem, ItemLista } from '../api/tipos';
@@ -64,7 +64,7 @@ export function DestaqueDePlatinado({ item }: { item: ItemLista | null | undefin
   const marcar = () =>
     salvar.mutate(
       { idMidia: item.id_midia, idLista: item.id_lista, dados: mudancaDeStatus(item, platinado) },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: chaveDasConquistasDoItem(item.id_lista) }) },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVES_DAS_CONQUISTAS.doItem(item.id_lista) }) },
     );
   return (
     <View accessibilityLabel={TEXTOS_DAS_CONQUISTAS.todas} className="gap-3 rounded-md border border-marca bg-superficie p-4">
@@ -102,25 +102,33 @@ export function BotaoDeDestaque({ conquista }: { conquista: ConquistaDoItem }) {
   );
 }
 
+/** O que a linha mostra: a conquista do Item (jogo e seletor) ou o destaque do Perfil (sempre obtido). */
+type Mostrada = Pick<ConquistaDoItem, 'nome' | 'icone' | 'raridade' | 'obtida' | 'obtida_em'> & {
+  descricao?: string | null;
+};
+
 /**
- * Uma conquista: ícone, nome, descrição, data e raridade. `acao` é o lugar do botão da linha (o destaque no
- * Perfil); `comJogo` mostra o jogo também na tela (o seletor mistura jogos).
+ * Uma conquista: ícone, nome, selo Rara, descrição, data e raridade. `acao` é o lugar do botão da linha (o
+ * destaque no Perfil); `comJogo` mostra o jogo também na tela (o seletor e o Perfil misturam jogos);
+ * `cartao` é a forma dos destaques do Perfil, sem o espaço da lista.
  */
 export function LinhaDaConquista({
   conquista,
   jogo,
   acao,
   comJogo = false,
+  cartao = false,
 }: {
-  conquista: ConquistaDoItem;
+  conquista: Mostrada;
   jogo: string;
   acao?: ReactNode;
   comJogo?: boolean;
+  cartao?: boolean;
 }) {
   const obtencao = textoDaObtencao(conquista);
   const raridade = textoDaRaridade(conquista.raridade);
   return (
-    <View className="flex-row items-start gap-3 py-3">
+    <View className={`flex-row items-start gap-3 ${cartao ? '' : 'py-3'}`}>
       <View accessible accessibilityLabel={descricaoAcessivel(conquista, jogo)} className="flex-1 flex-row items-start gap-3">
         <View className="h-12 w-12 overflow-hidden rounded bg-superficie-alta">
           {conquista.icone ? (
