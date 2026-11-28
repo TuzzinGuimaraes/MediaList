@@ -11,6 +11,7 @@ from .moderacao import moderacao_bp
 from .noticias import noticias_bp
 from .preferencias import preferencias_bp
 from .push import push_bp
+from .sugestoes import sugestoes_bp
 from .usuario import usuario_bp
 from .utils import utils_bp
 
@@ -19,6 +20,7 @@ __all__ = [
     'usuario_bp',
     'midias_bp',
     'lista_bp',
+    'sugestoes_bp',
     'avaliacoes_bp',
     'integracoes_bp',
     'noticias_bp',

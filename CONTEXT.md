@@ -52,6 +52,20 @@ A Relação vem da **Importação** e ninguém a edita: cada reimportação de u
 dela pelas da fonte. Uma obra relacionada que ainda não está no Catálogo aparece só com título, Tipo
 e o link da fonte; obra adulta não aparece.
 
+## Sugestão
+
+Um anime ou mangá do Catálogo indicado ao Usuário pelo gosto dele, com o motivo. Parte das
+**sementes**: os Itens de anime e mangá com **Nota pessoal** 8 ou mais, ou favoritos. Cada semente
+traz as obras que o AniList recomenda a partir dela (as 10 mais votadas, gravadas pela
+**Importação**). Pesa mais a recomendação mais votada e a semente de nota mais alta (o favorito sem
+nota pesa como 9), e a obra recomendada por várias sementes soma os pesos. O motivo cita a semente
+que mais pesou: "porque você deu 9 a Frieren" ou "porque Frieren é Favorito".
+
+Não vira Sugestão a obra que já está na **Lista pessoal** (em qualquer Estado de consumo), a adulta,
+a que não está no Catálogo e a ligada a uma semente por uma **Relação**. Sem 12 Sugestões, a faixa
+completa com o Em alta, com o motivo "Em alta". É calculada na leitura: uma nota nova já muda as
+Sugestões. Jogo não tem Sugestão. O destaque "Continue com a Sequência" do Detalhe não é Sugestão.
+
 ## Catálogo
 
 O conjunto de todas as Mídias conhecidas pelo sistema. O Catálogo é populado por

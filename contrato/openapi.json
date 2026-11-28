@@ -838,6 +838,29 @@
         "title": "ConsultaPopulares",
         "type": "object"
       },
+      "ConsultaSugestoes": {
+        "properties": {
+          "tipo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anime",
+                  "manga"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "O recorte do Início: só anime, só mangá ou, sem `tipo`, os dois juntos",
+            "title": "Tipo"
+          }
+        },
+        "title": "ConsultaSugestoes",
+        "type": "object"
+      },
       "ConsultaTrending": {
         "properties": {
           "limite": {
@@ -4180,6 +4203,54 @@
         "title": "MidiaPopular",
         "type": "object"
       },
+      "MotivoDaSugestao": {
+        "description": "Por que a obra é Sugestão; o texto sai do domínio da interface (`dominio/sugestoes.ts`).",
+        "properties": {
+          "nota": {
+            "anyOf": [
+              {
+                "ge": 0,
+                "le": 10,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Nota pessoal da semente; só em `nota`",
+            "title": "Nota"
+          },
+          "porque": {
+            "description": "`nota`: a semente tem Nota pessoal 8 ou mais; `favorito`: é Favorito; `em_alta`: completa a faixa com o Em alta",
+            "enum": [
+              "nota",
+              "favorito",
+              "em_alta"
+            ],
+            "title": "Porque",
+            "type": "string"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O título exibido da semente; nulo em `em_alta`",
+            "title": "Titulo"
+          }
+        },
+        "required": [
+          "porque",
+          "nota",
+          "titulo"
+        ],
+        "title": "MotivoDaSugestao",
+        "type": "object"
+      },
       "NaoEncontrado": {
         "description": "Item da origem que não casou com o Catálogo: o Usuário vincula a uma Mídia (`POST /integracoes/vinculos`).",
         "properties": {
@@ -5496,6 +5567,23 @@
         "title": "RespostaRelacoes",
         "type": "object"
       },
+      "RespostaSugestoes": {
+        "properties": {
+          "sugestoes": {
+            "description": "Até 12, por pontos; abaixo de 12, o Em alta do recorte completa, sem o que está na Lista",
+            "items": {
+              "$ref": "#/components/schemas/Sugestao"
+            },
+            "title": "Sugestoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sugestoes"
+        ],
+        "title": "RespostaSugestoes",
+        "type": "object"
+      },
       "RespostaTrending": {
         "properties": {
           "midias": {
@@ -5636,6 +5724,619 @@
           "postgres"
         ],
         "title": "Saude",
+        "type": "object"
+      },
+      "Sugestao": {
+        "properties": {
+          "artista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artista"
+          },
+          "autor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor"
+          },
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Url"
+          },
+          "classificacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao"
+          },
+          "classificacao_etaria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classificacao Etaria"
+          },
+          "data_lancamento": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Lancamento"
+          },
+          "demografia": {
+            "anyOf": [
+              {
+                "enum": [
+                  "shounen",
+                  "shoujo",
+                  "seinen",
+                  "josei",
+                  "kodomomuke"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demografia"
+          },
+          "desenvolvedor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desenvolvedor"
+          },
+          "duracao_episodio": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Minutos",
+            "title": "Duracao Episodio"
+          },
+          "episodios_lancados": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele",
+            "title": "Episodios Lancados"
+          },
+          "estudio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estudio"
+          },
+          "fonte_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte Original"
+          },
+          "formato": {
+            "anyOf": [
+              {
+                "enum": [
+                  "TV",
+                  "TV_SHORT",
+                  "ONA",
+                  "MOVIE",
+                  "SPECIAL",
+                  "OVA",
+                  "MUSIC"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O formato do AniList; nulo é desconhecido",
+            "title": "Formato"
+          },
+          "generos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'Ação, Drama'; `generos_lista` é o mesmo já separado",
+            "title": "Generos"
+          },
+          "generos_lista": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Generos Lista",
+            "type": "array"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "modo_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single",
+                  "multi",
+                  "ambos"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modo Jogo"
+          },
+          "motivo": {
+            "$ref": "#/components/schemas/MotivoDaSugestao"
+          },
+          "nota_fonte": {
+            "anyOf": [
+              {
+                "ge": 0,
+                "le": 10,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nota do AniList/RAWG, gravada pela Importação",
+            "title": "Nota Fonte"
+          },
+          "nota_media": {
+            "anyOf": [
+              {
+                "ge": 0,
+                "le": 10,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Média das Avaliações; nula sem elas",
+            "title": "Nota Media"
+          },
+          "numero_capitulos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Capitulos"
+          },
+          "numero_episodios": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Episodios"
+          },
+          "numero_volumes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Volumes"
+          },
+          "origem_nota": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AniList",
+                  "RAWG"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origem Nota"
+          },
+          "plataformas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'PC, Switch'",
+            "title": "Plataformas"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "proximo_episodio_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quando sai o próximo episódio; nulo se não se sabe",
+            "title": "Proximo Episodio Em"
+          },
+          "publicadora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora"
+          },
+          "publicadora_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicadora Original"
+          },
+          "revista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revista"
+          },
+          "sinopse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sinopse"
+          },
+          "status_anime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Anime"
+          },
+          "status_catalogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_exibicao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O status do Tipo da Mídia",
+            "title": "Status Catalogo"
+          },
+          "status_jogo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lancado",
+                  "em_desenvolvimento",
+                  "cancelado",
+                  "remasterizado"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Jogo"
+          },
+          "status_manga": {
+            "anyOf": [
+              {
+                "enum": [
+                  "em_publicacao",
+                  "finalizado",
+                  "aguardando",
+                  "cancelado",
+                  "hiato"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Manga"
+          },
+          "temporada_ano": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporada Ano"
+          },
+          "temporada_estacao": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inverno",
+                  "primavera",
+                  "verao",
+                  "outono"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Temporada do anime, com `temporada_ano`; nula sem ela",
+            "title": "Temporada Estacao"
+          },
+          "temporada_estimada": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes",
+            "title": "Temporada Estimada"
+          },
+          "tipo": {
+            "enum": [
+              "anime",
+              "manga",
+              "jogo"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_ingles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Ingles"
+          },
+          "titulo_original": {
+            "title": "Titulo Original",
+            "type": "string"
+          },
+          "titulo_romaji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Romaji"
+          },
+          "total_avaliacoes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo quando a Mídia não tem Avaliações",
+            "title": "Total Avaliacoes"
+          },
+          "total_concluidos": {
+            "description": "Itens de lista em Concluído ou Platinado",
+            "title": "Total Concluidos",
+            "type": "integer"
+          },
+          "total_usuarios": {
+            "description": "Usuários com a Mídia na Lista pessoal (Popularidade)",
+            "title": "Total Usuarios",
+            "type": "integer"
+          },
+          "trailer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailer Url"
+          }
+        },
+        "required": [
+          "id_midia",
+          "tipo",
+          "titulo_original",
+          "titulo_ingles",
+          "titulo_romaji",
+          "sinopse",
+          "data_lancamento",
+          "nota_media",
+          "total_avaliacoes",
+          "nota_fonte",
+          "origem_nota",
+          "poster_url",
+          "banner_url",
+          "status_catalogo",
+          "generos",
+          "generos_lista",
+          "total_usuarios",
+          "total_concluidos",
+          "status_anime",
+          "numero_episodios",
+          "episodios_lancados",
+          "proximo_episodio_em",
+          "estudio",
+          "fonte_original",
+          "status_manga",
+          "numero_capitulos",
+          "numero_volumes",
+          "autor",
+          "demografia",
+          "desenvolvedor",
+          "publicadora",
+          "plataformas",
+          "status_jogo",
+          "modo_jogo",
+          "trailer_url",
+          "duracao_episodio",
+          "classificacao_etaria",
+          "temporada_estacao",
+          "temporada_ano",
+          "temporada_estimada",
+          "formato",
+          "artista",
+          "publicadora_original",
+          "revista",
+          "classificacao",
+          "motivo"
+        ],
+        "title": "Sugestao",
         "type": "object"
       },
       "Temporada": {
@@ -11044,6 +11745,98 @@
         ]
       }
     },
+    "/api/sugestoes": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_sugestoes",
+        "parameters": [
+          {
+            "description": "O recorte do Início: só anime, só mangá ou, sem `tipo`, os dois juntos",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "anime",
+                    "manga"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "O recorte do Início: só anime, só mangá ou, sem `tipo`, os dois juntos",
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSugestoes"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sugestões para o Usuário: até 12 animes ou mangás do Catálogo, pelo gosto dele, com o motivo. Abaixo de 12, o Em alta do recorte completa a faixa.",
+        "tags": [
+          "sugestoes"
+        ]
+      }
+    },
     "/api/usuario/estatisticas": {
       "get": {
         "description": "",
@@ -11272,6 +12065,9 @@
     },
     {
       "name": "lista"
+    },
+    {
+      "name": "sugestoes"
     },
     {
       "name": "avaliacoes"
