@@ -9,7 +9,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, contrato
-from dominio.sugestoes import LIMITE, NOTA_MINIMA, completar_com_em_alta, sugerir
+from dominio.sugestoes import NOTA_MINIMA, completar_com_em_alta, montar_faixa, sugerir
 from repositories.sugestoes import Sugestoes
 from schemas.sugestoes import ConsultaSugestoes, RespostaSugestoes
 
@@ -30,9 +30,6 @@ def listar_sugestoes(query: ConsultaSugestoes):
     tipos = [query.tipo] if query.tipo else ['anime', 'manga']
 
     escolhidas = sugerir(sugestoes.recomendacoes(id_usuario, tipos, NOTA_MINIMA))
-    midias = sugestoes.midias([s['id_midia'] for s in escolhidas])
-    faixa = [{**midias[s['id_midia']], 'motivo': s['motivo']} for s in escolhidas if s['id_midia'] in midias]
-    em_alta = []
-    if len(faixa) < LIMITE:
-        em_alta = sugestoes.em_alta(id_usuario, tipos, [s['id_midia'] for s in faixa], LIMITE - len(faixa))
+    faixa, faltam = montar_faixa(escolhidas, sugestoes.midias([s['id_midia'] for s in escolhidas]))
+    em_alta = sugestoes.em_alta(id_usuario, tipos, [s['id_midia'] for s in faixa], faltam)
     return {'sugestoes': completar_com_em_alta(faixa, em_alta)}

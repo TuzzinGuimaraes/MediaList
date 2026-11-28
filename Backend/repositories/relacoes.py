@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from banco import consultar, consultar_um
+from repositories.catalogo import obra_adulta
 from repositories.titulos import titulo_exibido
 
 #: Tipo e identidade na fonte da Mídia; nulo se ela não existe.
@@ -42,13 +43,12 @@ _PROPRIAS = f"""
 """
 
 #: As Relações das outras Mídias do Catálogo que apontam para esta, com o código gravado na
-#: origem. A origem é adulta pelo que a Importação gravou nela: o anime com `classificacao_etaria`
-#: 18, o mangá com `adulto` (o `isAdult` do AniList) e o jogo ESRB Adults Only.
+#: origem. A origem é adulta pelo que a Importação gravou nela (`obra_adulta`).
 _DE_OUTRAS = f"""
     SELECT r.relacao, tm.nome_tipo AS tipo, COALESCE(a.anilist_id, ma.anilist_id) AS anilist_id,
            j.rawg_slug, o.id_midia, {titulo_exibido('o')} AS titulo,
            o.poster_url, o.data_lancamento, lu.status_consumo,
-           (a.classificacao_etaria = '18' OR ma.adulto OR j.classificacao = 'ESRB: Adults Only') IS TRUE AS adulto
+           {obra_adulta(anime='a', manga='ma', jogo='j')} AS adulto
     FROM relacoes_midia r
     JOIN midias o ON o.id_midia = r.id_midia
     JOIN tipo_midia tm ON tm.id_tipo = o.id_tipo
