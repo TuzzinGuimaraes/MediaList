@@ -6,7 +6,6 @@ import type { DadosAvaliacao } from '@dominio/tipos';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
-import type { Esquemas } from '../../api/tipos';
 import { useApi } from '../../sessao/SessaoContext';
 
 /** O detalhe mostra só a 1ª página das Avaliações. */
@@ -59,36 +58,6 @@ export function useAvaliacoes(id: string) {
           params: { path: { id_midia: id }, query: { por_pagina: AVALIACOES_POR_PAGINA } },
         }),
       ),
-  });
-}
-
-/** As conquistas da Steam do jogo de um Item, na ordem da API (oculta não obtida sem nome). */
-export function useConquistasDoItem(idLista: string) {
-  const api = useApi();
-  return useQuery({
-    queryKey: chaves.conquistas.doItem(idLista),
-    queryFn: () =>
-      exigir(api.GET('/api/lista/{lista_id}/conquistas', { params: { path: { lista_id: idLista } } })),
-    select: (r) => r.conquistas,
-  });
-}
-
-/**
- * Põe (`destacar`) ou tira a conquista obtida dos destaques do Perfil, pela appid e pelo código; depois
- * relê tudo de conquistas (a lista do Item, os destaques e o seletor). O sétimo destaque falha com 409
- * (`eLimiteDeDestaques`). O Detalhe e o seletor do Perfil usam esta mesma escrita.
- */
-export function useMudarDestaque() {
-  const api = useApi();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ conquista, destacar }: { conquista: Esquemas['ConquistaDoItem']; destacar: boolean }) => {
-      const caminho = { params: { path: { steam_appid: conquista.steam_appid, codigo: conquista.codigo } } };
-      return destacar
-        ? exigir(api.PUT('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho))
-        : exigir(api.DELETE('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho));
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: chaves.conquistas.todas }),
   });
 }
 

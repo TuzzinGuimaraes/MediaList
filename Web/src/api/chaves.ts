@@ -6,6 +6,7 @@
 // prefixo e alcança todos. O que não muda com Avaliação nem com a Lista (Gêneros, facetas)
 // fica sob ['catalogo'].
 import type { OrdemCarrossel } from '@dominio/carrossel';
+import type { FiltrosDoSeletor } from '@dominio/conquistas';
 import type { TipoMidia } from '@dominio/estadoConsumo';
 import type { Recorte } from '@dominio/recorte';
 import { CHAVE_SUGESTOES } from '@dominio/sugestoes';
@@ -51,7 +52,7 @@ export const chaves = {
     doItem: (idLista: string) => ['conquistas', 'item', idLista] as const,
     destaques: ['conquistas', 'destaques'] as const,
     /** O seletor de destaques (GET /usuario/conquistas), por filtros, e os jogos do filtro. */
-    seletor: (filtros: object) => ['conquistas', 'seletor', filtros] as const,
+    seletor: (filtros: FiltrosDoSeletor) => ['conquistas', 'seletor', filtros] as const,
     jogos: ['conquistas', 'jogos'] as const,
   },
   /** As Relações de uma Mídia (GET /midias/<id>/relacoes): trazem o Status da Lista em cada obra. */

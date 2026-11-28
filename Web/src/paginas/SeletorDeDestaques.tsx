@@ -16,8 +16,8 @@ import { Modal } from '../componentes/Camada';
 import { Carregando, FalhaParcial, Vazio } from '../componentes/Estados';
 import { Icone } from '../componentes/Icone';
 import { Opcoes } from '../componentes/Opcoes';
-import { BotaoDeDestaque, LinhaDaConquista } from './detalhe/Conquistas';
-import { useConquistasDoSeletor, useJogosComConquistas } from './destaques';
+import { BotaoDeDestaque, LinhaDaConquista } from '../conquistas/Conquista';
+import { useConquistasDoSeletor, useJogosComConquistas } from '../conquistas/consultas';
 import { CampoAtrasado } from './explorar/CampoAtrasado';
 
 const ORDENS = ORDENS_DO_SELETOR.map((o) => ({ valor: o.valor, nome: o.rotulo }));
