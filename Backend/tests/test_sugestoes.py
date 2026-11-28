@@ -1,7 +1,7 @@
 """Pontos, motivo e ordem das Sugestões (`dominio.sugestoes`, spec `sugestoes`), sem banco."""
 from decimal import Decimal
 
-from dominio.sugestoes import LIMITE, completar_com_em_alta, peso_da_semente, sugerir
+from dominio.sugestoes import LIMITE, completar_com_em_alta, montar_faixa, peso_da_semente, sugerir
 
 
 def _rec(destino, rating, *, nota=None, favorito=False, semente='Frieren', popularidade=None, titulo=None):
@@ -48,6 +48,24 @@ def test_motivo_cita_a_semente_que_mais_contribuiu():
     assert b['motivo'] == {'porque': 'nota', 'nota': 8.0, 'titulo': 'Muito'}
 
 
+def test_empate_de_contribuicao_no_motivo_vence_a_semente_de_maior_peso():
+    [b] = sugerir([
+        _rec('B', 100, nota=9, semente='A nota 9'),    # 900
+        _rec('B', 90, nota=10, semente='Z nota 10'),   # 900
+    ])
+
+    assert b['motivo'] == {'porque': 'nota', 'nota': 10.0, 'titulo': 'Z nota 10'}
+
+
+def test_empate_de_contribuicao_e_de_peso_no_motivo_vence_o_titulo_menor():
+    [b] = sugerir([
+        _rec('B', 100, nota=9, semente='Vinland Saga'),
+        _rec('B', 100, nota=9, semente='Frieren'),
+    ])
+
+    assert b['motivo']['titulo'] == 'Frieren'
+
+
 def test_motivo_de_favorito_sem_nota_nao_traz_nota():
     [a] = sugerir([_rec('A', 10, favorito=True, semente='Frieren')])
 
@@ -86,6 +104,38 @@ def test_no_maximo_12():
 
     assert LIMITE == 12
     assert _ids(sugestoes) == [f'M{i:02}' for i in range(12)]
+
+
+def _escolhida(destino):
+    return {'id_midia': destino, 'motivo': {'porque': 'nota', 'nota': 9.0, 'titulo': 'Frieren'}}
+
+
+def test_faixa_junta_a_midia_e_o_motivo_e_diz_quantas_faltam():
+    faixa, faltam = montar_faixa([_escolhida('A'), _escolhida('B')], {
+        'A': {'id_midia': 'A', 'titulo_exibido': 'Obra A'}, 'B': {'id_midia': 'B', 'titulo_exibido': 'Obra B'},
+    })
+
+    assert faixa == [
+        {'id_midia': 'A', 'titulo_exibido': 'Obra A', 'motivo': _escolhida('A')['motivo']},
+        {'id_midia': 'B', 'titulo_exibido': 'Obra B', 'motivo': _escolhida('B')['motivo']},
+    ]
+    assert faltam == LIMITE - 2
+
+
+def test_faixa_descarta_a_sugestao_sem_midia():
+    faixa, faltam = montar_faixa([_escolhida('A'), _escolhida('sumiu')], {'A': {'id_midia': 'A'}})
+
+    assert _ids(faixa) == ['A']
+    assert faltam == LIMITE - 1
+
+
+def test_faixa_corta_em_12_e_nao_falta_nada():
+    ids = [f'M{i:02}' for i in range(15)]
+
+    faixa, faltam = montar_faixa([_escolhida(i) for i in ids], {i: {'id_midia': i} for i in ids})
+
+    assert _ids(faixa) == ids[:12]
+    assert faltam == 0
 
 
 def test_em_alta_completa_ate_12_sem_repetir_e_com_motivo_em_alta():

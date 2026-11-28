@@ -13,11 +13,11 @@ from decimal import Decimal
 from typing import Any
 
 from banco import consultar
-from repositories.catalogo import FROM_MIDIA, ORDENS, SELECT_MIDIA, com_generos_lista
+from repositories.catalogo import FROM_MIDIA, ORDENS, SELECT_MIDIA, com_generos_lista, obra_adulta
 from repositories.titulos import titulo_exibido
 
-#: Anime adulto no Catálogo (`classificacao_etaria` 18, o `isAdult` do AniList) ou mangá `adulto`.
-_ADULTA = "(a.classificacao_etaria = '18' OR ma.adulto) IS TRUE"
+#: A obra do Catálogo é adulta (anime e mangá; aqui não entra jogo).
+_ADULTA = obra_adulta(anime='a', manga='ma')
 
 #: As recomendações das sementes do Usuário para as obras do Catálogo que podem virar Sugestão.
 _RECOMENDACOES = f"""
@@ -87,6 +87,8 @@ class Sugestoes:
 
     def em_alta(self, id_usuario: str, tipos: list[str], sem: list[str], limite: int) -> Linhas:
         """Até `limite` Mídias do Em alta dos `tipos`, fora da Lista do Usuário e de `sem`."""
+        if limite <= 0:
+            return []
         return [com_generos_lista(linha) for linha in consultar(
             _EM_ALTA, {'usuario': id_usuario, 'tipos': tipos, 'sem': sem, 'limite': limite},
         )]
