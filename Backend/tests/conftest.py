@@ -138,6 +138,7 @@ def limpar(pg):
         '(SELECT id_midia FROM jogos WHERE rawg_slug = ANY(%s) OR steam_appid = ANY(%s))',
         (usados['slugs'], usados['appids']),
     )
+    banco.executar('DELETE FROM conquistas_esquemas WHERE steam_appid = ANY(%s)', (usados['appids'],))
 
 
 @pytest.fixture
@@ -156,18 +157,18 @@ def jogo(limpar):
 @pytest.fixture
 def fontes(monkeypatch):
     """`fontes(jogos_steam, rotas_rawg, loja=rotas_da_loja, cabecas=heads_do_cdn)` instala a Steam, o RAWG e a loja da
-    Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`). A loja padrão não tem
-    nenhuma appid (`success: false`)."""
+    Steam falsos; devolve a sessão do RAWG (a da loja fica em `.loja`, e a da Steam em `.steam`). A loja padrão não
+    tem nenhuma appid (`success: false`)."""
     from integracoes import servico, sincronizacao_steam
     from integracoes.loja_steam import LojaSteam
     from integracoes.rawg import Rawg
     from integracoes.steam import Steam
 
     def instalar(jogos, rawg=None, loja=None, cabecas=None, **steam):
-        monkeypatch.setitem(
-            servico.PLATAFORMAS, 'steam', Steam(sessao=SessaoGet(rotas_steam(jogos, **steam)), chave=CHAVE_STEAM),
-        )
+        sessao_steam = SessaoGet(rotas_steam(jogos, **steam))
+        monkeypatch.setitem(servico.PLATAFORMAS, 'steam', Steam(sessao=sessao_steam, chave=CHAVE_STEAM))
         sessao_rawg = SessaoGet(rawg or {})
+        sessao_rawg.steam = sessao_steam
         sessao_rawg.loja = SessaoGet(loja or {r'/api/appdetails': lambda p: {str(p['appids']): {'success': False}}},
                                      cabecas)
         monkeypatch.setattr(sincronizacao_steam, 'Rawg', lambda **kw: Rawg(sessao=sessao_rawg, chave=CHAVE_RAWG, **kw))

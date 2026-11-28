@@ -73,6 +73,13 @@ class ProgressoItemLista(BaseModel):
 # ============================================
 
 
+class ResumoConquistas(BaseModel):
+    """As conquistas do jogo na Steam (última leitura da sincronização)."""
+
+    obtidas: int
+    total: int
+
+
 class ItemLista(CamposDaMidia):
     """Um Item de GET /lista: a Mídia (os campos comuns de `Midia`) mais os campos do Item."""
 
@@ -89,6 +96,9 @@ class ItemLista(CamposDaMidia):
     comentario: str | None
     data_adicao: Instante
     data_atualizacao: Instante
+    conquistas: ResumoConquistas | None = Field(
+        default=None, description='Conquistas da Steam do jogo; nulo sem leitura ou num jogo sem conquistas',
+    )
 
 
 class RespostaLista(BaseModel):
