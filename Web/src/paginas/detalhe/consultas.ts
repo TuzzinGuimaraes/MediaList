@@ -61,6 +61,17 @@ export function useAvaliacoes(id: string) {
   });
 }
 
+/** As conquistas da Steam do jogo de um Item, na ordem da API (oculta não obtida sem nome). */
+export function useConquistasDoItem(idLista: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: chaves.conquistas.doItem(idLista),
+    queryFn: () =>
+      exigir(api.GET('/api/lista/{lista_id}/conquistas', { params: { path: { lista_id: idLista } } })),
+    select: (r) => r.conquistas,
+  });
+}
+
 /**
  * Uma Avaliação muda a Nota média e o Total de avaliações da Mídia: refaz tudo que os mostra
  * (Início, Explorar, detalhe e Sugestões, sob ['midias']), a Lista e as Avaliações dela.

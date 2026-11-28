@@ -563,3 +563,125 @@ describe('Detalhe: sugestão de Sequência', () => {
     expect(screen.queryByRole('region', { name: 'Continue com a Sequência' })).not.toBeInTheDocument();
   });
 });
+
+
+describe('Detalhe: conquistas da Steam', () => {
+  type Conquista = Esquemas['ConquistaDoItem'];
+  const jogo = midia({ tipo: 'jogo', titulo_original: 'Hades', titulo_romaji: null, titulo_ingles: null });
+
+  function conquista(codigo: string, dados: Partial<Conquista> = {}): Conquista {
+    return {
+      codigo,
+      nome: `Conquista ${codigo}`,
+      descricao: `Faça ${codigo}.`,
+      icone: `https://steamcdn-a.akamaihd.net/${codigo}.jpg`,
+      oculta: false,
+      raridade: 50,
+      obtida: false,
+      obtida_em: null,
+      destacada: false,
+      ...dados,
+    };
+  }
+
+  const itemJogo = (status_consumo: string, conquistas: { obtidas: number; total: number } | null) =>
+    ({
+      id_lista: 'LST-J',
+      id_midia: ID,
+      tipo: 'jogo',
+      status_consumo,
+      progresso_atual: null,
+      progresso_total: null,
+      numero_episodios: null,
+      numero_capitulos: null,
+      conquistas,
+    }) as unknown as Esquemas['ItemLista'];
+
+  const lista = [
+    conquista('Recente', { obtida: true, obtida_em: '2020-12-12T10:00:00Z', raridade: 3.24 }),
+    conquista('Segredo', { nome: null, descricao: null, oculta: true, raridade: 40 }),
+  ];
+
+  it('"34/50 conquistas" no bloco do Item abre a lista com ícone, nome, descrição, data, raridade e o selo Rara', async () => {
+    const { user } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ detalhe: jogo, lista: [itemJogo('jogando', { obtidas: 34, total: 50 })] }),
+        'GET /lista/LST-J/conquistas': { status: 200, corpo: { conquistas: lista } },
+      },
+    });
+
+    const resumo = await screen.findByRole('button', { name: '34/50 conquistas' });
+    expect(screen.getByRole('button', { name: 'Editar na Lista' }).parentElement).toContainElement(resumo);
+    await user.click(resumo);
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Conquistas' });
+    const linhas = within(dialogo).getAllByRole('listitem');
+    expect(linhas).toHaveLength(2);
+    const [obtida, oculta] = linhas as [HTMLElement, HTMLElement];
+    expect(obtida).toHaveAccessibleName('Conquista Recente, Hades, obtida em 12/12/2020, 3,2% dos jogadores, rara');
+    expect(within(obtida).getByText('Faça Recente.')).toBeInTheDocument();
+    expect(within(obtida).getByText('Obtida em 12/12/2020')).toBeInTheDocument();
+    expect(within(obtida).getByText('3,2% dos jogadores')).toBeInTheDocument();
+    expect(within(obtida).getByText('Rara')).toBeInTheDocument();
+    expect(obtida.querySelector('img')).toHaveAttribute('src', 'https://steamcdn-a.akamaihd.net/Recente.jpg');
+    expect(within(oculta).getByText('Conquista oculta')).toBeInTheDocument();
+    expect(within(oculta).getByText('Não obtida')).toBeInTheDocument();
+    expect(within(oculta).queryByText('Rara')).not.toBeInTheDocument();
+  });
+
+  it('mostra "0/50 conquistas" quando há conquistas e nenhuma obtida', async () => {
+    await abrirLogado(`/midia/${ID}`, {
+      rotas: rotas({ detalhe: jogo, lista: [itemJogo('na_fila', { obtidas: 0, total: 50 })] }),
+    });
+
+    expect(await screen.findByRole('button', { name: '0/50 conquistas' })).toBeInTheDocument();
+  });
+
+  it('jogo sem dado de conquistas não mostra nada', async () => {
+    await abrirLogado(`/midia/${ID}`, { rotas: rotas({ detalhe: jogo, lista: [itemJogo('jogando', null)] }) });
+
+    await screen.findByRole('button', { name: 'Editar na Lista' });
+    expect(screen.queryByRole('button', { name: /conquistas/ })).not.toBeInTheDocument();
+  });
+
+  it('com todas as conquistas, "Marcar Platinado" grava o Estado Platinado e o destaque some', async () => {
+    let status = 'zerado';
+    const { user, api } = await abrirLogado(`/midia/${ID}`, {
+      rotas: {
+        ...rotas({ detalhe: jogo }),
+        'GET /lista': () => ({ status: 200, corpo: { lista: [itemJogo(status, { obtidas: 2, total: 2 })] } }),
+        'GET /lista/LST-J/conquistas': { status: 200, corpo: { conquistas: lista } },
+        'PUT /lista/LST-J': () => {
+          status = 'platinado';
+          return { status: 200, corpo: { mensagem: 'ok' } };
+        },
+      },
+    });
+
+    const destaque = await screen.findByRole('region', { name: 'Você tem todas as conquistas' });
+    expect(screen.getByRole('button', { name: 'Editar na Lista' }).parentElement).toContainElement(destaque);
+    await user.click(screen.getByRole('button', { name: '2/2 conquistas' }));
+    await screen.findByRole('dialog', { name: 'Conquistas' });
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
+
+    await user.click(within(destaque).getByRole('button', { name: 'Marcar Platinado' }));
+
+    expect(api.para('PUT /lista/LST-J').map((c: Requisicao) => c.corpo)).toEqual([{ status_consumo: 'platinado' }]);
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Você tem todas as conquistas' })).not.toBeInTheDocument(),
+    );
+    // As conquistas do Item são relidas na próxima abertura.
+    await user.click(screen.getByRole('button', { name: '2/2 conquistas' }));
+    await screen.findByRole('dialog', { name: 'Conquistas' });
+    await waitFor(() => expect(api.para('GET /lista/LST-J/conquistas')).toHaveLength(2));
+  });
+
+  it('em Platinado, ou com conquista faltando, sem destaque', async () => {
+    await abrirLogado(`/midia/${ID}`, {
+      rotas: rotas({ detalhe: jogo, lista: [itemJogo('platinado', { obtidas: 2, total: 2 })] }),
+    });
+
+    await screen.findByRole('button', { name: '2/2 conquistas' });
+    expect(screen.queryByRole('region', { name: 'Você tem todas as conquistas' })).not.toBeInTheDocument();
+  });
+});
