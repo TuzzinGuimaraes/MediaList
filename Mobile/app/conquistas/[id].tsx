@@ -48,7 +48,7 @@ function Conquistas() {
           <LinhaDaConquista
             conquista={c}
             jogo={jogo}
-            acao={c.obtida && idLista ? <BotaoDeDestaque idLista={idLista} conquista={c} /> : undefined}
+            acao={c.obtida ? <BotaoDeDestaque conquista={c} /> : undefined}
           />
         )}
         ItemSeparatorComponent={() => <View className="h-px bg-borda" />}

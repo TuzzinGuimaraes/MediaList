@@ -77,9 +77,9 @@ export function DestaqueDePlatinado({ item }: { item: ItemLista | null | undefin
   );
 }
 
-/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6. */
-export function BotaoDeDestaque({ idLista, conquista }: { idLista: string; conquista: ConquistaDoItem }) {
-  const destaque = useMudarDestaque(idLista);
+/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6 (jogo e seletor). */
+export function BotaoDeDestaque({ conquista }: { conquista: ConquistaDoItem }) {
+  const destaque = useMudarDestaque();
   const falha = destaque.isError
     ? eLimiteDeDestaques(destaque.error)
       ? TEXTOS_DAS_CONQUISTAS.limiteDeDestaques
@@ -102,8 +102,21 @@ export function BotaoDeDestaque({ idLista, conquista }: { idLista: string; conqu
   );
 }
 
-/** Uma conquista: ícone, nome, descrição, data e raridade. `acao` é o lugar do botão da linha (o destaque no Perfil). */
-export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: ConquistaDoItem; jogo: string; acao?: ReactNode }) {
+/**
+ * Uma conquista: ícone, nome, descrição, data e raridade. `acao` é o lugar do botão da linha (o destaque no
+ * Perfil); `comJogo` mostra o jogo também na tela (o seletor mistura jogos).
+ */
+export function LinhaDaConquista({
+  conquista,
+  jogo,
+  acao,
+  comJogo = false,
+}: {
+  conquista: ConquistaDoItem;
+  jogo: string;
+  acao?: ReactNode;
+  comJogo?: boolean;
+}) {
   const obtencao = textoDaObtencao(conquista);
   const raridade = textoDaRaridade(conquista.raridade);
   return (
@@ -127,6 +140,11 @@ export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: Conquis
             </Text>
             {eRara(conquista.raridade) ? <Selo texto={TEXTOS_DAS_CONQUISTAS.rara} tom="marca" /> : null}
           </View>
+          {comJogo ? (
+            <Text numberOfLines={1} className="text-legenda text-texto-suave">
+              {jogo}
+            </Text>
+          ) : null}
           {conquista.descricao ? <Text className="text-corpo text-texto">{conquista.descricao}</Text> : null}
           <View className="flex-row flex-wrap gap-x-3">
             {obtencao ? <Text className="text-legenda text-texto-suave">{obtencao}</Text> : null}

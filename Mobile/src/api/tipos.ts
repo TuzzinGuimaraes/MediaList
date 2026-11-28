@@ -93,6 +93,9 @@ export type RespostaConquistasDoItem = Esquemas['RespostaConquistasDoItem'];
 export type ConquistaDoItem = Esquemas['ConquistaDoItem'];
 export type RespostaDestaques = Esquemas['RespostaDestaques'];
 export type ConquistaEmDestaque = Esquemas['ConquistaEmDestaque'];
+export type ConquistaDoSeletor = Esquemas['ConquistaDoSeletor'];
+export type PaginaConquistasDoSeletor = Esquemas['PaginaConquistaDoSeletor'];
+export type RespostaJogosComConquistas = Esquemas['RespostaJogosComConquistas'];
 
 // Integrações
 

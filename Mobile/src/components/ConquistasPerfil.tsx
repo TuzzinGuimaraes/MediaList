@@ -1,7 +1,9 @@
 // "Conquistas em destaque" no Perfil (spec `conquistas-steam`, ticket 03): até 6 conquistas obtidas,
 // já escolhidas e ordenadas pela API (as escolhidas, ou as mais raras com a dica), e o total. Sem
-// nenhuma obtida, a seção não aparece. Destacar e tirar ficam na tela de conquistas do jogo.
+// nenhuma obtida, a seção não aparece. Destacar e tirar ficam na tela de conquistas do jogo e no
+// seletor de "Escolher destaques" (app/destaques.tsx, ticket 04).
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { useDestaques } from '../api/conquistas';
@@ -15,12 +17,14 @@ import {
   textoDaRaridade,
   textoDoTotal,
 } from '@dominio/conquistas';
+import { Botao } from './Botao';
 import { FalhaParcial } from './EstadoTela';
 import { Secao } from './Secao';
 import { Selo } from './Selo';
 
 export function ConquistasPerfil() {
   const destaques = useDestaques();
+  const router = useRouter();
   if (destaques.isError && !destaques.data) {
     return (
       <Secao titulo={TEXTOS_DAS_CONQUISTAS.emDestaque}>
@@ -32,8 +36,12 @@ export function ConquistasPerfil() {
   const { destaques: lista, automaticos, total } = destaques.data;
   return (
     <Secao titulo={TEXTOS_DAS_CONQUISTAS.emDestaque}>
-      {/* O botão "Escolher destaques" (ticket 04) entra junto do total. */}
       <Text className="text-corpo text-texto-suave">{textoDoTotal(total)}</Text>
+      <Botao
+        titulo={TEXTOS_DAS_CONQUISTAS.escolherDestaques}
+        variante="secundario"
+        onPress={() => router.push('/destaques')}
+      />
       {automaticos ? <Text className="text-corpo text-texto">{TEXTOS_DAS_CONQUISTAS.dicaAutomaticos}</Text> : null}
       <View className="gap-3">
         {lista.map((d) => (

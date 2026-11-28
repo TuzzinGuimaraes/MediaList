@@ -110,6 +110,7 @@ describe('Senha temporária', () => {
     const reaberto = simularFetch({
       'GET /auth/me': me(false),
       'GET /usuario/permissoes': { status: 200, corpo: { permissoes: usuarioAna.permissoes } },
+      'GET /usuario/conquistas/destaques': { status: 200, corpo: { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } } },
     });
     await renderRouter(APP, { initialUrl: '/perfil' });
     expect(await screen.findByText('Ana Souza')).toBeOnTheScreen();

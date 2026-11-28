@@ -9,6 +9,7 @@ import { Botao } from '@/components/Botao';
 import { CardMidia } from '@/components/CardMidia';
 import { Carregando, Falha, FalhaParcial, Vazio } from '@/components/EstadoTela';
 import { BotaoFiltros, GrupoFiltro, SheetFiltros } from '@/components/SheetFiltros';
+import { useValorAtrasado } from '@/components/useValorAtrasado';
 import { NOMES_TIPO } from '@dominio/estadoConsumo';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 import { useCores } from '@/tema/TemaContext';
@@ -38,15 +39,6 @@ const COLUNAS = 3;
 const ATRASO_BUSCA_MS = 300;
 /** Como no web: um caractere só casaria quase tudo. */
 const MINIMO_BUSCA = 2;
-
-function useValorAtrasado<T>(valor: T, ms: number): T {
-  const [atrasado, setAtrasado] = useState(valor);
-  useEffect(() => {
-    const espera = setTimeout(() => setAtrasado(valor), ms);
-    return () => clearTimeout(espera);
-  }, [valor, ms]);
-  return atrasado;
-}
 
 /**
  * Explorar: atalho da Temporada (só nos Recortes com anime), busca compacta e botão de filtros

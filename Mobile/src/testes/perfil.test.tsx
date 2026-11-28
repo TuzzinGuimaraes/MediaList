@@ -263,6 +263,7 @@ describe('Avisos no Perfil', () => {
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': preferencias(avisar, avisarEpisodios),
       'PUT /preferencias': (req) => put(req.corpo),
+      'GET /usuario/conquistas/destaques': destaques(semConquistas),
     });
   }
 
@@ -361,6 +362,34 @@ describe('Conquistas em destaque no Perfil', () => {
 
     expect(await screen.findByText('1 conquista em 1 jogo')).toBeOnTheScreen();
     expect(screen.getByText(/Estas são as suas conquistas mais raras/)).toBeOnTheScreen();
+  });
+
+  it('"Escolher destaques" abre a tela do seletor', async () => {
+    const api = simularFetch({
+      'POST /auth/login': loginOk({ access: 'A1', refresh: 'R1' }),
+      'GET /auth/me': me,
+      'GET /usuario/permissoes': permissoes,
+      'GET /usuario/estatisticas': estatisticas,
+      'GET /lista': lista,
+      'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+      'GET /preferencias': preferencias(true),
+      'GET /usuario/conquistas/destaques': destaques({
+        destaques: [destaque('A')],
+        automaticos: true,
+        total: { conquistas: 1, jogos: 1 },
+      }),
+      'GET /usuario/conquistas/jogos': { status: 200, corpo: { jogos: [] } },
+      'GET /usuario/conquistas?ordem=raridade&pagina=1': {
+        status: 200,
+        corpo: { itens: [], pagina: 1, por_pagina: 50, total: 0 },
+      },
+    });
+
+    await abrirPerfil();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Escolher destaques' }));
+
+    expect(await screen.findByRole('header', { name: 'Escolher destaques' })).toBeOnTheScreen();
+    await waitFor(() => expect(api.para('GET /usuario/conquistas?ordem=raridade&pagina=1')).toHaveLength(1));
   });
 
   it('sem nenhuma conquista obtida, a seção some', async () => {
