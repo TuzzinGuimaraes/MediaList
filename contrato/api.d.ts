@@ -450,6 +450,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lista/{lista_id}/conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As conquistas da Steam do jogo de um Item, para o Detalhe: só o dono do Item. */
+        get: operations["get__api_lista_{lista_id}_conquistas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lista/{lista_id}/progresso": {
         parameters: {
             query?: never;
@@ -1103,6 +1120,45 @@ export interface components {
         ConexaoIntegracao: {
             /** Identificador */
             identificador: string;
+        };
+        /**
+         * ConquistaDoItem
+         * @description Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição.
+         */
+        ConquistaDoItem: {
+            /** Codigo */
+            codigo: string;
+            /**
+             * Descricao
+             * @description Nulo na oculta ainda não obtida ou sem descrição na Steam
+             */
+            descricao: string | null;
+            /**
+             * Destacada
+             * @description Está nos destaques do Perfil
+             */
+            destacada: boolean;
+            /**
+             * Icone
+             * @description O colorido na obtida e o cinza na que falta
+             */
+            icone: string | null;
+            /**
+             * Nome
+             * @description Nulo na oculta ainda não obtida
+             */
+            nome: string | null;
+            /** Obtida */
+            obtida: boolean;
+            /** Obtida Em */
+            obtida_em: string | null;
+            /** Oculta */
+            oculta: boolean;
+            /**
+             * Raridade
+             * @description % dos jogadores que a têm
+             */
+            raridade: number | null;
         };
         /**
          * ConsultaCalendario
@@ -2826,6 +2882,15 @@ export interface components {
              * @description Exibidos e próximos da janela, pelo instante; o mesmo episódio sai uma vez só (o exibido)
              */
             episodios: components["schemas"]["EpisodioDoCalendario"][];
+        };
+        /**
+         * RespostaConquistasDoItem
+         * @description As conquistas do Item: obtidas da mais recente para a mais antiga, depois as que faltam da mais comum
+         *     para a mais rara. Vazia sem leitura ou num jogo sem conquistas.
+         */
+        RespostaConquistasDoItem: {
+            /** Conquistas */
+            conquistas: components["schemas"]["ConquistaDoItem"][];
         };
         /** RespostaDistribuicao */
         RespostaDistribuicao: {
@@ -5089,6 +5154,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "get__api_lista_{lista_id}_conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lista_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaConquistasDoItem"];
                 };
             };
             /** @description Bad Request */

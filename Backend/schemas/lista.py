@@ -108,3 +108,25 @@ class RespostaLista(BaseModel):
 class ItemCriado(BaseModel):
     mensagem: str
     id_lista: Id
+
+
+
+class ConquistaDoItem(BaseModel):
+    """Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição."""
+
+    codigo: str
+    nome: str | None = Field(description='Nulo na oculta ainda não obtida')
+    descricao: str | None = Field(description='Nulo na oculta ainda não obtida ou sem descrição na Steam')
+    icone: str | None = Field(description='O colorido na obtida e o cinza na que falta')
+    oculta: bool
+    raridade: float | None = Field(description='% dos jogadores que a têm')
+    obtida: bool
+    obtida_em: Instante | None
+    destacada: bool = Field(description='Está nos destaques do Perfil')
+
+
+class RespostaConquistasDoItem(BaseModel):
+    """As conquistas do Item: obtidas da mais recente para a mais antiga, depois as que faltam da mais comum
+    para a mais rara. Vazia sem leitura ou num jogo sem conquistas."""
+
+    conquistas: list[ConquistaDoItem]
