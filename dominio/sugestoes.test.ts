@@ -1,4 +1,13 @@
-import { consultaDasSugestoes, descricaoDaSugestao, formatarNotaDoMotivo, TEXTOS_DAS_SUGESTOES, textoDoMotivo } from './sugestoes';
+import {
+  CHAVE_SUGESTOES,
+  consultaDasSugestoes,
+  descricaoDaSugestao,
+  faixaDasSugestoes,
+  formatarNotaDoMotivo,
+  pedidoDasSugestoes,
+  TEXTOS_DAS_SUGESTOES,
+  textoDoMotivo,
+} from './sugestoes';
 import type { MotivoDaSugestao } from './tipos';
 
 const motivo = (dados: Partial<MotivoDaSugestao>): MotivoDaSugestao => ({
@@ -80,5 +89,59 @@ describe('consultaDasSugestoes', () => {
   it('sem anime nem mangá (o Recorte de jogos), não há o que pedir', () => {
     expect(consultaDasSugestoes(['jogo'])).toBeNull();
     expect(consultaDasSugestoes([])).toBeNull();
+  });
+});
+
+
+describe('pedidoDasSugestoes', () => {
+  it('com sessão e anime e mangá, pede as dos dois, sem `tipo`, sob o prefixo das Sugestões', () => {
+    expect(pedidoDasSugestoes(['anime', 'manga'], true)).toEqual({
+      ativa: true,
+      chave: ['midias', 'sugestoes', null],
+      consulta: {},
+    });
+    expect(pedidoDasSugestoes(['anime', 'manga'], true).chave.slice(0, 2)).toEqual([...CHAVE_SUGESTOES]);
+  });
+
+  it('com um Tipo, a consulta e a chave levam esse `tipo`', () => {
+    expect(pedidoDasSugestoes(['manga'], true)).toEqual({
+      ativa: true,
+      chave: ['midias', 'sugestoes', 'manga'],
+      consulta: { tipo: 'manga' },
+    });
+  });
+
+  it('sem sessão ou no Recorte de jogos, fica desligado', () => {
+    expect(pedidoDasSugestoes(['anime'], false).ativa).toBe(false);
+    expect(pedidoDasSugestoes(['jogo'], true)).toEqual({
+      ativa: false,
+      chave: ['midias', 'sugestoes', null],
+      consulta: {},
+    });
+  });
+});
+
+describe('faixaDasSugestoes', () => {
+  const resultado = (dados: Partial<{ data: string[]; isError: boolean; isPending: boolean }>) => ({
+    data: undefined,
+    isError: false,
+    isPending: false,
+    ...dados,
+  });
+
+  it('desligada, conta como pronta e vazia', () => {
+    expect(faixaDasSugestoes(false, resultado({ isPending: true }))).toEqual({ sugestoes: [], pendente: false });
+  });
+
+  it('ligada, enquanto espera, fica pendente e sem lista', () => {
+    expect(faixaDasSugestoes(true, resultado({ isPending: true }))).toEqual({ sugestoes: undefined, pendente: true });
+  });
+
+  it('ligada, com resposta, devolve as Sugestões', () => {
+    expect(faixaDasSugestoes(true, resultado({ data: ['a'] }))).toEqual({ sugestoes: ['a'], pendente: false });
+  });
+
+  it('com erro, a faixa só some', () => {
+    expect(faixaDasSugestoes(true, resultado({ isError: true }))).toEqual({ sugestoes: [], pendente: false });
   });
 });

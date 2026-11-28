@@ -15,7 +15,7 @@ import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
 import { FaixaSugestoes } from '@/components/Sugestoes';
 import { useAtualizar } from '@/components/useAtualizar';
-import { estadoDe } from '@dominio/estadoConsumo';
+import { estadoDe, type TipoMidia } from '@dominio/estadoConsumo';
 import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 
@@ -36,8 +36,8 @@ const LARGURA_CONTINUAR = 290;
 
 export default function Inicio() {
   const { recorte } = useRecorte();
-  const tipos: string[] = TIPOS_DO_RECORTE[recorte];
-  const sugestoes = useSugestoes(TIPOS_DO_RECORTE[recorte]);
+  const tipos: TipoMidia[] = TIPOS_DO_RECORTE[recorte];
+  const sugestoes = useSugestoes(tipos);
   const emAlta = useEmAlta(recorte);
   const populares = usePopulares(recorte);
   const lista = useLista();
@@ -122,7 +122,7 @@ export default function Inicio() {
           <Carrossel key={genero} titulo={textos.porGenero(genero)} midias={midias} />
         ))}
         <Carrossel titulo={textos.maisAdicionados} midias={carrosseis.maisAdicionados} />
-        <Carrossel titulo={rotuloMaisConcluidos(TIPOS_DO_RECORTE[recorte])} midias={carrosseis.maisConcluidos} />
+        <Carrossel titulo={rotuloMaisConcluidos(tipos)} midias={carrosseis.maisConcluidos} />
       </>
     );
   } else if (emAlta.isError || populares.isError) {
