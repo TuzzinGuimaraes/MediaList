@@ -33,6 +33,7 @@ from routes import (
     noticias_bp,
     preferencias_bp,
     push_bp,
+    sugestoes_bp,
     usuario_bp,
     utils_bp,
 )
@@ -119,6 +120,7 @@ app.register_blueprint(usuario_bp, url_prefix='/api/usuario')
 app.register_blueprint(midias_bp, url_prefix='/api/midias')
 
 app.register_blueprint(lista_bp, url_prefix='/api/lista')
+app.register_blueprint(sugestoes_bp, url_prefix='/api/sugestoes')
 app.register_blueprint(avaliacoes_bp, url_prefix='/api/avaliacoes')
 app.register_blueprint(noticias_bp, url_prefix='/api/noticias')
 app.register_blueprint(moderacao_bp, url_prefix='/api/moderacao')

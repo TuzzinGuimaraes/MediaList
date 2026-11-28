@@ -1,0 +1,66 @@
+import { descricaoDaSugestao, formatarNotaDoMotivo, TEXTOS_DAS_SUGESTOES, textoDoMotivo } from './sugestoes';
+import type { MotivoDaSugestao } from './tipos';
+
+const motivo = (dados: Partial<MotivoDaSugestao>): MotivoDaSugestao => ({
+  porque: 'nota',
+  nota: null,
+  titulo: null,
+  ...dados,
+});
+
+describe('textoDoMotivo', () => {
+  it.each([
+    [motivo({ porque: 'nota', nota: 9, titulo: 'Frieren' }), 'porque você deu 9 a Frieren'],
+    [motivo({ porque: 'nota', nota: 8.5, titulo: 'Frieren' }), 'porque você deu 8,5 a Frieren'],
+    [motivo({ porque: 'favorito', titulo: 'Frieren' }), 'porque Frieren é Favorito'],
+    [motivo({ porque: 'em_alta' }), 'Em alta'],
+  ])('%j → %s', (m, texto) => {
+    expect(textoDoMotivo(m)).toBe(texto);
+  });
+
+  it('sem o título ou a nota da semente, cai no Em alta', () => {
+    expect(textoDoMotivo(motivo({ porque: 'nota', nota: null, titulo: 'Frieren' }))).toBe('Em alta');
+    expect(textoDoMotivo(motivo({ porque: 'favorito', titulo: null }))).toBe('Em alta');
+  });
+});
+
+describe('formatarNotaDoMotivo', () => {
+  it.each([
+    [9, '9'],
+    [10, '10'],
+    [8.5, '8,5'],
+  ])('%d → %s', (nota, texto) => {
+    expect(formatarNotaDoMotivo(nota)).toBe(texto);
+  });
+});
+
+describe('descricaoDaSugestao', () => {
+  const sugestao = {
+    tipo: 'manga' as const,
+    titulo_ingles: 'Berserk',
+    titulo_romaji: 'Berserk',
+    titulo_original: 'ベルセルク',
+  };
+
+  it('diz o título exibido, o Tipo e o motivo', () => {
+    expect(
+      descricaoDaSugestao({ ...sugestao, motivo: motivo({ porque: 'favorito', titulo: 'Vagabond' }) }),
+    ).toBe('Berserk, Mangá, porque Vagabond é Favorito');
+  });
+
+  it('sem título em inglês, o romanizado', () => {
+    expect(
+      descricaoDaSugestao({
+        ...sugestao,
+        tipo: 'anime',
+        titulo_ingles: null,
+        titulo_romaji: 'Sousou no Frieren',
+        motivo: motivo({ porque: 'em_alta' }),
+      }),
+    ).toBe('Sousou no Frieren, Anime, Em alta');
+  });
+});
+
+it('o título da faixa', () => {
+  expect(TEXTOS_DAS_SUGESTOES.faixa).toBe('Sugestões para você');
+});

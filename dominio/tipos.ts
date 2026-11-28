@@ -48,3 +48,9 @@ export type RelacaoDaMidia = Esquemas['RelacaoDaMidia'];
 
 /** O código da Relação (`SEQUEL`, `PREQUEL`... e `MESMA_SERIE` nos jogos). */
 export type NomeRelacao = RelacaoDaMidia['relacao'];
+
+/** Uma Sugestão de GET /sugestoes: a Mídia e o motivo. */
+export type Sugestao = Esquemas['Sugestao'];
+
+/** Por que a obra é Sugestão: a Nota pessoal ou o Favorito de uma semente, ou o Em alta. */
+export type MotivoDaSugestao = Esquemas['MotivoDaSugestao'];

@@ -868,6 +868,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sugestoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sugestões para o Usuário: até 12 animes ou mangás do Catálogo, pelo gosto dele, com o motivo. Abaixo de 12, o Em alta do recorte completa a faixa. */
+        get: operations["get__api_sugestoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuario/estatisticas": {
         parameters: {
             query?: never;
@@ -1273,6 +1290,15 @@ export interface components {
              * @default null
              */
             tipo?: ("anime" | "manga" | "jogo") | null;
+        };
+        /** ConsultaSugestoes */
+        ConsultaSugestoes: {
+            /**
+             * Tipo
+             * @description O recorte do Início: só anime, só mangá ou, sem `tipo`, os dois juntos
+             * @default null
+             */
+            tipo?: ("anime" | "manga") | null;
         };
         /** ConsultaTrending */
         ConsultaTrending: {
@@ -2334,6 +2360,28 @@ export interface components {
             total_usuarios: number;
         };
         /**
+         * MotivoDaSugestao
+         * @description Por que a obra é Sugestão; o texto sai do domínio da interface (`dominio/sugestoes.ts`).
+         */
+        MotivoDaSugestao: {
+            /**
+             * Nota
+             * @description A Nota pessoal da semente; só em `nota`
+             */
+            nota: number | null;
+            /**
+             * Porque
+             * @description `nota`: a semente tem Nota pessoal 8 ou mais; `favorito`: é Favorito; `em_alta`: completa a faixa com o Em alta
+             * @enum {string}
+             */
+            porque: "nota" | "favorito" | "em_alta";
+            /**
+             * Titulo
+             * @description O título exibido da semente; nulo em `em_alta`
+             */
+            titulo: string | null;
+        };
+        /**
          * NaoEncontrado
          * @description Item da origem que não casou com o Catálogo: o Usuário vincula a uma Mídia (`POST /integracoes/vinculos`).
          */
@@ -2894,6 +2942,14 @@ export interface components {
              */
             relacoes: components["schemas"]["RelacaoDaMidia"][];
         };
+        /** RespostaSugestoes */
+        RespostaSugestoes: {
+            /**
+             * Sugestoes
+             * @description Até 12, por pontos; abaixo de 12, o Em alta do recorte completa, sem o que está na Lista
+             */
+            sugestoes: components["schemas"]["Sugestao"][];
+        };
         /** RespostaTrending */
         RespostaTrending: {
             /** Midias */
@@ -2961,6 +3017,145 @@ export interface components {
              * @enum {string}
              */
             status: "healthy" | "unhealthy";
+        };
+        /** Sugestao */
+        Sugestao: {
+            /** Artista */
+            artista: string | null;
+            /** Autor */
+            autor: string | null;
+            /** Banner Url */
+            banner_url: string | null;
+            /** Classificacao */
+            classificacao: string | null;
+            /** Classificacao Etaria */
+            classificacao_etaria: string | null;
+            /** Data Lancamento */
+            data_lancamento: string | null;
+            /** Demografia */
+            demografia: ("shounen" | "shoujo" | "seinen" | "josei" | "kodomomuke") | null;
+            /** Desenvolvedor */
+            desenvolvedor: string | null;
+            /**
+             * Duracao Episodio
+             * @description Minutos
+             */
+            duracao_episodio: number | null;
+            /**
+             * Episodios Lancados
+             * @description Episódios já lançados, gravados pelo job de episódios; nulo até a primeira passada dele
+             */
+            episodios_lancados: number | null;
+            /** Estudio */
+            estudio: string | null;
+            /** Fonte Original */
+            fonte_original: string | null;
+            /**
+             * Formato
+             * @description O formato do AniList; nulo é desconhecido
+             */
+            formato: ("TV" | "TV_SHORT" | "ONA" | "MOVIE" | "SPECIAL" | "OVA" | "MUSIC") | null;
+            /**
+             * Generos
+             * @description 'Ação, Drama'; `generos_lista` é o mesmo já separado
+             */
+            generos: string | null;
+            /** Generos Lista */
+            generos_lista: string[];
+            /** Id Midia */
+            id_midia: string;
+            /** Modo Jogo */
+            modo_jogo: ("single" | "multi" | "ambos") | null;
+            motivo: components["schemas"]["MotivoDaSugestao"];
+            /**
+             * Nota Fonte
+             * @description Nota do AniList/RAWG, gravada pela Importação
+             */
+            nota_fonte: number | null;
+            /**
+             * Nota Media
+             * @description Média das Avaliações; nula sem elas
+             */
+            nota_media: number | null;
+            /** Numero Capitulos */
+            numero_capitulos: number | null;
+            /** Numero Episodios */
+            numero_episodios: number | null;
+            /** Numero Volumes */
+            numero_volumes: number | null;
+            /** Origem Nota */
+            origem_nota: ("AniList" | "RAWG") | null;
+            /**
+             * Plataformas
+             * @description 'PC, Switch'
+             */
+            plataformas: string | null;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Proximo Episodio Em
+             * @description Quando sai o próximo episódio; nulo se não se sabe
+             */
+            proximo_episodio_em: string | null;
+            /** Publicadora */
+            publicadora: string | null;
+            /** Publicadora Original */
+            publicadora_original: string | null;
+            /** Revista */
+            revista: string | null;
+            /** Sinopse */
+            sinopse: string | null;
+            /** Status Anime */
+            status_anime: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | null;
+            /**
+             * Status Catalogo
+             * @description O status do Tipo da Mídia
+             */
+            status_catalogo: ("em_exibicao" | "finalizado" | "aguardando" | "cancelado") | ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Jogo */
+            status_jogo: ("lancado" | "em_desenvolvimento" | "cancelado" | "remasterizado") | null;
+            /** Status Manga */
+            status_manga: ("em_publicacao" | "finalizado" | "aguardando" | "cancelado" | "hiato") | null;
+            /** Temporada Ano */
+            temporada_ano: number | null;
+            /**
+             * Temporada Estacao
+             * @description Temporada do anime, com `temporada_ano`; nula sem ela
+             */
+            temporada_estacao: ("inverno" | "primavera" | "verao" | "outono") | null;
+            /**
+             * Temporada Estimada
+             * @description A Temporada veio da data de estreia, não do AniList, e pode estar errada; nula fora dos animes
+             */
+            temporada_estimada: boolean | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "anime" | "manga" | "jogo";
+            /** Titulo Ingles */
+            titulo_ingles: string | null;
+            /** Titulo Original */
+            titulo_original: string;
+            /** Titulo Romaji */
+            titulo_romaji: string | null;
+            /**
+             * Total Avaliacoes
+             * @description Nulo quando a Mídia não tem Avaliações
+             */
+            total_avaliacoes: number | null;
+            /**
+             * Total Concluidos
+             * @description Itens de lista em Concluído ou Platinado
+             */
+            total_concluidos: number;
+            /**
+             * Total Usuarios
+             * @description Usuários com a Mídia na Lista pessoal (Popularidade)
+             */
+            total_usuarios: number;
+            /** Trailer Url */
+            trailer_url: string | null;
         };
         /** Temporada */
         Temporada: {
@@ -6580,6 +6775,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_sugestoes: {
+        parameters: {
+            query?: {
+                /** @description O recorte do Início: só anime, só mangá ou, sem `tipo`, os dois juntos */
+                tipo?: ("anime" | "manga") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaSugestoes"];
                 };
             };
             /** @description Bad Request */
