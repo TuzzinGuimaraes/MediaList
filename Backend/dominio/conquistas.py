@@ -53,6 +53,12 @@ def _para_o_detalhe(conquista: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def linha_do_seletor(conquista: dict[str, Any]) -> dict[str, Any]:
+    """Uma obtida do Usuário no seletor de destaques: a forma do Detalhe mais o Item e o jogo."""
+    return {**_para_o_detalhe(conquista),
+            'id_lista': conquista['id_lista'], 'id_midia': conquista['id_midia'], 'jogo': conquista['jogo']}
+
+
 def lista_do_detalhe(conquistas: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """As conquistas do Item (`integracoes.conquistas.do_item_do_usuario`) na ordem e na forma do Detalhe."""
     return [_para_o_detalhe(c) for c in sorted(conquistas, key=_ordem)]

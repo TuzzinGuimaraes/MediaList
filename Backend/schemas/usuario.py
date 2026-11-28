@@ -1,10 +1,23 @@
 """Modelos do contrato das rotas do blueprint `usuario` (ADR 0011)."""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Annotated, Literal
 
-from contrato import Id, Instante, Nota, TipoDeMidia
+from pydantic import BaseModel, BeforeValidator, Field
+
+from contrato import (
+    POR_PAGINA_MAX,
+    ConsultaPaginada,
+    Id,
+    Instante,
+    Nota,
+    PorPagina,
+    TextoOpcional,
+    TipoDeMidia,
+    VazioComoAusente,
+)
 from schemas.auth import NivelAcesso, Permissoes
+from schemas.lista import ConquistaDoItem
 
 
 class Perfil(BaseModel):
@@ -68,6 +81,40 @@ class ConquistaEmDestaque(BaseModel):
     id_lista: Id
     id_midia: Id
     jogo: str = Field(description='Título exibido do jogo')
+
+
+class ConsultaConquistas(ConsultaPaginada):
+    """`GET /usuario/conquistas`: o seletor de destaques do Perfil."""
+
+    por_pagina: PorPagina = POR_PAGINA_MAX
+    busca: TextoOpcional = Field(default=None, description='No nome da conquista, sem caixa nem acento')
+    steam_appid: Annotated[int | None, VazioComoAusente] = Field(default=None, description='Só as desse jogo')
+    so_destacadas: bool = Field(default=False, description='Só as que estão nos destaques do Perfil')
+    ordem: Annotated[Literal['raridade', 'data'], BeforeValidator(lambda v: v or 'raridade')] = Field(
+        default='raridade',
+        description='`raridade`: a mais rara primeiro, sem raridade no fim; `data`: a obtida mais recente primeiro',
+    )
+
+
+class ConquistaDoSeletor(ConquistaDoItem):
+    """Uma conquista obtida do Usuário no seletor (sempre `obtida`), com o Item e o jogo dela."""
+
+    id_lista: Id
+    id_midia: Id
+    jogo: str = Field(description='Título exibido do jogo')
+
+
+class JogoComConquistas(BaseModel):
+    steam_appid: int
+    id_midia: Id
+    jogo: str = Field(description='Título exibido do jogo')
+    obtidas: int = Field(description='Conquistas obtidas no jogo')
+
+
+class RespostaJogosComConquistas(BaseModel):
+    """Os jogos com ao menos uma conquista obtida, pelo título, para o filtro do seletor."""
+
+    jogos: list[JogoComConquistas]
 
 
 class TotalDeConquistas(BaseModel):
