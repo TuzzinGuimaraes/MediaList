@@ -67,15 +67,28 @@ function ListaDeConquistas({ idLista, jogo }: { idLista: string; jogo: string })
           key={c.codigo}
           conquista={c}
           jogo={jogo}
-          acao={c.obtida ? <BotaoDeDestaque idLista={idLista} conquista={c} /> : undefined}
+          acao={c.obtida ? <BotaoDeDestaque conquista={c} /> : undefined}
         />
       ))}
     </ul>
   );
 }
 
-/** Uma conquista: ícone, nome, descrição, data e raridade. `acao` é o lugar do botão da linha (o destaque no Perfil). */
-export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: Conquista; jogo: string; acao?: ReactNode }) {
+/**
+ * Uma conquista: ícone, nome, descrição, data e raridade. `acao` é o lugar do botão da linha (o destaque no
+ * Perfil); `comJogo` mostra o jogo também na tela (o seletor mistura jogos).
+ */
+export function LinhaDaConquista({
+  conquista,
+  jogo,
+  acao,
+  comJogo = false,
+}: {
+  conquista: Conquista;
+  jogo: string;
+  acao?: ReactNode;
+  comJogo?: boolean;
+}) {
   const obtencao = textoDaObtencao(conquista);
   const raridade = textoDaRaridade(conquista.raridade);
   return (
@@ -97,6 +110,7 @@ export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: Conquis
           </span>
           {eRara(conquista.raridade) ? <Selo texto={TEXTOS_DAS_CONQUISTAS.rara} tom="marca" /> : null}
         </span>
+        {comJogo ? <span className="truncate text-[13px] text-texto-suave">{jogo}</span> : null}
         {conquista.descricao ? <span className="text-[14px] text-texto">{conquista.descricao}</span> : null}
         <span className="flex flex-wrap gap-x-3 text-[12px] text-texto-suave">
           {obtencao ? <span>{obtencao}</span> : null}
@@ -108,9 +122,9 @@ export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: Conquis
   );
 }
 
-/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6. */
-function BotaoDeDestaque({ idLista, conquista }: { idLista: string; conquista: Conquista }) {
-  const destaque = useMudarDestaque(idLista);
+/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6 (Detalhe e seletor). */
+export function BotaoDeDestaque({ conquista }: { conquista: Conquista }) {
+  const destaque = useMudarDestaque();
   const falha = destaque.isError
     ? eLimiteDeDestaques(destaque.error)
       ? TEXTOS_DAS_CONQUISTAS.limiteDeDestaques

@@ -1,7 +1,7 @@
 // "Conquistas em destaque" no Perfil (spec `conquistas-steam`, ticket 03): até 6 conquistas obtidas,
 // já escolhidas e ordenadas pela API (as escolhidas, ou as mais raras com a dica), e o total. Sem
 // nenhuma obtida, o Perfil não mostra a seção (`mostraDestaquesNoPerfil`). Destacar e tirar ficam na
-// lista de conquistas do Detalhe.
+// lista de conquistas do Detalhe e no seletor de "Escolher destaques" (ticket 04).
 import {
   descricaoDoDestaque,
   eRara,
@@ -13,6 +13,7 @@ import {
 
 import type { Esquemas } from '../api/tipos';
 import { Selo } from '../componentes/Selo';
+import { EscolherDestaques } from './SeletorDeDestaques';
 
 type Destaque = Esquemas['ConquistaEmDestaque'];
 
@@ -21,8 +22,10 @@ export function ConquistasEmDestaque({ resposta }: { resposta: Esquemas['Respost
   const { destaques, automaticos, total } = resposta;
   return (
     <>
-      {/* O botão "Escolher destaques" (ticket 04) entra junto do total. */}
-      <p className="text-[14px] text-texto-suave">{textoDoTotal(total)}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[14px] text-texto-suave">{textoDoTotal(total)}</p>
+        <EscolherDestaques />
+      </div>
       {automaticos ? <p className="text-[14px] text-texto">{TEXTOS_DAS_CONQUISTAS.dicaAutomaticos}</p> : null}
       <ul className="grid gap-3 sm:grid-cols-2">
         {destaques.map((d) => (
