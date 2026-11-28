@@ -1,13 +1,19 @@
 // Os cards do Início montados da Mídia e do Item, com as regras do dominio/.
+import type { ReactNode } from 'react';
+
 import type { CartaoDaFaixa } from '@dominio/assistirAgora';
 import { nomeDoProgresso, passoDeProgresso, textoDoProgresso } from '@dominio/itemLista';
+import { tituloDaMidia } from '@dominio/midia';
 import { type ComSituacao, emLancamento } from '@dominio/situacao';
+import { descricaoDaSugestao, textoDoMotivo } from '@dominio/sugestoes';
+import type { Sugestao } from '@dominio/tipos';
 
 import type { Esquemas } from '../../api/tipos';
 import { Botao } from '../../componentes/Botao';
 import { CardA, CardC, NotasCartao } from '../../componentes/Cards';
 import { cartaoDaMidia } from '../../componentes/cartao';
 import { Selo, SeloStatus } from '../../componentes/Selo';
+import { PlanejadoOuNaLista } from '../temporada/PlanejadoOuNaLista';
 
 type ItemLista = Esquemas['ItemLista'];
 /** Em alta e GET /midias trazem a Mídia inteira; Populares, só o resumo. */
@@ -26,7 +32,21 @@ type Contexto = {
 };
 
 /** Card A de um carrossel de catálogo: selos de lançamento e de Status sobre o pôster. */
-export function CartaoCatalogo({ midia, item, posicaoTop, largura = LARGURA_A }: Contexto & { midia: MidiaDoCartao; largura?: number }) {
+export function CartaoCatalogo({
+  midia,
+  item,
+  posicaoTop,
+  largura = LARGURA_A,
+  rotulo,
+  rodape,
+}: Contexto & {
+  midia: MidiaDoCartao;
+  largura?: number;
+  /** Nome acessível, quando o título sozinho não basta (o motivo da Sugestão). */
+  rotulo?: string;
+  /** Linha abaixo das notas, dentro do link (o motivo da Sugestão). */
+  rodape?: ReactNode;
+}) {
   const lancamento = emLancamento(midia);
   const selos =
     lancamento || item ? (
@@ -35,14 +55,50 @@ export function CartaoCatalogo({ midia, item, posicaoTop, largura = LARGURA_A }:
         {item ? <SeloStatus rotulo={item.status_consumo} tipo={item.tipo} sobreImagem /> : null}
       </>
     ) : null;
+  const notas = <NotasCartao midia={midia} />;
   return (
     <CardA
       {...cartaoDaMidia(midia, item)}
-      notas={<NotasCartao midia={midia} />}
+      notas={
+        rodape ? (
+          <>
+            {notas}
+            {rodape}
+          </>
+        ) : (
+          notas
+        )
+      }
       selos={selos}
       posicaoTop={posicaoTop}
       largura={largura}
+      rotulo={rotulo}
     />
+  );
+}
+
+/**
+ * Card A de uma Sugestão: o do carrossel com a linha do motivo; abaixo (fora do link), "Planejado"
+ * ou "Na Lista". O leitor de tela ouve o título, o Tipo e o motivo.
+ */
+export function CartaoSugestao({ sugestao, item, posicaoTop }: Contexto & { sugestao: Sugestao }) {
+  return (
+    <div className="flex shrink-0 flex-col gap-2" style={{ width: LARGURA_A }}>
+      <CartaoCatalogo
+        midia={sugestao}
+        item={item}
+        posicaoTop={posicaoTop}
+        rotulo={descricaoDaSugestao(sugestao)}
+        rodape={<span className="line-clamp-2 text-[12px] italic text-texto-suave">{textoDoMotivo(sugestao.motivo)}</span>}
+      />
+      <PlanejadoOuNaLista
+        idMidia={sugestao.id_midia}
+        tipo={sugestao.tipo}
+        titulo={tituloDaMidia(sugestao)}
+        naLista={Boolean(item)}
+        className="mt-auto"
+      />
+    </div>
   );
 }
 

@@ -21,6 +21,10 @@ type Props = {
   midia: MidiaDoCard;
   /** Largura fixa (carrossel) ou ocupando a coluna (grade). */
   largura?: number;
+  /** Rótulo do leitor de tela, quando título e Tipo não bastam (o motivo da Sugestão). */
+  rotulo?: string;
+  /** Linha abaixo das notas (o motivo da Sugestão). */
+  rodape?: React.ReactNode;
 };
 
 function Poster({ midia }: { midia: CartaoMidia }) {
@@ -54,7 +58,7 @@ function Notas({ midia, limite }: { midia: CartaoMidia; limite?: number }) {
 }
 
 /** Toque que abre o detalhe, com o título e as notas para o leitor de tela. */
-function useAbrir(midia: CartaoMidia) {
+function useAbrir(midia: CartaoMidia, rotulo?: string) {
   const router = useRouter();
   const titulo = tituloDaMidia(midia);
   const notas = notasDaMidia(midia);
@@ -62,7 +66,7 @@ function useAbrir(midia: CartaoMidia) {
     titulo,
     a11y: {
       accessibilityRole: 'link' as const,
-      accessibilityLabel: `${titulo}, ${nomeDoTipo(midia.tipo)}`,
+      accessibilityLabel: rotulo ?? `${titulo}, ${nomeDoTipo(midia.tipo)}`,
       // As notas vão no valor, para o leitor de tela anunciá-las depois do título.
       accessibilityValue: notas.length ? { text: notas.map((n) => `${n.rotulo} ${n.valor}`).join(', ') } : undefined,
     },
@@ -74,8 +78,8 @@ function useAbrir(midia: CartaoMidia) {
  * Card A (denso): pôster vertical com os selos sobre a imagem (Top 10, lançamento, Status do
  * Item) e o fio de progresso; título, Tipo e notas abaixo. Tocar abre o detalhe.
  */
-export function CardMidia({ midia, largura }: Props) {
-  const { titulo, a11y, abrir } = useAbrir(midia);
+export function CardMidia({ midia, largura, rotulo, rodape }: Props) {
+  const { titulo, a11y, abrir } = useAbrir(midia, rotulo);
   const item = useItemEmCache(midia.id_midia);
   const top = usePosicaoTop10(midia.id_midia);
   const estado = item ? estadoDe(item.status_consumo, item.tipo) : null;
@@ -102,6 +106,7 @@ export function CardMidia({ midia, largura }: Props) {
       </Text>
       <SeloTipo tipo={midia.tipo} />
       <Notas midia={midia} />
+      {rodape}
     </Toque>
   );
 }
