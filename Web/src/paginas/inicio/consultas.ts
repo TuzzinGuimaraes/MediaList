@@ -4,13 +4,15 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { juntarCarrossel, type OrdemCarrossel } from '@dominio/carrossel';
+import type { TipoMidia } from '@dominio/estadoConsumo';
 import { decrescente } from '@dominio/ordenacao';
 import type { Recorte } from '@dominio/recorte';
+import { consultaDasSugestoes } from '@dominio/sugestoes';
 
 import { chaves } from '../../api/chaves';
 import { type Api, exigir } from '../../api/cliente';
 import { porTipo } from '../../catalogo/consultas';
-import { useApi } from '../../sessao/SessaoContext';
+import { useApi, useSessao } from '../../sessao/SessaoContext';
 
 /** Quantas Mídias cada Tipo manda para um carrossel. */
 const POR_CARROSSEL = 20;
@@ -55,4 +57,26 @@ export function useCarrossel(recorte: Recorte, ordem: OrdemCarrossel) {
 export function useCarrosseisPorGenero(recorte: Recorte, generos: string[]) {
   const api = useApi();
   return useQueries({ queries: generos.map((g) => consultaCarrossel(api, recorte, 'nota_media', g)) });
+}
+
+/**
+ * Sugestões para você (GET /sugestoes): uma requisição para os Tipos do catálogo, só com sessão.
+ * Sem anime nem mangá no catálogo (Jogos), não pede: `data` fica vazio e a faixa some.
+ */
+export function useSugestoes(tipos: readonly TipoMidia[]) {
+  const api = useApi();
+  const { estado } = useSessao();
+  const consulta = consultaDasSugestoes(tipos);
+  const ativa = consulta !== null && estado.estado === 'autenticada';
+  const sugestoes = useQuery({
+    queryKey: chaves.midias.sugestoes(consulta?.tipo ?? null),
+    queryFn: async () => (await exigir(api.GET('/api/sugestoes', { params: { query: consulta ?? {} } }))).sugestoes,
+    enabled: ativa,
+  });
+  // Desligada, a consulta fica "pending" para sempre: aqui ela conta como pronta e vazia. Com
+  // erro, a faixa só some, sem derrubar o Início.
+  return {
+    sugestoes: ativa ? (sugestoes.data ?? (sugestoes.isError ? [] : undefined)) : [],
+    pendente: ativa && sugestoes.isPending,
+  };
 }

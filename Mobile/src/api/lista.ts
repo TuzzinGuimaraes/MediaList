@@ -7,6 +7,7 @@ import type { TipoMidia } from '@dominio/estadoConsumo';
 import { aplicarProgresso, type DadosItem, rotuloInicial, totalDoItem } from '@dominio/itemLista';
 import { useCache } from './consulta';
 import { CHAVE_RELACOES } from './midias';
+import { CHAVE_SUGESTOES } from './sugestoes';
 import type { ItemLista, RespostaLista } from './tipos';
 
 // As rotas de escrita (Backend/routes/lista.py) só respondem `{mensagem}` (e `id_lista`
@@ -45,7 +46,8 @@ export function useItemEmCache(idMidia: string): ItemLista | undefined {
 /**
  * Refaz tudo o que deriva da Lista: ['lista'] (também lida pelas estatísticas do Perfil);
  * os totais do Perfil, a distribuição por Estado no detalhe e as Relações (o Status em cada
- * obra; o destaque da Sequência some quando ela entra na Lista) também mudam.
+ * obra; o destaque da Sequência some quando ela entra na Lista) também mudam, e as Sugestões
+ * (a obra posta na Lista sai da faixa; uma Nota pessoal nova muda as sementes).
  */
 function useInvalidarLista() {
   const queryClient = useQueryClient();
@@ -54,6 +56,7 @@ function useInvalidarLista() {
       queryClient.invalidateQueries({ queryKey: CHAVE }),
       queryClient.invalidateQueries({ queryKey: ['usuario', 'estatisticas'] }),
       queryClient.invalidateQueries({ queryKey: CHAVE_RELACOES }),
+      queryClient.invalidateQueries({ queryKey: CHAVE_SUGESTOES }),
       idMidia ? queryClient.invalidateQueries({ queryKey: ['midias', idMidia, 'distribuicao'] }) : null,
     ]);
 }

@@ -5,12 +5,12 @@
 import type { components } from '../../../contrato/api';
 import type { TipoMidia } from '@dominio/estadoConsumo';
 import type { TitulosDaMidia } from '@dominio/midia';
-import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia } from '@dominio/tipos';
+import type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia, Sugestao } from '@dominio/tipos';
 
 type Esquemas = components['schemas'];
 
 // Os recortes que o domínio também lê moram em dominio/tipos.ts.
-export type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia, TipoMidia };
+export type { DadosAvaliacao, Midia, NivelAcesso, NotasDaMidia, RelacaoDaMidia, Sugestao, TipoMidia };
 
 // Erro
 
@@ -53,6 +53,8 @@ export type PaginaMidias = Esquemas['PaginaMidia'];
 export type RespostaDistribuicao = Esquemas['RespostaDistribuicao'];
 /** GET /midias/<id>/relacoes: as Relações já nos dois sentidos, com o Status do Usuário em cada obra. */
 export type RespostaRelacoes = Esquemas['RespostaRelacoes'];
+/** GET /sugestoes: até 12 Sugestões em ordem, cada uma com o motivo. */
+export type RespostaSugestoes = Esquemas['RespostaSugestoes'];
 export type Genero = Esquemas['Genero'];
 export type RespostaGeneros = Esquemas['RespostaGeneros'];
 /** GET /midias/facetas: os valores dos filtros e a Temporada mais antiga do Catálogo. */

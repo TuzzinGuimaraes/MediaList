@@ -1,5 +1,6 @@
 // Início (Resolution do 29 e do 48): destaques de Em alta e, abaixo, nesta ordem: Para assistir
-// agora (só com anime em exibição sendo assistido), Continuar, Em alta,
+// agora (só com anime em exibição sendo assistido), Continuar, Sugestões para você (spec
+// `sugestoes`; só com anime ou mangá no catálogo), Em alta,
 // Top 10, Maiores notas, Lançamentos recentes, até 2 "Porque você curte <gênero>", Mais
 // adicionados e Mais concluídos. Fileira vazia some; tudo segue o catálogo escolhido.
 import type { ReactNode } from 'react';
@@ -7,6 +8,7 @@ import type { ReactNode } from 'react';
 import { paraAssistirAgora } from '@dominio/assistirAgora';
 import { estadoDe } from '@dominio/estadoConsumo';
 import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
+import { TEXTOS_DAS_SUGESTOES } from '@dominio/sugestoes';
 
 import { mensagemDeErro } from '../../api/erros';
 import type { Esquemas } from '../../api/tipos';
@@ -18,8 +20,8 @@ import { ALTURA_NAV } from '../../layout/Casca';
 import { useLista, useMudarProgresso } from '../lista/api';
 import { useEditorItem } from '../lista/EditorItemContext';
 import { LinkTemporada } from '../temporada/Temporada';
-import { CartaoAssistirAgora, CartaoCatalogo, CartaoContinuar, CartaoTop } from './cartoes';
-import { useCarrosseisPorGenero, useCarrossel, usePopulares } from './consultas';
+import { CartaoAssistirAgora, CartaoCatalogo, CartaoContinuar, CartaoSugestao, CartaoTop } from './cartoes';
+import { useCarrosseisPorGenero, useCarrossel, usePopulares, useSugestoes } from './consultas';
 import { Destaques } from './Destaques';
 
 /** Quantas Mídias de cada Tipo o Em alta traz (o Destaque usa as 5 primeiras). */
@@ -57,6 +59,7 @@ export function Inicio() {
   const lancamentos = useCarrossel(recorte, 'data_lancamento');
   const maisAdicionados = useCarrossel(recorte, 'mais_adicionados');
   const maisConcluidos = useCarrossel(recorte, 'mais_concluidos');
+  const sugestoes = useSugestoes(tipos);
   const { abrirEditor } = useEditorItem();
   const progresso = useMudarProgresso();
 
@@ -102,8 +105,11 @@ export function Inicio() {
   ];
 
   // O vazio da tela só quando todas as fileiras (já respondidas) vierem vazias.
-  const pendente = [lista, maioresNotas, lancamentos, maisAdicionados, maisConcluidos, ...porGenero].some((c) => c.isPending);
-  const vazio = !pendente && [emAlta.data, top10, continuar, ...carrosseis.map((c) => c.midias)].every((l) => !l.length);
+  const pendente =
+    sugestoes.pendente || [lista, maioresNotas, lancamentos, maisAdicionados, maisConcluidos, ...porGenero].some((c) => c.isPending);
+  const vazio =
+    !pendente &&
+    [emAlta.data, top10, continuar, sugestoes.sugestoes ?? [], ...carrosseis.map((c) => c.midias)].every((l) => !l.length);
   if (vazio) {
     return (
       <SobANav>
@@ -149,6 +155,11 @@ export function Inicio() {
         <Fileira titulo={textos.continuar} vazia={!continuar.length}>
           {continuar.map((i) => (
             <CartaoContinuar key={i.id_lista} item={i} posicaoTop={posicaoTop(i.id_midia)} />
+          ))}
+        </Fileira>
+        <Fileira titulo={TEXTOS_DAS_SUGESTOES.faixa} vazia={!sugestoes.sugestoes?.length}>
+          {sugestoes.sugestoes?.map((s) => (
+            <CartaoSugestao key={s.id_midia} sugestao={s} item={itemDe(s.id_midia)} posicaoTop={posicaoTop(s.id_midia)} />
           ))}
         </Fileira>
         {linha(textos.emAlta, emAlta.data)}

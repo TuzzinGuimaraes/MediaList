@@ -1,4 +1,4 @@
-import { descricaoDaSugestao, formatarNotaDoMotivo, TEXTOS_DAS_SUGESTOES, textoDoMotivo } from './sugestoes';
+import { consultaDasSugestoes, descricaoDaSugestao, formatarNotaDoMotivo, TEXTOS_DAS_SUGESTOES, textoDoMotivo } from './sugestoes';
 import type { MotivoDaSugestao } from './tipos';
 
 const motivo = (dados: Partial<MotivoDaSugestao>): MotivoDaSugestao => ({
@@ -63,4 +63,22 @@ describe('descricaoDaSugestao', () => {
 
 it('o título da faixa', () => {
   expect(TEXTOS_DAS_SUGESTOES.faixa).toBe('Sugestões para você');
+});
+
+
+describe('consultaDasSugestoes', () => {
+  it.each([
+    [['anime', 'manga'], {}],
+    [['manga', 'anime'], {}],
+    [['anime', 'manga', 'jogo'], {}],
+    [['anime'], { tipo: 'anime' }],
+    [['manga', 'jogo'], { tipo: 'manga' }],
+  ] as const)('%j → %j', (tipos, consulta) => {
+    expect(consultaDasSugestoes(tipos)).toEqual(consulta);
+  });
+
+  it('sem anime nem mangá (o Recorte de jogos), não há o que pedir', () => {
+    expect(consultaDasSugestoes(['jogo'])).toBeNull();
+    expect(consultaDasSugestoes([])).toBeNull();
+  });
 });

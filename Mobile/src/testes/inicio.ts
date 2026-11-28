@@ -22,9 +22,15 @@ export function rotaCarrossel(tipo: Tipo, ordem: OrdemCarrossel, genero?: string
 const vazia: Resposta = { status: 200, corpo: { midias: [] } };
 const paginaVazia: Resposta = pagina([], { por_pagina: POR_CARROSSEL });
 
-/** Tudo vazio: trending, populares, Lista e os carrosséis de catálogo de todos os Tipos. */
+/** GET /sugestoes vazio, nas três consultas que o app faz (anime e mangá, só anime, só mangá). */
+export function sugestoesVazias(): Record<string, Resposta> {
+  const vazias: Resposta = { status: 200, corpo: { sugestoes: [] } };
+  return { 'GET /sugestoes': vazias, 'GET /sugestoes?tipo=anime': vazias, 'GET /sugestoes?tipo=manga': vazias };
+}
+
+/** Tudo vazio: trending, populares, Lista, Sugestões e os carrosséis de catálogo de todos os Tipos. */
 export function rotasDoInicio(): Record<string, Resposta> {
-  const rotas: Record<string, Resposta> = { 'GET /lista': { status: 200, corpo: { lista: [] } } };
+  const rotas: Record<string, Resposta> = { 'GET /lista': { status: 200, corpo: { lista: [] } }, ...sugestoesVazias() };
   for (const tipo of TIPOS) {
     rotas[`GET /midias/trending?tipo=${tipo}&limite=10`] = vazia;
     rotas[`GET /midias/populares?tipo=${tipo}`] = vazia;

@@ -3,7 +3,8 @@ import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-lib
 
 import { erro, rotasSemAvaliacoes } from './contrato';
 import { type Requisicao, type Resposta, simularFetch } from './fetchSimulado';
-import { anime, fullmetal, itemDaLista as item, jogo, manga } from './midias';
+import { sugestoesVazias } from './inicio';
+import { anime, fullmetal, itemDaLista as item, jogo, manga, sugestao } from './midias';
 import { trocarRecorte } from './recorte';
 import { abrirLogado as abrir } from './sessao';
 
@@ -23,6 +24,7 @@ function servidor(inicial: ReturnType<typeof item>[], extras: Record<string, Res
     'GET /lista': () => ({ status: 200, corpo: { lista } }),
     'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
     'GET /usuario/estatisticas': { status: 200, corpo: { estatisticas: [], resumo: {} } },
+    ...sugestoesVazias(),
   };
   for (const i of inicial) {
     rotas[`PUT /lista/${i.id_lista}/progresso`] = (req: Requisicao) => {
@@ -484,10 +486,6 @@ describe('adicionar pelo detalhe', () => {
 
 describe('aba Lista: páginas, filtros, busca e sugestões', () => {
   const titulos = () => screen.getAllByLabelText(/^Item /).map((e) => e.props.accessibilityLabel);
-  const trending = (anime: unknown[], mangas: unknown[] = []) => ({
-    'GET /midias/trending?tipo=anime&limite=10': { status: 200, corpo: { midias: anime } },
-    'GET /midias/trending?tipo=manga&limite=10': { status: 200, corpo: { midias: mangas } },
-  });
 
   it('a página tem o título do Status e as subseções Anime e Mangá com contagem', async () => {
     servidor([
@@ -588,14 +586,59 @@ describe('aba Lista: páginas, filtros, busca e sugestões', () => {
     expect(screen.getByRole('button', { name: 'Filtros' })).toBeOnTheScreen();
   });
 
-  it('"Sugestões para você" traz Em alta do catálogo que não está na Lista', async () => {
+  it('"Sugestões para você" no fim da página traz as Sugestões do Recorte, com o motivo', async () => {
     const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Naruto' });
-    servidor([item(frieren, { status_consumo: 'assistindo' })], trending([frieren, naruto]));
+    const { api } = servidor([item(frieren, { status_consumo: 'assistindo' })], {
+      'GET /sugestoes': {
+        status: 200,
+        corpo: { sugestoes: [sugestao(naruto, { porque: 'nota', nota: 9, titulo: 'Sousou no Frieren' }), sugestao(jojo)] },
+      },
+    });
 
     await abrir('/lista');
 
     const sugestoes = await screen.findByLabelText('Sugestões para você');
-    expect(within(sugestoes).getByRole('link', { name: 'Naruto, Anime' })).toBeOnTheScreen();
-    expect(within(sugestoes).queryByRole('link', { name: 'Sousou no Frieren, Anime' })).not.toBeOnTheScreen();
+    expect(
+      within(sugestoes).getByRole('link', { name: 'Naruto, Anime, porque você deu 9 a Sousou no Frieren' }),
+    ).toBeOnTheScreen();
+    expect(within(sugestoes).getByText('porque você deu 9 a Sousou no Frieren')).toBeOnTheScreen();
+    expect(within(sugestoes).getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá, Em alta' })).toBeOnTheScreen();
+    expect(api.para('GET /midias/trending?tipo=anime&limite=10')).toHaveLength(0);
+  });
+
+  it('"Planejado" na Sugestão põe a obra na Lista e ela sai da faixa', async () => {
+    const naruto = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Naruto' });
+    const naLista = new Set<string>([frieren.id_midia]);
+    const sugeridas = [sugestao(naruto), sugestao(jojo)];
+    const s = servidor([item(frieren, { status_consumo: 'assistindo' })], {
+      'GET /sugestoes': () => ({ status: 200, corpo: { sugestoes: sugeridas.filter((x) => !naLista.has(x.id_midia)) } }),
+      'POST /lista/adicionar': (req: Requisicao) => {
+        naLista.add(req.corpo.id_midia);
+        s.adicionar(item(naruto, { status_consumo: 'planejado' }));
+        return { status: 201, corpo: { mensagem: 'ok', id_lista: 'L-novo' } };
+      },
+    });
+
+    await abrir('/lista');
+
+    const sugestoes = await screen.findByLabelText('Sugestões para você');
+    await fireEvent.press(await within(sugestoes).findByRole('button', { name: 'Planejado, Naruto' }));
+
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Naruto, Anime, Em alta' })).not.toBeOnTheScreen());
+    expect(s.api.para('POST /lista/adicionar')[0]?.corpo).toEqual({ id_midia: naruto.id_midia, status_consumo: 'planejado' });
+    expect(screen.getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá, Em alta' })).toBeOnTheScreen();
+  });
+
+  it('no Recorte de jogos, a Lista não pede Sugestões e a faixa não aparece', async () => {
+    const { api } = servidor([item(hollow, { status_consumo: 'jogando' })]);
+
+    await abrir('/lista');
+    await screen.findByRole('tab', { name: /^Em progresso/ });
+    const antes = api.chamadas.filter((c) => c.caminho.startsWith('/sugestoes')).length;
+    await trocarRecorte('Jogos');
+
+    expect(await linha('Hollow Knight')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Sugestões para você')).not.toBeOnTheScreen();
+    expect(api.chamadas.filter((c) => c.caminho.startsWith('/sugestoes'))).toHaveLength(antes);
   });
 });

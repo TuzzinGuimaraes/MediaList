@@ -2,7 +2,7 @@
 // invalidação falem do mesmo dado.
 //
 // Tudo que mostra a Nota média ou o Total de avaliações de uma Mídia (Início, Explorar, o
-// detalhe, as Sugestões da Lista) fica sob ['midias']: uma Avaliação gravada invalida esse
+// detalhe, as Sugestões) fica sob ['midias']: uma Avaliação gravada invalida esse
 // prefixo e alcança todos. O que não muda com Avaliação nem com a Lista (Gêneros, facetas)
 // fica sob ['catalogo'].
 import type { OrdemCarrossel } from '@dominio/carrossel';
@@ -22,6 +22,10 @@ export const chaves = {
     temporada: (estacao: string, ano: number, ordem: string) => ['midias', 'temporada', estacao, ano, ordem] as const,
     /** Os episódios do Calendário numa janela (GET /midias/calendario). */
     calendario: (de: string, ate: string) => ['midias', 'calendario', de, ate] as const,
+    /** Prefixo das Sugestões (GET /sugestoes): toda escrita da Lista as refaz. */
+    todasAsSugestoes: ['midias', 'sugestoes'] as const,
+    /** As Sugestões de uma consulta (`consultaDasSugestoes`: sem `tipo` ou com um). */
+    sugestoes: (tipo: string | null) => ['midias', 'sugestoes', tipo] as const,
     /** O detalhe; prefixo também da atividade. */
     detalhe: (id: string) => ['midias', id] as const,
     atividade: (id: string) => ['midias', id, 'atividade'] as const,

@@ -2,7 +2,7 @@
 // leitor de tela do cartão. A API (GET /sugestoes) já devolve as Sugestões em ordem, com o motivo
 // estruturado; os pontos e as exclusões são do backend (`Backend/dominio/sugestoes.py`).
 
-import { nomeDoTipo } from './estadoConsumo';
+import { nomeDoTipo, type TipoMidia } from './estadoConsumo';
 import { tituloDaMidia, type TitulosDaMidia } from './midia';
 import type { MotivoDaSugestao, Sugestao } from './tipos';
 
@@ -29,4 +29,19 @@ export function textoDoMotivo(motivo: MotivoDaSugestao): string {
 /** O que o cartão diz ao leitor de tela: título exibido, Tipo e motivo. */
 export function descricaoDaSugestao(sugestao: TitulosDaMidia & Pick<Sugestao, 'tipo' | 'motivo'>): string {
   return [tituloDaMidia(sugestao), nomeDoTipo(sugestao.tipo), textoDoMotivo(sugestao.motivo)].join(', ');
+}
+
+
+/** O Tipo que GET /sugestoes aceita: as Sugestões são só de anime e mangá (jogo fica de fora). */
+export type TipoDaSugestao = Extract<TipoMidia, 'anime' | 'manga'>;
+
+/**
+ * A consulta de GET /sugestoes para os Tipos da tela, numa requisição só: com anime e mangá,
+ * sem `tipo` (os dois); com um deles, esse `tipo`; sem nenhum (o Recorte de jogos), null: a
+ * tela não pede e a faixa não aparece.
+ */
+export function consultaDasSugestoes(tipos: readonly TipoMidia[]): { tipo?: TipoDaSugestao } | null {
+  const pedidos = (['anime', 'manga'] as const).filter((t) => tipos.includes(t));
+  if (!pedidos.length) return null;
+  return pedidos.length === 1 ? { tipo: pedidos[0] } : {};
 }
