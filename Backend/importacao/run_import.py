@@ -35,7 +35,8 @@ def executar_importacao(tipo_midia: str, origem: str, funcao, *args, **kwargs) -
 
 
 def carregar_relacoes(tipo: str) -> None:
-    """A carga única das Relações (`--so-relacoes`) de anime e mangá; sai com erro se um lote falhou."""
+    """A carga única das Relações e recomendações (`--so-relacoes`) de anime e mangá; sai com erro
+    se um lote falhou."""
     resumo, houve_erro_fatal = [], False
     for tipo_midia in ('anime', 'manga'):
         if tipo in (tipo_midia, 'todos'):
@@ -79,7 +80,8 @@ def main():
     )
     parser.add_argument(
         '--so-relacoes', action='store_true',
-        help='Anime e mangá: carga única das Relações de todo o Catálogo, sem gravar as Mídias (jogo: nada)',
+        help='Anime e mangá: carga única das Relações e recomendações de todo o Catálogo, sem gravar '
+             'as Mídias (jogo: nada)',
     )
     args = parser.parse_args()
     configurar_log()

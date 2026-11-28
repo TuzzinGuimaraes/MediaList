@@ -157,6 +157,19 @@ POPULARES = f"""
 """
 
 
+def obra_adulta(anime: str, manga: str, jogo: str | None = None) -> str:
+    """Expressão SQL (booleana, nunca nula): a obra é adulta pelo que a Importação gravou nela.
+
+    O anime com `classificacao_etaria` 18 e o mangá com `adulto` (o `isAdult` do AniList), e o
+    jogo ESRB Adults Only. Os argumentos são os aliases das tabelas filhas na consulta; sem `jogo`,
+    o jogo não entra.
+    """
+    condicoes = [f"{anime}.classificacao_etaria = '18'", f'{manga}.adulto']
+    if jogo:
+        condicoes.append(f"{jogo}.classificacao = 'ESRB: Adults Only'")
+    return f"({' OR '.join(condicoes)}) IS TRUE"
+
+
 def com_generos_lista(linha: dict[str, Any]) -> dict[str, Any]:
     """A linha com `generos_lista`: os gêneros, que vêm em texto ('Ação, Drama'), como lista."""
     generos = linha.get('generos')

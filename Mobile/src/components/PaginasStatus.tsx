@@ -3,26 +3,23 @@ import { Animated, FlatList, RefreshControl, Text, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 
 import { useLista } from '../api/lista';
-import { useEmAlta } from '../api/midias';
+import { useSugestoes } from '../api/sugestoes';
 import type { ItemLista } from '../api/tipos';
 import { contarPorEstado, type EstadoConsumo, NOMES_ESTADO, NOMES_TIPO, type TipoMidia } from '@dominio/estadoConsumo';
 import { porTipo } from '@dominio/filtrosLista';
-import { foraDe } from '@dominio/inicio';
 import { estadosDaLista, itensDoEstado } from '@dominio/itemLista';
-import { useRecorte } from '../recorte/RecorteContext';
 import { useReduzirMovimento } from '../tema/movimento';
 import { AbasStatus, TituloDaAba } from './AbasStatus';
-import { Carrossel } from './Carrossel';
 import { type AcoesDoItem, LinhaDaLista } from './LinhaItem';
 import { TituloSecao } from './Secao';
 import { BotaoFiltros, type ControleDosFiltros } from './SheetFiltros';
+import { FaixaSugestoes } from './Sugestoes';
 import { useAtualizar } from './useAtualizar';
 
 const textos = {
   itens: 'Itens da Lista',
   vazio: (estado: string) => `Nenhum Item em ${estado}.`,
   vazioFiltrado: (estado: string) => `Nenhum Item em ${estado} com esses filtros.`,
-  sugestoes: 'Sugestões para você',
 };
 
 type PropsPaginas = {
@@ -109,7 +106,8 @@ type PropsPagina = {
 /** Uma página: subseções "Anime · N" e "Mangá · N", e as Sugestões no fim. */
 function PaginaStatus({ itens, tipos, vazio, acoes }: PropsPagina) {
   const lista = useLista();
-  const atualizar = useAtualizar(lista);
+  const sugestoes = useSugestoes(tipos);
+  const atualizar = useAtualizar([lista, sugestoes]);
   const blocos = porTipo(itens, tipos).flatMap(({ tipo, itens: doTipo }): Bloco[] => [
     ...(tipo ? [{ subsecao: tipo, total: doTipo.length }] : []),
     ...doTipo.map((item) => ({ item })),
@@ -127,17 +125,9 @@ function PaginaStatus({ itens, tipos, vazio, acoes }: PropsPagina) {
         )
       }
       ListEmptyComponent={<Text className="p-6 text-center text-corpo text-texto-suave">{vazio}</Text>}
-      ListFooterComponent={<Sugestoes />}
+      ListFooterComponent={<FaixaSugestoes sugestoes={sugestoes.sugestoes} className="mt-4" />}
       refreshControl={<RefreshControl {...atualizar} />}
       contentContainerClassName="gap-3 pb-6 pt-2"
     />
   );
-}
-
-/** "Sugestões para você": Mídias de Em alta do catálogo que não estão na Lista, no carrossel do Início. */
-function Sugestoes() {
-  const { recorte } = useRecorte();
-  const emAlta = useEmAlta(recorte);
-  const lista = useLista();
-  return <Carrossel titulo={textos.sugestoes} midias={foraDe(emAlta.data, lista.data)} className="mt-4" />;
 }

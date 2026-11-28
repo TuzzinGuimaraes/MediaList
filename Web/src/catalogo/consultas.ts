@@ -18,7 +18,7 @@ export function porTipo<T>(recorte: Recorte, buscar: (tipo: TipoMidia) => Promis
 
 /**
  * Em alta (o backend chama de trending): as `limite` de maior nota de cada Tipo do Recorte,
- * juntas da maior nota para a menor. O Início e as Sugestões da Lista usam esta.
+ * juntas da maior nota para a menor. O Início usa esta.
  */
 export function useEmAlta(recorte: Recorte, limite: number) {
   const api = useApi();

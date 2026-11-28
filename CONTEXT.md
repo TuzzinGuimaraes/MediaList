@@ -52,6 +52,22 @@ A Relação vem da **Importação** e ninguém a edita: cada reimportação de u
 dela pelas da fonte. Uma obra relacionada que ainda não está no Catálogo aparece só com título, Tipo
 e o link da fonte; obra adulta não aparece.
 
+## Sugestão
+
+Um anime ou mangá do Catálogo indicado ao Usuário pelo gosto dele, com o motivo. Parte das
+**sementes**: os Itens de anime e mangá com **Nota pessoal** 8 ou mais, ou Favoritos. Cada semente
+traz as obras que o AniList recomenda a partir dela (as 10 mais votadas, gravadas pela
+**Importação**). Pesa mais a recomendação mais votada e a semente de nota mais alta (o Favorito sem
+nota pesa como 9), e a obra recomendada por várias sementes soma os pesos. O motivo cita a semente
+que mais pesou: "porque você deu 9 a Frieren" ou "porque Frieren é Favorito". O Favorito com Nota
+pessoal abaixo de 8 pesa a nota (e o motivo diz "é Favorito"). No empate de pesos, vem antes a obra
+mais popular na fonte, o que só vale para anime (o mangá não guarda popularidade).
+
+Não vira Sugestão a obra que já está na **Lista pessoal** (em qualquer Estado de consumo), a adulta,
+a que não está no Catálogo e a ligada a uma semente por uma **Relação**. Sem 12 Sugestões, a faixa
+completa com o Em alta, com o motivo "Em alta". É calculada na leitura: uma nota nova já muda as
+Sugestões. Jogo não tem Sugestão. O destaque "Continue com a Sequência" do Detalhe não é Sugestão.
+
 ## Catálogo
 
 O conjunto de todas as Mídias conhecidas pelo sistema. O Catálogo é populado por
@@ -105,7 +121,7 @@ no máximo 5000 itens da plataforma; lista maior é recusada (`lista_grande_dema
 
 A Integração **nunca apaga trabalho do Usuário**: o Progresso fica com o maior valor, o Estado
 de consumo só muda se o Progresso subiu, a nota da plataforma só entra onde não há Nota
-pessoal, e comentário, favorito, Recontagem e Avaliações não são tocados (nem quando a
+pessoal, e comentário, Favorito, Recontagem e Avaliações não são tocados (nem quando a
 plataforma leva ao total um Item que já tinha conclusão: vira Concluído sem somar Recontagem). Em jogos, só as horas
 (a maior) e `na_fila` → `jogando`; Zerado e Platinado nunca vêm da plataforma.
 
@@ -204,7 +220,7 @@ para todos menos o dono.
 ## Item de lista
 
 O vínculo entre um Usuário e uma Mídia: o registro de que aquela pessoa acompanha aquela
-obra. Carrega o **Estado de consumo**, o **Progresso**, a **Nota pessoal**, se é favorito,
+obra. Carrega o **Estado de consumo**, o **Progresso**, a **Nota pessoal**, se é Favorito,
 se é privado, as datas de início e conclusão, e um comentário particular.
 
 Um Item de lista representa o **estado atual**, não o histórico. Ver **Recontagem**.
@@ -383,7 +399,7 @@ Na Temporada atual, a aba Calendário mostra os episódios de anime dos próximo
 em diante, no fuso de quem vê (o horário é o da exibição no Japão, convertido). Os já exibidos vêm
 das **Atualizações de mídia** de episódio; o próximo episódio de cada anime, da data em que
 ele sai. O que já saiu aparece marcado "foi ao ar". O filtro "Só os meus" deixa só os animes da
-**Lista pessoal** em Em progresso ou Planejado, ou favoritos, e começa ligado quando algum episódio
+**Lista pessoal** em Em progresso ou Planejado, ou Favoritos, e começa ligado quando algum episódio
 da semana é de um deles. "A seguir dos seus" é o próximo episódio, ainda não exibido, de um desses.
 
 ---
@@ -408,7 +424,7 @@ por episódio. A estreia (episódio 1) vai a quem tem o anime em Em progresso ou
 outros episódios, só a Em progresso; quem o favoritou recebe sempre, qualquer que seja o Estado de consumo.
 Na mesma leitura, o anime fica com a Situação, o total de episódios, quantos já foram ao ar e
 quando sai o próximo. O admin ainda pode registrar uma Atualização à mão; nela, recebe quem tem a
-Mídia em Em progresso ou Planejado, ou como favorita.
+Mídia em Em progresso ou Planejado, ou como Favorito.
 
 ## Notificação
 

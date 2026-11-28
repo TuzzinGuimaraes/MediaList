@@ -4,6 +4,7 @@ import { RefreshControl, ScrollView } from 'react-native';
 import { useCarrosseisPorGenero, useCarrossel } from '@/api/inicio';
 import { useLista } from '@/api/lista';
 import { useEmAlta, usePopulares } from '@/api/midias';
+import { useSugestoes } from '@/api/sugestoes';
 import type { ItemLista, Midia } from '@/api/tipos';
 import { FaixaAssistirAgora } from '@/components/AssistirAgora';
 import { AtalhoTemporada } from '@/components/AtalhoTemporada';
@@ -12,8 +13,9 @@ import { Carrossel, Fileira, Top10 } from '@/components/Carrossel';
 import { Destaques } from '@/components/Destaques';
 import { EditorItem } from '@/components/EditorItem';
 import { Carregando, Falha, Vazio } from '@/components/EstadoTela';
+import { FaixaSugestoes } from '@/components/Sugestoes';
 import { useAtualizar } from '@/components/useAtualizar';
-import { estadoDe } from '@dominio/estadoConsumo';
+import { estadoDe, type TipoMidia } from '@dominio/estadoConsumo';
 import { foraDe, generosQueVoceCurte, jaLancadas, rotuloMaisConcluidos } from '@dominio/inicio';
 import { ConteudoRecorte, TIPOS_DO_RECORTE, useRecorte } from '@/recorte/RecorteContext';
 
@@ -34,7 +36,8 @@ const LARGURA_CONTINUAR = 290;
 
 export default function Inicio() {
   const { recorte } = useRecorte();
-  const tipos: string[] = TIPOS_DO_RECORTE[recorte];
+  const tipos: TipoMidia[] = TIPOS_DO_RECORTE[recorte];
+  const sugestoes = useSugestoes(tipos);
   const emAlta = useEmAlta(recorte);
   const populares = usePopulares(recorte);
   const lista = useLista();
@@ -60,6 +63,7 @@ export default function Inicio() {
     lancamentos,
     maisAdicionados,
     maisConcluidos,
+    sugestoes,
     ...porGenero,
   ]);
 
@@ -75,15 +79,16 @@ export default function Inicio() {
       maisConcluidos: maisConcluidos.data ?? [],
     };
     // O estado vazio da tela só quando todos os carrosséis (já respondidos) vierem vazios.
-    const pendente = [lista, maioresNotas, lancamentos, maisAdicionados, maisConcluidos, ...porGenero].some(
-      (c) => c.isPending,
-    );
+    const pendente =
+      sugestoes.pendente ||
+      [lista, maioresNotas, lancamentos, maisAdicionados, maisConcluidos, ...porGenero].some((c) => c.isPending);
     const vazio =
       !pendente &&
       [
         emAlta.data,
         top10,
         continuar,
+        sugestoes.sugestoes ?? [],
         carrosseis.maioresNotas,
         carrosseis.lancamentos,
         carrosseis.maisAdicionados,
@@ -108,6 +113,7 @@ export default function Inicio() {
           chave={(i) => i.id_lista}
           renderizar={(i) => <CardInfo midia={i} largura={LARGURA_CONTINUAR} />}
         />
+        <FaixaSugestoes sugestoes={sugestoes.sugestoes} />
         <Carrossel titulo={textos.emAlta} midias={emAlta.data} />
         <Top10 titulo={textos.top10} midias={top10} />
         <Carrossel titulo={textos.maioresNotas} midias={carrosseis.maioresNotas} />
@@ -116,7 +122,7 @@ export default function Inicio() {
           <Carrossel key={genero} titulo={textos.porGenero(genero)} midias={midias} />
         ))}
         <Carrossel titulo={textos.maisAdicionados} midias={carrosseis.maisAdicionados} />
-        <Carrossel titulo={rotuloMaisConcluidos(TIPOS_DO_RECORTE[recorte])} midias={carrosseis.maisConcluidos} />
+        <Carrossel titulo={rotuloMaisConcluidos(tipos)} midias={carrosseis.maisConcluidos} />
       </>
     );
   } else if (emAlta.isError || populares.isError) {

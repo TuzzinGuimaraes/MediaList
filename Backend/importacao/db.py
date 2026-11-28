@@ -11,7 +11,8 @@ leitura (ticket 13); a Importação grava só a Nota da fonte (`nota_fonte`) e, 
 colunas da fonte do Tipo (`colunas_fonte`: Temporada, formato, Popularidade da fonte).
 
 O mapa Tipo → tabela/colunas é o de `tipos_midia`, o mesmo do Catálogo. As Relações das Mídias
-de uma página vão numa transação à parte (`salvar_relacoes`), que troca as que elas tinham.
+de uma página vão numa transação à parte (`salvar_relacoes`), que troca as que elas tinham, e as
+recomendações de anime e mangá vão junto.
 """
 from __future__ import annotations
 
@@ -186,6 +187,13 @@ _INSERIR_RELACOES = f"""
     ON CONFLICT DO NOTHING
 """
 
+_INSERIR_RECOMENDACOES = """
+    INSERT INTO recomendacoes_midia (id_midia, tipo_destino, destino_anilist_id, rating, adulto)
+    SELECT id_midia, tipo_destino, destino_anilist_id, rating, adulto FROM jsonb_to_recordset(%s::jsonb)
+        AS r(id_midia uuid, tipo_destino text, destino_anilist_id integer, rating integer, adulto boolean)
+    ON CONFLICT DO NOTHING
+"""
+
 _GRAVAR_CONTAGENS = """
     UPDATE jogos j SET game_series_count = c.contagem
     FROM jsonb_to_recordset(%s::jsonb) AS c(id_midia uuid, contagem integer)
@@ -194,18 +202,23 @@ _GRAVAR_CONTAGENS = """
 
 
 def salvar_relacoes(t: Transacao, relacoes_por_midia: dict[str, list[dict]],
-                    contagens_da_serie: dict[str, int] | None = None) -> None:
+                    contagens_da_serie: dict[str, int] | None = None,
+                    recomendacoes_por_midia: dict[str, list[dict]] | None = None) -> None:
     """Troca as Relações das Mídias pelas dadas numa transação só (uma página da Importação).
 
     `relacoes_por_midia`: id_midia → Relações (`importacao.relacoes.da_obra`/`da_serie`). Mídia
     com lista vazia fica sem Relações. `contagens_da_serie`: id_midia → `game_series_count` dos
     jogos, gravada junto: se a gravação falha, nem as Relações nem a contagem mudam.
+    `recomendacoes_por_midia`: id_midia → recomendações (`importacao.relacoes.recomendacoes_da_obra`),
+    trocadas junto do mesmo jeito (as mesmas Mídias das Relações); None (os jogos) não mexe nelas.
     """
     if not relacoes_por_midia:
         return
     linhas = [{**relacao, 'id_midia': id_midia}
               for id_midia, relacoes in relacoes_por_midia.items() for relacao in relacoes]
     contagens = [{'id_midia': i, 'contagem': c} for i, c in (contagens_da_serie or {}).items()]
+    recomendacoes = [{**r, 'id_midia': id_midia}
+                     for id_midia, lista in (recomendacoes_por_midia or {}).items() for r in lista]
     # Dois comandos, não um com o DELETE numa CTE: o INSERT do mesmo comando ainda veria a linha
     # apagada e, com ON CONFLICT DO NOTHING, a Relação igual à de antes sumiria.
     with t.bloco():
@@ -214,3 +227,8 @@ def salvar_relacoes(t: Transacao, relacoes_por_midia: dict[str, list[dict]],
         t.executar('DELETE FROM relacoes_midia WHERE id_midia = ANY(%s::uuid[])', (list(relacoes_por_midia),))
         if linhas:
             t.executar(_INSERIR_RELACOES, (Jsonb(linhas),))
+        if recomendacoes_por_midia is not None:
+            t.executar('DELETE FROM recomendacoes_midia WHERE id_midia = ANY(%s::uuid[])',
+                       (list(recomendacoes_por_midia),))
+        if recomendacoes:
+            t.executar(_INSERIR_RECOMENDACOES, (Jsonb(recomendacoes),))

@@ -2,7 +2,7 @@
 // tipadas pelo contrato gerado (contrato/api.d.ts): um campo que sai ou muda na API
 // quebra o `tsc` aqui, não só em produção.
 
-import type { ItemLista, MidiaDetalhe, MidiaPopular } from '../api/tipos';
+import type { ItemLista, MidiaDetalhe, MidiaPopular, Sugestao } from '../api/tipos';
 
 /** Os campos de todos os Tipos, nulos: a API sempre manda os de outro Tipo vazios. */
 const vazio = {
@@ -195,4 +195,10 @@ export function popular(midia: MidiaDetalhe, total_usuarios: number): MidiaPopul
     total_usuarios,
     generos: midia.generos,
   };
+}
+
+/** Uma Sugestão de GET /sugestoes: a Mídia e o motivo (sem motivo, "Em alta"). */
+export function sugestao(midia: MidiaDetalhe, motivo: Partial<Sugestao['motivo']> = {}): Sugestao {
+  const { atualizacoes: _atualizacoes, ...resto } = midia;
+  return { ...resto, motivo: { porque: 'em_alta', nota: null, titulo: null, ...motivo } };
 }

@@ -1,9 +1,9 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { abrirLogado } from '../../testes/app';
+import { abrirApp, abrirLogado } from '../../testes/app';
 import { erro, type Resposta, type Rotas } from '../../testes/fetchSimulado';
-import { item, midia, popular, rotasDoInicio } from './dadosDeTeste';
+import { item, midia, popular, rotasDoInicio, sugestao } from './dadosDeTeste';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -195,6 +195,100 @@ describe('Início: fileiras', () => {
     });
 
     expect(await fileiras()).toEqual(['Continuar', 'Em alta', 'Mais jogados']);
+  });
+});
+
+
+describe('Início: Sugestões para você', () => {
+  const vinland = midia('ANI-2', 'Vinland Saga', { nota_media: 8.8 });
+  const monster = midia('MAN-2', 'Monster', { tipo: 'manga', nota_media: 8.9 });
+  const sugeridas = [
+    sugestao(vinland, { porque: 'nota', nota: 9, titulo: 'Sousou no Frieren' }),
+    sugestao(monster, { porque: 'favorito', titulo: 'Berserk' }),
+    sugestao(frieren),
+  ];
+
+  it('entre Continuar e Em alta, com o motivo em cada cartão, numa requisição só para anime e mangá', async () => {
+    const { api } = await abrirLogado('/', {
+      rotas: rotasDoInicio({ emAlta: [berserk], lista: [item(midia('ANI-5', 'Dandadan'))], sugestoes: sugeridas }),
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Sugestões para você' });
+    expect(await fileiras()).toEqual(['Continuar', 'Sugestões para você', 'Em alta']);
+    expect(within(faixa).getByText('porque você deu 9 a Sousou no Frieren')).toBeInTheDocument();
+    expect(within(faixa).getByText('porque Berserk é Favorito')).toBeInTheDocument();
+    expect(within(faixa).getByText('Em alta')).toBeInTheDocument();
+    expect(within(faixa).getByRole('link', { name: 'Vinland Saga, Anime, porque você deu 9 a Sousou no Frieren' })).toHaveAttribute(
+      'href',
+      '/midia/ANI-2',
+    );
+    expect(within(faixa).getByRole('link', { name: 'Monster, Mangá, porque Berserk é Favorito' })).toBeInTheDocument();
+    expect(api.para('GET /sugestoes').map((r) => r.query.toString())).toEqual(['']);
+  });
+
+  it('"Planejado" põe a Sugestão na Lista e ela sai da faixa', async () => {
+    let lista: ReturnType<typeof item>[] = [];
+    const { user, api } = await abrirLogado('/', {
+      rotas: {
+        ...rotasDoInicio({ emAlta: [berserk] }),
+        'GET /lista': () => ({ status: 200, corpo: { lista } }),
+        'GET /sugestoes': () => ({
+          status: 200,
+          corpo: { sugestoes: sugeridas.filter((s) => !lista.some((i) => i.id_midia === s.id_midia)) },
+        }),
+        'POST /lista/adicionar': () => {
+          lista = [item(vinland, { status_consumo: 'planejado' })];
+          return { status: 201, corpo: { mensagem: 'ok', id_lista: 'L-ANI-2' } };
+        },
+      },
+    });
+
+    const faixa = await screen.findByRole('region', { name: 'Sugestões para você' });
+    await user.click(within(faixa).getByRole('button', { name: 'Pôr Vinland Saga em Planejado' }));
+
+    await waitFor(() => expect(within(faixa).queryByRole('link', { name: /^Vinland Saga/ })).not.toBeInTheDocument());
+    expect(api.para('POST /lista/adicionar')[0]?.corpo).toEqual({ id_midia: 'ANI-2', status_consumo: 'planejado' });
+    expect(within(faixa).getByRole('link', { name: /^Monster/ })).toBeInTheDocument();
+  });
+
+  it('sem Sugestões, a faixa some e as outras fileiras ficam', async () => {
+    await abrirLogado('/', { rotas: rotasDoInicio({ emAlta: [frieren], lista: [item(vinland)] }) });
+
+    expect(await fileiras()).toEqual(['Continuar', 'Em alta']);
+  });
+
+  it('com erro nas Sugestões, só a faixa some', async () => {
+    await abrirLogado('/', {
+      rotas: { ...rotasDoInicio({ emAlta: [frieren], lista: [item(vinland)] }), 'GET /sugestoes': erro(500, 'erro_interno', 'Falhou.') },
+    });
+
+    expect(await screen.findByRole('region', { name: 'Em alta' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Sugestões para você' })).not.toBeInTheDocument();
+  });
+
+  it('só elas no catálogo: o Início não fica vazio', async () => {
+    await abrirLogado('/', { rotas: rotasDoInicio({ sugestoes: sugeridas }) });
+
+    expect(await screen.findByRole('region', { name: 'Sugestões para você' })).toBeInTheDocument();
+    expect(screen.queryByText('Nenhuma Mídia neste catálogo ainda.')).not.toBeInTheDocument();
+  });
+
+  it('no catálogo Jogos, não pede as Sugestões e a faixa não aparece', async () => {
+    localStorage.setItem('medialist.catalogo', 'jogos');
+    const hades = midia('JOG-1', 'Hades', { tipo: 'jogo', nota_media: 9 });
+    const { api } = await abrirLogado('/', {
+      rotas: rotasDoInicio({ emAlta: [hades], lista: [item(hades, { status_consumo: 'jogando' })], sugestoes: sugeridas }),
+    });
+
+    expect(await fileiras()).toEqual(['Continuar', 'Em alta']);
+    expect(api.para('GET /sugestoes')).toHaveLength(0);
+  });
+
+  it('sem sessão, vai ao login sem pedir as Sugestões', async () => {
+    const { api } = abrirApp('/', { rotas: rotasDoInicio({ emAlta: [frieren], sugestoes: sugeridas }) });
+
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+    expect(api.para('GET /sugestoes')).toHaveLength(0);
   });
 });
 

@@ -7,7 +7,7 @@ import type { ItemLista, Midia } from '../api/tipos';
 import { pagina, rotasSemAvaliacoes } from './contrato';
 import { simularFetch } from './fetchSimulado';
 import { rotaCarrossel, rotasDoInicio } from './inicio';
-import { anime, fullmetal, itemDaLista as item, jogo, manga, popular } from './midias';
+import { anime, fullmetal, itemDaLista as item, jogo, manga, popular, sugestao } from './midias';
 import { pilulaRecorte, trocarRecorte } from './recorte';
 import { abrirLogado } from './sessao';
 
@@ -303,6 +303,10 @@ describe('Início: destaques e carrosséis', () => {
       [rotaCarrossel('manga', 'mais_concluidos')]: midias({ ...jojo, total_concluidos: 3 }),
       [rotaCarrossel('anime', 'nota_media', 'Aventura')]: midias(frieren, monster),
       [rotaCarrossel('manga', 'nota_media', 'Ação')]: midias(vagabond),
+      'GET /sugestoes': {
+        status: 200,
+        corpo: { sugestoes: [sugestao(monster, { porque: 'favorito', titulo: 'Sousou no Frieren' })] },
+      },
     };
   }
 
@@ -319,6 +323,7 @@ describe('Início: destaques e carrosséis', () => {
     const secoes = screen.getAllByRole('header').map((h) => h.props.children);
     expect(secoes).toEqual([
       'Continuar',
+      'Sugestões para você',
       'Em alta',
       'Top 10',
       'Maiores notas',
@@ -422,6 +427,68 @@ describe('Início: destaques e carrosséis', () => {
   });
 });
 
+
+describe('Início: Sugestões para você', () => {
+  const berserk = anime({ id_midia: 'MID-ANM-2026-20099', titulo_romaji: 'Berserk' });
+
+  it('cada cartão diz o motivo, também ao leitor de tela, numa requisição só para anime e mangá', async () => {
+    const api = simularFetch({
+      ...catalogo(),
+      'GET /sugestoes': {
+        status: 200,
+        corpo: { sugestoes: [sugestao(berserk, { porque: 'nota', nota: 8.5, titulo: 'Sousou no Frieren' }), sugestao(jojo)] },
+      },
+    });
+
+    await abrirLogado();
+
+    const faixa = await screen.findByLabelText('Sugestões para você');
+    expect(within(faixa).getByRole('link', { name: 'Berserk, Anime, porque você deu 8,5 a Sousou no Frieren' })).toBeOnTheScreen();
+    expect(within(faixa).getByText('porque você deu 8,5 a Sousou no Frieren')).toBeOnTheScreen();
+    expect(within(faixa).getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá, Em alta' })).toBeOnTheScreen();
+    expect(api.para('GET /sugestoes').length).toBeGreaterThan(0);
+    expect(api.chamadas.filter((c) => c.caminho.startsWith('/sugestoes?'))).toHaveLength(0);
+  });
+
+  it('"Planejado" põe a Sugestão na Lista e ela sai da faixa', async () => {
+    let lista: ItemLista[] = [];
+    const sugeridas = [sugestao(berserk), sugestao(jojo)];
+    const api = simularFetch({
+      ...catalogo(),
+      'GET /lista': () => ({ status: 200, corpo: { lista } }),
+      'GET /sugestoes': () => ({
+        status: 200,
+        corpo: { sugestoes: sugeridas.filter((s) => !lista.some((i) => i.id_midia === s.id_midia)) },
+      }),
+      'POST /lista/adicionar': () => {
+        lista = [item(berserk, { status_consumo: 'planejado' })];
+        return { status: 201, corpo: { mensagem: 'ok', id_lista: 'L-novo' } };
+      },
+    });
+
+    await abrirLogado();
+
+    const faixa = await screen.findByLabelText('Sugestões para você');
+    await fireEvent.press(await within(faixa).findByRole('button', { name: 'Planejado, Berserk' }));
+
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Berserk, Anime, Em alta' })).not.toBeOnTheScreen());
+    expect(api.para('POST /lista/adicionar')[0]?.corpo).toEqual({ id_midia: berserk.id_midia, status_consumo: 'planejado' });
+    expect(screen.getByRole('link', { name: 'JoJo no Kimyou na Bouken, Mangá, Em alta' })).toBeOnTheScreen();
+  });
+
+  it('no Recorte de jogos, não pede as Sugestões', async () => {
+    const api = simularFetch({ ...catalogo(), 'GET /sugestoes': { status: 200, corpo: { sugestoes: [sugestao(berserk)] } } });
+
+    await abrirLogado();
+    await screen.findByLabelText('Sugestões para você');
+    const antes = api.chamadas.filter((c) => c.caminho.startsWith('/sugestoes')).length;
+    await trocarRecorte('Jogos');
+
+    expect(await card('Hollow Knight, Jogo')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Sugestões para você')).not.toBeOnTheScreen();
+    expect(api.chamadas.filter((c) => c.caminho.startsWith('/sugestoes'))).toHaveLength(antes);
+  });
+});
 
 describe('Início: Para assistir agora', () => {
   const HORA = 3_600_000;
