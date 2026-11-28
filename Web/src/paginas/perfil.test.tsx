@@ -717,3 +717,154 @@ describe('Perfil: Conquistas em destaque', () => {
     expect(screen.queryByRole('region', { name: 'Conquistas em destaque' })).not.toBeInTheDocument();
   });
 });
+
+
+describe('Perfil: Escolher destaques', () => {
+  type DoSeletor = Esquemas['ConquistaDoSeletor'];
+  const doSeletor = (codigo: string, dados: Partial<DoSeletor> = {}): DoSeletor => ({
+    steam_appid: 1145360,
+    codigo,
+    nome: `Conquista ${codigo}`,
+    descricao: `Faça ${codigo}.`,
+    icone: null,
+    oculta: false,
+    raridade: 50,
+    obtida: true,
+    obtida_em: '2020-12-10T15:32:36Z',
+    destacada: false,
+    id_lista: 'LST-J',
+    id_midia: 'MID-J',
+    jogo: 'Hades',
+    ...dados,
+  });
+  const pagina = (itens: DoSeletor[], numero = 1, total = itens.length) => ({
+    status: 200,
+    corpo: { itens, pagina: numero, por_pagina: 50, total },
+  });
+  const jogos = {
+    status: 200,
+    corpo: {
+      jogos: [
+        { steam_appid: 504230, id_midia: 'MID-C', jogo: 'Celeste', obtidas: 3 },
+        { steam_appid: 1145360, id_midia: 'MID-J', jogo: 'Hades', obtidas: 12 },
+      ],
+    },
+  };
+  const comUma: Destaques = { destaques: [destaque('A')], automaticos: true, total: { conquistas: 15, jogos: 2 } };
+
+  async function abrirSeletor(extra: Rotas) {
+    const aberto = await abrirLogado('/perfil', {
+      rotas: rotasDoPerfil({
+        'GET /usuario/conquistas/destaques': { status: 200, corpo: comUma },
+        'GET /usuario/conquistas/jogos': jogos,
+        ...extra,
+      }),
+    });
+    await aberto.user.click(
+      await within(await secao('Conquistas em destaque')).findByRole('button', { name: 'Escolher destaques' }),
+    );
+    return { ...aberto, dialogo: await screen.findByRole('dialog', { name: 'Escolher destaques' }) };
+  }
+
+  const ultimaQuery = (api: { para(rota: string): { query: URLSearchParams }[] }) =>
+    Object.fromEntries(api.para('GET /usuario/conquistas').at(-1)!.query);
+
+  it('abre o seletor com as obtidas da mais rara, o jogo de cada uma e o selo Rara', async () => {
+    const { dialogo, api } = await abrirSeletor({
+      'GET /usuario/conquistas': pagina([doSeletor('Rara', { raridade: 2.5 }), doSeletor('Comum', { jogo: 'Celeste' })]),
+    });
+
+    const [rara, comum] = (await within(dialogo).findAllByRole('listitem')) as [HTMLElement, HTMLElement];
+    expect(rara).toHaveAccessibleName('Conquista Rara, Hades, obtida em 10/12/2020, 2,5% dos jogadores, rara');
+    expect(within(rara).getByText('Rara')).toBeInTheDocument();
+    expect(comum).toHaveAccessibleName(/Celeste/);
+    expect(ultimaQuery(api)).toEqual({ ordem: 'raridade', pagina: '1' });
+    const filtroJogo = within(dialogo).getByRole('combobox', { name: 'Jogo' });
+    expect(within(filtroJogo).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Todos os jogos',
+      'Celeste',
+      'Hades',
+    ]);
+    expect(within(dialogo).queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+  });
+
+  it('busca, filtro por jogo, só as destacadas e a ordem vão na consulta', async () => {
+    const { dialogo, api, user } = await abrirSeletor({ 'GET /usuario/conquistas': pagina([doSeletor('A')]) });
+    await within(dialogo).findAllByRole('listitem');
+
+    await user.type(within(dialogo).getByRole('searchbox', { name: 'Buscar pelo nome' }), 'ação');
+    await waitFor(() => expect(ultimaQuery(api)).toEqual({ ordem: 'raridade', pagina: '1', busca: 'ação' }));
+
+    await user.selectOptions(within(dialogo).getByRole('combobox', { name: 'Jogo' }), 'Celeste');
+    await user.click(within(dialogo).getByRole('checkbox', { name: 'Só as destacadas' }));
+    await user.click(within(dialogo).getByRole('radio', { name: 'Mais recentes' }));
+
+    await waitFor(() =>
+      expect(ultimaQuery(api)).toEqual({
+        ordem: 'data',
+        pagina: '1',
+        busca: 'ação',
+        steam_appid: '504230',
+        so_destacadas: 'true',
+      }),
+    );
+  });
+
+  it('"Carregar mais" traz a página seguinte embaixo, até o total', async () => {
+    const primeira = Array.from({ length: 50 }, (_, i) => doSeletor(`P${i}`));
+    const { dialogo, user } = await abrirSeletor({
+      'GET /usuario/conquistas': (req) =>
+        req.query.get('pagina') === '2' ? pagina([doSeletor('Ultima')], 2, 51) : pagina(primeira, 1, 51),
+    });
+    expect(await within(dialogo).findAllByRole('listitem')).toHaveLength(50);
+
+    await user.click(within(dialogo).getByRole('button', { name: 'Carregar mais' }));
+
+    expect(await within(dialogo).findByText('Conquista Ultima')).toBeInTheDocument();
+    expect(within(dialogo).getAllByRole('listitem')).toHaveLength(51);
+    expect(within(dialogo).queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
+  });
+
+  it('nada com os filtros avisa', async () => {
+    const { dialogo } = await abrirSeletor({ 'GET /usuario/conquistas': pagina([]) });
+
+    expect(await within(dialogo).findByText('Nenhuma conquista obtida com esses filtros.')).toBeInTheDocument();
+  });
+
+  it('destacar e tirar ali gravam e relêem o seletor e os destaques do Perfil', async () => {
+    let destacada = false;
+    const { dialogo, api, user } = await abrirSeletor({
+      'GET /usuario/conquistas': () => pagina([doSeletor('A', { destacada })]),
+      'PUT /usuario/conquistas/destaques/1145360/A': () => {
+        destacada = true;
+        return { status: 200, corpo: { mensagem: 'ok' } };
+      },
+      'DELETE /usuario/conquistas/destaques/1145360/A': () => {
+        destacada = false;
+        return { status: 200, corpo: { mensagem: 'ok' } };
+      },
+    });
+    const antes = api.para('GET /usuario/conquistas/destaques').length;
+
+    await user.click(await within(dialogo).findByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(api.para('PUT /usuario/conquistas/destaques/1145360/A')).toHaveLength(1);
+    await user.click(await within(dialogo).findByRole('button', { name: 'Tirar do Perfil' }));
+    expect(api.para('DELETE /usuario/conquistas/destaques/1145360/A')).toHaveLength(1);
+    expect(await within(dialogo).findByRole('button', { name: 'Destacar no Perfil' })).toBeInTheDocument();
+    await waitFor(() => expect(api.para('GET /usuario/conquistas/destaques').length).toBeGreaterThan(antes));
+  });
+
+  it('a sétima mostra o aviso para tirar outra antes', async () => {
+    const { dialogo, user } = await abrirSeletor({
+      'GET /usuario/conquistas': pagina([doSeletor('A')]),
+      'PUT /usuario/conquistas/destaques/1145360/A': erro(409, 'limite_de_destaques', 'Limite'),
+    });
+
+    await user.click(await within(dialogo).findByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'O Perfil já tem 6 destaques. Tire um antes de destacar outro.',
+    );
+  });
+});

@@ -1,7 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessao } from '../auth/SessaoContext';
-import type { ConquistaDoItem, RespostaConquistasDoItem, RespostaDestaques } from './tipos';
+import { consultaDoSeletor, type FiltrosDoSeletor, proximaPaginaDoSeletor } from '@dominio/conquistas';
+import type {
+  ConquistaDoItem,
+  PaginaConquistasDoSeletor,
+  RespostaConquistasDoItem,
+  RespostaDestaques,
+  RespostaJogosComConquistas,
+} from './tipos';
 
 /** Prefixo das conquistas da Steam (só a sincronização as escreve) e dos destaques do Perfil. */
 export const CHAVE_CONQUISTAS = ['conquistas'] as const;
@@ -33,9 +40,10 @@ export function useDestaques() {
 
 /**
  * Põe (`destacar`) ou tira a conquista obtida dos destaques do Perfil, pela appid e pelo código; depois
- * relê a lista do Item e os destaques. O sétimo destaque falha com 409 (`eLimiteDeDestaques`).
+ * relê tudo de conquistas (a lista do Item, os destaques e o seletor). O sétimo destaque falha com 409
+ * (`eLimiteDeDestaques`). A tela de conquistas do jogo e o seletor usam esta mesma escrita.
  */
-export function useMudarDestaque(idLista: string) {
+export function useMudarDestaque() {
   const { cliente } = useSessao();
   const queryClient = useQueryClient();
   return useMutation({
@@ -44,10 +52,31 @@ export function useMudarDestaque(idLista: string) {
         `/usuario/conquistas/destaques/${conquista.steam_appid}/${encodeURIComponent(conquista.codigo)}`,
         { metodo: destacar ? 'PUT' : 'DELETE' },
       ),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: chaveDasConquistasDoItem(idLista) }),
-        queryClient.invalidateQueries({ queryKey: CHAVE_DESTAQUES }),
-      ]),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAVE_CONQUISTAS }),
+  });
+}
+
+/** As conquistas obtidas do Usuário (GET /usuario/conquistas), página a página (50), com os filtros do seletor. */
+export function useConquistasDoSeletor(filtros: FiltrosDoSeletor) {
+  const { cliente } = useSessao();
+  return useInfiniteQuery({
+    queryKey: [...CHAVE_CONQUISTAS, 'seletor', filtros],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => {
+      const consulta = Object.entries(consultaDoSeletor(filtros, pageParam)).map(([k, v]) => [k, String(v)]);
+      return cliente.requisitar<PaginaConquistasDoSeletor>(`/usuario/conquistas?${new URLSearchParams(consulta)}`);
+    },
+    getNextPageParam: proximaPaginaDoSeletor,
+    select: (dados) => dados.pages.flatMap((p) => p.itens),
+  });
+}
+
+/** Os jogos com alguma conquista obtida (GET /usuario/conquistas/jogos), para o filtro do seletor. */
+export function useJogosComConquistas() {
+  const { cliente } = useSessao();
+  return useQuery({
+    queryKey: [...CHAVE_CONQUISTAS, 'jogos'],
+    queryFn: () => cliente.requisitar<RespostaJogosComConquistas>('/usuario/conquistas/jogos'),
+    select: (r) => r.jogos,
   });
 }

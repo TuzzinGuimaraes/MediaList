@@ -139,6 +139,7 @@ describe('permissão e token', () => {
       'GET /lista': { status: 200, corpo: { lista: [] } },
       'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
       'GET /preferencias': { status: 200, corpo: { preferencias: { tema: 'light', idioma: 'pt-BR', notificacoes_ativas: true, avisar_noticias: true, avisar_episodios: true } } },
+      'GET /usuario/conquistas/destaques': { status: 200, corpo: { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } } },
     });
 
     await abrirLogado('/perfil');

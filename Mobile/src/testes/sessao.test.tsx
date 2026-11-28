@@ -22,6 +22,7 @@ function perfilResponde(accessValido: string, nivel: NivelAcesso = 'usuario') {
       deve_trocar_senha: false,
     }),
     'GET /usuario/permissoes': exige({ permissoes: { nivel_acesso: nivel } }),
+    'GET /usuario/conquistas/destaques': { status: 200, corpo: { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } } },
   };
 }
 
@@ -246,6 +247,7 @@ describe('estados de erro', () => {
       'GET /auth/me': (req) => (online ? perfil['GET /auth/me'](req) : semConexao()),
       'GET /usuario/permissoes': (req) =>
         online ? perfil['GET /usuario/permissoes'](req) : semConexao(),
+      'GET /usuario/conquistas/destaques': perfil['GET /usuario/conquistas/destaques'],
     });
     await entrar();
 

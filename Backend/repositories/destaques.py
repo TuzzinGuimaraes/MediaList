@@ -17,7 +17,7 @@ from dominio.conquistas import (
     NAO_OBTIDA,
     cabe_mais_um_destaque,
 )
-from repositories.titulos import titulo_exibido
+from repositories.titulos import sem_caixa_nem_acento, titulo_exibido
 
 #: As obtidas dos Itens de todos os Usuários, com o esquema do jogo e a Mídia (o WHERE escolhe o Usuário).
 _OBTIDAS = """
@@ -34,6 +34,56 @@ _COLUNAS = f"""
 """
 
 _ORDEM = 'ORDER BY c.raridade ASC NULLS LAST, co.obtida_em DESC NULLS LAST, c.steam_appid, c.codigo'
+
+#: Ordens do seletor; o Item e o código desempatam, para a paginação não repetir nem pular.
+ORDENS_DO_SELETOR = {
+    'raridade': 'c.raridade ASC NULLS LAST, co.obtida_em DESC NULLS LAST',
+    'data': 'co.obtida_em DESC NULLS LAST, c.raridade ASC NULLS LAST',
+}
+
+
+def do_seletor(id_usuario: str, *, busca: str | None, steam_appid: int | None, so_destacadas: bool,
+               ordem: str, limite: int, deslocamento: int) -> tuple[list[dict[str, Any]], int]:
+    """Uma página das obtidas do Usuário (com `destacada` e o jogo) e quantas são em todas as páginas."""
+    clausulas, params = ['lu.id_usuario = %s'], [id_usuario]
+    if busca and busca.strip():
+        clausulas.append(f"{sem_caixa_nem_acento('c.nome')} LIKE '%%' || {sem_caixa_nem_acento('%s')} || '%%'")
+        params.append(busca.strip())
+    if steam_appid is not None:
+        clausulas.append('ci.steam_appid = %s')
+        params.append(steam_appid)
+    if so_destacadas:
+        clausulas.append('cd.codigo IS NOT NULL')
+    de_onde = (f'{_OBTIDAS} LEFT JOIN conquistas_destaques cd ON cd.id_lista = co.id_lista AND cd.codigo = co.codigo '
+               f'WHERE {" AND ".join(clausulas)}')
+    linhas = banco.consultar(
+        f"""
+        SELECT c.steam_appid, c.codigo, c.nome, c.descricao, c.icone, c.icone_cinza, c.oculta, c.raridade,
+               co.obtida_em, true AS obtida, (cd.codigo IS NOT NULL) AS destacada,
+               co.id_lista, lu.id_midia, {titulo_exibido('m')} AS jogo
+        {de_onde}
+        ORDER BY {ORDENS_DO_SELETOR[ordem]}, co.id_lista, c.codigo
+        LIMIT %s OFFSET %s
+        """,
+        (*params, limite, deslocamento),
+    )
+    total = banco.consultar_um(f'SELECT count(*) AS total {de_onde}', params)['total']
+    return linhas, total
+
+
+def jogos_com_obtidas(id_usuario: str) -> list[dict[str, Any]]:
+    """Os jogos do Usuário com ao menos uma obtida (pela appid), com quantas, pelo título."""
+    linhas = banco.consultar(
+        f"""
+        SELECT ci.steam_appid, min(lu.id_midia::text) AS id_midia, min({titulo_exibido('m')}) AS jogo,
+               count(*) AS obtidas
+        {_OBTIDAS}
+        WHERE lu.id_usuario = %s
+        GROUP BY ci.steam_appid
+        """,
+        (id_usuario,),
+    )
+    return sorted(linhas, key=lambda j: (j['jogo'].casefold(), j['steam_appid']))
 
 
 def do_perfil(id_usuario: str) -> dict[str, Any]:

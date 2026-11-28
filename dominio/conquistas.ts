@@ -1,10 +1,18 @@
 // Conquistas da Steam no Detalhe do jogo e no Perfil (CONTEXT.md, Conquista; spec `conquistas-steam`).
 // A API (GET /lista/<id_lista>/conquistas) já devolve a lista na ordem, com a oculta não obtida sem
 // nome nem descrição, e os destaques do Perfil (GET /usuario/conquistas/destaques) já escolhidos e
-// ordenados; aqui ficam os textos, o selo Rara, o destaque de Platinado e o leitor de tela.
+// ordenados; aqui ficam os textos, o selo Rara, o destaque de Platinado, o leitor de tela e a query e
+// as páginas do seletor de destaques (GET /usuario/conquistas).
 
 import { formatarData } from './datas';
-import type { CodigoErro, ConquistaDoItem, ConquistaEmDestaque, ResumoConquistas, TotalDeConquistas } from './tipos';
+import type {
+  CodigoErro,
+  ConquistaDoItem,
+  ConquistaEmDestaque,
+  ConsultaConquistas,
+  ResumoConquistas,
+  TotalDeConquistas,
+} from './tipos';
 
 /** Quantas conquistas o Usuário destaca no Perfil (o servidor recusa a sétima com 409). */
 export const LIMITE_DE_DESTAQUES = 6;
@@ -30,7 +38,53 @@ export const TEXTOS_DAS_CONQUISTAS = {
   tirar: 'Tirar do Perfil',
   dicaAutomaticos: `Estas são as suas conquistas mais raras. Escolha até ${LIMITE_DE_DESTAQUES} para destacar no Perfil.`,
   limiteDeDestaques: `O Perfil já tem ${LIMITE_DE_DESTAQUES} destaques. Tire um antes de destacar outro.`,
+  escolherDestaques: 'Escolher destaques',
+  buscar: 'Buscar pelo nome',
+  jogo: 'Jogo',
+  todosOsJogos: 'Todos os jogos',
+  soDestacadas: 'Só as destacadas',
+  ordenarPor: 'Ordenar por',
+  carregarMais: 'Carregar mais',
+  nenhumaNoSeletor: 'Nenhuma conquista obtida com esses filtros.',
 } as const;
+
+/** As ordens do seletor de destaques: a mais rara primeiro (o padrão) ou a obtida mais recente. */
+export const ORDENS_DO_SELETOR = [
+  { valor: 'raridade', rotulo: 'Mais raras' },
+  { valor: 'data', rotulo: 'Mais recentes' },
+] as const satisfies readonly { valor: NonNullable<ConsultaConquistas['ordem']>; rotulo: string }[];
+
+export type OrdemDoSeletor = (typeof ORDENS_DO_SELETOR)[number]['valor'];
+
+/** O que o Usuário escolhe no seletor; `steamAppid` null para todos os jogos. */
+export type FiltrosDoSeletor = {
+  busca: string;
+  steamAppid: number | null;
+  soDestacadas: boolean;
+  ordem: OrdemDoSeletor;
+};
+
+export const FILTROS_INICIAIS_DO_SELETOR: FiltrosDoSeletor = {
+  busca: '',
+  steamAppid: null,
+  soDestacadas: false,
+  ordem: 'raridade',
+};
+
+/** A query de GET /usuario/conquistas numa página, só com os filtros escolhidos (a busca aparada). */
+export function consultaDoSeletor(filtros: FiltrosDoSeletor, pagina: number): ConsultaConquistas {
+  const consulta: ConsultaConquistas = { ordem: filtros.ordem, pagina };
+  const busca = filtros.busca.trim();
+  if (busca) consulta.busca = busca;
+  if (filtros.steamAppid !== null) consulta.steam_appid = filtros.steamAppid;
+  if (filtros.soDestacadas) consulta.so_destacadas = true;
+  return consulta;
+}
+
+/** A página seguinte do seletor, ou undefined quando as lidas já somam o total. */
+export function proximaPaginaDoSeletor(ultima: { pagina: number; por_pagina: number; total: number }) {
+  return ultima.pagina * ultima.por_pagina >= ultima.total ? undefined : ultima.pagina + 1;
+}
 
 /** "34/50 conquistas", ou null no jogo sem dado (sem leitura ou sem conquistas). */
 export function textoDoResumo(resumo: ResumoConquistas | null | undefined): string | null {

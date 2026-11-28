@@ -75,9 +75,10 @@ export function useConquistasDoItem(idLista: string) {
 
 /**
  * Põe (`destacar`) ou tira a conquista obtida dos destaques do Perfil, pela appid e pelo código; depois
- * relê a lista do Item e os destaques. O sétimo destaque falha com 409 (`eLimiteDeDestaques`).
+ * relê tudo de conquistas (a lista do Item, os destaques e o seletor). O sétimo destaque falha com 409
+ * (`eLimiteDeDestaques`). O Detalhe e o seletor do Perfil usam esta mesma escrita.
  */
-export function useMudarDestaque(idLista: string) {
+export function useMudarDestaque() {
   const api = useApi();
   const queryClient = useQueryClient();
   return useMutation({
@@ -87,11 +88,7 @@ export function useMudarDestaque(idLista: string) {
         ? exigir(api.PUT('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho))
         : exigir(api.DELETE('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho));
     },
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: chaves.conquistas.doItem(idLista) }),
-        queryClient.invalidateQueries({ queryKey: chaves.conquistas.destaques }),
-      ]),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: chaves.conquistas.todas }),
   });
 }
 
