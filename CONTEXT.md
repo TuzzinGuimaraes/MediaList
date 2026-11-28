@@ -137,6 +137,11 @@ não reconhece entra pela loja da Steam (a Mídia guarda a `steam_appid`, e a Im
 que trouxer a mesma appid atualiza essa Mídia em vez de criar outra); o que a loja diz que não é
 jogo (software, DLC, trilha sonora) é ignorado, fora de "Não encontrados".
 
+A sincronização da Steam também lê as **Conquistas** de cada jogo casado: no job diário, as do jogo
+nunca lido e as do jogo cujas horas subiram desde a última leitura; no "Sincronizar agora", só as
+dos jogos de horas que subiram, com o que sobrar do orçamento. Jogo sem conquistas e "Detalhes dos
+jogos" privados não são falha; a leitura que falha mantém a anterior e não impede as horas.
+
 Um Não encontrado pode ser **vinculado** pelo próprio Usuário a uma Mídia do Catálogo do mesmo
 Tipo (Steam só jogo; AniList e MAL, o anime ou o mangá do item). O **Vínculo** é global: vale na
 hora para todo Usuário com o mesmo item na mesma plataforma, é reserva (só vale quando a fonte
@@ -224,6 +229,16 @@ obra. Carrega o **Estado de consumo**, o **Progresso**, a **Nota pessoal**, se �
 se é privado, as datas de início e conclusão, e um comentário particular.
 
 Um Item de lista representa o **estado atual**, não o histórico. Ver **Recontagem**.
+
+## Conquista
+
+Um objetivo de um jogo na plataforma (hoje só a Steam), com nome, descrição, ícone, se é oculta e a
+**raridade** (quantos % dos jogadores a têm). É da plataforma e só de leitura: só a sincronização da
+**Integração** escreve, e o Usuário não marca nem desmarca conquista. O jogo tem o esquema das
+conquistas (compartilhado entre os Usuários); o **Item de lista** do jogo guarda quais o Usuário
+obteve e quando ("34/50 conquistas"). Conquista oculta não obtida não mostra nome nem descrição.
+O Usuário pode **destacar** no Perfil até 6 conquistas obtidas; a que a Steam deixa de listar
+como obtida sai dos destaques. Ter todas as conquistas sugere **Platinado**, sem marcar sozinho.
 
 ## Estado de consumo
 

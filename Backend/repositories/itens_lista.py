@@ -67,6 +67,12 @@ def _valor(campo: str, valor: Any) -> Any:
     return bool(valor) if campo in CAMPOS_BOOLEANOS else valor
 
 
+def _com_conquistas(linha: dict[str, Any]) -> dict[str, Any]:
+    """A linha com o resumo `conquistas` (obtidas e total), ou None sem leitura ou num jogo sem conquistas."""
+    total, obtidas = linha.pop('conquistas_total', None), linha.pop('conquistas_obtidas', None)
+    return {**linha, 'conquistas': {'obtidas': obtidas or 0, 'total': total} if total else None}
+
+
 class ItensLista:
     """Os Itens de lista de todos os Usuários.
 
@@ -84,9 +90,12 @@ class ItensLista:
         A ordem é feita aqui, e não no SQL, para não depender da collation.
         """
         query = f"""
-            {SELECT_MIDIA}, {COLUNAS_DO_ITEM}
+            {SELECT_MIDIA}, {COLUNAS_DO_ITEM},
+            ci.total AS conquistas_total,
+            (SELECT count(*) FROM conquistas_obtidas co WHERE co.id_lista = ci.id_lista) AS conquistas_obtidas
             {FROM_MIDIA}
             JOIN lista_usuarios lu ON lu.id_midia = m.id_midia
+            LEFT JOIN conquistas_itens ci ON ci.id_lista = lu.id_lista AND ci.total > 0
             WHERE lu.id_usuario = %s
         """
         params: list[Any] = [id_usuario]
@@ -97,7 +106,8 @@ class ItensLista:
             query += ' AND lu.status_consumo = %s'
             params.append(status)
 
-        return sorted((com_generos_lista(linha) for linha in self._db.consultar(query, params)), key=_chave_alfabetica)
+        itens = (_com_conquistas(com_generos_lista(linha)) for linha in self._db.consultar(query, params))
+        return sorted(itens, key=_chave_alfabetica)
 
     def criar_item(self, id_usuario: str, id_midia: str, campos: dict[str, Any]) -> str | None:
         """Insere o Item e devolve o `id_lista`, ou None se já existia.

@@ -2282,6 +2282,18 @@
             ],
             "title": "Comentario"
           },
+          "conquistas": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResumoConquistas"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Conquistas da Steam do jogo; nulo sem leitura ou num jogo sem conquistas"
+          },
           "data_adicao": {
             "format": "date-time",
             "title": "Data Adicao",
@@ -5670,6 +5682,25 @@
           "pendentes"
         ],
         "title": "ResultadoSincronizacao",
+        "type": "object"
+      },
+      "ResumoConquistas": {
+        "description": "As conquistas do jogo na Steam (última leitura da sincronização).",
+        "properties": {
+          "obtidas": {
+            "title": "Obtidas",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "obtidas",
+          "total"
+        ],
+        "title": "ResumoConquistas",
         "type": "object"
       },
       "ResumoEstatisticas": {
