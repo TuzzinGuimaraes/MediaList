@@ -430,6 +430,101 @@
         "title": "ConexaoIntegracao",
         "type": "object"
       },
+      "ConquistaDoItem": {
+        "description": "Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida ou sem descrição na Steam",
+            "title": "Descricao"
+          },
+          "destacada": {
+            "description": "Está nos destaques do Perfil",
+            "title": "Destacada",
+            "type": "boolean"
+          },
+          "icone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O colorido na obtida e o cinza na que falta",
+            "title": "Icone"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo na oculta ainda não obtida",
+            "title": "Nome"
+          },
+          "obtida": {
+            "title": "Obtida",
+            "type": "boolean"
+          },
+          "obtida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtida Em"
+          },
+          "oculta": {
+            "title": "Oculta",
+            "type": "boolean"
+          },
+          "raridade": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "% dos jogadores que a têm",
+            "title": "Raridade"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome",
+          "descricao",
+          "icone",
+          "oculta",
+          "raridade",
+          "obtida",
+          "obtida_em",
+          "destacada"
+        ],
+        "title": "ConquistaDoItem",
+        "type": "object"
+      },
       "ConsultaCalendario": {
         "description": "`GET /midias/calendario?de=&ate=`: instantes com fuso; `ate` depois de `de`, até 8 dias.",
         "properties": {
@@ -5262,6 +5357,23 @@
         "title": "RespostaCalendario",
         "type": "object"
       },
+      "RespostaConquistasDoItem": {
+        "description": "As conquistas do Item: obtidas da mais recente para a mais antiga, depois as que faltam da mais comum\npara a mais rara. Vazia sem leitura ou num jogo sem conquistas.",
+        "properties": {
+          "conquistas": {
+            "items": {
+              "$ref": "#/components/schemas/ConquistaDoItem"
+            },
+            "title": "Conquistas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "conquistas"
+        ],
+        "title": "RespostaConquistasDoItem",
+        "type": "object"
+      },
       "RespostaDistribuicao": {
         "properties": {
           "distribuicao": {
@@ -9105,6 +9217,84 @@
           }
         ],
         "summary": "Gravar os campos enviados num Item.",
+        "tags": [
+          "lista"
+        ]
+      }
+    },
+    "/api/lista/{lista_id}/conquistas": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_lista_{lista_id}_conquistas",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "lista_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaConquistasDoItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "As conquistas da Steam do jogo de um Item, para o Detalhe: só o dono do Item.",
         "tags": [
           "lista"
         ]

@@ -9,12 +9,16 @@ aqui é o que deixou a lógica duplicada em três lugares antes.
 A leitura é a exceção: `obter_lista_usuario` lê de `itens_lista` direto,
 porque não decide nada. Os testes trocam `lista_pessoal` e `itens_lista`.
 """
+import uuid
+
 from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from spectree import Response
 
 from contrato import AUTENTICADO, ERROS_AUTENTICADA, CodigoErro, Erro, Mensagem, contrato, resposta_erro
+from dominio.conquistas import lista_do_detalhe
 from dominio.lista_pessoal import INVALIDO, NAO_ENCONTRADO, NEGADO, ListaPessoal
+from integracoes import conquistas
 from repositories.catalogo import Catalogo
 from repositories.itens_lista import ItensLista
 from schemas.lista import (
@@ -23,6 +27,7 @@ from schemas.lista import (
     ItemCriado,
     NovoItemLista,
     ProgressoItemLista,
+    RespostaConquistasDoItem,
     RespostaLista,
 )
 
@@ -138,6 +143,23 @@ def atualizar_item_lista(lista_id, json: EdicaoItemLista):
     """Gravar os campos enviados num Item."""
     resultado = lista_pessoal.atualizar(get_jwt_identity(), lista_id, _campos(json))
     return _resposta(resultado, 'Lista atualizada com sucesso!')
+
+
+@lista_bp.route('/<string:lista_id>/conquistas', methods=['GET'])
+@jwt_required()
+@contrato.validate(
+    resp=Response(HTTP_200=RespostaConquistasDoItem, **ERROS_AUTENTICADA), tags=['lista'], security=AUTENTICADO,
+)
+def obter_conquistas_do_item(lista_id):
+    """As conquistas da Steam do jogo de um Item, para o Detalhe: só o dono do Item."""
+    try:
+        uuid.UUID(lista_id)
+    except ValueError:
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, ERRO_SEM_ACESSO)
+    linhas = conquistas.do_item_do_usuario(get_jwt_identity(), lista_id)
+    if linhas is None:
+        return resposta_erro(403, CodigoErro.ACESSO_NEGADO, ERRO_SEM_ACESSO)
+    return {'conquistas': lista_do_detalhe(linhas)}
 
 
 @lista_bp.route('/<string:lista_id>', methods=['DELETE'])
