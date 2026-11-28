@@ -1894,6 +1894,11 @@ export interface components {
             /** Comentario */
             comentario: string | null;
             /**
+             * @description Conquistas da Steam do jogo; nulo sem leitura ou num jogo sem conquistas
+             * @default null
+             */
+            conquistas?: components["schemas"]["ResumoConquistas"] | null;
+            /**
              * Data Adicao
              * Format: date-time
              */
@@ -2993,6 +2998,16 @@ export interface components {
             pendentes: number;
             /** Total Nao Encontrados */
             total_nao_encontrados: number;
+        };
+        /**
+         * ResumoConquistas
+         * @description As conquistas do jogo na Steam (última leitura da sincronização).
+         */
+        ResumoConquistas: {
+            /** Obtidas */
+            obtidas: number;
+            /** Total */
+            total: number;
         };
         /** ResumoEstatisticas */
         ResumoEstatisticas: {
