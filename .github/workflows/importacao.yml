@@ -8,8 +8,9 @@ name: importacao
 # seguintes (`temporadas`, ~15 consultas), sem cursor.
 # Os Tipos rodam em paralelo, um job cada. Uma falha deixa o workflow vermelho,
 # e o GitHub avisa por email.
-# `so_relacoes`: a carga única das Relações de anime e mangá (spec `relacoes`). Percorre os
-# `anilist_id` do Catálogo em lotes de 50 e grava só as Relações, a ~30 consultas por minuto
+# `so_relacoes`: a carga única das Relações e das recomendações de anime e mangá (specs `relacoes`
+# e `sugestoes`). Percorre os `anilist_id` do Catálogo em lotes de 50 e grava só as Relações e as
+# recomendações, na mesma passada, a ~30 consultas por minuto
 # (~160 lotes por Tipo, ~6 min cada); ignora os outros inputs e não roda a Sincronização da Steam.
 # `serie_jogos`: depois da Importação de jogos, a passada lenta da Mesma série (spec `relacoes`) lê
 # o detalhe de até N jogos do Catálogo sem contagem da série, dos mais populares para os menos;
@@ -41,7 +42,7 @@ on:
         type: boolean
         default: false
       so_relacoes:
-        description: "Anime e mangá: só a carga única das Relações de todo o Catálogo"
+        description: "Anime e mangá: só a carga única das Relações e recomendações de todo o Catálogo"
         type: boolean
         default: false
       serie_jogos:
