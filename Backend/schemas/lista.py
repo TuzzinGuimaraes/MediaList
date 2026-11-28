@@ -114,6 +114,7 @@ class ItemCriado(BaseModel):
 class ConquistaDoItem(BaseModel):
     """Uma conquista do jogo no Detalhe (`dominio.conquistas`): a oculta não obtida vem sem nome e descrição."""
 
+    steam_appid: int = Field(description='O jogo da conquista na Steam: com o código, diz qual destacar no Perfil')
     codigo: str
     nome: str | None = Field(description='Nulo na oculta ainda não obtida')
     descricao: str | None = Field(description='Nulo na oculta ainda não obtida ou sem descrição na Steam')

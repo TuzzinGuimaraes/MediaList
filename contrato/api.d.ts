@@ -902,6 +902,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuario/conquistas/destaques": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conquistas em destaque no Perfil: as escolhidas ou, sem escolha, as obtidas mais raras; e o total. */
+        get: operations["get__api_usuario_conquistas_destaques"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuario/conquistas/destaques/{steam_appid}/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Destacar no Perfil uma conquista obtida (appid do jogo e código da conquista); o sétimo responde 409. */
+        put: operations["put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}"];
+        post?: never;
+        /** Tirar uma conquista obtida dos destaques do Perfil. */
+        delete: operations["delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuario/estatisticas": {
         parameters: {
             query?: never;
@@ -1112,7 +1147,7 @@ export interface components {
          * @description Código estável do erro, para o cliente decidir sem ler a mensagem.
          * @enum {string}
          */
-        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "lista_grande_demais" | "erro_interno";
+        CodigoErro: "dados_invalidos" | "requisicao_invalida" | "nao_autenticado" | "token_expirado" | "token_invalido" | "token_revogado" | "sessao_invalida" | "acesso_negado" | "troca_de_senha_obrigatoria" | "nao_encontrado" | "metodo_nao_permitido" | "conflito" | "indisponivel" | "perfil_privado" | "perfil_nao_encontrado" | "origem_indisponivel" | "plataforma_indisponivel" | "lista_grande_demais" | "limite_de_destaques" | "erro_interno";
         /**
          * ConexaoIntegracao
          * @description Nome de usuário (AniList, MAL) ou URL do perfil (Steam).
@@ -1159,6 +1194,44 @@ export interface components {
              * @description % dos jogadores que a têm
              */
             raridade: number | null;
+            /**
+             * Steam Appid
+             * @description O jogo da conquista na Steam: com o código, diz qual destacar no Perfil
+             */
+            steam_appid: number;
+        };
+        /**
+         * ConquistaEmDestaque
+         * @description Uma conquista obtida no Perfil (`repositories.destaques`), com o jogo dela.
+         */
+        ConquistaEmDestaque: {
+            /** Codigo */
+            codigo: string;
+            /**
+             * Icone
+             * @description O ícone colorido
+             */
+            icone: string | null;
+            /** Id Lista */
+            id_lista: string;
+            /** Id Midia */
+            id_midia: string;
+            /**
+             * Jogo
+             * @description Título exibido do jogo
+             */
+            jogo: string;
+            /** Nome */
+            nome: string;
+            /** Obtida Em */
+            obtida_em: string | null;
+            /**
+             * Raridade
+             * @description % dos jogadores que a têm
+             */
+            raridade: number | null;
+            /** Steam Appid */
+            steam_appid: number;
         };
         /**
          * ConsultaCalendario
@@ -2892,6 +2965,23 @@ export interface components {
             /** Conquistas */
             conquistas: components["schemas"]["ConquistaDoItem"][];
         };
+        /**
+         * RespostaDestaques
+         * @description Os destaques do Perfil, da mais rara para a mais comum; sem nenhuma obtida, vazio e total zero.
+         */
+        RespostaDestaques: {
+            /**
+             * Automaticos
+             * @description O Usuário não escolheu: são as obtidas mais raras
+             */
+            automaticos: boolean;
+            /**
+             * Destaques
+             * @description Até 6
+             */
+            destaques: components["schemas"]["ConquistaEmDestaque"][];
+            total: components["schemas"]["TotalDeConquistas"];
+        };
         /** RespostaDistribuicao */
         RespostaDistribuicao: {
             /** Distribuicao */
@@ -3246,6 +3336,19 @@ export interface components {
              * @enum {string}
              */
             estacao: "inverno" | "primavera" | "verao" | "outono";
+        };
+        /** TotalDeConquistas */
+        TotalDeConquistas: {
+            /**
+             * Conquistas
+             * @description Conquistas obtidas em todos os jogos
+             */
+            conquistas: number;
+            /**
+             * Jogos
+             * @description Jogos com ao menos uma conquista obtida
+             */
+            jogos: number;
         };
         /** UsuarioAtual */
         UsuarioAtual: {
@@ -6994,6 +7097,207 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    get__api_usuario_conquistas_destaques: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDestaques"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                steam_appid: number;
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                steam_appid: number;
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mensagem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

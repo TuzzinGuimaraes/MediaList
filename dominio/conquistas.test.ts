@@ -1,16 +1,21 @@
 import {
   descricaoAcessivel,
+  descricaoDoDestaque,
+  eLimiteDeDestaques,
   eRara,
+  mostraDestaquesNoPerfil,
   nomeDaConquista,
   sugereMarcarPlatinado,
   TEXTOS_DAS_CONQUISTAS,
   textoDaRaridade,
   textoDoResumo,
+  textoDoTotal,
 } from './conquistas';
-import type { ConquistaDoItem } from './tipos';
+import type { ConquistaDoItem, ConquistaEmDestaque } from './tipos';
 
 function conquista(dados: Partial<ConquistaDoItem> = {}): ConquistaDoItem {
   return {
+    steam_appid: 10,
     codigo: 'A',
     nome: 'O Louco',
     descricao: 'Comece a jornada.',
@@ -106,5 +111,64 @@ describe('descricaoAcessivel', () => {
 
   it('sem data nem raridade, diz só o que tem', () => {
     expect(descricaoAcessivel(conquista({ obtida: true, raridade: null }), 'Hades')).toBe('O Louco, Hades, obtida');
+  });
+});
+
+describe('textoDoTotal', () => {
+  it('diz quantas conquistas em quantos jogos', () => {
+    expect(textoDoTotal({ conquistas: 412, jogos: 37 })).toBe('412 conquistas em 37 jogos');
+  });
+
+  it('no singular com uma só', () => {
+    expect(textoDoTotal({ conquistas: 1, jogos: 1 })).toBe('1 conquista em 1 jogo');
+  });
+
+  it('sem nenhuma obtida não diz nada', () => {
+    expect(textoDoTotal({ conquistas: 0, jogos: 0 })).toBeNull();
+  });
+});
+
+describe('mostraDestaquesNoPerfil', () => {
+  it('some sem nenhuma conquista obtida e sem resposta', () => {
+    expect(mostraDestaquesNoPerfil({ total: { conquistas: 0, jogos: 0 } })).toBe(false);
+    expect(mostraDestaquesNoPerfil(undefined)).toBe(false);
+  });
+
+  it('aparece com alguma obtida', () => {
+    expect(mostraDestaquesNoPerfil({ total: { conquistas: 3, jogos: 1 } })).toBe(true);
+  });
+});
+
+describe('textos dos destaques', () => {
+  it('a seção, os botões, a dica dos automáticos e o aviso do sétimo', () => {
+    expect(TEXTOS_DAS_CONQUISTAS.emDestaque).toBe('Conquistas em destaque');
+    expect(TEXTOS_DAS_CONQUISTAS.destacar).toBe('Destacar no Perfil');
+    expect(TEXTOS_DAS_CONQUISTAS.tirar).toBe('Tirar do Perfil');
+    expect(TEXTOS_DAS_CONQUISTAS.dicaAutomaticos).toMatch(/mais raras/);
+    expect(TEXTOS_DAS_CONQUISTAS.limiteDeDestaques).toMatch(/6 destaques.*Tire um/);
+  });
+
+  it('reconhece o 409 do sétimo pelo código', () => {
+    expect(eLimiteDeDestaques({ codigo: 'limite_de_destaques' })).toBe(true);
+    expect(eLimiteDeDestaques({ codigo: 'conflito' })).toBe(false);
+    expect(eLimiteDeDestaques(new Error('x'))).toBe(false);
+    expect(eLimiteDeDestaques(null)).toBe(false);
+  });
+});
+
+describe('descricaoDoDestaque', () => {
+  it('diz o nome, o jogo, quando foi obtida e a raridade', () => {
+    const destaque: ConquistaEmDestaque = {
+      steam_appid: 10,
+      codigo: 'A',
+      nome: 'O Louco',
+      icone: null,
+      raridade: 3.24,
+      obtida_em: '2020-12-10T15:32:36Z',
+      id_lista: 'l1',
+      id_midia: 'm1',
+      jogo: 'Hades',
+    };
+    expect(descricaoDoDestaque(destaque)).toBe('O Louco, Hades, obtida em 10/12/2020, 3,2% dos jogadores, rara');
   });
 });

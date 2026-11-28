@@ -25,6 +25,12 @@ export type ResumoConquistas = Esquemas['ResumoConquistas'];
 /** Uma conquista de GET /lista/<id_lista>/conquistas (CONTEXT.md, Conquista). */
 export type ConquistaDoItem = Esquemas['ConquistaDoItem'];
 
+/** Uma conquista obtida nos destaques do Perfil (GET /usuario/conquistas/destaques). */
+export type ConquistaEmDestaque = Esquemas['ConquistaEmDestaque'];
+
+/** O total do Perfil: conquistas obtidas e jogos com alguma. */
+export type TotalDeConquistas = Esquemas['TotalDeConquistas'];
+
 /** Um episódio de GET /midias/calendario (exibido ou próximo), com o anime resumido. */
 export type EpisodioDoCalendario = Esquemas['EpisodioDoCalendario'];
 

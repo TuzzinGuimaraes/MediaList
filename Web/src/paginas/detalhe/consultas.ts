@@ -6,6 +6,7 @@ import type { DadosAvaliacao } from '@dominio/tipos';
 
 import { chaves } from '../../api/chaves';
 import { exigir } from '../../api/cliente';
+import type { Esquemas } from '../../api/tipos';
 import { useApi } from '../../sessao/SessaoContext';
 
 /** O detalhe mostra só a 1ª página das Avaliações. */
@@ -69,6 +70,28 @@ export function useConquistasDoItem(idLista: string) {
     queryFn: () =>
       exigir(api.GET('/api/lista/{lista_id}/conquistas', { params: { path: { lista_id: idLista } } })),
     select: (r) => r.conquistas,
+  });
+}
+
+/**
+ * Põe (`destacar`) ou tira a conquista obtida dos destaques do Perfil, pela appid e pelo código; depois
+ * relê a lista do Item e os destaques. O sétimo destaque falha com 409 (`eLimiteDeDestaques`).
+ */
+export function useMudarDestaque(idLista: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conquista, destacar }: { conquista: Esquemas['ConquistaDoItem']; destacar: boolean }) => {
+      const caminho = { params: { path: { steam_appid: conquista.steam_appid, codigo: conquista.codigo } } };
+      return destacar
+        ? exigir(api.PUT('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho))
+        : exigir(api.DELETE('/api/usuario/conquistas/destaques/{steam_appid}/{codigo}', caminho));
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: chaves.conquistas.doItem(idLista) }),
+        queryClient.invalidateQueries({ queryKey: chaves.conquistas.destaques }),
+      ]),
   });
 }
 

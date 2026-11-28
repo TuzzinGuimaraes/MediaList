@@ -1,12 +1,14 @@
 // Conquistas da Steam no Detalhe do jogo (spec `conquistas-steam`, ticket 02): no bloco do Item, o
 // "34/50 conquistas" abre um modal com a lista completa (a API já manda na ordem e sem o spoiler da
 // oculta); com 100% fora de Platinado, o destaque "Você tem todas as conquistas" com "Marcar
-// Platinado", que grava pela mesma escrita do Status da Lista (nunca automático, ADR 0015).
+// Platinado", que grava pela mesma escrita do Status da Lista (nunca automático, ADR 0015). Cada
+// obtida da lista tem "Destacar no Perfil" / "Tirar do Perfil" (ticket 03).
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 
 import {
   descricaoAcessivel,
+  eLimiteDeDestaques,
   eRara,
   nomeDaConquista,
   sugereMarcarPlatinado,
@@ -26,7 +28,7 @@ import { Carregando, FalhaParcial, Vazio } from '../../componentes/Estados';
 import { Icone } from '../../componentes/Icone';
 import { Selo } from '../../componentes/Selo';
 import { useMudarStatus } from '../lista/api';
-import { useConquistasDoItem } from './consultas';
+import { useConquistasDoItem, useMudarDestaque } from './consultas';
 
 type Item = Esquemas['ItemLista'];
 type Conquista = Esquemas['ConquistaDoItem'];
@@ -61,7 +63,12 @@ function ListaDeConquistas({ idLista, jogo }: { idLista: string; jogo: string })
   return (
     <ul className="flex flex-col divide-y divide-borda">
       {conquistas.data.map((c) => (
-        <LinhaDaConquista key={c.codigo} conquista={c} jogo={jogo} />
+        <LinhaDaConquista
+          key={c.codigo}
+          conquista={c}
+          jogo={jogo}
+          acao={c.obtida ? <BotaoDeDestaque idLista={idLista} conquista={c} /> : undefined}
+        />
       ))}
     </ul>
   );
@@ -98,6 +105,32 @@ export function LinhaDaConquista({ conquista, jogo, acao }: { conquista: Conquis
       </span>
       {acao}
     </li>
+  );
+}
+
+/** "Destacar no Perfil" / "Tirar do Perfil" na obtida, com o aviso quando o Perfil já tem os 6. */
+function BotaoDeDestaque({ idLista, conquista }: { idLista: string; conquista: Conquista }) {
+  const destaque = useMudarDestaque(idLista);
+  const falha = destaque.isError
+    ? eLimiteDeDestaques(destaque.error)
+      ? TEXTOS_DAS_CONQUISTAS.limiteDeDestaques
+      : mensagemDeErro(destaque.error)
+    : null;
+  return (
+    <span className="flex max-w-48 shrink-0 flex-col items-end gap-1">
+      <Botao
+        variante="secundario"
+        carregando={destaque.isPending}
+        onClick={() => destaque.mutate({ conquista, destacar: !conquista.destacada })}
+      >
+        {conquista.destacada ? TEXTOS_DAS_CONQUISTAS.tirar : TEXTOS_DAS_CONQUISTAS.destacar}
+      </Botao>
+      {falha ? (
+        <span role="alert" className="text-right text-[12px] text-erro">
+          {falha}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

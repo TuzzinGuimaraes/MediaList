@@ -1,8 +1,9 @@
 // Perfil: dados da conta, resumo e estatísticas da Lista pessoal, favoritos do catálogo,
-// o seletor de tema (Resolution do 29), as Integrações e as Notificações.
+// as Conquistas em destaque, o seletor de tema (Resolution do 29), as Integrações e as Notificações.
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
+import { mostraDestaquesNoPerfil, TEXTOS_DAS_CONQUISTAS } from '@dominio/conquistas';
 import { inicialDoNome, rotuloNivelAcesso } from '@dominio/conta';
 import { formatarData } from '@dominio/datas';
 import { formatarMedia } from '@dominio/estatisticas';
@@ -15,6 +16,8 @@ import { Carregando, ErroTela } from '../componentes/Estados';
 import { useCatalogo } from '../catalogo/CatalogoContext';
 import { useApi, useUsuario } from '../sessao/SessaoContext';
 import { SeletorTema } from '../tema/SeletorTema';
+import { ConquistasEmDestaque } from './ConquistasPerfil';
+import { useDestaques } from './destaques';
 import { EstatisticasPerfil } from './EstatisticasPerfil';
 import { IntegracoesPerfil } from './IntegracoesPerfil';
 import { useLista } from './lista/api';
@@ -56,6 +59,7 @@ export function Perfil() {
     queryFn: () => exigir(api.GET('/api/usuario/estatisticas')),
   });
   const lista = useLista();
+  const destaques = useDestaques();
 
   const desde = formatarData(perfil.data?.data_cadastro);
   const favoritos = lista.data?.filter((i) => i.favorito && tipos.includes(i.tipo)).slice(0, MAX_FAVORITOS);
@@ -104,6 +108,14 @@ export function Perfil() {
             ) : null}
           </Estado>
         </Secao>
+
+        {destaques.isError || mostraDestaquesNoPerfil(destaques.data) ? (
+          <Secao titulo={TEXTOS_DAS_CONQUISTAS.emDestaque}>
+            <Estado consultas={[destaques]}>
+              {destaques.data ? <ConquistasEmDestaque resposta={destaques.data} /> : null}
+            </Estado>
+          </Secao>
+        ) : null}
 
         <Secao titulo="Estatísticas">
           <Estado consultas={[estatisticas, lista]}>

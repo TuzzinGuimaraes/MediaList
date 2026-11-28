@@ -53,3 +53,31 @@ class ResumoEstatisticas(BaseModel):
 class RespostaEstatisticas(BaseModel):
     estatisticas: list[EstatisticaPorTipo] = Field(description='Uma linha por Tipo presente na Lista pessoal')
     resumo: ResumoEstatisticas
+
+
+
+class ConquistaEmDestaque(BaseModel):
+    """Uma conquista obtida no Perfil (`repositories.destaques`), com o jogo dela."""
+
+    steam_appid: int
+    codigo: str
+    nome: str
+    icone: str | None = Field(description='O ícone colorido')
+    raridade: float | None = Field(description='% dos jogadores que a têm')
+    obtida_em: Instante | None
+    id_lista: Id
+    id_midia: Id
+    jogo: str = Field(description='Título exibido do jogo')
+
+
+class TotalDeConquistas(BaseModel):
+    conquistas: int = Field(description='Conquistas obtidas em todos os jogos')
+    jogos: int = Field(description='Jogos com ao menos uma conquista obtida')
+
+
+class RespostaDestaques(BaseModel):
+    """Os destaques do Perfil, da mais rara para a mais comum; sem nenhuma obtida, vazio e total zero."""
+
+    destaques: list[ConquistaEmDestaque] = Field(description='Até 6')
+    automaticos: bool = Field(description='O Usuário não escolheu: são as obtidas mais raras')
+    total: TotalDeConquistas

@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import type { ConquistaDoItem, ItemLista } from '../api/tipos';
-import { paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
+import { erro, paginaAvaliacoes, respostaNotas, rotaAvaliacoes, rotaNotas } from './contrato';
 import { type Resposta, simularFetch } from './fetchSimulado';
 import { itemDaLista, jogo } from './midias';
 import { abrirLogado } from './sessao';
@@ -11,6 +11,7 @@ const ID = hollow.id_midia;
 
 function conquista(codigo: string, dados: Partial<ConquistaDoItem> = {}): ConquistaDoItem {
   return {
+    steam_appid: 367520,
     codigo,
     nome: `Conquista ${codigo}`,
     descricao: `Faça ${codigo}.`,
@@ -99,6 +100,48 @@ describe('detalhe: conquistas da Steam', () => {
 
     await waitFor(() => expect(api.para('PUT /lista/LST-J').map((c) => c.corpo)).toEqual([{ status_consumo: 'platinado' }]));
     await waitFor(() => expect(screen.queryByLabelText('Você tem todas as conquistas')).not.toBeOnTheScreen());
+  });
+
+  it('"Destacar no Perfil" nas obtidas grava o destaque e relê a lista; a destacada ganha "Tirar do Perfil"', async () => {
+    let destacada = false;
+    const api = simularFetch({
+      ...rotas(() => [item('jogando', { obtidas: 1, total: 2 })]),
+      'GET /lista/LST-J/conquistas': () => ({ status: 200, corpo: { conquistas: [{ ...lista[0]!, destacada }, lista[1]!] } }),
+      'PUT /usuario/conquistas/destaques/367520/Recente': () => {
+        destacada = true;
+        return { status: 200, corpo: { mensagem: 'ok' } };
+      },
+      'DELETE /usuario/conquistas/destaques/367520/Recente': () => {
+        destacada = false;
+        return { status: 200, corpo: { mensagem: 'ok' } };
+      },
+    });
+
+    await abrirLogado(`/midia/${ID}`);
+    await fireEvent.press(await screen.findByRole('button', { name: '1/2 conquistas' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(api.para('PUT /usuario/conquistas/destaques/367520/Recente')).toHaveLength(1);
+    // Só a obtida tem o botão.
+    expect(await screen.findAllByRole('button', { name: 'Tirar do Perfil' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Destacar no Perfil' })).not.toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Tirar do Perfil' }));
+
+    expect(api.para('DELETE /usuario/conquistas/destaques/367520/Recente')).toHaveLength(1);
+    expect(await screen.findByRole('button', { name: 'Destacar no Perfil' })).toBeOnTheScreen();
+  });
+
+  it('a sétima mostra o aviso para tirar outra antes', async () => {
+    simularFetch({
+      ...rotas(() => [item('jogando', { obtidas: 1, total: 2 })]),
+      'PUT /usuario/conquistas/destaques/367520/Recente': erro(409, 'limite_de_destaques', 'Limite'),
+    });
+
+    await abrirLogado(`/midia/${ID}`);
+    await fireEvent.press(await screen.findByRole('button', { name: '1/2 conquistas' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Destacar no Perfil' }));
+
+    expect(await screen.findByText('O Perfil já tem 6 destaques. Tire um antes de destacar outro.')).toBeOnTheScreen();
   });
 
   it('em Platinado, sem destaque', async () => {

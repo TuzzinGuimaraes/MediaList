@@ -409,6 +409,7 @@
           "origem_indisponivel",
           "plataforma_indisponivel",
           "lista_grande_demais",
+          "limite_de_destaques",
           "erro_interno"
         ],
         "title": "CodigoErro",
@@ -509,9 +510,15 @@
             ],
             "description": "% dos jogadores que a têm",
             "title": "Raridade"
+          },
+          "steam_appid": {
+            "description": "O jogo da conquista na Steam: com o código, diz qual destacar no Perfil",
+            "title": "Steam Appid",
+            "type": "integer"
           }
         },
         "required": [
+          "steam_appid",
           "codigo",
           "nome",
           "descricao",
@@ -523,6 +530,85 @@
           "destacada"
         ],
         "title": "ConquistaDoItem",
+        "type": "object"
+      },
+      "ConquistaEmDestaque": {
+        "description": "Uma conquista obtida no Perfil (`repositories.destaques`), com o jogo dela.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "icone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O ícone colorido",
+            "title": "Icone"
+          },
+          "id_lista": {
+            "title": "Id Lista",
+            "type": "string"
+          },
+          "id_midia": {
+            "title": "Id Midia",
+            "type": "string"
+          },
+          "jogo": {
+            "description": "Título exibido do jogo",
+            "title": "Jogo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "obtida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtida Em"
+          },
+          "raridade": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "% dos jogadores que a têm",
+            "title": "Raridade"
+          },
+          "steam_appid": {
+            "title": "Steam Appid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steam_appid",
+          "codigo",
+          "nome",
+          "icone",
+          "raridade",
+          "obtida_em",
+          "id_lista",
+          "id_midia",
+          "jogo"
+        ],
+        "title": "ConquistaEmDestaque",
         "type": "object"
       },
       "ConsultaCalendario": {
@@ -5374,6 +5460,34 @@
         "title": "RespostaConquistasDoItem",
         "type": "object"
       },
+      "RespostaDestaques": {
+        "description": "Os destaques do Perfil, da mais rara para a mais comum; sem nenhuma obtida, vazio e total zero.",
+        "properties": {
+          "automaticos": {
+            "description": "O Usuário não escolheu: são as obtidas mais raras",
+            "title": "Automaticos",
+            "type": "boolean"
+          },
+          "destaques": {
+            "description": "Até 6",
+            "items": {
+              "$ref": "#/components/schemas/ConquistaEmDestaque"
+            },
+            "title": "Destaques",
+            "type": "array"
+          },
+          "total": {
+            "$ref": "#/components/schemas/TotalDeConquistas"
+          }
+        },
+        "required": [
+          "destaques",
+          "automaticos",
+          "total"
+        ],
+        "title": "RespostaDestaques",
+        "type": "object"
+      },
       "RespostaDistribuicao": {
         "properties": {
           "distribuicao": {
@@ -6504,6 +6618,26 @@
           "ano"
         ],
         "title": "Temporada",
+        "type": "object"
+      },
+      "TotalDeConquistas": {
+        "properties": {
+          "conquistas": {
+            "description": "Conquistas obtidas em todos os jogos",
+            "title": "Conquistas",
+            "type": "integer"
+          },
+          "jogos": {
+            "description": "Jogos com ao menos uma conquista obtida",
+            "title": "Jogos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conquistas",
+          "jogos"
+        ],
+        "title": "TotalDeConquistas",
         "type": "object"
       },
       "UsuarioAtual": {
@@ -12055,6 +12189,280 @@
         "summary": "Sugestões para o Usuário: até 12 animes ou mangás do Catálogo, pelo gosto dele, com o motivo. Abaixo de 12, o Em alta do recorte completa a faixa.",
         "tags": [
           "sugestoes"
+        ]
+      }
+    },
+    "/api/usuario/conquistas/destaques": {
+      "get": {
+        "description": "",
+        "operationId": "get__api_usuario_conquistas_destaques",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDestaques"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Conquistas em destaque no Perfil: as escolhidas ou, sem escolha, as obtidas mais raras; e o total.",
+        "tags": [
+          "usuario"
+        ]
+      }
+    },
+    "/api/usuario/conquistas/destaques/{steam_appid}/{codigo}": {
+      "delete": {
+        "description": "",
+        "operationId": "delete__api_usuario_conquistas_destaques_{steam_appid}_{codigo}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "steam_appid",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "",
+            "in": "path",
+            "name": "codigo",
+            "required": true,
+            "schema": {
+              "format": "path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tirar uma conquista obtida dos destaques do Perfil.",
+        "tags": [
+          "usuario"
+        ]
+      },
+      "put": {
+        "description": "",
+        "operationId": "put__api_usuario_conquistas_destaques_{steam_appid}_{codigo}",
+        "parameters": [
+          {
+            "description": "",
+            "in": "path",
+            "name": "steam_appid",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "",
+            "in": "path",
+            "name": "codigo",
+            "required": true,
+            "schema": {
+              "format": "path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensagem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Destacar no Perfil uma conquista obtida (appid do jogo e código da conquista); o sétimo responde 409.",
+        "tags": [
+          "usuario"
         ]
       }
     },

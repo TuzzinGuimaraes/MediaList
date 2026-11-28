@@ -91,6 +91,8 @@ export type RespostaLista = Esquemas['RespostaLista'];
 /** GET /lista/<id_lista>/conquistas: as conquistas da Steam do jogo do Item, na ordem do Detalhe. */
 export type RespostaConquistasDoItem = Esquemas['RespostaConquistasDoItem'];
 export type ConquistaDoItem = Esquemas['ConquistaDoItem'];
+export type RespostaDestaques = Esquemas['RespostaDestaques'];
+export type ConquistaEmDestaque = Esquemas['ConquistaEmDestaque'];
 
 // Integrações
 

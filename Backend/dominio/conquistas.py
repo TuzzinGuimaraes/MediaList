@@ -13,6 +13,19 @@ from typing import Any
 
 _ANTES_DE_TUDO = datetime.min.replace(tzinfo=timezone.utc)
 
+#: Quantas conquistas obtidas o Usuário destaca no Perfil (e quantas automáticas saem sem escolha).
+LIMITE_DE_DESTAQUES = 6
+
+#: Resultados de `repositories.destaques.destacar` e `tirar`.
+DESTACADA = 'destacada'
+NAO_OBTIDA = 'nao_obtida'
+LIMITE_ATINGIDO = 'limite_atingido'
+
+
+def cabe_mais_um_destaque(destacadas: int) -> bool:
+    """Com `destacadas` já no Perfil, dá para pôr outra (a que já está lá não conta como nova)."""
+    return destacadas < LIMITE_DE_DESTAQUES
+
 
 def _ordem(conquista: dict[str, Any]) -> tuple:
     if conquista['obtida']:
@@ -27,6 +40,7 @@ def _para_o_detalhe(conquista: dict[str, Any]) -> dict[str, Any]:
     colorido_e_cinza = (conquista['icone'], conquista['icone_cinza'])
     icones = colorido_e_cinza if obtida else colorido_e_cinza[::-1]
     return {
+        'steam_appid': conquista['steam_appid'],
         'codigo': conquista['codigo'],
         'nome': None if escondida else conquista['nome'],
         'descricao': None if escondida else conquista['descricao'],

@@ -118,7 +118,26 @@ function rotasDoPerfil(extra: Rotas = {}): Rotas {
     'GET /lista': { status: 200, corpo: { lista } },
     'GET /notificacoes': { status: 200, corpo: { notificacoes: [] } },
     'GET /integracoes': { status: 200, corpo: { integracoes: [] } },
+    'GET /usuario/conquistas/destaques': { status: 200, corpo: semConquistas },
     ...extra,
+  };
+}
+
+type Destaques = Esquemas['RespostaDestaques'];
+const semConquistas: Destaques = { destaques: [], automaticos: true, total: { conquistas: 0, jogos: 0 } };
+
+function destaque(codigo: string, dados: Partial<Esquemas['ConquistaEmDestaque']> = {}): Esquemas['ConquistaEmDestaque'] {
+  return {
+    steam_appid: 1145360,
+    codigo,
+    nome: `Conquista ${codigo}`,
+    icone: `https://steamcdn-a.akamaihd.net/${codigo}.jpg`,
+    raridade: 50,
+    obtida_em: '2020-12-10T15:32:36Z',
+    id_lista: 'LST-J',
+    id_midia: 'MID-J',
+    jogo: 'Hades',
+    ...dados,
   };
 }
 
@@ -650,5 +669,51 @@ describe('Perfil: Vincular Não encontrados', () => {
     const steam = within(await secao('Integrações')).getByRole('listitem', { name: 'Steam' });
     expect(await within(steam).findByText('Antigo')).toBeInTheDocument();
     expect(within(steam).queryByRole('button', { name: /Vincular/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Perfil: Conquistas em destaque', () => {
+  const comDestaques = (corpo: Destaques) =>
+    rotasDoPerfil({ 'GET /usuario/conquistas/destaques': { status: 200, corpo } });
+
+  it('mostra cada destaque com ícone, nome, jogo, raridade e data, e o total', async () => {
+    await abrirLogado('/perfil', {
+      rotas: comDestaques({
+        destaques: [destaque('Rara', { raridade: 3.24 }), destaque('Comum', { raridade: 71, jogo: 'Celeste' })],
+        automaticos: false,
+        total: { conquistas: 412, jogos: 37 },
+      }),
+    });
+
+    const conquistas = await secao('Conquistas em destaque');
+    expect(within(conquistas).getByText('412 conquistas em 37 jogos')).toBeInTheDocument();
+    const [rara, comum] = within(conquistas).getAllByRole('listitem') as [HTMLElement, HTMLElement];
+    expect(rara).toHaveAccessibleName('Conquista Rara, Hades, obtida em 10/12/2020, 3,2% dos jogadores, rara');
+    expect(within(rara).getByText('Conquista Rara')).toBeInTheDocument();
+    expect(within(rara).getByText('Hades')).toBeInTheDocument();
+    expect(within(rara).getByText('3,2% dos jogadores')).toBeInTheDocument();
+    expect(within(rara).getByText('Obtida em 10/12/2020')).toBeInTheDocument();
+    expect(within(rara).getByText('Rara')).toBeInTheDocument();
+    expect(rara.querySelector('img')).toHaveAttribute('src', 'https://steamcdn-a.akamaihd.net/Rara.jpg');
+    expect(within(comum).getByText('Celeste')).toBeInTheDocument();
+    expect(within(conquistas).queryByText(/mais raras/)).not.toBeInTheDocument();
+  });
+
+  it('sem escolha, as automáticas vêm com a dica', async () => {
+    await abrirLogado('/perfil', {
+      rotas: comDestaques({ destaques: [destaque('A')], automaticos: true, total: { conquistas: 1, jogos: 1 } }),
+    });
+
+    const conquistas = await secao('Conquistas em destaque');
+    expect(within(conquistas).getByText('1 conquista em 1 jogo')).toBeInTheDocument();
+    expect(within(conquistas).getByText(/Estas são as suas conquistas mais raras/)).toBeInTheDocument();
+  });
+
+  it('sem nenhuma conquista obtida, a seção some', async () => {
+    const { api } = await abrirLogado('/perfil', { rotas: rotasDoPerfil() });
+
+    await secao('Favoritos');
+    await waitFor(() => expect(api.para('GET /usuario/conquistas/destaques')).toHaveLength(1));
+    expect(screen.queryByRole('region', { name: 'Conquistas em destaque' })).not.toBeInTheDocument();
   });
 });

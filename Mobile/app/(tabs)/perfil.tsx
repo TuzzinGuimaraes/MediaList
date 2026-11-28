@@ -5,6 +5,7 @@ import { usePermissoes, useUsuarioAtual } from '@/api/usuario';
 import { useSessao } from '@/auth/SessaoContext';
 import { AvisosPerfil } from '@/components/AvisosPerfil';
 import { Botao } from '@/components/Botao';
+import { ConquistasPerfil } from '@/components/ConquistasPerfil';
 import { Carregando, Falha } from '@/components/EstadoTela';
 import { EstatisticasPerfil } from '@/components/EstatisticasPerfil';
 import { IntegracoesPerfil } from '@/components/IntegracoesPerfil';
@@ -116,6 +117,7 @@ export default function Perfil() {
       <SeletorTema />
       <AvisosPerfil />
       <EstatisticasPerfil />
+      <ConquistasPerfil />
       <Secao titulo="Integrações">
         <IntegracoesPerfil />
       </Secao>

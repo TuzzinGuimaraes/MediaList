@@ -81,6 +81,12 @@ def test_icone_colorido_na_obtida_e_cinza_na_que_falta(client, usuario, fontes, 
     assert por_codigo['Falta']['icone'] == f'{ICONES}/{appid}/cinza.jpg'
 
 
+def test_cada_conquista_traz_a_appid_do_jogo_para_o_destaque(client, usuario, fontes, jogo):
+    appid, id_lista = _sincronizado(usuario, fontes, jogo, [conquista('Feita', obtida_em=QUANDO), conquista('Falta')])
+
+    assert {c['steam_appid'] for c in _conquistas(client, usuario[1], id_lista)} == {appid}
+
+
 def test_marca_a_destacada(client, usuario, fontes, jogo):
     _, id_lista = _sincronizado(usuario, fontes, jogo, [
         conquista('A', obtida_em=QUANDO), conquista('B', obtida_em=DEPOIS),
