@@ -68,6 +68,8 @@ class CodigoErro(StrEnum):
     PLATAFORMA_INDISPONIVEL = 'plataforma_indisponivel'
     #: Integrações: a lista da origem passa do teto por importação (5000 itens).
     LISTA_GRANDE_DEMAIS = 'lista_grande_demais'
+    #: Conquistas: o Perfil já tem os 6 destaques; é preciso tirar um antes de pôr outro.
+    LIMITE_DE_DESTAQUES = 'limite_de_destaques'
     ERRO_INTERNO = 'erro_interno'
 
 

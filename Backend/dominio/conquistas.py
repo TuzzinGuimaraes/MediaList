@@ -13,6 +13,19 @@ from typing import Any
 
 _ANTES_DE_TUDO = datetime.min.replace(tzinfo=timezone.utc)
 
+#: Quantas conquistas obtidas o Usuário destaca no Perfil (e quantas automáticas saem sem escolha).
+LIMITE_DE_DESTAQUES = 6
+
+#: Resultados de `repositories.destaques.destacar` e `tirar`.
+DESTACADA = 'destacada'
+NAO_OBTIDA = 'nao_obtida'
+LIMITE_ATINGIDO = 'limite_atingido'
+
+
+def cabe_mais_um_destaque(destacadas: int) -> bool:
+    """Com `destacadas` já no Perfil, dá para pôr outra (a que já está lá não conta como nova)."""
+    return destacadas < LIMITE_DE_DESTAQUES
+
 
 def _ordem(conquista: dict[str, Any]) -> tuple:
     if conquista['obtida']:
