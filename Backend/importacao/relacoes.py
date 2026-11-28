@@ -3,13 +3,15 @@ Relações de anime e mangá vindas do AniList, e a Mesma série dos jogos vinda
 (CONTEXT.md, Relação; spec `relacoes`).
 
 - `da_obra`: as Relações de um item do AniList, validadas antes de gravar (ADR 0015).
+- `recomendacoes_da_obra`: as recomendações do mesmo item (spec `sugestoes`), gravadas com as
+  Relações.
 - `serie_do_jogo`: a Mesma série de um jogo e a contagem dela, para gravar juntas. A série
   (`game-series`, `ler_serie`) só é buscada quando o `game_series_count` do detalhe é maior que
   zero e mudou; sem ela, a contagem não muda e a próxima importação tenta de novo.
 - `gravar_da_pagina`, `gravar_series`: as Relações das Mídias de uma página da Importação numa
   transação só; a reimportação troca as da Mídia.
 - `carregar`: a carga única, que percorre os `anilist_id` do Catálogo em lotes de 50 (`id_in`)
-  e grava só as Relações (`run_import --so-relacoes`), a ~30 consultas por minuto.
+  e grava só as Relações e as recomendações (`run_import --so-relacoes`), a ~30 consultas por minuto.
 """
 from __future__ import annotations
 
@@ -99,6 +101,35 @@ def da_obra(obra: dict) -> list[dict]:
     return relacoes
 
 
+def recomendacoes_da_obra(obra: dict) -> list[dict]:
+    """As recomendações de um item do AniList como `recomendacoes_midia` as guarda (sem o `id_midia`).
+
+    Só as de `rating > 0`; nó com Tipo, id ou rating fora do esperado fica de fora, e o mesmo
+    destino duas vezes vale a primeira (a mais votada, na ordem `RATING_DESC`).
+    """
+    recomendacoes, vistos = [], set()
+    for no in ((obra.get('recommendations') or {}).get('nodes') or []):
+        if not isinstance(no, dict) or not isinstance(no.get('mediaRecommendation'), dict):
+            continue
+        rating, destino = no.get('rating'), no['mediaRecommendation']
+        tipo, anilist_id = _TIPOS.get(destino.get('type')), destino.get('id')
+        if tipo is None or not _inteiro_positivo(anilist_id) or not _inteiro_positivo(rating) \
+                or (tipo, anilist_id) in vistos:
+            continue
+        vistos.add((tipo, anilist_id))
+        recomendacoes.append({
+            'tipo_destino': tipo,
+            'destino_anilist_id': anilist_id,
+            'rating': rating,
+            'adulto': destino.get('isAdult') is True,
+        })
+    return recomendacoes
+
+
+def _inteiro_positivo(valor) -> bool:
+    return isinstance(valor, int) and not isinstance(valor, bool) and 0 < valor < 2**31
+
+
 def contagem_da_serie(detalhe: dict | None) -> int | None:
     """O `game_series_count` do detalhe do RAWG; None se não veio ou não é um inteiro >= 0."""
     contagem = (detalhe or {}).get('game_series_count')
@@ -173,11 +204,12 @@ def da_serie(jogos, slug_proprio: str | None = None) -> list[dict]:
 
 
 def gravar_da_pagina(t, tipo_midia: str, relacoes_por_midia: dict[str, list[dict]], pagina: int | None,
-                     origem: str = 'AniList', contagens_da_serie: dict[str, int] | None = None) -> bool:
-    """Grava as Relações de uma página (e a contagem da série dos jogos, junto); a falha fica no log
-    da Importação, não muda nada e não derruba a página."""
+                     origem: str = 'AniList', contagens_da_serie: dict[str, int] | None = None,
+                     recomendacoes_por_midia: dict[str, list[dict]] | None = None) -> bool:
+    """Grava as Relações de uma página (e, junto, as recomendações de anime e mangá e a contagem da
+    série dos jogos); a falha fica no log da Importação, não muda nada e não derruba a página."""
     try:
-        salvar_relacoes(t, relacoes_por_midia, contagens_da_serie)
+        salvar_relacoes(t, relacoes_por_midia, contagens_da_serie, recomendacoes_por_midia)
         return True
     except Indisponivel:
         raise
@@ -206,11 +238,11 @@ def _midias_do_catalogo(tipo_midia: str) -> list[tuple[int, str]]:
 
 
 def carregar(tipo_midia: str) -> ImportStats:
-    """Carga única: grava só as Relações de todos os animes ou mangás do Catálogo.
+    """Carga única: grava só as Relações e as recomendações de todos os animes ou mangás do Catálogo.
 
-    `sucessos`: as obras com as Relações gravadas. Lote com falha fica no log (`paginas_com_falha`,
-    numerados de 1) e a carga segue; rodar de novo refaz tudo. A obra que o AniList não devolve
-    fica com as Relações que tinha.
+    `sucessos`: as obras com as Relações e as recomendações gravadas. Lote com falha fica no log
+    (`paginas_com_falha`, numerados de 1) e a carga segue; rodar de novo refaz tudo. A obra que o
+    AniList não devolve fica com as que tinha.
     """
     stats = ImportStats(tipo_midia=tipo_midia, origem='AniList')
     session = criar_sessao_http(total_retries=3, backoff_factor=1.0)
@@ -230,10 +262,12 @@ def carregar(tipo_midia: str) -> ImportStats:
                     payload=resposta['payload'], extra={'pagina': numero, 'etapa': 'carga_relacoes'},
                 )
                 continue
-            por_midia = {id_midia[obra['id']]: da_obra(obra) for obra in resposta['itens']
-                         if isinstance(obra, dict) and obra.get('id') in id_midia}
+            obras = {id_midia[obra['id']]: obra for obra in resposta['itens']
+                     if isinstance(obra, dict) and obra.get('id') in id_midia}
+            por_midia = {i: da_obra(obra) for i, obra in obras.items()}
+            recomendacoes = {i: recomendacoes_da_obra(obra) for i, obra in obras.items()}
             with autocommit() as t:
-                if gravar_da_pagina(t, tipo_midia, por_midia, numero):
+                if gravar_da_pagina(t, tipo_midia, por_midia, numero, recomendacoes_por_midia=recomendacoes):
                     for _ in por_midia:
                         stats.registrar_sucesso()
                 else:

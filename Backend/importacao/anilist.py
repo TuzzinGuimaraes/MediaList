@@ -102,8 +102,20 @@ CAMPOS_RELACOES = """
       }
 """
 
-#: Campos de `Media` que a Importação pede: os que a rotina grava e as Relações.
-CAMPOS_IMPORTACAO = CAMPOS_MEDIA + CAMPOS_RELACOES
+#: As 10 recomendações mais votadas da obra (spec `sugestoes`), também só na Importação, como as
+#: Relações. Conferido em 2026-11-27: a página de 50 animes (366 Relações, 497 recomendações) e a de
+#: 50 mangás (453 e 500) com as duas cabem no limite de complexidade da API pública.
+CAMPOS_RECOMENDACOES = """
+      recommendations(sort: RATING_DESC, perPage: 10) {
+        nodes {
+          rating
+          mediaRecommendation { id type isAdult }
+        }
+      }
+"""
+
+#: Campos de `Media` que a Importação pede: os que a rotina grava, as Relações e as recomendações.
+CAMPOS_IMPORTACAO = CAMPOS_MEDIA + CAMPOS_RELACOES + CAMPOS_RECOMENDACOES
 POR_PAGINA = 50
 #: Páginas da atualização das populares por execução (500 obras).
 PAGINAS_ATUALIZACAO = 10
@@ -199,15 +211,16 @@ Buscar = Callable[[int, list[str], dict], dict]
 
 
 def buscar_relacoes(session, rate_limiter, tipo: str, ids: list[int]) -> dict:
-    """As Relações das obras `ids` (até 50, uma página), na página de `_pedir_pagina`.
+    """As Relações e as recomendações das obras `ids` (até 50, uma página), na página de `_pedir_pagina`.
 
-    Cada item é `{'id', 'relations'}`; obra que o AniList não tem mais não volta.
+    Cada item é `{'id', 'relations', 'recommendations'}`; obra que o AniList não tem mais não volta.
     """
     query = (
         'query ($page: Int, $perPage: Int, $idIn: [Int], $tipo: MediaType, $sort: [MediaSort]) {\n'
         '  Page(page: $page, perPage: $perPage) {\n'
         '    pageInfo { hasNextPage }\n'
-        '    media(id_in: $idIn, type: $tipo, sort: $sort) {\n      id' + CAMPOS_RELACOES + '    }\n'
+        '    media(id_in: $idIn, type: $tipo, sort: $sort) {\n      id'
+        + CAMPOS_RELACOES + CAMPOS_RECOMENDACOES + '    }\n'
         '  }\n}\n'
     )
     payload = {'query': query, 'variables': {

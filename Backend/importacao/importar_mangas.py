@@ -116,15 +116,16 @@ def importar_mangas(
     def importar_pagina(pagina: dict):
         if not pagina['itens']:
             return
-        # Uma conexão por página; cada Mídia é um comando (a sua transação), e as Relações da
-        # página, mais uma.
+        # Uma conexão por página; cada Mídia é um comando (a sua transação), e as Relações e as
+        # recomendações da página, mais uma.
         with autocommit() as t:
-            relacoes_por_midia = {}
+            relacoes_por_midia, recomendacoes_por_midia = {}, {}
             for item in pagina['itens']:
                 try:
                     result = processar_e_inserir_manga(item, t)
                     stats.registrar_sucesso(ja_existia=result['ja_existia'])
                     relacoes_por_midia[result['id_midia']] = relacoes.da_obra(item)
+                    recomendacoes_por_midia[result['id_midia']] = relacoes.recomendacoes_da_obra(item)
                 except Indisponivel:
                     # Sem banco não é falha do item: encerra o Tipo sem avançar o cursor.
                     raise
@@ -139,7 +140,8 @@ def importar_mangas(
                         payload=item,
                         extra={'pagina': pagina['pagina']},
                     )
-            relacoes.gravar_da_pagina(t, 'manga', relacoes_por_midia, pagina['pagina'])
+            relacoes.gravar_da_pagina(t, 'manga', relacoes_por_midia, pagina['pagina'],
+                                      recomendacoes_por_midia=recomendacoes_por_midia)
 
     try:
         cursor.importar_anilist(
